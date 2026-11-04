@@ -18,7 +18,7 @@ const red = boardItem('red', 'styld.women')
 
 const home = (challenges: ChallengesPage.Model) =>
   withPage(at('/', { signedIn: true }), lenses.today, (today) =>
-    modifyFields(settled(today), { challenges: () => challenges }),
+    modifyFields(settled(today), { whatsNew: (whatsNew) => ({ ...whatsNew, challenges }) }),
   )
 
 const withRed = modifyFields(ChallengesPage.init(), {

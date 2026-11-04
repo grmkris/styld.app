@@ -123,7 +123,7 @@ before the call that would pass `--max-usd` (default 5, across runs). The tool p
 5. **Taking boards down**: `--prune <seed id,…>` (with `--catalogue`) removes seeded boards, such as a fixture's or
    an entry the catalogue dropped.
 
-Replacing a generated garment with a real photo (by manifest id) is planned and not built yet.
+The house garments stay generated (owner, 4 November 2026): there is no swap for a real photo.
 
 ## Rebuild and import (C5, and the production cutover)
 

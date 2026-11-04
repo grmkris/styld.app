@@ -197,7 +197,8 @@ const make = Effect.gen(function* () {
         items: triedTable(board.items, pieces, chosen, (piece) => missingLabel(piece, locale)),
       })
       .pipe(Effect.catchTags({ BoardItemRefused: unavailable, BoardVersionConflict: unavailable }))
-    const answer: TriedBoard = { boardId: made.id, fromWardrobe: chosen.size, of: wanted.length }
+    const missing = wanted.filter(({ id }) => !chosen.has(id)).map(({ type, colours }) => ({ type, colours }))
+    const answer: TriedBoard = { boardId: made.id, fromWardrobe: chosen.size, of: wanted.length, missing }
     return answer
   })
   return {

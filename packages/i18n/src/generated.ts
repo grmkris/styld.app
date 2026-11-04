@@ -341,18 +341,76 @@ export interface MessageArgumentsByKey<_T = string> {
   'connect.copy': Readonly<Record<string, never>>
   'connect.copyFailed': Readonly<Record<string, never>>
   'feed.save': Readonly<Record<string, never>>
+  'firstRun.boardsLoading': Readonly<Record<string, never>>
+  'firstRun.boardsReason': Readonly<Record<string, never>>
+  'firstRun.boardsTitle': { readonly count: string | number }
+  'firstRun.clothesReason': Readonly<Record<string, never>>
+  'firstRun.clothesTitle': Readonly<Record<string, never>>
+  'firstRun.done': Readonly<Record<string, never>>
+  'firstRun.next': Readonly<Record<string, never>>
+  'firstRun.occasionsReason': Readonly<Record<string, never>>
+  'firstRun.occasionsTitle': Readonly<Record<string, never>>
+  'firstRun.skip': Readonly<Record<string, never>>
+  'firstRun.skipAll': Readonly<Record<string, never>>
+  'firstRun.step': { readonly at: string | number; readonly of: string | number }
   'follow.follow': Readonly<Record<string, never>>
   'follow.following': Readonly<Record<string, never>>
   'lab.title': Readonly<Record<string, never>>
-  'landing.browse': Readonly<Record<string, never>>
+  'landing.add.text': Readonly<Record<string, never>>
+  'landing.add.title': Readonly<Record<string, never>>
   'landing.contact': Readonly<Record<string, never>>
-  'landing.description': Readonly<Record<string, never>>
-  'landing.edits': Readonly<Record<string, never>>
-  'landing.feedDescription': Readonly<Record<string, never>>
-  'landing.feedEmpty': Readonly<Record<string, never>>
-  'landing.feedFailed': Readonly<Record<string, never>>
-  'landing.newest': Readonly<Record<string, never>>
-  'landing.retry': Readonly<Record<string, never>>
+  'landing.faq.app': Readonly<Record<string, never>>
+  'landing.faq.appAnswer': Readonly<Record<string, never>>
+  'landing.faq.cost': Readonly<Record<string, never>>
+  'landing.faq.costAnswer': { readonly credits: number; readonly price: string | number }
+  'landing.faq.delete': Readonly<Record<string, never>>
+  'landing.faq.deleteAnswer': Readonly<Record<string, never>>
+  'landing.faq.title': Readonly<Record<string, never>>
+  'landing.faq.who': Readonly<Record<string, never>>
+  'landing.faq.whoAnswer': Readonly<Record<string, never>>
+  'landing.film.pause': Readonly<Record<string, never>>
+  'landing.film.play': Readonly<Record<string, never>>
+  'landing.final': Readonly<Record<string, never>>
+  'landing.hero.coat.film': Readonly<Record<string, never>>
+  'landing.hero.coat.lede': Readonly<Record<string, never>>
+  'landing.hero.coat.title': Readonly<Record<string, never>>
+  'landing.hero.mirror.film': Readonly<Record<string, never>>
+  'landing.hero.mirror.lede': Readonly<Record<string, never>>
+  'landing.hero.mirror.title': Readonly<Record<string, never>>
+  'landing.hero.wardrobe.film': Readonly<Record<string, never>>
+  'landing.hero.wardrobe.lede': Readonly<Record<string, never>>
+  'landing.hero.wardrobe.title': Readonly<Record<string, never>>
+  'landing.outfits.text': Readonly<Record<string, never>>
+  'landing.outfits.title': Readonly<Record<string, never>>
+  'landing.price.free': Readonly<Record<string, never>>
+  'landing.price.freeText': { readonly credits: number }
+  'landing.price.premium': Readonly<Record<string, never>>
+  'landing.price.premiumText': { readonly price: string | number; readonly credits: number; readonly days: number }
+  'landing.price.title': Readonly<Record<string, never>>
+  'landing.shop.accessory': Readonly<Record<string, never>>
+  'landing.shop.all': Readonly<Record<string, never>>
+  'landing.shop.bottom': Readonly<Record<string, never>>
+  'landing.shop.dress': Readonly<Record<string, never>>
+  'landing.shop.filter': Readonly<Record<string, never>>
+  'landing.shop.outerwear': Readonly<Record<string, never>>
+  'landing.shop.pieces.bagCognac': Readonly<Record<string, never>>
+  'landing.shop.pieces.bootsBlack': Readonly<Record<string, never>>
+  'landing.shop.pieces.coatCamel': Readonly<Record<string, never>>
+  'landing.shop.pieces.dressSage': Readonly<Record<string, never>>
+  'landing.shop.pieces.jeansLight': Readonly<Record<string, never>>
+  'landing.shop.pieces.loafersTan': Readonly<Record<string, never>>
+  'landing.shop.pieces.shirtWhite': Readonly<Record<string, never>>
+  'landing.shop.pieces.skirtIvory': Readonly<Record<string, never>>
+  'landing.shop.pieces.sneakersWhite': Readonly<Record<string, never>>
+  'landing.shop.pieces.sweaterCream': Readonly<Record<string, never>>
+  'landing.shop.pieces.topStripe': Readonly<Record<string, never>>
+  'landing.shop.pieces.trousersBrown': Readonly<Record<string, never>>
+  'landing.shop.pieces.turtleneckBlack': Readonly<Record<string, never>>
+  'landing.shop.price': Readonly<Record<string, never>>
+  'landing.shop.shoes': Readonly<Record<string, never>>
+  'landing.shop.text': Readonly<Record<string, never>>
+  'landing.shop.title': Readonly<Record<string, never>>
+  'landing.shop.top': Readonly<Record<string, never>>
   'landing.signIn': Readonly<Record<string, never>>
   'landing.start': Readonly<Record<string, never>>
   'landing.title': Readonly<Record<string, never>>
@@ -782,6 +840,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.wornNote': Readonly<Record<string, never>>
   'today.wornUnread': Readonly<Record<string, never>>
   'tryBoard.action': Readonly<Record<string, never>>
+  'tryBoard.addThese': Readonly<Record<string, never>>
   'tryBoard.failed': Readonly<Record<string, never>>
   'tryBoard.missing': { readonly colour: string | number; readonly type: string | number }
   'tryBoard.missingKind': { readonly type: string | number }
@@ -1082,4 +1141,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '542974e46655710f51f690c3decca603c4f91f69a81c268b02ee97dca1d6a1f9'
+export const catalogVersion = '76f1af9b3d6fb3533ea5bd416ed4180b51298c9957e13a21a126eb618d46ca0b'

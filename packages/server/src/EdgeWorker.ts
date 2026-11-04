@@ -12,6 +12,17 @@ export type EdgeEnvironment = {
   readonly WEBSITE: FetchService
   /** `noindex` keeps a preview deployment out of search engines; link previews still read its pages. */
   readonly ROBOTS?: string
+  /** The Analytics Engine dataset the landing's heroes are counted in (`kernel/Metrics.ts`), with the deployment it
+   * names; without it nothing is counted. */
+  readonly METRICS?: {
+    writeDataPoint(point: {
+      readonly indexes: Array<string>
+      readonly blobs: Array<string>
+      readonly doubles: Array<number>
+    }): void
+  }
+  readonly STYLD_ENV?: string
+  readonly STYLD_RELEASE?: string
 }
 
 const apiNamespaces = ['/api', '/mcp', '/oauth', '/.well-known', '/cdn'] as const
@@ -25,6 +36,31 @@ const signInPage = (response: Response, url: URL): Response =>
   url.pathname === googleCallback && response.status >= 400
     ? new Response(null, { status: 303, headers: { location: '/login?problem=google' } })
     : response
+
+/** What the website asks the edge to count (`apps/web/src/server/LandingHero.ts` › countHeader): a signed-out Home
+ * shown, or a sign-in begun, by the hero the visitor got. Never an account, an address or a person. */
+const countHeader = 'x-styld-count'
+const countable = /^(landing\.shown|signin\.started)\.(mirror|coat|wardrobe)$/
+
+/** Count what the website named and take the header off, so it never reaches the browser. Index `<event>.<hero>`,
+ * blobs (environment, release, event, hero), one double. A dataset that refuses the point never fails the page. */
+const countLanding = (response: Response, env: EdgeEnvironment, fromWebsite: boolean): void => {
+  const named = response.headers.get(countHeader)
+  if (named === null) return
+  response.headers.delete(countHeader)
+  const match = fromWebsite ? countable.exec(named) : null
+  if (match === null || env.METRICS === undefined) return
+  const [, event = '', hero = ''] = match
+  try {
+    env.METRICS.writeDataPoint({
+      indexes: [named],
+      blobs: [env.STYLD_ENV ?? 'unknown', env.STYLD_RELEASE ?? 'unknown', event, hero],
+      doubles: [1],
+    })
+  } catch {
+    // Counting is best effort.
+  }
+}
 
 export const isApiPath = (path: string): boolean =>
   apiNamespaces.some((namespace) => path === namespace || path.startsWith(`${namespace}/`))
@@ -88,6 +124,7 @@ export default {
       api,
     )
     if (secured.status === 101) return secured
+    countLanding(secured, env, !api)
     if (env.ROBOTS === 'noindex') secured.headers.set('x-robots-tag', 'noindex')
     // The id the logs of this request carry, so a person reporting a problem can quote it.
     secured.headers.set('x-styld-correlation-id', correlationId)

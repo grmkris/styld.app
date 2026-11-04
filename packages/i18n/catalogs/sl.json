@@ -363,18 +363,86 @@
     "categoryEditFailed": "To ni šlo skozi. Poskusi znova."
   },
   "landing": {
-    "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",
-    "feedEmpty": "Javnih zbirk še ni.",
-    "retry": "Poskusi znova",
     "title": "Garderoba po tvojem okusu.",
-    "description": "Fotografiraj svoja oblačila in Styld izreže vsak kos, sestavi, kaj obleči danes, in hrani zbirke tega, kar ti je všeč.",
     "start": "Začni brezplačno",
-    "browse": "Prebrskaj zbirke",
     "signIn": "Prijava",
     "contact": "Kontakt",
-    "feedFailed": "Zbirke se niso naložile.",
-    "edits": "Izbor Stylda",
-    "newest": "Najnovejše zbirke"
+    "hero": {
+      "mirror": {
+        "title": "Poznaj videz, še preden odpreš omaro.",
+        "lede": "Styld sestavi videze iz tega, kar že imaš, da izbereš v minuti.",
+        "film": "Ženska v kopalnem plašču stoji s hrbtom proti kameri pred visokim ogledalom; njen odsev pod rameni nosi videz za videzom."
+      },
+      "coat": {
+        "title": "En plašč, šest videzov.",
+        "lede": "Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom.",
+        "film": "Kamelji plašč leži sredi papirne table; okoli njega se drugi kosi menjajo v šest videzov."
+      },
+      "wardrobe": {
+        "title": "Vsak videz se začne v tvoji garderobi.",
+        "lede": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa sestavljaš videze in zbirke, tukaj ali v ChatGPT in Claudu.",
+        "film": "Oblačila odplavajo iz odprte omare in pristanejo na papirni tabli kot videz, se zamenjajo za drugega, nato odplavajo nazaj."
+      }
+    },
+    "film": {
+      "pause": "Ustavi film",
+      "play": "Predvajaj film"
+    },
+    "add": {
+      "title": "Dodaj enkrat",
+      "text": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa pregledaš, kaj je našel, preden se pridruži tvoji garderobi."
+    },
+    "shop": {
+      "title": "Tvoja garderoba kot trgovina",
+      "text": "Brskaj po kategorijah kot v vsaki trgovini. Cena je vedno enaka.",
+      "filter": "Kategorija",
+      "all": "Vse",
+      "top": "Zgornji deli",
+      "bottom": "Spodnji deli",
+      "dress": "Obleke",
+      "outerwear": "Vrhnja oblačila",
+      "shoes": "Obutev",
+      "accessory": "Dodatki",
+      "price": "Že tvoje",
+      "pieces": {
+        "sweaterCream": "Kremni pleteni pulover",
+        "shirtWhite": "Bela srajca",
+        "topStripe": "Črtasta majica",
+        "turtleneckBlack": "Črn pulover z visokim ovratnikom",
+        "jeansLight": "Svetle ravne kavbojke",
+        "trousersBrown": "Rjave široke hlače",
+        "skirtIvory": "Slonokoščeno plisirano krilo",
+        "dressSage": "Žajbljeva satenasta obleka",
+        "coatCamel": "Kamelji volneni plašč",
+        "sneakersWhite": "Bele usnjene superge",
+        "bootsBlack": "Črni gležnjarji",
+        "loafersTan": "Rjavi mokasini",
+        "bagCognac": "Konjak torba čez ramo"
+      }
+    },
+    "outfits": {
+      "title": "En kos, veliko videzov",
+      "text": "Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom."
+    },
+    "price": {
+      "title": "Koliko stane",
+      "free": "Brezplačno",
+      "freeText": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, brez kartice. Dodajanje fotografije porabi enega.",
+      "premium": "Premium teden",
+      "premiumText": "{price} enkratno: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na dan, {days, plural, one {# dan} two {# dneva} few {# dni} other {# dni}}."
+    },
+    "faq": {
+      "title": "Vprašanja",
+      "who": "Kdo vidi mojo garderobo?",
+      "whoAnswer": "Samo ti. Vse ostane zasebno, dokler se ne odločiš deliti zbirke, videza ali kosa.",
+      "app": "Moram namestiti aplikacijo?",
+      "appAnswer": "Ne. Styld deluje v brskalniku na vsakem telefonu ali računalniku ter v ChatGPT in Claudu.",
+      "cost": "Koliko stane?",
+      "costAnswer": "Za začetek nič: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, dodajanje fotografije porabi enega. Premium teden stane {price} enkratno, za več kreditov na dan sedem dni.",
+      "delete": "Lahko izbrišem vse?",
+      "deleteAnswer": "Da. Ko v Računu izbrišeš račun, z njim izbrišeš vse kose, fotografije, zbirke in videze."
+    },
+    "final": "Začni z eno fotografijo."
   },
   "studio": {
     "add": "Dodaj",
@@ -1114,7 +1182,8 @@
     "open": "Odpri svojo zbirko",
     "failed": "Ni uspelo. Poskusi znova.",
     "missing": "Še manjka: {type}, {colour}",
-    "missingKind": "Še manjka: {type}"
+    "missingKind": "Še manjka: {type}",
+    "addThese": "Dodaj še te, da bo vse tvoje:"
   },
   "taste": {
     "title": "Kaj Styld ve o tebi",
@@ -1197,7 +1266,7 @@
       "assistantsHeading": "Styld v ChatGPT ali Claudu",
       "assistants": "Če Styld povežeš z asistentom, kot sta ChatGPT ali Claude, se prijaviš v Styld in povezavo dovoliš; tvoja prijava ostane pri Styldu. Asistent Styldu pošilja tvoje zahteve in prejema rezultate, na primer tvoje kose in table, ter jih hrani po svojem pravilniku o zasebnosti. Izbris računa Styld prekine vse povezave.",
       "cookiesHeading": "Piškotki in diagnostika",
-      "cookies": "Styld uporablja le piškotke, ki jih potrebuje: eden ohranja tvojo prijavo, eden si zapomni jezik, eden tvojo izbiro glede diagnostike in eden tvoj odgovor na domači strani, kaj naj ti pokažemo najprej. Oglaševalskih ali sledilnih piškotkov ne uporabljamo.",
+      "cookies": "Styld uporablja le piškotke, ki jih potrebuje: eden ohranja tvojo prijavo, eden si zapomni jezik, eden tvojo izbiro glede diagnostike, eden tvoj odgovor na domači strani, kaj naj ti pokažemo najprej, in eden, katerega od treh uvodnih filmov ti je pokazala domača stran, da spet vidiš istega in se prijave štejejo po filmu, ne da bi kdor koli vedel, kdo si. Oglaševalskih ali sledilnih piškotkov ne uporabljamo.",
       "telemetry": "Diagnostika je izklopljena, dokler je ne dovoliš. Če jo, nam brskalnik pošilja čase nalaganja in napake s strani, ki jih uporabljaš, brez e-poštnega naslova, fotografij ali besedila, ki ga vneseš, in to gre v naše dnevnike pri Cloudflaru. Izbiro lahko spremeniš pod Diagnostika na dnu vsake strani.",
       "rightsHeading": "Tvoje pravice",
       "rights": "Lahko zahtevaš kopijo svojih podatkov, njihov popravek ali izbris, ugovarjaš njihovi uporabi in prekličeš dano privolitev. Piši na privacy@styld.app. Pritožbo lahko vložiš tudi pri svojem organu za varstvo podatkov.",
@@ -1235,5 +1304,19 @@
       "changesHeading": "Spremembe",
       "changes": "Ko se pogoji spremenijo, jih posodobimo tukaj z novim datumom. Če Styld uporabljaš še po spremembi, veljajo novi pogoji."
     }
+  },
+  "firstRun": {
+    "step": "Korak {at} od {of}",
+    "skip": "Preskoči",
+    "skipAll": "Preskoči vse",
+    "next": "Naprej",
+    "boardsTitle": "Izberi {count} table, ki so ti všeč",
+    "boardsReason": "Shranijo se med shranjene, Novosti pa podobne table pokažejo najprej.",
+    "boardsLoading": "Nalagam table …",
+    "occasionsTitle": "Za kaj se oblačiš?",
+    "occasionsReason": "Današnji videzi sledijo tvojim dnevom: med tednom elegantno, če se tako oblačiš.",
+    "clothesTitle": "Zdaj še tvoja oblačila",
+    "clothesReason": "Doma ti pokažemo, kako naprej: fotografiraj nekaj kosov ali posnemi obešalnik, Styld pa vsakega izreže in iz njih sestavi videze.",
+    "done": "Končano"
   }
 }

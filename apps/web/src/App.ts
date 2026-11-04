@@ -1,5 +1,5 @@
 import { Effect, Match, Option, Predicate, Schema } from 'effect'
-import type { Tone } from '@styld/protocol'
+import { LandingHero, type Tone } from '@styld/protocol'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -37,7 +37,7 @@ import * as Photo from './page/Photo.ts'
 import * as Photos from './page/Photos.ts'
 import * as TryOn from './page/TryOn.ts'
 import * as Piece from './page/Piece.ts'
-import * as LandingBoards from './page/LandingBoards.ts'
+import * as Landing from './page/Landing.ts'
 import * as Visit from './page/Visit.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
@@ -80,6 +80,9 @@ export const Flags = Schema.Struct({
   /** A session cookie came with the request: Home waits for the session instead of showing the landing page
    * to someone who is signed in. Only a hint; the session is read in the browser. */
   hasSessionCookie: Schema.optionalKey(Schema.Boolean),
+  /** The film the signed-out Home opens on, chosen by the server (`server/LandingHero.ts`) so the page hydrates the
+   * one it was rendered with. */
+  landingHero: Schema.optionalKey(LandingHero),
 })
 export type Flags = typeof Flags.Type
 
@@ -205,7 +208,7 @@ const toBoards = (model: Model) => ({ model, commands: [NavigateInternal({ href:
 const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
     Match.withReturnType<ReadonlyArray<Step>>(),
-    // Signed out, Home is the landing, which shows Edits from Styld or the newest public boards.
+    // Signed out, Home is the landing: its film and page need nothing read.
     Match.tag('Home', () =>
       signedIn
         ? [
@@ -213,7 +216,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
             revisitPieces,
             revisitBoards,
           ]
-        : [Update.foldChildStep({ update: LandingBoards.enter, ...at(lenses.landing) })],
+        : [],
     ),
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
     Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
@@ -429,11 +432,9 @@ const foldPages = {
   ...foldTryOn,
   stylist: Update.foldChild({ update: Stylist.update, ...at(lenses.stylist) }),
   visit: Update.foldChild({ update: Visit.update, ...at(lenses.visit) }),
-  landing: Update.foldChild({ update: LandingBoards.update, ...at(lenses.landing) }),
+  landing: Update.foldChild({ update: Landing.update, ...at(lenses.landing) }),
   data: Update.foldChild({ update: ServerData.update, ...data }),
 }
-
-const retryLanding = Update.foldChildStep({ update: LandingBoards.retry, ...at(lenses.landing) })
 
 // SUBSCRIPTION
 
@@ -584,5 +585,4 @@ export const update = (model: Model, message: Message): UpdateReturn =>
             ? NavigationState.restoreWardrobePosition(askOnceDressed(stepModel))
             : { model: stepModel },
       ]),
-    ClickedRetryLanding: () => retryLanding(model),
   })

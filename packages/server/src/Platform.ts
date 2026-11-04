@@ -5,6 +5,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { Deployment } from './Config.ts'
 import { health } from './Health.ts'
+import { landingMediaRoute } from './LandingMedia.ts'
 import { Database, query } from './kernel/Db.ts'
 import { module } from './kernel/Module.ts'
 import { Pacing } from './kernel/Pacing.ts'
@@ -31,7 +32,7 @@ const sweeps: ReadonlyArray<Sweep<Database | Holds>> = [
   { name: 'settlements', run: Effect.flatMap(Holds, (holds) => holds.sweep) },
 ]
 
-/** What every deployment serves besides its modules: health, the browser telemetry relay, forgetting receipts past
+/** What every deployment serves besides its modules: health, the browser telemetry relay, the landing's films, forgetting receipts past
  * their lifetime and Google sign-ins never finished, settling the credit holds the Wallet has not confirmed settled, and forgetting finished paid work. */
 export const platform = module({
   layer: Layer.empty,
@@ -42,6 +43,7 @@ export const platform = module({
       return Layer.mergeAll(
         HttpRouter.add('GET', '/api/health', health(release)),
         browserTelemetryRoutes(origin, (network) => pacing.allows('telemetry', network)),
+        yield* landingMediaRoute,
       )
     }),
   ),

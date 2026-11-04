@@ -2,7 +2,6 @@ import {
   BoardId,
   CurrentAccount,
   CurrentOperator,
-  groupOf,
   NotFound,
   OperationConflict,
   type OperationId,
@@ -26,7 +25,6 @@ import { profileTranslationWrite } from '../social/ProfileStore.ts'
 import { Profiles } from '../social/Profiles.ts'
 import { profileSourceDigest } from '../social/Translated.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { wholeEnough } from './Whole.ts'
 import { createdBoard, digestsOf, forgetSteps, planOf, stepOf, updatedBoard } from './Boarding.ts'
 import { seedPrefix, SeedStore } from './Store.ts'
 
@@ -34,8 +32,7 @@ import { seedPrefix, SeedStore } from './Store.ts'
 // house accounts (`STYLD_HOUSE_EMAILS`) are written to, each by its email, and everything is done as that account
 // through the app's own services: its profile by `Profiles`, its boards by `Boards`, its house mark by `Curation`. A
 // catalogue entry becomes one board for good (`seeded_boards`): the same entry again changes nothing, a changed one
-// changes the same board. Its garments must be imported, ready, cut out and read by Clef as one whole garment of
-// their kind; otherwise the entry is refused and named.
+// changes the same board. Its garments must be imported, ready and cut out; otherwise the entry is refused and named.
 
 /** A store that does not answer: the seed is unavailable. */
 const stored = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, () => Unavailable.make({}))
@@ -54,15 +51,10 @@ const as = (accountId: string) => Effect.provideService(CurrentAccount, { accoun
 
 type GarmentRow = Effect.Success<ReturnType<SeedStore['Service']['houseGarments']>>[number]
 
-/** Whether a house garment can go on a board: ready, cut out, and read by Clef as a garment of its kind that is not
- * a scrap (the capture's own drop bar: a pair of shoes, a bag or a folded scarf scores low on "one whole garment" by
- * nature, and the seed's judge already saw one whole garment in its picture). */
-const usable = (row: GarmentRow) =>
-  row.status === 'ready' &&
-  row.imageKey !== null &&
-  row.imageKey !== row.originalKey &&
-  wholeEnough(row.type, row.describedWhole) &&
-  (row.describedType === null || groupOf(row.describedType) === groupOf(row.type))
+/** Whether a house garment can go on a board: ready and cut out. Clef's reading of it is reported, never a reason to
+ * hold its boards (owner, 4 November 2026: the catalogue's type stands, and every garment passed the seed's own judge
+ * as one whole garment of that type and colour). */
+const usable = (row: GarmentRow) => row.status === 'ready' && row.imageKey !== null && row.imageKey !== row.originalKey
 
 /** The account's house garments by manifest id. */
 const garmentsOf = (accountId: string) =>

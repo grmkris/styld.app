@@ -107,28 +107,6 @@ export const intro = style({
   gap: 'grid',
   paddingBlock: 'clamp(24px, 8vw, 96px) clamp(40px, 8vw, 96px)',
 })
-/** The landing statement: Gallery's display size, the one heavy head on a page. */
-export const heroTitle = style({
-  maxInlineSize: '14ch',
-  fontSize: 'display',
-  lineHeight: 1,
-  fontWeight: 700,
-  letterSpacing: '-0.035em',
-})
-export const lead = style({ maxInlineSize: '32ch', paddingBlockEnd: '8px', fontSize: 'subheading', color: 'ink2' })
-export const heroActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })
-export const inspiration = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 'actions',
-  paddingBlock: '40px 80px',
-  borderBlockStartWidth: '1px',
-  borderBlockStartStyle: 'solid',
-  borderBlockStartColor: 'rule',
-  scrollMarginBlockStart: '24px',
-})
-export const sectionNote = style({ color: 'ink2' })
-export const emptyState = style({ paddingBlock: '24px', color: 'ink2' })
 export const footer = style({
   display: 'flex',
   flexWrap: 'wrap',
@@ -307,7 +285,3 @@ export const navAvatarDisc = style({
 export const navYou = style({ inlineSize: '32px', blockSize: '32px', fontSize: 'micro', letterSpacing: '0' })
 /** The avatar while the session is read: the same circle, blank until the initial is known. */
 export const navAvatarPending = style({ backgroundColor: 'paper2' })
-/** A board card's shape while the landing's boards load. */
-export const boardSkeleton = style({ aspectRatio: '4 / 5', borderRadius: 'panel' })
-/** The landing's boards keep their room while they load, so nothing below them moves when they arrive. */
-export const inspirationGrid = style({ display: 'grid', gap: 'related', minBlockSize: '420px', alignContent: 'start' })

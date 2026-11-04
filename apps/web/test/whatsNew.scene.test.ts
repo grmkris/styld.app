@@ -1,3 +1,4 @@
+import * as Challenges from '../src/page/Challenges.ts'
 import { Option } from 'effect'
 import { all, click, Command, expect, expectAll, given, inside, Mount, role, scene, selector } from 'foldkit/scene'
 import { AsyncData } from 'foldkit'
@@ -21,7 +22,7 @@ const home = (feed: FeedData, locale: 'en' | 'sl' = 'en') =>
         tray: TrayData.Success({ data: { waiting: 0, pictures: [], allowance: { remaining: 97, daily: 100 } } }),
         favourite: FavouriteData.Success({ data: Option.none() }),
       }),
-      whatsNew: () => ({ feed, more: More.Idle() }),
+      whatsNew: () => ({ feed, more: More.Idle(), challenges: Challenges.init() }),
     }),
   )
 

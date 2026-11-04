@@ -1,6 +1,6 @@
 import { BoardId, OperationId, PublicBoard } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { click, Command, expect, given, role, scene } from 'foldkit/scene'
+import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -37,10 +37,15 @@ describe('Try with my wardrobe', () => {
       click(role('button', { name: 'Try with my wardrobe' })),
       Command.resolve(
         TryIt({ boardId: generatedBoard.id, maybeOperationId: Option.none() }),
-        TryMessage.SucceededTry({ tried: { boardId: tried, fromWardrobe: 2, of: 3 } }),
+        TryMessage.SucceededTry({
+          tried: { boardId: tried, fromWardrobe: 2, of: 3, missing: [{ type: 'loafers', colours: ['brown'] }] },
+        }),
       ),
       expect(role('status')).toHaveText('2 of 3 from your wardrobe'),
       expect(role('link', { name: 'Open your board' })).toHaveAttr('href', `/boards/${tried}`),
+      // Add these: what the wardrobe lacked, and the way to add clothes.
+      expect(text('No brown loafers yet')).toExist(),
+      expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
     )
   })
 

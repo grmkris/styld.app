@@ -138,6 +138,17 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
 // pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
 // on top of e2560062 it measured 399,847.
+// Raised to 402,900 on 4 November for the first run over Home (taste, L6): its submodel (the taste read, the house
+// boards, four steps and their saves, the modal Mount), its screen with the boards to pick and the occasions, its styles
+// and the en/sl words add 3,010: main measured 399,850 in a clean worktree at cbcf9b58 (9daa3422 adds no browser code)
+// and 402,860 with them.
+// Raised to 403,200 the same day for Try with my wardrobe's Add these (taste, L7): what the wardrobe lacked, in the
+// board labels' words, and the way to add clothes add 292 over 66f99166's 402,860 (c7b6e51d adds no browser code).
+// Raised by about 5,250 on 4 November for the landing that replaces v1 at styld.app (owner): three heroes, each a film with
+// its poster and words, the one control that follows the film, the three feature screens with the shop's chips, the
+// price and the questions, and their en/sl words (the largest catalog 15,842 to 16,899) add 5,178, less the public
+// boards the old landing read: main measured 399,851 in a clean worktree at 0f92c2ca and 405,029 with them; on top of
+// the first run (402,860) it measures 408,104. No media is bundled; every film and picture loads from /cdn/landing/.
 // Raised to 405,600 the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
 // tab and its page (the try-ons, the Gallery photo and pieces or look to choose, This is me, the cost, the poll, before
 // and after, Delete, and Save to board's try-on target) and their en/sl words add 5,773 (391,342 to 397,115 measured
@@ -146,7 +157,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // page, lens and folds), the start's problem kept as Spent, Refused or Lost with its operation id, the delete's id kept
 // for a retry, the Checkbox for This is me, the alertdialog, captions and piece states, and their words add 1,884 over
 // abcc104c's 405,539, for 407,423.
-if (initialGzip > 407500) throw new Error(`Initial browser assets exceed the 407,500-byte gzip budget: ${initialGzip}`)
+// Raised to 416,200 the same evening for Try on merged with main's landing (408,104 at c2486ab0): the try-on page, its
+// fixes and the client's try-on contract add 8,082 together, for 416,186.
+if (initialGzip > 416200) throw new Error(`Initial browser assets exceed the 416,200-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -120,7 +120,8 @@ Commits in this order; each one passes the cheap checks.
   - `PUT /operator/seed/profile`
   - `POST`, `GET` and `DELETE` on `/operator/seed/boards/:seedId`
   - `GET /operator/seed/pieces?email`
-  - `PUT /operator/seed/pieces/:manifestId/picture` (the photo swap)
+  - ~~`PUT /operator/seed/pieces/:manifestId/picture` (the photo swap)~~ dropped (owner, 4 November: the house
+    garments stay generated)
 - New `packages/server/src/seed/` module (one entry in `Modules.ts`). It refuses any email not in
   `STYLD_HOUSE_EMAILS`, resolves `seed:<manifestId>` through `imported_pieces`, and refuses pieces that haven't been
   imported or that need a look.

@@ -7,6 +7,83 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Styld learns the person: taste, memory, first run (4 November, on main)
+
+Kris's plan of 4 November (`~/.claude/plans/okay-so-please-look-sprightly-brook.md`), built as a track of its own
+beside the house boards, after reviewing the Grokbot inspiration-boards research.
+
+- **Taste** (`89f4a292`, migration `20261104174849_taste`, two new tables): the occasions a person dresses for, the
+  first run's end and the notes they asked Styld to remember (at most 30); what Styld learned is read on demand (90
+  days of worn days, kept looks, favourite Gallery photos, saved boards' aesthetics). `/api/me/taste*` and the MCP tools
+  `taste_get`, `note_add`, `note_list`, `note_delete`, `occasions_set`. Deployed to the preview by styldappv2-51 and in
+  production through `4361388e` (styldappv2-0f).
+- **Styld** (`668fb7ee`): each reply is told what Styld knows, as data (Show me as which boards come first, never who
+  the person is); it asks before remembering and calls `note_add` only after a yes; `saved_list` and the notes are in
+  its catalogue.
+- **Outfits** (`6e6e2e5d`): a day's outfits asked for no occasion take the day's (smart on weekdays for someone who
+  dresses smart, else casual); Thinking hears what they wear most and their notes.
+- **Account › What Styld knows about you** (`1c904c9f`): occasions as chips, the notes with Remove, the learned line.
+- **What's new by taste** (`58969964`): on each page, inside Show me's bands, boards sharing the reader's saved boards'
+  aesthetics come first; nothing is hidden and the cursor is unchanged.
+- **Challenges** (`4361388e`): Eva's three cards open the seeded house boards (`u-30-days-red`, `w-witch-october`,
+  `u-one-coat-6`) through `seeded_boards`; "Coming soon" until one exists.
+- **First run** (`66f99166`): a modal over Home, once for every account (testers included): Show me (through the
+  preferences the card writes), up to 12 house boards to save, the five occasions, then Done onto Home's first-piece
+  card (Kris: one way into Add clothes). Each answer saves as given; reaching the last step or Skip all marks it done.
+- **Add these** (`f4f96260`): Try with my wardrobe's answer names the kinds the wardrobe lacked, listed under the result
+  with the way to Add clothes.
+- **Evidence:** unit, story and scene tests for each (taste store on local D1 with cascade and CHECKs, `tasteOf` and
+  the day rule's truth tables, the prompt paragraph and memory rule, the engine's occasion and Thinking lines over D1,
+  `byTaste`, the Account section, the first run's steps and screen, Challenges' cards, Try's `missing`); the native
+  stylist journey gains "Yes, remember: Never heels" → kept → listed → a new chat is told it (written, not run here).
+  Cheap checks green on every commit; the initial bundle rose by measured amounts (403,152, budget 403,200).
+- **Open:** the native suite and a preview walk of the first run, the Account section and Styld's memory in en and sl;
+  Challenges and the first run's boards show real boards only after the seed's `--full` run; funnel metrics (Kris: not
+  now); no type preset on Add clothes (the capture types each piece); aesthetics show as the catalogue's slugs
+  (`city break`) in both languages; a Discovery test of `challenges` over D1.
+
+## The landing that replaces v1 at styld.app (4 November, on main, not deployed)
+
+The signed-out Home is rebuilt from the landing-film prototypes (owner decisions of 4 November; DESIGN.md › Surfaces,
+› Motion).
+
+- **Built:**
+  - Three heroes, `mirror`, `coat` and `wardrobe`. The website's server chooses one (`apps/web/src/server/LandingHero.ts`):
+    `?hero=` forces one for a preview; otherwise the first-party `styld_hero` cookie (HttpOnly, Lax, half a year)
+    keeps the one a first visit got at random. The choice goes into the flags, so the browser hydrates the hero the
+    server rendered. Each hero shows its poster first (tall on a phone held upright, wide elsewhere) and plays its
+    muted loop once the browser allows motion. With reduced motion or Save-Data no video is requested and the film's
+    element goes. One control in the hero follows the element's play and pause events (Play when iOS refuses
+    autoplay) and holds the clips below too. The words, Start free and Sign in are in en and sl, and the mirror keeps
+    Start free.
+  - One page below for all three: Add it once (the scan clip as a photo), Your wardrobe, as a shop (category chips
+    filtering 13 cut-outs, each "Already yours"), One piece, many outfits (the outfits clip on a table), the price as
+    a `<dl>` (Free, 100 credits a day; Premium week, `premiumWeek`), four questions in `<details>` and Start free again.
+    The clips play only while half on screen. The public boards (Edits from Styld) are no longer on the landing
+    (coordinator, 4 November); `LandingBoards` is gone.
+  - `GET /cdn/landing/:name` (`packages/server/src/LandingMedia.ts`, in Platform's routes) streams `landing/<name>` from
+    the stage's media bucket for the 29 allowlisted names in `@styld/protocol` › `Landing.ts`. It sends the content
+    type, a year's immutable cache, an ETag and 304, and answers a single byte range with 206 (Safari) or 416. Nothing
+    is bundled.
+  - Measurement without trackers: the website names `landing.shown.<hero>` (a signed-out Home served, not forced) or
+    `signin.started.<hero>` (`/login` for a browser carrying the cookie) in an internal `x-styld-count` header. The
+    edge strips it and writes the point to the StyldAiCalls dataset (blobs: environment, release, event, hero), so
+    `alchemy.run.ts` now binds `METRICS`, `STYLD_ENV` and `STYLD_RELEASE` to the edge. `tools/ai-usage-report.ts` has a
+    Landing heroes table. **Sign-ups are counted as sign-ins begun, not accounts created:** registration happens
+    inside Yielded's email persistence, and reading the cookie there was not clean tonight.
+  - The privacy policy lists the `styld_hero` cookie. DESIGN.md has the landing film's exception.
+- **Evidence:** `landing.scene` (each hero in en and sl, the mirror's Start free, reduced motion with no film and no
+  control, the control following a refused film, the shop's chips, the price and the questions), `landingHero.test`
+  (the random choice with its cookie, the same hero hydrated, the cookie kept, `?hero=` forced and uncounted, bad
+  values ignored, the sign-in count, no landing with a session), `LandingMedia.test` (allowlist, 200, 206, open and
+  suffix ranges, 416, 404, 304), `EdgeWorker.test` (the count written, the header stripped, an API or odd name
+  dropped, no dataset). Native, written and not run: `BrowserAcceptance` (`?hero=coat`, a first visit's cookie kept on
+  reload, no film requested under reduced motion, Start free on the first 360×740 screen in sl, no sideways overflow
+  at 360, 390, 768 and 1440). The initial bundle grew by 5,178 gzip bytes (399,851 to 405,029; on top of the first run 402,860 to 408,104; budget 408,200).
+- **Open:** the deploy, the full gate with native, and the visual walk on phone and desktop (coordinator). The top bar
+  keeps the logo and Sign in; the language stays in the footer. The words do not come in on load (no entrance
+  motion). The media is uploaded to production's bucket only.
+
 ## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
 
 The wardrobe's filters (T-06) were kept twice, in the page's Model and in the address, and one bad parameter made the
@@ -299,8 +376,23 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   boards (26 women's, 16 men's, 11 everyone's; 31 and 22 by account). It also checks that every garment is used and
   that the Slovenian addresses one person. The dry run expects $2.89 to generate the remaining 156 garments; the worst
   case is above the $5 cap, which stops the run there.
+- **The look** (f7bb710e, 819c9ec4, after Eva's Pinterest references, owner 4 November): each outfit a dense stack
+  filling its cell (layer over top, bottom beside, shoes at the hem), up to three across; packing lists and collages
+  in rows at one scale (shoes and small things larger than life); the board's name as its headline (not on one-piece
+  boards, whose table is the app's template). A board's paper stays light in dark mode, for every board.
+- **Clef reports, never blocks** (c7b6e51d): every house garment passed the seed's own judge (Muse Spark: one whole
+  garment of its type and colour), and the owner chose the catalogue's type, so Clef's reading is listed in the
+  report and only a garment not ready or not cut out holds a board back. The judge takes any shape for sportswear
+  and loungewear (3bdd9308).
+- **Seeded (4 November evening):** all 166 garments generated and judged, $3.44 of the $5 cap with cut-outs (pages
+  `styld-house-garments`, `styld-boards-live`). Preview: 53 boards, 52 public and passed; `w-witch-october`'s check
+  says unsure. Production (styld.app): 173 garments imported and all 53 boards public on both house profiles; 50
+  checks passed and 3 say unsure (`w-carry-on-7d`, `m-prep-3`, `w-updated-lady`). Its first pass waited on checks
+  that failed until production's LiteLLM key gained the judge's model alias (0f, 4 November). The report with the
+  board ids is private (`~/private/styld-research/house-boards-2026-11-04/report-production-2026-11-04.md`).
 - **Runbook:** `docs/DEPLOYMENT.md` › House inspiration boards.
-- **Bundle budget** 388,000: Show me +2,284 and Try +808, each measured in a clean worktree.
+- **Bundle budget** 388,200: Show me +2,284, Try +808 and the card's first paint +203, each measured in a clean
+  worktree.
 - **Evidence:**
   - Unit: `HouseSeedTables`, `SeedPlans`, `Translated`, `Checks`, `PublicGenerated`, `Feed`, `ShowMe`, `TryBoard`,
     and the `tools/seed` tests.
@@ -310,8 +402,9 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   - Preview: the fixture run of two boards passed its checks and read back in en and sl, a rerun changed nothing,
     and the boards were pruned.
 - **Open:**
-  - `--full`, which waits for Kris's approval of the test batch.
-  - The photo swap endpoint (`PUT /operator/seed/pieces/:manifestId/picture`), not built yet.
+  - Production: the three unsure checks, for a person to look at.
+  - The admin calls on production: `curation_house` for both handles and the report's `curation_feature` calls.
+  - `w-witch-october`'s unsure check, for a person to look at (a Challenges card opens it).
   - Eva's review of the Slovenian copy, and her call on the sl chip ("Ustvarjeno" or "Ustvarjeno z UI").
   - On the preview: a readback of Show me's order and of a try with a test account.
 
@@ -401,7 +494,8 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
   and link previews; Save, one-way private Follow, Block, Report; readable signed out.
 - **Home, What's new and search:** the day, What to wear today (the tombola), What's new from everyone (followed
   people first), today's outfit, Challenges (coming soon) and Pick up; Ask searches the wardrobe, people and boards.
-  Signed out, Home is the landing with Edits from Styld or the newest boards; there is no Explore page.
+  Signed out, Home is the landing: one of three hero films, three feature screens, the price and four questions;
+  there is no Explore page.
 - **Safety:** every public item is checked first (Clef for pictures, DeepSeek through the paid LiteLLM gateway for words); unsure stays out of
   discovery, failed is hidden with a notice; three reports hide; admin MCP tools hide, restore and feature.
 - **ChatGPT and Claude (MCP):** OAuth (CIMD and DCR), consent and immediate revoke at `/mcp`; noun_verb tools over

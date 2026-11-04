@@ -1,7 +1,7 @@
 import hankenLatin from '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2?url'
 import hankenLatinExt from '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-ext-wght-normal.woff2?url'
 import { provideAllCatalogs } from '@styld/i18n/all'
-import { Clock, Effect } from 'effect'
+import { Clock, Effect, Option } from 'effect'
 import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/CloudflareTracer'
 import * as Server from 'foldkit/experimental/server'
 import { SessionHttp } from '@styld/auth/config'
@@ -14,6 +14,7 @@ import { consentFromCookies } from './TelemetryConsent.ts'
 import { answeredIn } from './page/ShowMe.ts'
 import { view } from './View.ts'
 import { saveLocale } from './server/LocalePreference.ts'
+import { chooseHero, countHeader, type HeroChoice } from './server/LandingHero.ts'
 
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
@@ -30,6 +31,12 @@ const renderApplication = (
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return Server.Responded(new Response(null, { status: 405, headers: { allow: 'GET, HEAD' } }))
     }
+    const cookies = request.headers.get('cookie') ?? ''
+    const hasSessionCookie = cookies.includes(`${SessionHttp.cookieName}=`)
+    const route = routeFromPathname(url.pathname)
+    // The film a signed-out Home opens on, chosen here so the browser hydrates the same one (`server/LandingHero.ts`).
+    const landing = AppRoute.guards.Home(route) && !hasSessionCookie
+    const choice = yield* chooseHero(request)
     const flags: Flags = {
       locale: requestLocale(request),
       catalogVersion,
@@ -38,12 +45,17 @@ const renderApplication = (
       origin: url.origin,
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
       showMeAnswered: answeredIn(request.headers.get('cookie')),
-      hasSessionCookie: (request.headers.get('cookie') ?? '').includes(`${SessionHttp.cookieName}=`),
+      hasSessionCookie,
+      landingHero: choice.hero,
     }
     const rendered = yield* Server.renderToString(application, { ...options, url: request.url, flags })
     return Server.Rendered(rendered, {
-      status: AppRoute.guards.NotFound(routeFromPathname(url.pathname)) ? 404 : 200,
+      status: AppRoute.guards.NotFound(route) ? 404 : 200,
       headers: {
+        ...countedAs(landing, AppRoute.guards.Login(route), choice),
+        ...(landing
+          ? Option.match(choice.setCookie, { onNone: () => ({}), onSome: (cookie) => ({ 'set-cookie': cookie }) })
+          : {}),
         'cache-control': 'private, no-store',
         vary: 'Accept-Language, Cookie',
         'content-language': flags.locale,
@@ -52,6 +64,15 @@ const renderApplication = (
       },
     })
   })
+
+/** What the edge counts for this page: a landing shown by its hero, or a sign-in begun by a browser that was shown
+ * one. A forced hero (a preview) is not counted. */
+const countedAs = (landing: boolean, signIn: boolean, choice: HeroChoice): Record<string, string> => {
+  if (choice.forced) return {}
+  if (landing) return { [countHeader]: `landing.shown.${choice.hero}` }
+  if (signIn && Option.isNone(choice.setCookie)) return { [countHeader]: `signin.started.${choice.hero}` }
+  return {}
+}
 
 export const renderRequest = (
   request: Request,
