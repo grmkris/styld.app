@@ -9,7 +9,7 @@ import {
   piecePictures,
   pieces,
 } from '@styld/db'
-import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, lte, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
@@ -146,7 +146,7 @@ const outfitWrites = (db: Database) => ({
       eq(boards.version, change.version),
     )
     const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
-    const notKept = and(eq(boardOutfits.id, change.outfit.id), sql`${boardOutfits.lookId} IS NULL`)
+    const notKept = and(eq(boardOutfits.id, change.outfit.id), isNull(boardOutfits.lookId))
     const outfitNotKept = sql<string>`${db
       .select({ id: boardOutfits.id })
       .from(boardOutfits)
