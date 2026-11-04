@@ -154,6 +154,12 @@ export interface DrawRequest {
   readonly subject: Picture
   /** The garment's other side, for reference only. */
   readonly other: Option.Option<Picture>
+  /** The piece's photo, sent before the cut-out only once the cut-out alone was refused (owner, 4 November); never
+   * sent alone, and never with `other`. */
+  readonly photo: Option.Option<Picture>
+  /** The piece's type and colours: a shoe or bag keeps its cut-out's angle, and a photo's garment is named by them. */
+  readonly type: PieceType
+  readonly colours: ReadonlyArray<string>
   readonly key: 'green' | 'magenta'
   readonly hint: Option.Option<string>
 }

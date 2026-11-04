@@ -34,18 +34,25 @@ const body = (prompt: string, pictures: ReadonlyArray<Picture>, size: string) =>
   tool_enablement: { enable_image_search: false, enable_web_search: false, enable_shell: false },
 })
 
-/** The clean picture's request: the side it shows first and the other side second, 2:3. */
-const drawBody = (request: DrawRequest) =>
-  body(
+/** The clean picture's request, 2:3: the side it shows first and the other side second; or, after a refusal, the
+ * piece's photo first and the cut-out second. */
+const drawBody = (request: DrawRequest) => {
+  const fromPhoto = Option.isSome(request.photo)
+  const other = fromPhoto ? Option.none() : request.other
+  return body(
     cleanPrompt({
       key: request.key,
       side: request.side,
-      hasOther: Option.isSome(request.other),
+      type: request.type,
+      colours: request.colours,
+      fromPhoto,
+      hasOther: Option.isSome(other),
       hint: Option.getOrUndefined(request.hint),
     }),
-    [request.subject, ...Option.toArray(request.other)],
+    [...Option.toArray(request.photo), request.subject, ...Option.toArray(other)],
     '1024x1536',
   )
+}
 
 /** The drawn picture in Muse's answer. No picture means Meta's safety filter removed it, unbilled and final; an
  * answer Styld cannot read would read the same way again. */

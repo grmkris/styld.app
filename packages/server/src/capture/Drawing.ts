@@ -130,6 +130,7 @@ const showStored = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) 
 const ask = <Row extends Drawing, E, R>(
   slot: Slot<Row, E, R>,
   claimed: Row,
+  piece: PieceRow,
   subject: Rgba,
   other: Option.Option<Rgba>,
 ) =>
@@ -139,6 +140,9 @@ const ask = <Row extends Drawing, E, R>(
         side: slot.side,
         subject: modelPicture(subject, drawnFrom),
         other: Option.map(other, (side) => modelPicture(side, drawnFrom)),
+        photo: Option.none(),
+        type: piece.type,
+        colours: piece.colours,
         key: claimed.keyColour ?? 'green',
         hint: slot.hint(claimed),
       })
@@ -162,11 +166,12 @@ const ask = <Row extends Drawing, E, R>(
 const draw = <Row extends Drawing, E, R>(
   slot: Slot<Row, E, R>,
   claimed: Row,
+  piece: PieceRow,
   subject: Rgba,
   other: Option.Option<Rgba>,
 ) =>
   Effect.gen(function* () {
-    const answer = yield* ask(slot, claimed, subject, other)
+    const answer = yield* ask(slot, claimed, piece, subject, other)
     if (Option.isNone(answer)) return
     const key = claimed.keyColour ?? 'green'
     const keyed = Option.flatMap(readPng(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
@@ -202,7 +207,7 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
     }
     if (!(yield* move(slot, row, ['queued'], claim))) return
     yield* removeObject(row.cleanKey)
-    yield* draw(slot, { ...row, ...claim }, subject.value, other)
+    yield* draw(slot, { ...row, ...claim }, piece.value, subject.value, other)
   })
 
 /** A side's drawing, from its queued state to its end. */

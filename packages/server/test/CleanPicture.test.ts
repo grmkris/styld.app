@@ -8,6 +8,7 @@ import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { makeMuseGenerator } from '../src/providers/Muse.ts'
 import { decodePng } from '@styld/imaging'
 import type { DrawRequest } from '../src/capture/Providers.ts'
+import type { PieceType } from '@styld/protocol'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 const cutout = { bytes: new Uint8Array(fixture('red-tee.png')), contentType: 'image/png' } as const
@@ -15,10 +16,26 @@ const request = (changes: Partial<DrawRequest> = {}): DrawRequest => ({
   side: 'front',
   subject: cutout,
   other: Option.none(),
+  photo: Option.none(),
+  type: 'shortSleeveTops',
+  colours: ['red'],
   key: 'green',
   hint: Option.none(),
   ...changes,
 })
+
+/** The prompt for a front of `type` drawn from its cut-out alone. */
+const frontPrompt = (type: PieceType, changes: Partial<Parameters<typeof cleanPrompt>[0]> = {}) =>
+  cleanPrompt({
+    key: 'green',
+    side: 'front',
+    type,
+    colours: ['grey'],
+    fromPhoto: false,
+    hasOther: false,
+    hint: undefined,
+    ...changes,
+  })
 
 /** Muse answering each call in turn, and the requests it saw. */
 const muse = (...answers: ReadonlyArray<() => Promise<Response>>) => {
@@ -47,27 +64,53 @@ const sentBody = (init: RequestInit | undefined): unknown =>
 
 describe('the clean picture prompt', () => {
   test('names the key colour, the back when there is one, and the owner’s words, kept to one short line', () => {
-    const plain = cleanPrompt({ key: 'magenta', side: 'front', hasOther: false, hint: undefined })
+    const plain = frontPrompt('shortSleeveTops', { key: 'magenta' })
     expect(plain).toContain('magenta #ff00ff')
     expect(plain).not.toContain('second image')
     expect(plain).toContain('no person, hands, body, mannequin, hanger')
-    const hinted = cleanPrompt({
-      key: 'green',
-      side: 'front',
-      hasOther: true,
-      hint: '  a black\n wool   beanie ' + 'x'.repeat(200),
-    })
+    const hinted = frontPrompt('hats', { hasOther: true, hint: '  a black\n wool   beanie ' + 'x'.repeat(200) })
     expect(hinted).toContain('The second image is the back of the same garment')
     expect(hinted).toContain('Its owner describes it as: a black wool beanie x')
     expect(hinted).not.toContain('x'.repeat(80))
   })
 
   test('a back is drawn as the back, with its front for colour and identity only (owner, 4 November)', () => {
-    const back = cleanPrompt({ key: 'green', side: 'back', hasOther: true, hint: undefined })
+    const back = frontPrompt('knitwear', { side: 'back', hasOther: true })
     expect(back).toContain('shown whole from the back')
     expect(back).toContain('The second image is the front of the same garment, for its colours and identity only')
     expect(back).toContain('freshly steamed and pressed')
-    expect(cleanPrompt({ key: 'green', side: 'back', hasOther: false, hint: undefined })).not.toContain('second image')
+    expect(frontPrompt('knitwear', { side: 'back' })).not.toContain('second image')
+  })
+
+  test('pressing smooths the fabric and keeps the garment’s own shape and details (owner, 4 November)', () => {
+    const knit = frontPrompt('knitwear')
+    expect(knit).toContain('freshly steamed and pressed')
+    expect(knit).toContain('keep the garment’s own shape and every detail')
+    expect(knit).toContain('crossed or twisted straps')
+    // The line that straightened ties, straps and uneven hems is gone.
+    expect(knit).not.toContain('straight and symmetrically')
+    expect(knit).toContain('shown whole from the front, laid out evenly')
+  })
+
+  test('shoes and bags are drawn from the angle their cut-out shows, never turned to face the front', () => {
+    for (const type of ['outdoorShoes', 'boots', 'sandals', 'trainers', 'heels', 'bags'] as const) {
+      const prompt = frontPrompt(type)
+      expect(prompt).toContain('from the same angle as the reference shows it (a side view stays a side view)')
+      expect(prompt).not.toContain('from the front')
+      expect(prompt).not.toContain('steamed and pressed')
+    }
+    expect(frontPrompt('bags')).toContain('a soft or slouchy shape stays soft and slouchy')
+    expect(frontPrompt('scarves')).toContain('shown whole from the front')
+  })
+
+  test('after a refusal, names the garment the cut-out marks in the photo that comes first', () => {
+    const prompt = frontPrompt('sleevelessTops', { fromPhoto: true })
+    expect(prompt).toMatch(
+      /^The first image is a photo that may show a person or several things; the second image is a rough cut-out of the grey sleeveless top from it/,
+    )
+    expect(prompt).toContain('Create a clean e-commerce product photo of the grey sleeveless top from the first image')
+    expect(frontPrompt('jeans', { fromPhoto: true, colours: [] })).toContain('a rough cut-out of the jeans from it')
+    expect(frontPrompt('jeans')).not.toContain('first image is a photo')
   })
 })
 
@@ -98,6 +141,20 @@ describe('Meta Muse Image', () => {
       'data:image/jpeg;base64',
     ])
     expect(edit.prompt).toContain('Its owner describes it as: linen.')
+  })
+
+  test('after a refusal, sends the photo first and the cut-out second, without the back', async () => {
+    const { generator, seen } = muse(recorded)
+    const photo = { bytes: new Uint8Array([7, 7]), contentType: 'image/webp' } as const
+    const back = { bytes: new Uint8Array([1, 2, 3]), contentType: 'image/jpeg' } as const
+    await Effect.runPromise(generator.draw(request({ photo: Option.some(photo), other: Option.some(back) })))
+    const edit = Schema.decodeUnknownSync(SentEdit)(seen[0]?.init.body)
+    expect(edit.images.map(({ image_url }) => image_url.slice(0, 22))).toEqual([
+      'data:image/webp;base64',
+      'data:image/png;base64,',
+    ])
+    expect(edit.prompt).toContain('a rough cut-out of the red t-shirt from it')
+    expect(edit.prompt).not.toContain('The second image is the back')
   })
 
   test('tries again in place when throttled, then leaves it to the queue; a refusal is final', async () => {
