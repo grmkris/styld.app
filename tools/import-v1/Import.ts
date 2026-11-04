@@ -19,6 +19,7 @@ import path from 'node:path'
 import { ImportStarted, ImportStatus, type ImportManifest, type ImportPiece } from '@styld/protocol'
 import { Match, Schema } from 'effect'
 import { operatorStage, required } from '../OperatorStage.ts'
+import { r2Bucket } from '../R2Rest.ts'
 import { mapPiece, V1Export } from './Mapping.ts'
 import { reportOf, summaryOf, type ImportReport } from './Report.ts'
 
@@ -28,26 +29,11 @@ if (folder === undefined)
 
 const { origin, operatorToken } = operatorStage()
 /** The stage's media bucket through the R2 REST API: write and delete one object. */
-const objects = `https://api.cloudflare.com/client/v4/accounts/${required('CLOUDFLARE_ACCOUNT_ID')}/r2/buckets/${required('R2_BUCKET')}/objects`
-const r2 = { authorization: `Bearer ${required('CLOUDFLARE_API_TOKEN')}`, 'cf-r2-jurisdiction': 'eu' }
-const objectCall = async (method: 'PUT' | 'DELETE', key: string, init: { body?: BodyInit; type?: string } = {}) => {
-  for (let attempt = 0; ; attempt += 1) {
-    const response = await fetch(`${objects}/${key.split('/').map(encodeURIComponent).join('/')}`, {
-      method,
-      headers: { ...r2, ...(init.type === undefined ? {} : { 'content-type': init.type }) },
-      ...(init.body === undefined ? {} : { body: init.body }),
-    })
-    if (response.ok) return
-    // The API paces bursts; a few waits get past it.
-    if (response.status !== 429 || attempt >= 8) throw new Error(`R2 ${method} answered ${response.status}`)
-    await Bun.sleep(1000 * 2 ** Math.min(attempt, 5))
-  }
-}
-const bucket = {
-  write: (key: string, body: Uint8Array | string, options: { readonly type: string }) =>
-    objectCall('PUT', key, { body: typeof body === 'string' ? body : Uint8Array.from(body), type: options.type }),
-  delete: (key: string) => objectCall('DELETE', key),
-}
+const bucket = r2Bucket({
+  cloudflareAccount: required('CLOUDFLARE_ACCOUNT_ID'),
+  bucket: required('R2_BUCKET'),
+  token: required('CLOUDFLARE_API_TOKEN'),
+})
 
 const exported = Schema.decodeUnknownSync(Schema.fromJsonString(V1Export))(
   await readFile(path.join(folder, 'export.json'), 'utf8'),

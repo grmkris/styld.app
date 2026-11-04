@@ -129,3 +129,27 @@ export const garmentFor = async (spec: Spec, work: GarmentWork, fresh = false): 
   }
   return record
 }
+
+/** Every spec's garment, three at a time, in the specs' order; reaching the cap stops the rest, and a spec that could
+ * not run is reported and left out. */
+export const generateAll = async (specs: ReadonlyArray<Spec>, work: GarmentWork, regenerate: ReadonlyArray<string>) => {
+  const records = new Map<string, GarmentRecord>()
+  const waiting = [...specs]
+  const worker = async () => {
+    for (let spec = waiting.shift(); spec !== undefined; spec = waiting.shift()) {
+      const current = spec
+      const record = await garmentFor(current, work, regenerate.includes(current.id)).catch((error: unknown) => {
+        if (error instanceof CapReached) waiting.splice(0)
+        console.error(`${current.id}: ${error instanceof Error ? error.message : 'failed'}`)
+        return undefined
+      })
+      if (record !== undefined) records.set(current.id, record)
+      console.log(`${current.id}: ${record?.status ?? 'stopped'}`)
+    }
+  }
+  await Promise.all([worker(), worker(), worker()])
+  return specs.flatMap((spec) => {
+    const record = records.get(spec.id)
+    return record === undefined ? [] : [{ record, spec }]
+  })
+}

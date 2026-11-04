@@ -3,7 +3,8 @@ import { describe, expect, test } from 'vitest'
 import { parse } from 'yaml'
 import { scriptedWork } from './Fakes.ts'
 import { manifestOf, testBatch } from './Manifest.ts'
-import { dryRunLines, flagsOf, generateAll, testBatchSpecs } from './Run.ts'
+import { generateAll } from './Garments.ts'
+import { dryRunLines, flagsOf, testBatchSpecs } from './Run.ts'
 
 // The operator's run: a dry run is the default and makes no call at all; the test batch draws exactly the ten specs the
 // owner chose and nothing else; the cap stops a run cleanly.
@@ -15,10 +16,12 @@ describe('the command line', () => {
     expect(flagsOf(['--manifest', 'm.yaml'])).toEqual({
       mode: 'dry-run',
       manifest: 'm.yaml',
+      catalogue: undefined,
       maxUsd: 5,
       judge: 'spark',
       only: [],
       regenerate: [],
+      prune: [],
     })
     expect(flagsOf(['--manifest', 'm.yaml', '--test-batch', '--max-usd', '0.5', '--judge', 'clef']).mode).toBe(
       'test-batch',
@@ -26,7 +29,9 @@ describe('the command line', () => {
   })
 
   test('refuses an unknown flag, two modes, a bad judge or no manifest', () => {
-    expect(() => flagsOf(['--manifest', 'm.yaml', '--full'])).toThrow(/Unknown option '--full'/u)
+    expect(() => flagsOf(['--manifest', 'm.yaml', '--everything'])).toThrow(/Unknown option '--everything'/u)
+    expect(() => flagsOf(['--manifest', 'm.yaml', '--full'])).toThrow('need --catalogue')
+    expect(flagsOf(['--manifest', 'm.yaml', '--catalogue', 'c.yaml', '--prune', 'a,b']).prune).toEqual(['a', 'b'])
     expect(() => flagsOf(['--manifest', 'm.yaml', '--dry-run', '--test-batch'])).toThrow('One mode')
     expect(() => flagsOf(['--manifest', 'm.yaml', '--judge', 'gpt'])).toThrow('spark or clef')
     expect(() => flagsOf([])).toThrow('Usage')

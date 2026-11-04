@@ -1,0 +1,51 @@
+# Two house boards built only from the ten test-batch garments (owner, 4 November 2026), for the seed's fixture runs on
+# the preview: one look on the women's account, one packing list with a text on the men's. Not the real catalogue.
+version: 1
+accounts:
+  - id: women
+    email: styld-women.kris@myinbox.lol
+    handle: styld.women
+    displayName: 'Styld Women'
+    bio: 'Outfit formulas, packing lists and one piece worn many ways. The pieces are AI-generated for inspiration. Save a board and try it with your wardrobe.'
+    translations:
+      sl:
+        {
+          displayName: 'Styld Ženske',
+          bio: 'Formule za videze, seznami za na pot in en kos na več načinov. Kosi so ustvarjeni z UI za navdih. Shrani tablo in jo preizkusi s svojo omaro.',
+          review: pending,
+        }
+  - id: men
+    email: styld-men.kris@myinbox.lol
+    handle: styld.men
+    displayName: 'Styld Men'
+    bio: 'Menswear formulas: the uniform, the three-shoe rotation, palettes that just work. AI-generated pieces, for ideas. Try a board with your own wardrobe.'
+    translations:
+      sl:
+        {
+          displayName: 'Styld Moški',
+          bio: 'Moške formule: uniforma, trije pari čevljev, barvne palete, ki delujejo. Kosi so ustvarjeni z UI za navdih. Tablo preizkusi s svojo omaro.',
+          review: pending,
+        }
+
+boards:
+  - id: fx-black-dress
+    owner: women
+    name: 'Black dress, white trainers'
+    template: look
+    tags: { audience: women, season: [spring, autumn], template: look, occasion: [casual], aesthetic: [minimal] }
+    moods: [weekend]
+    paper: stock
+    pieces: [dresses:black, knitwear:beige, trainers:white, bags:brown, scarves:purple:pink]
+    translations:
+      sl: { name: 'Črna obleka, bele superge', review: pending }
+  - id: fx-navy-weekend
+    owner: men
+    name: 'A navy weekend'
+    label: '5 pieces for a weekend'
+    template: pack
+    tags: { audience: men, season: [autumn], template: pack, occasion: [casual], aesthetic: [] }
+    moods: [weekend]
+    paper: sand
+    pieces: [shirts:blue:white, jeans:blue, coats:navy, trainers:white, scarves:navy:red]
+    translations:
+      sl: { name: 'Temno moder vikend', label: '5 kosov za vikend', review: pending }

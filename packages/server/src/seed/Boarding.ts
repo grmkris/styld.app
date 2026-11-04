@@ -65,7 +65,7 @@ const chosenOutfits = Effect.fnUntraced(function* (
   anchor: Option.Option<Wearable>,
 ) {
   const { board } = request
-  const seed = `${seedId}:${String(request.version)}`
+  const seed = seedId
   const season = board.season === undefined ? {} : { season: board.season }
   if (board.build === 'onePiece') {
     if (Option.isNone(anchor) || board.layout === undefined) return yield* badEntry('anchorAndLayoutNeeded')
@@ -90,12 +90,11 @@ export const stepOf = (seedId: string, step: string, version: number, digest: st
   )
 
 /** The digest of the table an entry lays out, and of the whole entry: a changed name, tag or translation keeps the
- * table as it is. */
+ * table as it is, and a new catalogue version with the entry unchanged changes nothing. */
 export const digestsOf = (request: SeedBoardRequest) =>
   Effect.all({
     table: digestOf(
       JSON.stringify([
-        request.version,
         request.board.build,
         request.board.pieces,
         request.board.anchor ?? null,
@@ -105,7 +104,7 @@ export const digestsOf = (request: SeedBoardRequest) =>
         request.board.labels.map(({ text, style }) => [text, style]),
       ]),
     ),
-    whole: digestOf(JSON.stringify(request)),
+    whole: digestOf(JSON.stringify(request.board)),
   }).pipe(Effect.map(({ table, whole }) => `${table}.${whole}`))
 
 /** The table digest part of a stored digest.

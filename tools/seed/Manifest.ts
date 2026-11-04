@@ -7,7 +7,7 @@ import { Schema } from 'effect'
 
 /** The two house accounts. */
 const HouseAccount = Schema.Literals(['women', 'men'])
-type HouseAccount = typeof HouseAccount.Type
+export type HouseAccount = typeof HouseAccount.Type
 
 const Words = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(160))
 
