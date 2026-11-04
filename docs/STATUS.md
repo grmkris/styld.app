@@ -6,6 +6,29 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Dependencies and the lint backend (4 November, on main, not deployed)
+
+- Every pin `bun run deps:outdated` (`tools/outdated.ts`, new) found behind is current except Bun: effect-tsrs 0.2.3,
+  tsrs 0.21.0, Oxlint and `@oxlint/plugins` 1.91, oxfmt 0.76, knip 6.44.1, oxc-parser 0.157, complexity 4.1,
+  `@foldkit/oxlint-plugin` 0.15.4, x18n 0.1.10, vitest 5.1.0, workers-types 5.20261104.1, `@yielded/agent` beta.192,
+  zyzz 0.0.44, mediabunny 1.65.1, `@maple-dev/effect-sdk` 0.13.1. The report compares each pin within its prerelease
+  channel (`bun outdated` reads only `latest`, which misses betas such as `@yielded/auth`'s) and lists held pins with
+  the reason (`@types/node` on Node 24). It is a report, not a gate.
+- Lint's type-aware backend is now the `tsrs` package's own `tsrs-lint` (oxc-project/tsrs#624, released in 0.21), not
+  the checksum-pinned grmkris/tsrs fork build; the download and checksum code is gone and the lockfile verifies it.
+  Same findings as the fork; whole-repo lint about 30 s instead of 20 s (tsrs's TypeScript-faithful checker defaults;
+  `TSRS_FAST` changes findings, so it stays off) and 2.7 GiB instead of 3.1 GiB peak. The fork could not run Oxlint
+  1.91, whose type-aware rules it did not know.
+- Evidence, each bump on the same tree against its predecessor: typecheck 0 findings, unit 874 of 874 (failures seen
+  meanwhile were in another session's uncommitted board work), build, lint and canaries pass. Native at `0eedb270`
+  (clean worktree): 31 of 32; the one failure, a 503 where the concurrent board save expects a 409, passed twice alone
+  and passed at `05e8cea9`, the commit before the bumps (32 of 32), so it is a flake under load. An earlier native run
+  on the busy box failed 17 tests with 503s from every Worker and did not repeat.
+- Open: Bun 1.4.2 → 1.4.4 (the box's shared `~/.bun`, CI's `setup-bun` and `packageManager` move together; owner's
+  call). The initial bundle is over its 367,700-byte budget by about 2.6 KB from the board work in progress, not from
+  these bumps (A/B builds differ by bytes). mediabunny's phone-side video cutting and the stylist on beta.192 still
+  need preview acceptance once deployed.
+
 ## Overnight 3–4 November: Gallery person (T-03), types and colours (T-02), main's gate (on main, not deployed)
 
 **The preview is not redeployed.** Everything below and every stack above it (Effect 4.1, T-14 streaming, the dark
@@ -355,7 +378,7 @@ in-memory Wallet, or native):
   `style-tokens:check`, `suppressions:check` (the census of reviewed suppressions only), `canaries:check`.
 - `typecheck`: effect-tsrs (TypeScript and Effect diagnostics) over the one root `tsconfig.json`; the planned web/workers
   split is not done (Open items).
-- `lint`: type-aware Oxlint with anti-slop; no explicit `any`, no non-null assertions, cyclomatic complexity ≤ 20,
+- `lint`: type-aware Oxlint (backend: the `tsrs` package's `tsrs-lint`) with anti-slop; no explicit `any`, no non-null assertions, cyclomatic complexity ≤ 20,
   cognitive 15, function and file size limits.
 - `unused:check`, `unused:production` (Knip; the gates are entries through `package.json`, the operator scripts are
   listed one by one in `knip.config.ts`, so a script nothing runs is reported).
