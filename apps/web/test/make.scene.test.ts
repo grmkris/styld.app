@@ -85,13 +85,13 @@ describe('Make with Styld on a board', () => {
       given(page),
       ...openSheet,
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
-        '1 credit from today’s free allowance. It comes back if your wardrobe holds too little for it yet.',
+        '1 credit. It comes back if your wardrobe holds too little for it yet.',
       ),
       expect(role('textbox', { name: 'What should it feel like?' })).toExist(),
       click(role('radio', { name: 'A sticker' })),
       resolveFocus,
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
-        '1 credit from today’s free allowance. It comes back if the sticker doesn’t come out.',
+        '1 credit. It comes back if the sticker doesn’t come out.',
       ),
       // A sticker is one thing drawn, so it asks what to draw rather than a feeling.
       expect(role('textbox', { name: 'What should Styld draw?' })).toHaveAttr('placeholder', 'A red umbrella'),

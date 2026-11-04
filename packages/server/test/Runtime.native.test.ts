@@ -194,9 +194,13 @@ test(
   { timeout: 180000 },
 )
 
-test('a stage without payments answers the free allowance and has no checkout or webhook', overHttp(verifyBillingOff), {
-  timeout: 60000,
-})
+test(
+  'a stage without payments answers the 3 free credits, has no checkout, portal or webhook, and the operator grants lifetime',
+  overHttp(verifyBillingOff),
+  {
+    timeout: 60000,
+  },
+)
 
 test('lets Styld answer about the person’s own wardrobe, once per message, privately', overHttp(verifyStylist), {
   timeout: 120000,

@@ -1,5 +1,13 @@
 import { format, type Locale } from '@styld/i18n'
-import { type ClipFile, dailyCredits, landingShopPieces, type LandingShopPiece, premiumWeek } from '@styld/protocol'
+import {
+  type ClipFile,
+  freeCredits,
+  landingShopPieces,
+  type LandingShopPiece,
+  memberDailyCredits,
+  planNames,
+  plans,
+} from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -174,22 +182,24 @@ const priceList = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     [h.AriaLabelledBy('landing-price'), ...styled(h, styles.price())],
     [
       h.h2([h.Id('landing-price'), ...styled(h, styles.heading())], [format(locale, 'landing.price.title', {})]),
-      h.dl(styled(h, styles.prices()), [
-        h.div(styled(h, styles.priceRow()), [
-          h.dt(styled(h, styles.priceTerm()), [format(locale, 'landing.price.free', {})]),
-          h.dd(styled(h, styles.priceText()), [format(locale, 'landing.price.freeText', { credits: dailyCredits })]),
-        ]),
-        h.div(styled(h, styles.priceRow()), [
-          h.dt(styled(h, styles.priceTerm()), [format(locale, 'landing.price.premium', {})]),
-          h.dd(styled(h, styles.priceText()), [
-            format(locale, 'landing.price.premiumText', {
-              price: premiumWeek.price,
-              credits: premiumWeek.dailyCredits,
-              days: premiumWeek.days,
-            }),
-          ]),
-        ]),
+      h.p(styled(h, styles.priceText()), [
+        format(locale, 'landing.price.lead', {
+          free: freeCredits,
+          price: plans.week.price,
+          daily: memberDailyCredits,
+        }),
       ]),
+      h.dl(
+        styled(h, styles.prices()),
+        planNames.map((plan) =>
+          h.div(styled(h, styles.priceRow()), [
+            h.dt(styled(h, styles.priceTerm()), [format(locale, `account.plans.${plan}`, {})]),
+            h.dd(styled(h, styles.priceText()), [
+              format(locale, `account.plans.${plan}Price`, { price: plans[plan].price }),
+            ]),
+          ]),
+        ),
+      ),
     ],
   )
 
@@ -206,7 +216,14 @@ const faq = (locale: Locale, h: HtmlBuilder<Message>): Html =>
           h.keyed('details')(question, styled(h, styles.question()), [
             h.summary(styled(h, styles.questionSummary()), [format(locale, `landing.faq.${question}`, {})]),
             h.p(styled(h, styles.answer()), [
-              format(locale, `landing.faq.${question}Answer`, { credits: dailyCredits, price: premiumWeek.price }),
+              format(locale, `landing.faq.${question}Answer`, {
+                free: freeCredits,
+                daily: memberDailyCredits,
+                week: plans.week.price,
+                monthly: plans.monthly.price,
+                yearly: plans.yearly.price,
+                lifetime: plans.lifetime.price,
+              }),
             ]),
           ]),
         ),

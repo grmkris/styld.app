@@ -26,7 +26,7 @@ const googleEnv = Effect.gen(function* () {
     : {}
 })
 
-/** Styld Premium Week through Dodo Payments (`server/src/billing/`): the stage's mode and product (`Resources.ts`
+/** Plans through Dodo Payments (`server/src/billing/`): the stage's mode and each plan's product (`Resources.ts`
  * `stages`), the API key and the webhook endpoint's secret. Payments run only when both secrets are set. */
 const billingEnv = Effect.gen(function* () {
   const key = yield* Config.Redacted('STYLD_DODO_API_KEY').pipe(Config.option)
@@ -35,7 +35,10 @@ const billingEnv = Effect.gen(function* () {
   return Option.isSome(key) && Option.isSome(secret)
     ? {
         STYLD_DODO_BASE: billing.base,
-        STYLD_DODO_PRODUCT: billing.product,
+        STYLD_DODO_PRODUCT_WEEK: billing.products.week,
+        STYLD_DODO_PRODUCT_MONTHLY: billing.products.monthly,
+        STYLD_DODO_PRODUCT_YEARLY: billing.products.yearly,
+        STYLD_DODO_PRODUCT_LIFETIME: billing.products.lifetime,
         STYLD_DODO_API_KEY: key.value,
         STYLD_DODO_WEBHOOK_SECRET: secret.value,
       }

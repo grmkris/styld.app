@@ -1,5 +1,6 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import type { Environment } from '@styld/observability'
+import type { PlanName } from '@styld/protocol'
 import type { Input } from 'alchemy/Input'
 import { Stage } from 'alchemy/Stage'
 import { Effect, Schema } from 'effect'
@@ -15,18 +16,34 @@ interface StageFacts {
   /** The first of its RateLimit namespace ids, each pace's offset from it (`kernel/Pacing.ts`); unique within the
    * Cloudflare account. */
   readonly firstRateLimitNamespace: number
-  /** Dodo Payments' API for its payments (test or live mode) and the Styld Premium Week product there
-   * (`server/src/billing/`); payments run only where the stack is also given Dodo's key and webhook secret. */
-  readonly billing: { readonly base: string; readonly product: string }
+  /** Dodo Payments' API for its payments (test or live mode) and each plan's product there (`server/src/billing/`);
+   * payments run only where the stack is also given Dodo's key and webhook secret. */
+  readonly billing: { readonly base: string; readonly products: Readonly<Record<PlanName, string>> }
   /** The public hostname the edge Worker serves as a Cloudflare custom domain, which becomes the auth origin; none
    * means the workers.dev URL. The zone is in the stage's account, with no other record on the hostname. */
   readonly domain?: string
 }
 
 /** Dodo's test mode: test cards, no money moves. */
-const dodoTest = { base: 'https://test.dodopayments.com', product: 'pdt_0NrETRIgUh3xrUyRjyEj0' } as const
+const dodoTest = {
+  base: 'https://test.dodopayments.com',
+  products: {
+    week: 'pdt_0NrETRIgUh3xrUyRjyEj0',
+    monthly: 'pdt_0NrEz2liX1IgFSWZolE8z',
+    yearly: 'pdt_0NrEz2tkNtmO0PD0FD5eQ',
+    lifetime: 'pdt_0NrEz39MvC8AKJKfCaH5i',
+  },
+} as const
 /** Dodo's live mode, for styld.app only. */
-const dodoLive = { base: 'https://live.dodopayments.com', product: 'pdt_0NrETRRmmoZUYS2pDknTg' } as const
+const dodoLive = {
+  base: 'https://live.dodopayments.com',
+  products: {
+    week: 'pdt_0NrETRRmmoZUYS2pDknTg',
+    monthly: 'pdt_0NrEz3KQr0QYLXvSL1brd',
+    yearly: 'pdt_0NrEz3TWTGOn7dusahZie',
+    lifetime: 'pdt_0NrEz3c8ZxFnlKjVg0T7F',
+  },
+} as const
 
 /**
  * Every stage the stack is deployed or run as (docs/DEPLOYMENT.md). `preview` is the isolated workers.dev preview;

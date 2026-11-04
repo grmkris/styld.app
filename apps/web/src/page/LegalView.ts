@@ -43,7 +43,7 @@ export const termsDocument: LegalDocument = {
   sections: [
     { heading: 'legal.terms.serviceHeading', paragraphs: ['legal.terms.agree', 'legal.terms.service'] },
     { heading: 'legal.terms.accountsHeading', paragraphs: ['legal.terms.accounts'] },
-    { heading: 'legal.terms.creditsHeading', paragraphs: ['legal.terms.credits', 'legal.terms.premiumWeek'] },
+    { heading: 'legal.terms.creditsHeading', paragraphs: ['legal.terms.credits', 'legal.terms.plans'] },
     { heading: 'legal.terms.contentHeading', paragraphs: ['legal.terms.content', 'legal.terms.ownPhotos'] },
     { heading: 'legal.terms.generatedHeading', paragraphs: ['legal.terms.generated'] },
     { heading: 'legal.terms.useHeading', paragraphs: ['legal.terms.use'] },

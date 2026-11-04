@@ -119,7 +119,43 @@ Google sign-in's consent screen and the app directories need both pages on styld
   - The pages describe Dodo Payments and Premium Week (server on main at `eb92789e`). The policy says Dodo takes the payment; check that matches the checkout.
   - Deployed readback of both paths on the preview.
 
-## Styld Premium Week: payments through Dodo (4 November, on main, not deployed)
+## Plans: Week, Month, Year, Lifetime, and 3 free cut-outs (4 November evening, on main, not deployed)
+
+Owner decisions of 4 November (evening, the pricing track): four plans in USD, each 500 credits a day while active:
+Week $4.99 once for 7 days, Monthly $20 and Yearly $200 subscriptions, Lifetime $349 once. No free daily allowance
+any more: a new account has 3 free credits once (three photo cut-outs), then every paid action needs a plan. No credit
+packs. Judges get Dodo's discount code STYLDJUDGE (100% off the Week): a $0 week is a week.
+
+- **Built:** the Wallet's one-time free credits (`free` in its state, recorded by the first reservation that brings
+  `freeCredits`; the day's allowance spent first, refunds return each part where it came from; old events replay as
+  before; `Wallet.story`), a non-member's daily allowance 0 (`billing/Membership.ts` › `allowanceAt`), migration
+  `20261104211843_plans_memberships` (`memberships` replaces `premium`, its rows carried over as weeks; `purchases`
+  gains `plan` and drops `premium_until_after`), the webhook for every plan (`billing/Webhook.ts`, `Store.ts`: week and
+  lifetime payments once per payment id, subscription active/renewed/plan_changed/cancelled/expired/failed/on_hold
+  applied by Dodo's event time so a late one never undoes a newer one, refunds and lost disputes of a week or a
+  lifetime, other brands' products and a subscription's own payments left alone; the account from the metadata, else
+  the known subscription, else the customer's email), the checkout per plan with discount codes allowed, Dodo's
+  customer portal (`POST /api/billing/portal`), the operator's lifetime grant (`POST /api/operator/memberships`,
+  `tools/grant-membership.ts`), stage facts per plan (`Resources.ts`, `alchemy.run.ts`). LimitReached gained
+  `credits` (no plan: "Your 3 free cut-outs are used. Choose a plan to keep going.", pointing assistants to
+  https://styld.app/account); a member's spent day stays `dailyCredits`. Web: Account › Plans (`#plans`: the free
+  cut-outs left or today's credits, the plan with its end, renewal date or Lifetime, the four plans as a `<dl>` with
+  one Choose each, Manage subscription for anyone Dodo knows), every refusal for credits says "Your 3 free cut-outs
+  are used." with "Choose a plan to keep going." linking to `/account#plans`, the landing's price block ("Try 3
+  cut-outs free, then from $4.99 a week" and the four plans), the FAQ's cost answer, and the privacy and terms text.
+  Unit `Billing.test` (deliveries read, allowance, Dodo's pages) and `Memberships.test` (free credits then refusal,
+  week twice, $0 week, refunds, lifetime, subscription lifecycle and ordering, email fallback, portal, grant, a stage
+  without payments); `account.story`/`account.scene`, `landing.scene`; native `BillingAcceptance` (a stage without
+  payments, the operator's grant) written, not run. Seeded native accounts are lifetime members
+  (`IdentityFixture.ts`; an id starting `native-free` is not).
+- **Open:** deploy and run the migration; set the preview's and production's Dodo webhook endpoints to also send
+  subscription.active, .renewed, .plan_changed, .cancelled, .expired, .failed and .on_hold; a test-card purchase of
+  each plan on the preview (and STYLDJUDGE on the Week), the portal, a cancellation; the operator's grants (the owner
+  confirms the list). A member who spends all 500 of a day sees the same "Your 3 free cut-outs are used" refusal on the
+  website (its pages do not know the plan); the assistants get the right one (`dailyCredits`). A subscription
+  payment's refund changes nothing by itself: the subscription's own ending event does. The batch's native run.
+
+## Styld Premium Week: payments through Dodo (4 November, superseded by Plans above)
 
 Owner decisions of 4 November: $4.99 once (no subscription), 500 credits a day instead of 100 for 7 days from the
 purchase, buying again extends from the current end, bought mid-day it tops today up at once; free stays 100 a day and

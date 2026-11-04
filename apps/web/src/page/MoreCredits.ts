@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { linkAction } from '../Actions.styles.ts'
-import { accountRouter, creditsSection } from '../route.ts'
+import { accountRouter, plansSection } from '../route.ts'
 import { styled } from '../Styled.ts'
 
 /** A refusal's words, and when the day's credits stopped it, the way to more of them: the account's Credits, where the
@@ -17,7 +17,7 @@ export const spentWords = <Message>(
         text,
         ' ',
         h.a(
-          [h.Href(`${accountRouter({})}#${creditsSection}`), ...styled(h, linkAction())],
+          [h.Href(`${accountRouter({})}#${plansSection}`), ...styled(h, linkAction())],
           [format(locale, 'account.credits.more', {})],
         ),
       ]

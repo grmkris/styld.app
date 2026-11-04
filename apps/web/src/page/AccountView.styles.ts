@@ -56,3 +56,18 @@ export const rowActions = style({ display: 'flex', flexWrap: 'wrap', alignItems:
 export const signOutRow = style({ marginBlockStart: '-8px', paddingBlockEnd: '24px' })
 export const notice = style({ fontSize: 'label', color: 'ink2', margin: '0' })
 export const problem = style({ fontSize: 'label', color: 'error', margin: '0' })
+/** The plans: a plain list of name, price and Choose, one row each, the figures in tabular digits. */
+export const planList = style({ display: 'grid', margin: '0' })
+export const planRow = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(5.5em, auto) 1fr auto',
+  alignItems: 'center',
+  gap: 'related',
+  paddingBlock: '8px',
+  borderBlockEndWidth: '1px',
+  borderBlockEndStyle: 'solid',
+  borderBlockEndColor: 'rule',
+})
+export const planName = style({ fontSize: 'control', fontWeight: 600, margin: '0' })
+export const planPrice = style({ fontSize: 'label', color: 'ink2', margin: '0', fontVariantNumeric: 'tabular-nums' })
+export const planAction = style({ margin: '0' })

@@ -6,20 +6,33 @@ export interface MessageArgumentsByKey<_T = string> {
   'account.assistants.description': Readonly<Record<string, never>>
   'account.assistants.title': Readonly<Record<string, never>>
   'account.credits.checkoutFailed': Readonly<Record<string, never>>
+  'account.credits.free': { readonly free: string | number; readonly total: string | number }
   'account.credits.loadFailed': Readonly<Record<string, never>>
   'account.credits.more': Readonly<Record<string, never>>
   'account.credits.paid': Readonly<Record<string, never>>
   'account.credits.paidSlow': Readonly<Record<string, never>>
-  'account.credits.premiumAbout': { readonly daily: string | number; readonly days: string | number }
-  'account.credits.premiumUntil': { readonly date: string | number }
-  'account.credits.premiumWeek': { readonly price: string | number }
-  'account.credits.title': Readonly<Record<string, never>>
   'account.credits.today': { readonly remaining: string | number; readonly daily: string | number }
   'account.deleteAccount': Readonly<Record<string, never>>
   'account.deleteAccountConfirm': Readonly<Record<string, never>>
   'account.deleteAccountConfirmBody': Readonly<Record<string, never>>
   'account.deleteAccountConfirmTitle': Readonly<Record<string, never>>
   'account.deleteAccountFailed': Readonly<Record<string, never>>
+  'account.plans.about': { readonly daily: string | number }
+  'account.plans.choose': Readonly<Record<string, never>>
+  'account.plans.currentLifetime': Readonly<Record<string, never>>
+  'account.plans.currentRenews': { readonly plan: string | number; readonly date: string | number }
+  'account.plans.currentUntil': { readonly plan: string | number; readonly date: string | number }
+  'account.plans.lifetime': Readonly<Record<string, never>>
+  'account.plans.lifetimePrice': { readonly price: string | number }
+  'account.plans.manage': Readonly<Record<string, never>>
+  'account.plans.monthly': Readonly<Record<string, never>>
+  'account.plans.monthlyPrice': { readonly price: string | number }
+  'account.plans.portalFailed': Readonly<Record<string, never>>
+  'account.plans.title': Readonly<Record<string, never>>
+  'account.plans.week': Readonly<Record<string, never>>
+  'account.plans.weekPrice': { readonly price: string | number }
+  'account.plans.yearly': Readonly<Record<string, never>>
+  'account.plans.yearlyPrice': { readonly price: string | number }
   'account.title': Readonly<Record<string, never>>
   'ask.add': Readonly<Record<string, never>>
   'ask.addClothes': Readonly<Record<string, never>>
@@ -236,7 +249,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.addHint': Readonly<Record<string, never>>
   'capture.addMore': Readonly<Record<string, never>>
   'capture.addTitle': Readonly<Record<string, never>>
-  'capture.allowance': { readonly remaining: string | number; readonly daily: string | number }
+  'capture.allowance': { readonly plan: string | number; readonly remaining: number }
   'capture.alreadyHave': Readonly<Record<string, never>>
   'capture.alreadyHaveHint': Readonly<Record<string, never>>
   'capture.alreadyHaveImage': Readonly<Record<string, never>>
@@ -376,7 +389,14 @@ export interface MessageArgumentsByKey<_T = string> {
   'landing.faq.app': Readonly<Record<string, never>>
   'landing.faq.appAnswer': Readonly<Record<string, never>>
   'landing.faq.cost': Readonly<Record<string, never>>
-  'landing.faq.costAnswer': { readonly credits: number; readonly price: string | number }
+  'landing.faq.costAnswer': {
+    readonly free: string | number
+    readonly daily: string | number
+    readonly week: string | number
+    readonly monthly: string | number
+    readonly yearly: string | number
+    readonly lifetime: string | number
+  }
   'landing.faq.delete': Readonly<Record<string, never>>
   'landing.faq.deleteAnswer': Readonly<Record<string, never>>
   'landing.faq.title': Readonly<Record<string, never>>
@@ -388,10 +408,11 @@ export interface MessageArgumentsByKey<_T = string> {
   'landing.hero.title': Readonly<Record<string, never>>
   'landing.outfits.text': Readonly<Record<string, never>>
   'landing.outfits.title': Readonly<Record<string, never>>
-  'landing.price.free': Readonly<Record<string, never>>
-  'landing.price.freeText': { readonly credits: number }
-  'landing.price.premium': Readonly<Record<string, never>>
-  'landing.price.premiumText': { readonly price: string | number; readonly credits: number; readonly days: number }
+  'landing.price.lead': {
+    readonly free: string | number
+    readonly price: string | number
+    readonly daily: string | number
+  }
   'landing.price.title': Readonly<Record<string, never>>
   'landing.shop.accessory': Readonly<Record<string, never>>
   'landing.shop.all': Readonly<Record<string, never>>
@@ -472,7 +493,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'legal.terms.liability': Readonly<Record<string, never>>
   'legal.terms.liabilityHeading': Readonly<Record<string, never>>
   'legal.terms.ownPhotos': Readonly<Record<string, never>>
-  'legal.terms.premiumWeek': Readonly<Record<string, never>>
+  'legal.terms.plans': Readonly<Record<string, never>>
   'legal.terms.property': Readonly<Record<string, never>>
   'legal.terms.propertyHeading': Readonly<Record<string, never>>
   'legal.terms.service': Readonly<Record<string, never>>
@@ -809,11 +830,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.outfit': { readonly names: string | number }
   'today.outfitFailed': Readonly<Record<string, never>>
   'today.photoCost': { readonly credits: number }
-  'today.photoCostLeft': {
-    readonly credits: number
-    readonly remaining: string | number
-    readonly daily: string | number
-  }
+  'today.photoCostLeft': { readonly credits: number; readonly remaining: string | number }
   'today.pickUp': Readonly<Record<string, never>>
   'today.retry': Readonly<Record<string, never>>
   'today.review': Readonly<Record<string, never>>
@@ -1149,4 +1166,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '0028acbe2976018cd4de9ffa87e795a6722b3feae6db2e69ae7037881f8497bd'
+export const catalogVersion = '142e8c2dafd5cf56dcec54a0ac40ab71aaebb1fdff0d02cc7e34465ef37d8794'

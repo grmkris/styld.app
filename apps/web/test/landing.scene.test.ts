@@ -78,10 +78,11 @@ describe('the landing', () => {
       expect(selector('video[poster="/cdn/landing/coat-poster-wide.webp"]')).toExist(),
       inside(
         role('region', { name: 'What it costs' }),
-        expect(first(all.selector('dt'))).toHaveText('Free'),
-        expect(first(all.selector('dd'))).toContainText('100 credits every day, no card.'),
-        expect(last(all.selector('dt'))).toHaveText('Premium week'),
-        expect(last(all.selector('dd'))).toHaveText('$4.99 once: 500 credits a day for 7 days.'),
+        expect(text('Try 3 cut-outs free, then from $4.99 a week. Every plan gives you 500 credits a day.')).toExist(),
+        expect(first(all.selector('dt'))).toHaveText('Week'),
+        expect(first(all.selector('dd'))).toHaveText('$4.99 once, for 7 days'),
+        expect(last(all.selector('dt'))).toHaveText('Lifetime'),
+        expect(last(all.selector('dd'))).toHaveText('$349 once, never ends'),
       ),
       inside(
         role('region', { name: 'Questions' }),
@@ -89,7 +90,7 @@ describe('the landing', () => {
         expect(text('Do I need to install an app?')).toExist(),
         expect(text('What does it cost?')).toExist(),
         expect(text('Can I delete everything?')).toExist(),
-        expect(text(/^Nothing to start: 100 credits every day/)).toExist(),
+        expect(text(/^Your first 3 cut-outs are free, no card\. Then a plan gives you 500 credits a day/)).toExist(),
       ),
       inside(
         role('region', { name: 'Start with one photo.' }),

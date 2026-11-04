@@ -346,7 +346,12 @@ const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonly
       return [
         h.h1([], [format(locale, 'capture.foundTitle', { count })]),
         count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,
-        h.p(styled(h, styles.allowance()), [format(locale, 'capture.allowance', allowance)]),
+        h.p(styled(h, styles.allowance()), [
+          format(locale, 'capture.allowance', {
+            remaining: allowance.remaining,
+            plan: allowance.daily === 0 ? 'free' : 'member',
+          }),
+        ]),
         // The last read failed: the tray shown may be out of date; after five misses the page stops and offers Try again.
         hasStopped(model.misses)
           ? retryView(format(locale, 'capture.stale', {}), locale, Message.ClickedRetryLoad(), h)

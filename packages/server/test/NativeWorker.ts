@@ -4,7 +4,8 @@ import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
-import { dailyCredits } from '@styld/protocol'
+import { freeCredits, memberDailyCredits } from '@styld/protocol'
+import { freeLeft } from '@styld/domain/Wallet/Allowance'
 import { DateTime, Effect, Schema } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -33,9 +34,17 @@ export default NativeWorker.make(
       const account = UserId.make(accountId)
       const day = DateTime.formatIsoDateUtc(yield* DateTime.now)
       const state = yield* wallets.state(account)
-      const left = state.daily.day === day ? state.daily.remaining : dailyCredits
+      // A seeded account is a member (`IdentityFixture.ts`): today's allowance and the free credits are spent together.
+      const today = state.daily.day === day ? state.daily.remaining : memberDailyCredits
+      const left = today + (freeLeft(state, freeCredits) ?? 0)
       const operationId = OperationId.make(`native-spend/${accountId}/${day}/${left}`)
-      const reserve = new ReserveCredits({ operationId, amount: left - leave, day, dailyAllowance: dailyCredits })
+      const reserve = new ReserveCredits({
+        operationId,
+        amount: left - leave,
+        day,
+        dailyAllowance: memberDailyCredits,
+        freeCredits,
+      })
       yield* wallets.send(account, reserve, { commandId: reserveCommandId(reserve) })
       const consume = new SettleCredits({ operationId, outcome: 'consumed' })
       yield* wallets.send(account, consume, { commandId: settleCommandId(consume) })

@@ -11,7 +11,7 @@ import { loader } from '../Icon.ts'
 import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
 import { Arrival, Checkout, Copy, Deletion, Message, type Model } from './Account.ts'
-import { premiumWeek, type CreditBalance } from '@styld/protocol'
+import { type CreditBalance, freeCredits, memberDailyCredits, type Membership, planNames, plans } from '@styld/protocol'
 import { intlLocale } from '../Locale.ts'
 import { avatar as personAvatar } from '../Avatar.ts'
 import { checkNotice } from './CheckNotice.ts'
@@ -28,6 +28,11 @@ import {
   linkedSection,
   nameSkeleton,
   notice,
+  planAction,
+  planList,
+  planName,
+  planPrice,
+  planRow,
   problem,
   rowActions,
   section,
@@ -43,7 +48,7 @@ import { pageHead, pageTitle } from './PageHead.ts'
 import { tasteSection } from './TasteView.ts'
 import { Message as ShowMeMessage, type Model as ShowMeModel } from './ShowMe.ts'
 import { choiceButtons, failure as showMeFailure } from './ShowMeView.ts'
-import { assistantsSection, creditsSection, personRouter, profileRouter } from '../route.ts'
+import { assistantsSection, personRouter, plansSection, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
@@ -216,16 +221,16 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     ]),
   ])
 
-/** The day premium ends, in the person's language and time zone. */
-const premiumEnd = (until: string, { locale, timeZone }: Inputs) =>
+/** A day, in the person's language and time zone. */
+const dayOf = (until: string, { locale, timeZone }: Inputs) =>
   new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'long', timeZone }).format(new Date(until))
 
-/** After a payment: received, and the week on its way from Dodo's webhook. */
+/** After a payment: received, and the plan on its way from Dodo's webhook. */
 const paidNotice = (model: Model, credits: CreditBalance, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Arrival.match(model.arrival, {
     Plain: () => h.empty,
     Paid: ({ readsLeft }) =>
-      credits.premiumUntil === null
+      credits.membership === null
         ? h.p(
             [h.Role('status'), ...styled(h, notice())],
             [format(locale, readsLeft > 0 ? 'account.credits.paid' : 'account.credits.paidSlow', {})],
@@ -233,39 +238,91 @@ const paidNotice = (model: Model, credits: CreditBalance, locale: Locale, h: Htm
         : h.empty,
   })
 
-/** The premium week's button, where the stage sells it: one payment through Dodo's page. */
-const premiumOffer = (model: Model, credits: CreditBalance, locale: Locale, h: HtmlBuilder<Message>): Html[] => {
-  if (!credits.premiumAvailable) return []
-  const opening = Checkout.guards.Opening(model.checkout)
+/** The active plan in words: lifetime, until its end, or renewing on it. */
+const currentPlan = (membership: Membership, inputs: Inputs) => {
+  const { locale } = inputs
+  const plan = format(locale, `account.plans.${membership.plan}`, {})
+  if (membership.until === null) return format(locale, 'account.plans.currentLifetime', {})
+  const date = dayOf(membership.until, inputs)
+  return format(locale, membership.renews ? 'account.plans.currentRenews' : 'account.plans.currentUntil', {
+    plan,
+    date,
+  })
+}
+
+/** The plans, where the stage sells them: each one's name, price and length, and one Choose for each. A lifetime member
+ * has nothing more to choose. */
+const plansOffer = (model: Model, credits: CreditBalance, inputs: Inputs, h: HtmlBuilder<Message>): Html[] => {
+  const { locale } = inputs
+  if (!credits.plansAvailable) return []
+  const busy = Checkout.guards.Opening(model.checkout) || Checkout.guards.OpeningPortal(model.checkout)
+  const lifetime = credits.membership?.until === null
+  const choices = lifetime
+    ? []
+    : [
+        h.p(styled(h, sectionText()), [format(locale, 'account.plans.about', { daily: memberDailyCredits })]),
+        h.dl(
+          styled(h, planList()),
+          planNames.flatMap((plan) => {
+            const choosing = Checkout.guards.Opening(model.checkout) && model.checkout.plan === plan
+            const name = format(locale, `account.plans.${plan}`, {})
+            return [
+              h.div(styled(h, planRow()), [
+                h.dt(styled(h, planName()), [name]),
+                h.dd(styled(h, planPrice()), [
+                  format(locale, `account.plans.${plan}Price`, { price: plans[plan].price }),
+                ]),
+                h.dd(styled(h, planAction()), [
+                  actionButton(
+                    {
+                      label: format(locale, 'account.plans.choose', {}),
+                      style: secondaryAction(),
+                      onClick: Message.ClickedChoosePlan({ plan }),
+                      isDisabled: busy,
+                      leading: choosing ? loader(h) : h.empty,
+                      describedBy: `plan-${plan}`,
+                    },
+                    h,
+                  ),
+                  h.span([h.Id(`plan-${plan}`), ...styled(h, visuallyHidden())], [name]),
+                ]),
+              ]),
+            ]
+          }),
+        ),
+      ]
   return [
-    h.p(styled(h, sectionText()), [
-      format(locale, 'account.credits.premiumAbout', { daily: premiumWeek.dailyCredits, days: premiumWeek.days }),
-    ]),
-    h.div(styled(h, rowActions()), [
-      actionButton(
-        {
-          label: format(locale, 'account.credits.premiumWeek', { price: premiumWeek.price }),
-          style: primaryAction(),
-          onClick: Message.ClickedPremiumWeek(),
-          isDisabled: opening,
-          leading: opening ? loader(h) : h.empty,
-        },
-        h,
-      ),
-    ]),
+    ...choices,
+    credits.manageable
+      ? h.div(styled(h, rowActions()), [
+          actionButton(
+            {
+              label: format(locale, 'account.plans.manage', {}),
+              style: linkAction(),
+              onClick: Message.ClickedManageSubscription(),
+              isDisabled: busy,
+              leading: Checkout.guards.OpeningPortal(model.checkout) ? loader(h) : h.empty,
+            },
+            h,
+          ),
+        ])
+      : h.empty,
     Checkout.guards.Failed(model.checkout)
       ? h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'account.credits.checkoutFailed', {})])
+      : h.empty,
+    Checkout.guards.PortalFailed(model.checkout)
+      ? h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'account.plans.portalFailed', {})])
       : h.empty,
   ]
 }
 
-/** Today's credits, premium's end while it lasts, and the premium week to buy. */
+/** The credits left, the active plan, and the plans to choose. */
 const creditsView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
   return h.section(
-    [h.Id(creditsSection), ...styled(h, cx(section(), linkedSection()))],
+    [h.Id(plansSection), ...styled(h, cx(section(), linkedSection()))],
     [
-      h.h2(styled(h, sectionTitle()), [format(locale, 'account.credits.title', {})]),
+      h.h2(styled(h, sectionTitle()), [format(locale, 'account.plans.title', {})]),
       ...AsyncData.matchData(model.credits, {
         onEmpty: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
         onFailure: () => [
@@ -282,16 +339,16 @@ const creditsView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Htm
           ]),
         ],
         onData: (credits) => [
-          h.p(styled(h, sectionText()), [
-            format(locale, 'account.credits.today', { remaining: credits.remaining, daily: credits.daily }),
-          ]),
-          credits.premiumUntil === null
-            ? h.empty
-            : h.p(styled(h, hostName()), [
-                format(locale, 'account.credits.premiumUntil', { date: premiumEnd(credits.premiumUntil, inputs) }),
+          credits.membership === null
+            ? h.p(styled(h, sectionText()), [
+                format(locale, 'account.credits.free', { free: credits.free, total: freeCredits }),
+              ])
+            : h.p(styled(h, sectionText()), [
+                format(locale, 'account.credits.today', { remaining: credits.remaining, daily: credits.daily }),
               ]),
+          credits.membership === null ? h.empty : h.p(styled(h, hostName()), [currentPlan(credits.membership, inputs)]),
           paidNotice(model, credits, locale, h),
-          ...premiumOffer(model, credits, locale, h),
+          ...plansOffer(model, credits, inputs, h),
         ],
       }),
     ],
