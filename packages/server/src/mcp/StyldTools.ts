@@ -28,6 +28,8 @@ import { generationTools } from './GenerationTools.ts'
 import { Tastes } from '../taste/Taste.ts'
 import { tasteTools } from './TasteTools.ts'
 import { tryOnTools } from './TryOnTools.ts'
+import { Feedback } from './Feedback.ts'
+import { feedbackTools } from './FeedbackTools.ts'
 import { TryOns } from '../generation/TryOn.ts'
 import { Photos } from '../photos/Photos.ts'
 
@@ -58,6 +60,7 @@ export interface ToolServices {
   readonly tastes: Tastes['Service']
   readonly tryOns: Pick<TryOns['Service'], 'start' | 'get' | 'list' | 'delete' | 'toBoard'>
   readonly photos: Pick<Photos['Service'], 'listPhotos' | 'getPhoto'>
+  readonly feedback: Pick<Feedback['Service'], 'send'>
 }
 
 /** The assistants' tools, as `styldTools` builds them once for the Worker: MCP serves them, and Styld's chat uses a
@@ -84,6 +87,7 @@ export const styldTools = (
     tastes,
     tryOns,
     photos,
+    feedback,
   }: ToolServices,
 ) => [
   tool({
@@ -106,6 +110,7 @@ export const styldTools = (
   ...socialTools(social),
   ...discoveryTools(discovery, origin),
   ...tasteTools(tastes),
+  ...feedbackTools(feedback),
 ]
 
 /** The assistants' tools, built once per runtime over the application's services: MCP serves them, and Styld answers
@@ -133,6 +138,7 @@ export class AssistantToolset extends Context.Service<AssistantToolset, Assistan
         tastes: yield* Tastes,
         tryOns: yield* TryOns,
         photos: yield* Photos,
+        feedback: yield* Feedback,
       })
     }),
   )

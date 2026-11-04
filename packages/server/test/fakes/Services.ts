@@ -8,4 +8,5 @@ export const unusedServices = {
   outfits: { make: notUsed, sweep: notUsed },
   tryOns: { start: notUsed, get: notUsed, list: notUsed, delete: notUsed, toBoard: notUsed },
   photos: { listPhotos: notUsed, getPhoto: notUsed },
+  feedback: { send: notUsed },
 }

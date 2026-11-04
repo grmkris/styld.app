@@ -93,7 +93,15 @@ export class NotFound extends Schema.TaggedError<NotFound>()(
 ) {}
 
 /** Which of the account's allowances is spent. */
-export const Limit = Schema.Literals(['credits', 'dailyCredits', 'thinking', 'reports', 'uploads', 'styleNotes'])
+export const Limit = Schema.Literals([
+  'credits',
+  'dailyCredits',
+  'thinking',
+  'reports',
+  'uploads',
+  'styleNotes',
+  'feedback',
+])
 export type Limit = typeof Limit.Type
 
 /** One of the account's allowances is spent: the free credits of an account without a plan (none come back), a
@@ -140,6 +148,12 @@ export class LimitReached extends Schema.TaggedError<LimitReached>()(
         code: 'too_many_style_notes',
         message: 'Styld already remembers as many notes as it keeps.',
         recovery: 'Remove a note with note_delete, then add the new one.',
+        retryable: false,
+      },
+      feedback: {
+        code: 'too_much_feedback',
+        message: 'Thirty notes a day to Styld at most.',
+        recovery: 'Send more tomorrow.',
         retryable: false,
       },
     }),

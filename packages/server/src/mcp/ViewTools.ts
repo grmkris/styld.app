@@ -19,6 +19,11 @@ import { mediaViewTools, type MediaServices } from './MediaViewTools.ts'
 import { showsView } from './Resources.ts'
 import { thumbnails } from './Thumbnails.ts'
 import { tool, ViewResult } from './Tools.ts'
+import { matches, SearchFilter } from './WardrobeTools.ts'
+
+/** A page of the wardrobe in the host: small enough that every piece shows its picture (owner, 4 November 2026). */
+const wardrobePage = 12
+const wardrobePageMost = 24
 
 /** The view's words in one language, from the reviewed catalogs. */
 const labelsIn = (locale: Locale): ViewLabels => ({
@@ -103,13 +108,21 @@ export const viewTools = (
     name: 'wardrobe_show',
     title: 'Show your wardrobe',
     description:
-      'Shows the pieces in your Styld wardrobe as pictures the person can browse. Use piece_search to find pieces by words, garment type or colour.',
-    parameters: Schema.Struct({}),
+      'Shows a page of the person’s pieces as pictures, newest first: 12 unless `limit` says (at most 24), filtered like piece_search (words, garment type, group, colour, season, occasion, pattern, brand). `total` counts the matches; pass `nextCursor` as `cursor` to show the next page when the person asks for more.',
+    parameters: Schema.Struct({
+      ...SearchFilter.fields,
+      limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: wardrobePageMost }))),
+      cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
+    }),
     annotations: { readOnlyHint: true, openWorldHint: false },
     meta: showsView,
-    handler: () =>
+    handler: ({ limit, cursor, ...filter }) =>
       Effect.gen(function* () {
-        const { value: pieces, images } = yield* withViewThumbnails(wardrobe.listPieces())
+        const { value: all, images } = yield* withViewThumbnails(wardrobe.listPieces())
+        const found = all.filter((piece) => matches(piece, filter))
+        const start = Number(cursor ?? '0')
+        const end = start + (limit ?? wardrobePage)
+        const pieces = found.slice(start, end)
         const view = WardrobeView.make({
           pieces: pieces.map((piece) => ({
             id: piece.id,
@@ -120,13 +133,16 @@ export const viewTools = (
           url: `${origin}/wardrobe`,
           labels: { en: labelsIn('en'), sl: labelsIn('sl') },
         })
-        return new ViewResult(view, {
-          'styld/images': yield* thumbnails(
-            media,
-            images,
-            pieces.map(({ id }) => [id, id] as const),
-          ),
-        })
+        return new ViewResult(
+          { ...view, total: found.length, nextCursor: end < found.length ? String(end) : null },
+          {
+            'styld/images': yield* thumbnails(
+              media,
+              images,
+              pieces.map(({ id }) => [id, id] as const),
+            ),
+          },
+        )
       }),
   }),
   tool({
