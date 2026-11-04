@@ -1,8 +1,20 @@
 import { Context, Effect, Layer, Schema } from 'effect'
+import { AppRoute } from './route.ts'
 
-/** The visitor's choice about browser diagnostics; `undecided` shows the prompt. */
+/** The visitor's choice about browser diagnostics; `undecided` is asked once signed in (`asksAtStart`). */
 export const TelemetryConsent = Schema.Literals(['undecided', 'granted', 'denied'])
 export type TelemetryConsent = typeof TelemetryConsent.Type
+
+/** Whether a page opens with the prompt: for a signed-in person who has not decided, outside sign-in itself. A visitor
+ * opens it from the footer's Diagnostics. The server renders from the same flags, so both agree on whether it shows. */
+export const asksAtStart = (
+  flags: { readonly telemetryConsent: TelemetryConsent; readonly hasSessionCookie?: boolean },
+  route: AppRoute,
+) =>
+  flags.telemetryConsent === 'undecided' &&
+  flags.hasSessionCookie === true &&
+  !AppRoute.guards.Login(route) &&
+  !AppRoute.guards.LoginForConnection(route)
 
 const cookieName = 'styld_diagnostics'
 

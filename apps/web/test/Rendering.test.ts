@@ -139,10 +139,20 @@ const flags = (telemetryConsent: TelemetryConsent): Flags => ({
   telemetryConsent,
 })
 
-test('asks for diagnostics consent until the visitor decides, and lets them reopen the choice', () => {
-  const asking = init(flags('undecided'), urlOf('/')).model
+test('asks a signed-in person for diagnostics consent until they decide, and lets anyone reopen the choice', () => {
+  const signedIn = (telemetryConsent: TelemetryConsent): Flags => ({
+    ...flags(telemetryConsent),
+    hasSessionCookie: true,
+  })
+  const asking = init(signedIn('undecided'), urlOf('/')).model
   expect(asking.telemetry).toEqual({ consent: 'undecided', prompting: true })
-  expect(init(flags('granted'), urlOf('/')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
+  expect(init(signedIn('granted'), urlOf('/')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
+  // A visitor who is not signed in, and sign-in itself, are not interrupted; the footer still opens the choice.
+  const visitor = init(flags('undecided'), urlOf('/')).model
+  expect(visitor.telemetry).toEqual({ consent: 'undecided', prompting: false })
+  expect(update(visitor, Message.OpenedTelemetrySettings()).model.telemetry.prompting).toBe(true)
+  expect(init(signedIn('undecided'), urlOf('/login')).model.telemetry.prompting).toBe(false)
+  expect(init(signedIn('undecided'), urlOf('/login/connect')).model.telemetry.prompting).toBe(false)
   const choosing = update(asking, Message.ChoseTelemetryConsent({ granted: false }))
   expect(choosing.model.telemetry.prompting).toBe(false)
   expect(choosing.commands?.[0]?.name).toBe('RecordTelemetryConsent')
@@ -183,14 +193,16 @@ const renderPage = async (path: string, cookie?: string) => {
   return Server.toResponse((app) => renderDocument(app, assets), result).text()
 }
 
-test('server rendering shows the consent prompt only to undecided visitors', async () => {
-  const prompt = 'record anonymous error and speed data'
-  expect(await renderPage('/')).toContain(prompt)
-  expect(await renderPage('/', 'styld_diagnostics=granted')).not.toContain(prompt)
-  expect(await renderPage('/', 'styld_diagnostics=denied')).not.toContain(prompt)
-})
-
 const sessionCookie = `${SessionHttp.cookieName}=test`
+
+test('server rendering shows the consent prompt only to signed-in people who have not decided', async () => {
+  const prompt = 'record anonymous error and speed data'
+  expect(await renderPage('/', sessionCookie)).toContain(prompt)
+  expect(await renderPage('/')).not.toContain(prompt)
+  expect(await renderPage('/login', sessionCookie)).not.toContain(prompt)
+  expect(await renderPage('/', `${sessionCookie}; styld_diagnostics=granted`)).not.toContain(prompt)
+  expect(await renderPage('/', `${sessionCookie}; styld_diagnostics=denied`)).not.toContain(prompt)
+})
 
 test('server rendering draws the table’s loader as an inline, hidden Phosphor icon', async () => {
   const html = await renderPage('/', sessionCookie)

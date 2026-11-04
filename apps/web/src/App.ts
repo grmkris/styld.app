@@ -59,7 +59,7 @@ import {
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
 import type { PictureEncoder } from './Upload.ts'
-import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
+import { asksAtStart, TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 import { ReadTimeZone } from './TimeZone.ts'
 
 // MODEL
@@ -251,7 +251,7 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
       you: You.Unknown(),
       data: ServerData.init(),
       page: page.model,
-      telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
+      telemetry: { consent: context.telemetryConsent, prompting: asksAtStart(context, route) },
     },
     entering(route, signedIn),
   )

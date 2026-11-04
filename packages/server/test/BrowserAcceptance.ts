@@ -39,13 +39,16 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect(documentResponse?.status()).toBe(200)
     expect(documentResponse?.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
     expect(documentResponse?.headers()['x-frame-options']).toBe('DENY')
-    // Nothing leaves the page before the visitor answers the diagnostics prompt, even on exit.
+    // Nothing leaves the page before the visitor answers the diagnostics prompt, even on exit. The prompt asks only a
+    // signed-in person on its own; a visitor opens it from the footer's Diagnostics.
     const prompt = page.getByRole('region', { name: 'Diagnostics' })
-    await prompt.waitFor({ state: 'visible' })
+    expect(await prompt.count()).toBe(0)
     await page.reload({ waitUntil: 'networkidle' })
     // Longer than the SDK's 5 s auto-flush: without the consent gate it would have posted by now.
     await page.waitForTimeout(6000)
     expect(telemetry).toEqual([])
+    await page.getByRole('contentinfo').getByRole('button', { name: 'Diagnostics', exact: true }).click()
+    await prompt.waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Allow', exact: true }).click()
     await prompt.waitFor({ state: 'hidden' })
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_diagnostics')?.value).toBe('granted')
