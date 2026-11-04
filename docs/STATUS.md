@@ -7,6 +7,30 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
+
+The wardrobe's filters (T-06) were kept twice, in the page's Model and in the address, and one bad parameter made the
+page Not found. Rebuilt the Foldkit way (query-sync; ARCHITECTURE › Website): commits `f67b6a92`, `ca2ce12f`, `37c3a735`.
+
+- **Built:**
+  - The wardrobe reads its group, type, category and filters from `/wardrobe?…`. A filter replaces the address (no Back
+    step) and a step to another level pushes. Each type opens unfiltered, and Back returns to the filtered list.
+  - A parameter that is not ours (`?group=nonsense`, `?rainproof=no`, a type renamed since) is left out instead of Not
+    found; the address is not rewritten.
+  - A category renamed or deleted after the person browsed elsewhere leaves the address alone.
+  - Ask's field shows `?q` as typed, a trailing space included. Every key replaces the address; people and boards are
+    searched once typing pauses, at once on Enter, and at once on Back to `/ask?q=…`.
+  - Styld takes `?q` into its draft once and the address drops it, so a reload does not bring a sent message back.
+- **Evidence:** `wardrobe.story` (the address printed and read back, the lenient reading, each filter's replace, the
+  rename race), `wardrobeSelect.story`, `wardrobe.scene` and `navigation.scene` (the replace and its address change),
+  `navigation.story` (Styld's hand-over, Back to an Ask search), `ask.story/scene` (a trailing space through the replace,
+  the pause, Enter), `Rendering.test` (a bad wardrobe link renders the wardrobe). Native, written and not run:
+  `NavigationBrowserAcceptance` (Winter in the address, reload, Clear, a bad link opens the groups) and
+  `GalleryBrowserAcceptance` (Styld's address drops `?q`). The bundle grew by 444, 49 and 265 gzip bytes.
+- **Open:** the preview deploy, the full gate with native, and the readback (`styldappv2-51`): filtering adds no Back
+  step and survives a reload; `/wardrobe?group=nonsense` opens the groups; Ask keeps a trailing space and Back to a
+  search searches; a reload on Styld after sending starts empty.
+
 ## Privacy policy and terms of use (4 November, on main, not deployed)
 
 Google sign-in's consent screen and the app directories need both pages on styld.app.

@@ -131,7 +131,8 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   provider does which task are constants in their owning module; changing one is a commit. **No feature flags, no
   switches, no stand-ins in `src`:** tests swap layers (`test/NativeWorker.ts` passes `test/fakes/*`), never env.
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The
-  MCP SDK's older protocol era stays served for external assistant hosts.
+  MCP SDK's older protocol era stays served for external assistant hosts. An address's query parameters are read
+  leniently, as links anyone writes (Website, below), which is not a decoder for an older shape.
 - **The real photo is the source.** Generated pictures (clean pictures, turns, stickers) are presentation beside it
   and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld (try-on's
   exception in ROADMAP is not built).
@@ -201,6 +202,15 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Foldkit** owns Model/Message/update/view/Commands; views are pure, updates emit named Commands, request state uses
   explicit schemas. Rendering receives locale, version, time zone and a stable reference time. Styling is zyzz with the
   Gallery tokens (`DESIGN.md`).
+- **The address is the only copy of what a page shows from it** (Foldkit's query-sync, `repos/foldkit/examples/query-sync`):
+  the wardrobe's browse and filters, Ask's search and Styld's question live in the parsed route, never also in a
+  page's Model. Views read the route; a page's update is given it as a context argument
+  (`Wardrobe.update(model, message, { maybeBrowse })`, `Ask.update(model, message, { query })`); a change issues one
+  replace built from typed fields (`ReplaceBrowse`, `ReplaceQuery`), and `ChangedUrl` only sets the route. A filter
+  or a key replaces the address; a step to another level pushes. Each query parameter is read leniently
+  (`WardrobeBrowse.ts`): addresses are links anyone can write or keep, so a value that is not one of ours is left out
+  rather than turning the page into Not found, and the address is not rewritten. This is not compatibility code,
+  which stays banned for stored and sent shapes.
 - **en/sl catalogs** in `@styld/i18n` over cached `intl-messageformat`, reviewed in Git; the browser loads only the
   page's language. x18n owns key parity, missing translations, unused keys and hard-coded strings; `tools/i18n-check.ts`
   owns ICU syntax, arguments, plural forms and the generated modules. API errors use typed codes; presentation
