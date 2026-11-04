@@ -19,6 +19,8 @@ export const queueImportedPicture = Effect.fn('Styld.Picture.imported')(function
   if (Option.isNone(piece)) return
   const { accountId, status, imageKey, originalKey, source } = piece.value
   if (source !== 'import' || status !== 'ready' || imageKey === null || imageKey === originalKey) return
+  // A house garment the seed generated already is a clean picture: it is never drawn again.
+  if ((yield* storedAs((yield* WardrobeStore).generatedAmong([pieceId]))).has(pieceId)) return
   const store = yield* CaptureStore
   const at = yield* nowDate
   yield* storedAs(

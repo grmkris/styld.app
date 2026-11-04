@@ -65,6 +65,19 @@ describe("an imported piece's clean picture", () => {
     },
   )
 
+  it.effect('is never queued for a house garment the seed generated: its picture already is a clean one', () => {
+    const { database, sent, layer } = seeded()
+    database.sqlite.exec(`
+      INSERT INTO piece_provenance (piece_id, account_id, origin, manifest_id, model, prompt_digest, updated_at)
+      VALUES ('pc_cutout', 'ac_1', 'generated', 'w-knitwear-beige', 'muse-image-1.0', 'd', 0);
+    `)
+    return Effect.gen(function* () {
+      yield* queueImportedPicture('pc_cutout')
+      expect(database.sqlite.prepare('SELECT COUNT(*) AS n FROM piece_pictures').get()).toEqual({ n: 0 })
+      expect(sent).toEqual([])
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect('is never queued for a piece kept as its photo, one still processing, or one kept from the tray', () => {
     const { database, sent, layer } = seeded()
     return Effect.gen(function* () {

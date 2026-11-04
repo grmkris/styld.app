@@ -20,10 +20,17 @@ const typeConfidence = 0.75
 
 /** An imported piece's details as the decision model describes them: its type when the model is sure of the group or
  * the type stays in the mapped one's group, v1's colours unless it had none, and the seasons, Rainproof, occasions and
- * pattern v1 never had.
+ * pattern v1 never had. A house garment the seed generated keeps the type it was generated as (owner, 4 November
+ * 2026): its picture was judged to be that type before it was imported.
  * @internal Exported for its tests. */
-export const importedDetails = (row: Pick<PieceRow, 'type' | 'colours'>, found: PieceDescription) => ({
-  ...(found.type !== undefined && (found.confidence >= typeConfidence || groupOf(found.type) === groupOf(row.type))
+export const importedDetails = (
+  row: Pick<PieceRow, 'type' | 'colours'>,
+  found: PieceDescription,
+  generated = false,
+) => ({
+  ...(!generated &&
+  found.type !== undefined &&
+  (found.confidence >= typeConfidence || groupOf(found.type) === groupOf(row.type))
     ? { type: found.type }
     : {}),
   ...(row.colours.length === 0 && found.colours.length > 0 ? { colours: found.colours } : {}),
@@ -31,6 +38,25 @@ export const importedDetails = (row: Pick<PieceRow, 'type' | 'colours'>, found: 
   rainproof: found.rainproof,
   occasions: found.occasions,
   pattern: found.pattern ?? null,
+})
+
+/** A processed piece made ready with its image. A piece brought over from v1 is described by the decision model as it
+ * is imported: v1's categories and colour words are only where it starts (no sweep suggests attributes later). A house
+ * garment the seed generated keeps its type, and what the model read is kept for the operator's report. */
+const finished = Effect.fnUntraced(function* (row: PieceRow, imageKey: string) {
+  const store = yield* WardrobeStore
+  const imported = row.source === 'import'
+  const cutOut = imported && imageKey !== row.originalKey
+  const described = cutOut ? yield* (yield* GarmentCutout).describe(imageKey) : Option.none()
+  const generated = imported && (yield* stored(store.generatedAmong([row.id]))).has(row.id)
+  const at = yield* nowDate
+  const details = Option.match(described, {
+    onNone: () => ({}),
+    onSome: (found) => importedDetails(row, found, generated),
+  })
+  yield* stored(store.finishProcessing(row.id, { status: 'ready', imageKey, ...details, updatedAt: at }))
+  if (generated && Option.isSome(described))
+    yield* stored(store.describedGenerated(row.id, described.value.type ?? null, described.value.whole, at))
 })
 
 /** A piece's work on the queue, and the sweep of uploads nothing used. */
@@ -59,18 +85,7 @@ export const processing = Effect.map(Effect.context<WardrobeServices>(), (contex
         Effect.catchTag('AttemptElsewhere', () => Effect.succeedNone),
       )
     if (Option.isNone(cut)) return
-    const { imageKey } = cut.value
-    // A piece brought over from v1 is described by the decision model as it is imported: v1's categories and colour
-    // words are only where it starts (no sweep suggests attributes later).
-    const described = imported && imageKey !== row.value.originalKey ? yield* cutout.describe(imageKey) : Option.none()
-    yield* stored(
-      store.finishProcessing(pieceId, {
-        status: 'ready',
-        imageKey,
-        ...Option.match(described, { onNone: () => ({}), onSome: (found) => importedDetails(row.value, found) }),
-        updatedAt: yield* nowDate,
-      }),
-    )
+    yield* finished(row.value, cut.value.imageKey)
     yield* (yield* PieceChanged).changed(pieceId)
   }, Effect.provide(context)),
   /** The queue or the sweep gave up on a piece: it shows as failed rather than processing forever, and a credit a

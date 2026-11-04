@@ -4,13 +4,14 @@ import {
   operationReceipts,
   pieceBackPictures,
   piecePictures,
+  pieceProvenance,
   pieceTurns,
   pieces,
   uploads,
 } from '@styld/db'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
-import type { PieceType } from '@styld/protocol'
+import type { GeneratedGarment, PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
@@ -79,6 +80,17 @@ export const spendUpload = (db: Database['Service'], uploadId: string) =>
  * back when the batch that spent it is undone. */
 export const PieceRows = {
   insert: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row),
+  /** A house garment the seed generated, recorded with its piece (owner, 4 November 2026). */
+  generated: (db: Database['Service'], piece: Pick<PieceRow, 'id' | 'accountId' | 'createdAt'>, of: GeneratedGarment) =>
+    db.insert(pieceProvenance).values({
+      pieceId: piece.id,
+      accountId: piece.accountId,
+      origin: 'generated',
+      manifestId: of.manifestId,
+      model: of.model,
+      promptDigest: of.promptDigest,
+      updatedAt: piece.createdAt,
+    }),
   /** A failed import keeps its identity and source photo when the operator starts it again. */
   retryImport: (db: Database['Service'], accountId: string, pieceId: string, at: Date) =>
     db
@@ -312,6 +324,25 @@ const queueQueries = (db: Database['Service']) => ({
   /** For the processing queue, which acts for no one in particular. */
   findPieceForProcessing: (pieceId: string) =>
     query(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
+  /** Which of these pieces are house garments the seed generated: never redrawn, and shown marked Generated. */
+  generatedAmong: (pieceIds: ReadonlyArray<string>) =>
+    Effect.map(
+      inChunks(pieceIds, (chunk) =>
+        db
+          .select({ id: pieceProvenance.pieceId })
+          .from(pieceProvenance)
+          .where(and(inArray(pieceProvenance.pieceId, chunk), eq(pieceProvenance.origin, 'generated'))),
+      ),
+      (rows) => new Set(rows.map(({ id }) => id)),
+    ),
+  /** What Clef read from a generated piece's picture on import, kept for the operator's report. */
+  describedGenerated: (pieceId: string, type: PieceType | null, whole: number, at: Date) =>
+    query(() =>
+      db
+        .update(pieceProvenance)
+        .set({ describedType: type, describedWhole: whole, updatedAt: at })
+        .where(eq(pieceProvenance.pieceId, pieceId)),
+    ).pipe(Effect.asVoid),
 })
 
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so

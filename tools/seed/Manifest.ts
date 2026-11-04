@@ -1,4 +1,4 @@
-import { Colour, Name, Pattern, PieceType } from '@styld/protocol'
+import { Colour, ManifestId, Name, Pattern, PieceType } from '@styld/protocol'
 import { Schema } from 'effect'
 
 // The house garments to generate (owner, 4 November 2026): one spec per garment image, each generated once, imported
@@ -8,9 +8,6 @@ import { Schema } from 'effect'
 /** The two house accounts. */
 const HouseAccount = Schema.Literals(['women', 'men'])
 type HouseAccount = typeof HouseAccount.Type
-
-/** A spec's id: the import's picture key takes it as is. */
-const ManifestId = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{1,120}$/u))
 
 const Words = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(160))
 

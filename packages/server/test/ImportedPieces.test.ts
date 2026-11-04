@@ -70,12 +70,41 @@ describe('an imported v1 piece', () => {
         if (fence === 'disabled account') database.sqlite.exec('UPDATE accounts SET enabled = 0')
         else database.sqlite.exec("UPDATE import_copies SET state = 'discarding'")
         expect(
-          Exit.isFailure(yield* Effect.exit(importedRows(db).createPiece(first.upload, first.piece, 'v1-a'))),
+          Exit.isFailure(
+            yield* Effect.exit(importedRows(db).createPiece(first.upload, first.piece, 'v1-a', undefined)),
+          ),
         ).toBe(true)
         expect(database.sqlite.prepare('SELECT count(*) AS pieces FROM pieces').get()).toEqual({ pieces: 0 })
         expect(database.sqlite.prepare('SELECT count(*) AS copies FROM import_copies').get()).toEqual({ copies: 1 })
       })
     })
+
+  it.effect('a house garment the seed generated is recorded as generated with its piece, in the same batch', () => {
+    const { db, database } = over()
+    return Effect.gen(function* () {
+      const made = rowsFor('g')
+      yield* copyRows(db).beginCopy(made.upload.objectKey, 'ac_1', at)
+      const generated = {
+        manifestId: 'w-knitwear-beige',
+        model: 'muse-image-1.0' as const,
+        promptDigest: 'a'.repeat(64),
+      }
+      yield* importedRows(db).createPiece(made.upload, made.piece, 'seed:w-knitwear-beige', generated)
+      expect(
+        database.sqlite
+          .prepare('SELECT piece_id, origin, manifest_id, model, prompt_digest FROM piece_provenance')
+          .all(),
+      ).toEqual([
+        {
+          piece_id: 'pc_g',
+          origin: 'generated',
+          manifest_id: 'w-knitwear-beige',
+          model: 'muse-image-1.0',
+          prompt_digest: 'a'.repeat(64),
+        },
+      ])
+    })
+  })
 
   it.effect('becomes one piece of the account, however often and however late it is imported', () => {
     const { db, database } = over()
@@ -83,13 +112,15 @@ describe('an imported v1 piece', () => {
       const store = importedRows(db)
       const first = rowsFor('a')
       yield* copyRows(db).beginCopy(first.upload.objectKey, 'ac_1', at)
-      yield* store.createPiece(first.upload, first.piece, 'v1-a')
+      yield* store.createPiece(first.upload, first.piece, 'v1-a', undefined)
       expect(database.sqlite.prepare('SELECT count(*) AS copies FROM import_copies').get()).toEqual({ copies: 0 })
       // A second bundle with the same v1 piece, long after every receipt was swept.
       yield* forgetOldReceipts(db, 500)
       const again = rowsFor('b')
       yield* copyRows(db).beginCopy(again.upload.objectKey, 'ac_1', at)
-      expect(Exit.isFailure(yield* Effect.exit(store.createPiece(again.upload, again.piece, 'v1-a')))).toBe(true)
+      expect(Exit.isFailure(yield* Effect.exit(store.createPiece(again.upload, again.piece, 'v1-a', undefined)))).toBe(
+        true,
+      )
       expect(yield* store.importedOf('ac_1', ['v1-a', 'v1-z'])).toEqual([{ v1Id: 'v1-a', pieceId: 'pc_a' }])
       expect(database.sqlite.prepare('SELECT count(*) AS pieces FROM pieces').get()).toEqual({ pieces: 1 })
     })

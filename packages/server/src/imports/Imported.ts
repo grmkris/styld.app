@@ -1,5 +1,6 @@
 import { importCopies, importedPieces, pieces } from '@styld/db'
 import { and, eq, inArray, exists } from 'drizzle-orm'
+import type { GeneratedGarment } from '@styld/protocol'
 import { Effect } from 'effect'
 import { type Database, inChunks, query } from '../kernel/Db.ts'
 import { copyRows } from './Copies.ts'
@@ -12,8 +13,9 @@ export const importedRows = (db: Database['Service']) => ({
   retryFailed: (accountId: string, pieceId: string, at: Date) =>
     query(() => PieceRows.retryImport(db, accountId, pieceId, at)),
   /** An imported piece, its photo's upload and which v1 piece it is, as one batch: a v1 piece the account already
-   * has fails it. */
-  createPiece: (upload: UploadRow, piece: PieceRow, v1Id: string) =>
+   * has fails it. A house garment the seed generated is recorded as generated in the same batch, so nothing ever sees
+   * it unmarked. */
+  createPiece: (upload: UploadRow, piece: PieceRow, v1Id: string, generated: GeneratedGarment | undefined) =>
     query(() =>
       db.batch([
         UploadRows.insertUsed(
@@ -33,6 +35,7 @@ export const importedRows = (db: Database['Service']) => ({
           ),
         ),
         PieceRows.insert(db, piece),
+        ...(generated === undefined ? [] : [PieceRows.generated(db, piece, generated)]),
         db.insert(importedPieces).values({ accountId: piece.accountId, v1Id, pieceId: piece.id }),
         db.delete(importCopies).where(eq(importCopies.objectKey, upload.objectKey)),
       ]),

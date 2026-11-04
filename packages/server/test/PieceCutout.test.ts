@@ -181,7 +181,18 @@ describe("an imported piece's details", () => {
     rainproof: true,
     occasions: ['casual' as const],
     pattern: undefined,
+    whole: 0.9,
   }
+  it('of a house garment the seed generated keep the type it was generated as, however sure the model is', () => {
+    expect(importedDetails({ type: 'trousers', colours: ['black'] }, { ...described, confidence: 0.99 }, true)).toEqual(
+      {
+        seasons: [],
+        rainproof: true,
+        occasions: ['casual'],
+        pattern: null,
+      },
+    )
+  })
   it("take the model's type within the mapped group, or when it is sure; v1's colours stay unless there were none", () => {
     expect(importedDetails({ type: 'trousers', colours: ['black'] }, described)).toEqual({
       type: 'jeans',

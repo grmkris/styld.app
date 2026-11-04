@@ -1,5 +1,5 @@
-import { pieceBackPictures, piecePictures, pieces } from '@styld/db'
-import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
+import { pieceBackPictures, piecePictures, pieceProvenance, pieces } from '@styld/db'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, notExists, or } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { Array, Effect, Schema } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
@@ -69,7 +69,8 @@ const redrawRows = (db: Database) => ({
  * the drawings proposed before 4 November, and drawings made before a prompt changed, queued again. */
 export const backfillRows = (db: Database) => ({
   /** The account's ready pieces shown as a cut-out that have no clean picture, newest first. A photo never leaves
-   * Styld, so a piece kept as its photo is not among them. */
+   * Styld, so a piece kept as its photo is not among them, and a house garment the seed generated already is a clean
+   * picture. */
   undrawnPieces: (accountId: string) =>
     query(() =>
       db
@@ -83,6 +84,12 @@ export const backfillRows = (db: Database) => ({
             isNotNull(pieces.imageKey),
             ne(pieces.imageKey, pieces.originalKey),
             isNull(piecePictures.pieceId),
+            notExists(
+              db
+                .select({ id: pieceProvenance.pieceId })
+                .from(pieceProvenance)
+                .where(and(eq(pieceProvenance.pieceId, pieces.id), eq(pieceProvenance.origin, 'generated'))),
+            ),
           ),
         )
         .orderBy(desc(pieces.createdAt)),

@@ -171,7 +171,7 @@ const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
     try: () => bucket.put(upload.objectKey, bytes, { httpMetadata: { contentType: piece.contentType } }),
     catch: unavailable,
   })
-  const made = yield* store.createPiece(upload, row, piece.v1Id).pipe(Effect.option)
+  const made = yield* store.createPiece(upload, row, piece.v1Id, piece.generated).pipe(Effect.option)
   if (Option.isSome(made)) return row.id
   yield* discardCopy(upload.objectKey).pipe(Effect.ignore)
   // A racing delivery may have committed the same v1 identity.

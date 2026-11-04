@@ -60,6 +60,18 @@ describe("the operator's backfill of clean pictures", () => {
     }),
   )
 
+  it.effect('never finds a house garment the seed generated, whose picture already is a clean one', () =>
+    Effect.gen(function* () {
+      const database = seeded()
+      database.sqlite.exec(`
+        INSERT INTO piece_provenance (piece_id, account_id, origin, manifest_id, model, prompt_digest, updated_at)
+        VALUES ('pc_new', 'ac_1', 'generated', 'w-knitwear-beige', 'muse-image-1.0', 'd', 0),
+               ('pc_old', 'ac_1', 'photo', 'w-coats-navy', NULL, NULL, 0);
+      `)
+      expect(yield* backfillRows(drizzle(database)).undrawnPieces('ac_1')).toEqual(['pc_old'])
+    }),
+  )
+
   it.effect('adds each picture once, however often it is asked, and then finds nothing left to draw', () =>
     Effect.gen(function* () {
       const database = seeded()

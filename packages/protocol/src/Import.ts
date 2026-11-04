@@ -5,6 +5,7 @@ import { PieceType } from './Garment.ts'
 import { Operation } from './Ids.ts'
 import { OperatorAuth } from './Operator.ts'
 import { Name } from './Text.ts'
+import { GeneratedGarment } from './Provenance.ts'
 import { Colours, ImageType, PieceId, PieceStatus } from './Wardrobe.ts'
 
 // Bringing a wardrobe over from the first Styld (v1) at the switch, run by the operator's importer (`tools/import-v1`).
@@ -25,6 +26,9 @@ export const ImportPiece = Schema.Struct({
   colours: Colours,
   picture: Schema.String.check(Schema.isPattern(/^pictures\/[A-Za-z0-9_-]{1,120}$/u)),
   contentType: ImageType,
+  /** A house garment the seed generated (owner, 4 November 2026): the piece is recorded as generated with it, keeps
+   * its type, and is never redrawn, since its picture already is a clean one. */
+  generated: Schema.optionalKey(GeneratedGarment),
 })
 export type ImportPiece = typeof ImportPiece.Type
 

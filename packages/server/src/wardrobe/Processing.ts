@@ -60,6 +60,8 @@ export interface PieceDescription {
   readonly rainproof: boolean
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | undefined
+  /** How likely the picture shows one whole garment (0–1): the seed's report reads it for generated pieces. */
+  readonly whole: number
 }
 
 /** The step that turns a piece's photo into the image the wardrobe shows. The garment cut-out model
