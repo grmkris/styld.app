@@ -108,39 +108,40 @@ const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable
 
 const isActivity = (brief: OutfitBrief) => brief.occasion === 'sport' || brief.occasion === 'lounge'
 
-/** Shoes made for sport (running shoes, hiking and snow boots): an outfit wears them only for sport (T-12). */
-const isSportShoe = (piece: Wearable) => groupOf(piece.type) === 'sport' && slotOf(piece.type) === 'shoes'
+/** What is made for sport (sports bras and tops, sport leggings and shorts, tracksuits, running shoes, hiking and snow
+ * boots): an outfit wears it only for sport (T-12; every Sport type since 4 November). */
+const isSport = (piece: Wearable) => groupOf(piece.type) === 'sport'
 
-/** Whether a piece suits the brief: worn in the season asked for, worn for its occasion when it says, and sport shoes
- * only for sport. */
+/** Whether a piece suits the brief: worn in the season asked for, worn for its occasion when it says, and what is made
+ * for sport only for sport. */
 const suits = (piece: Wearable, brief: OutfitBrief) => {
   // A piece with no season is worn all year (T-12).
   const seasonFits = brief.season === undefined || piece.seasons.length === 0 || piece.seasons.includes(brief.season)
   const occasionFits =
     brief.occasion === undefined || piece.occasions.length === 0 || piece.occasions.includes(brief.occasion)
-  return seasonFits && occasionFits && (!isSportShoe(piece) || brief.occasion === 'sport')
+  return seasonFits && occasionFits && (!isSport(piece) || brief.occasion === 'sport')
 }
 
 /** Places an outfit can do without: they are left empty rather than filled with something unsuitable. */
 const optionalSlots: ReadonlySet<Slot> = new Set(['layer', 'accessory'])
 
-/** The shoes an outfit chooses from when none suit the brief: every pair not made for sport, and sport shoes only when
- * they are all there is, so an outfit is never left barefoot while the wardrobe holds shoes (Eva, 4 November 2026:
- * "every outfit needs shoes"). */
-const fallbackShoes = (shoes: ReadonlyArray<Wearable>) => {
-  const everyday = shoes.filter((piece) => !isSportShoe(piece))
-  return everyday.length > 0 ? everyday : shoes
+/** The pieces a needed place chooses from when none suit the brief: every one not made for sport, and sport pieces
+ * only when they are all there is, so an outfit is never left barefoot or without a top while the wardrobe holds one
+ * (Eva, 4 November 2026: "every outfit needs shoes"). */
+const fallbackOf = (there: ReadonlyArray<Wearable>) => {
+  const everyday = there.filter((piece) => !isSport(piece))
+  return everyday.length > 0 ? everyday : there
 }
 
 /** Each place's choices: the pieces there that suit the brief; where an outfit needs the place and none suits, every
- * piece there, shoes not made for sport first. */
+ * piece there, those not made for sport first. */
 const poolsOf = (request: Brief): ReadonlyMap<Slot, ReadonlyArray<Wearable>> =>
   new Map(
     wearingOrder.map((slot) => {
       const there = request.wardrobe.filter((piece) => slotOf(piece.type) === slot)
       const suiting = there.filter((piece) => suits(piece, request.brief))
       if (suiting.length > 0 || optionalSlots.has(slot)) return [slot, suiting] as const
-      return [slot, slot === 'shoes' ? fallbackShoes(there) : there] as const
+      return [slot, fallbackOf(there)] as const
     }),
   )
 

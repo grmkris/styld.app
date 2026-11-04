@@ -15,7 +15,8 @@ import { balancedFrom, fewest, largestShare, mostWornShown } from './Policy.ts'
 // "Analyze my wardrobe" (Eva's review, T-14): the server counts, so the numbers the person reads are exact; the model
 // only comments on them.
 
-/** Where each outfit slot counts; sets (sport, swimming, lounging) are worn on their own and weigh against nothing. */
+/** Where each outfit slot counts; sets (sport, swimming, lounging) are worn on their own and weigh against nothing, and
+ * so does everything made for sport (`everydayArea`). */
 const areaOf: { readonly [S in Slot]: WardrobeArea | undefined } = {
   top: 'tops',
   bottom: 'bottoms',
@@ -25,6 +26,9 @@ const areaOf: { readonly [S in Slot]: WardrobeArea | undefined } = {
   accessory: 'accessories',
   set: undefined,
 }
+
+/** Where a piece counts: by its slot, unless it is made for sport (a sports bra is not one of the everyday tops). */
+const everydayArea = (type: PieceType) => (groupOf(type) === 'sport' ? undefined : areaOf[slotOf(type)])
 
 /** Counts of a list's values, commonest first; ties keep the order they were first met in. */
 const counted = <A>(values: Iterable<A>) => {
@@ -41,7 +45,7 @@ export const analysisOf = (
 ): WardrobeAnalysis => {
   const own = new Map<string, PieceId>(pieces.map(({ id }) => [id, id]))
   const wornDays = counted(worn.pieceIds.filter((id) => own.has(id)))
-  const areas = counted(pieces.flatMap(({ type }) => areaOf[slotOf(type)] ?? []))
+  const areas = counted(pieces.flatMap(({ type }) => everydayArea(type) ?? []))
   const everyday = areas.reduce((sum, [, count]) => sum + count, 0)
   const inArea = (area: WardrobeArea) => areas.find(([each]) => each === area)?.[1] ?? 0
   return {
