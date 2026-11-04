@@ -327,7 +327,13 @@
     "backToGroup": "Nazaj na {group}",
     "rainproof": "Za dež",
     "categoryLabel": "Lastna kategorija (neobvezno)",
-    "categoryPlaceholder": "npr. Smučarske hlače"
+    "categoryPlaceholder": "npr. Smučarske hlače",
+    "categoryRename": "Preimenuj",
+    "categoryDelete": "Izbriši kategorijo",
+    "categoryNameLabel": "Ime kategorije",
+    "categorySave": "Shrani ime",
+    "categoryDeleteQuestion": "Izbrišem kategorijo {name}? Njeni kosi ostanejo, med: {type}.",
+    "categoryEditFailed": "To ni šlo skozi. Poskusi znova."
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

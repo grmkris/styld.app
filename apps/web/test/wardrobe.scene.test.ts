@@ -1,6 +1,6 @@
 import type { Piece } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
-import { Command, Mount, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
+import { Command, Mount, click, expect, given, inside, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Message, update } from '../src/App.ts'
@@ -80,6 +80,27 @@ describe('the wardrobe page', () => {
       given(loadedAt('/wardrobe?group=sport&type=sportswear', skiPants, leggings)),
       expect(role('link', { name: 'Black leggings' })).toExist(),
       expect(role('link', { name: 'Blue ski pants' })).not.toExist(),
+    )
+  })
+
+  test('a category’s page renames it in place and asks before deleting it, saying its pieces stay (T-12)', () => {
+    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'sportswear', category: 'Ski pants' })
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=sport&type=sportswear&category=Ski+pants', skiPants)),
+      click(role('button', { name: 'Rename' })),
+      expect(role('textbox', { name: 'Category name' })).toHaveValue('Ski pants'),
+      click(role('button', { name: 'Cancel' })),
+      click(role('button', { name: 'Delete category' })),
+      inside(
+        role('alertdialog', { name: 'Delete category' }),
+        expect(text('Delete Ski pants? Its pieces stay, under Sportswear.')).toExist(),
+      ),
+    )
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=sport&type=sportswear', pieceFixture('leggings', { type: 'sportswear' }))),
+      expect(role('button', { name: 'Rename' })).not.toExist(),
     )
   })
 

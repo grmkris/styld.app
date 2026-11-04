@@ -1,20 +1,21 @@
 import { cdn } from '../Cdn.ts'
 import { Button } from '@foldkit/ui'
-import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, typesIn } from '@styld/protocol'
+import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, textLength, typesIn } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
+import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { filtersIcon, loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter, wardrobeRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import type { PiecesData } from '../ServerData.ts'
-import { brandsOf, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
+import { brandsOf, CategoryEdit, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
 import { categoriesOf, chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
@@ -230,6 +231,106 @@ const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale,
   )
 }
 
+/** What went wrong with the last rename or delete, if it did. */
+const categoryProblem = (edit: CategoryEdit, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  (CategoryEdit.guards.Renaming(edit) || CategoryEdit.guards.Deleting(edit)) && edit.failed
+    ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.categoryEditFailed', {})])
+    : h.empty
+
+const cancelCategoryEdit = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  actionButton(
+    { label: format(locale, 'common.cancel', {}), style: linkAction(), onClick: Message.ClickedCancelCategoryEdit() },
+    h,
+  )
+
+/** The category's new name being typed, saved as one operation. */
+const renameForm = (
+  edit: Extract<CategoryEdit, { readonly _tag: 'Renaming' }>,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.form(
+    [h.OnSubmit(Message.SubmittedCategoryName()), ...styled(h, styles.categoryEdit())],
+    [
+      h.label([h.For('category-name'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.categoryNameLabel', {})]),
+      h.input([
+        h.Id('category-name'),
+        h.Type('text'),
+        h.Maxlength(textLength.category),
+        h.Value(edit.name),
+        h.OnInput((value) => Message.UpdatedCategoryName({ value })),
+        ...styled(h, textField()),
+      ]),
+      categoryProblem(edit, locale, h),
+      h.div(styled(h, styles.categoryActions()), [
+        h.button(
+          [h.Type('submit'), h.Disabled(edit.sending), ...styled(h, primaryAction())],
+          [format(locale, 'wardrobe.categorySave', {})],
+        ),
+        cancelCategoryEdit(locale, h),
+      ]),
+    ],
+  )
+
+/** The delete asked first, saying its pieces stay under their type. */
+const deleteQuestion = (
+  edit: Extract<CategoryEdit, { readonly _tag: 'Deleting' }>,
+  name: string,
+  type: PieceType,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.section(
+    [
+      h.Role('alertdialog'),
+      h.AriaLabel(format(locale, 'wardrobe.categoryDelete', {})),
+      ...styled(h, styles.categoryEdit()),
+    ],
+    [
+      h.p([], [format(locale, 'wardrobe.categoryDeleteQuestion', { name, type: format(locale, typeName(type), {}) })]),
+      categoryProblem(edit, locale, h),
+      h.div(styled(h, styles.categoryActions()), [
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.categoryDelete', {}),
+            style: primaryAction(),
+            onClick: Message.ClickedConfirmDeleteCategory(),
+            isDisabled: edit.sending,
+          },
+          h,
+        ),
+        cancelCategoryEdit(locale, h),
+      ]),
+    ],
+  )
+
+/** A category of the person's own, renamed or deleted from its page (T-12): its two quiet actions, the new name being
+ * typed, or the delete being confirmed. */
+const categoryEditView = (model: Model, name: string, type: PieceType, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  CategoryEdit.match(model.categoryEdit, {
+    Renaming: (edit) => renameForm(edit, locale, h),
+    Deleting: (edit) => deleteQuestion(edit, name, type, locale, h),
+    Idle: () =>
+      h.div(styled(h, styles.categoryActions()), [
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.categoryRename', {}),
+            style: linkAction(),
+            onClick: Message.ClickedRenameCategory(),
+          },
+          h,
+        ),
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.categoryDelete', {}),
+            style: cx(linkAction(), quietLinkAction()),
+            onClick: Message.ClickedDeleteCategory(),
+          },
+          h,
+        ),
+      ]),
+  })
+
 /** The chosen type's pieces, label-free, with the one Filter button that narrows them (Eva's review, F-11). */
 const typeView = (
   group: GarmentGroup,
@@ -252,6 +353,10 @@ const typeView = (
       [filtersButton(model, locale, h)],
       h,
     ),
+    Option.match(model.category, {
+      onNone: () => h.empty,
+      onSome: (name) => categoryEditView(model, name, type, locale, h),
+    }),
     shown.length === 0
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
       : h.ul(

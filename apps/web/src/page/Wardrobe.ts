@@ -1,11 +1,13 @@
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
-import { Array, Option, Order, Schema } from 'effect'
-import type { Update } from 'foldkit'
+import { Array, Effect, Option, Order, Schema } from 'effect'
+import { Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
+import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
 
@@ -42,6 +44,10 @@ export const filterCount = (filters: Filters) =>
   Number(Option.isSome(filters.occasion)) +
   Number(Option.isSome(filters.brand))
 
+/** Whether a piece's category is the one asked for (none for none), whatever their case. */
+const sameCategory = (category: string | null, asked: string | null) =>
+  (category?.toLowerCase() ?? null) === (asked?.toLowerCase() ?? null)
+
 /** The pieces the browsing and the filters leave: in the group and type chosen, of any chosen colour, worn in the
  * chosen season (a piece with no season is worn in any), made for rain when asked, for the chosen occasion and of the
  * chosen brand. */
@@ -51,8 +57,9 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
     (piece) =>
       Option.match(model.group, { onNone: () => true, onSome: (group) => groupOf(piece.type) === group }) &&
       Option.match(model.type, { onNone: () => true, onSome: (type) => piece.type === type }) &&
-      // Under a type, its pieces of no category of the person's own, or those of the one chosen (T-12).
-      (Option.isNone(model.type) || piece.category === Option.getOrNull(model.category)) &&
+      // Under a type, its pieces of no category of the person's own, or those of the one chosen, whatever its case
+      // (a rename that joins a category keeps that one's spelling; T-12).
+      (Option.isNone(model.type) || sameCategory(piece.category, Option.getOrNull(model.category))) &&
       (model.filters.colours.length === 0 || piece.colours.some((colour) => model.filters.colours.includes(colour))) &&
       Option.match(model.filters.season, {
         onNone: () => true,
@@ -79,11 +86,21 @@ export const newestOf = (pieces: ReadonlyArray<Piece>): Option.Option<Piece> =>
     }),
   )
 
+/** Renaming or deleting the category the page shows (T-12): the name being typed, or the delete being confirmed, each
+ * with whether it is on its way and whether the last try failed. */
+export const CategoryEdit = defineTaggedUnion({
+  Idle: {},
+  Renaming: { name: Schema.String, sending: Schema.Boolean, failed: Schema.Boolean },
+  Deleting: { sending: Schema.Boolean, failed: Schema.Boolean },
+})
+export type CategoryEdit = typeof CategoryEdit.Type
+
 export const Model = Schema.Struct({
   /** The group being browsed, then one of its types, whose pieces show; none shows the groups. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
   category: Schema.Option(Schema.String),
+  categoryEdit: CategoryEdit,
   filters: Filters,
   filterSheet: Dialog.Model,
 })
@@ -91,6 +108,7 @@ export type Model = typeof Model.Type
 
 export const init = (query: BrowseQuery = {}): Model => ({
   ...browsing(query),
+  categoryEdit: CategoryEdit.Idle(),
   filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
 })
 
@@ -116,6 +134,7 @@ export const restore = (model: Model, query: BrowseQuery): Model => {
     group: () => restored.group,
     type: () => restored.type,
     category: () => restored.category,
+    categoryEdit: () => CategoryEdit.Idle(),
     filters: () => restored.filters,
   })
 }
@@ -144,12 +163,51 @@ export const Message = defineMessageUnion({
   ClickedClearFilters: {},
   ClickedShowPieces: {},
   ClickedRetry: {},
+  ClickedRenameCategory: {},
+  UpdatedCategoryName: { value: Schema.String },
+  SubmittedCategoryName: {},
+  ClickedDeleteCategory: {},
+  ClickedConfirmDeleteCategory: {},
+  ClickedCancelCategoryEdit: {},
+  SucceededRenameCategory: { name: Schema.String },
+  SucceededDeleteCategory: {},
+  FailedCategoryEdit: {},
 })
 export type Message = typeof Message.Type
 
-/** The pieces are the app's: the page asks for them again after a failure. */
-export const OutMessage = defineMessageUnion({ RequestedPieces: {}, ChangedBrowse: { query: BrowseQuery } })
+/** The pieces are the app's: the page asks for them again after a failure, and once a category it shows was renamed
+ * or deleted (`reread`), with the address it now shows. */
+export const OutMessage = defineMessageUnion({
+  RequestedPieces: {},
+  ChangedBrowse: { query: BrowseQuery, reread: Schema.optionalKey(Schema.Boolean) },
+})
 export type OutMessage = typeof OutMessage.Type
+
+// COMMAND
+
+/** Rename one of the person's categories under a type: its pieces move to the new name. */
+export const RenameCategory = Command.define('RenameCategory', {
+  args: { type: PieceType, name: Schema.String, to: Schema.String },
+  messages: [Message.SucceededRenameCategory, Message.FailedCategoryEdit],
+  execute: ({ type, name, to }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      yield* api.wardrobe.renameCategory({ payload: { operationId: yield* drawOperationId(), type, name, to } })
+      return Message.SucceededRenameCategory({ name: to })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedCategoryEdit())),
+})
+
+/** Delete one of the person's categories under a type: its pieces stay, under the type alone. */
+export const DeleteCategory = Command.define('DeleteCategory', {
+  args: { type: PieceType, name: Schema.String },
+  messages: [Message.SucceededDeleteCategory, Message.FailedCategoryEdit],
+  execute: ({ type, name }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      yield* api.wardrobe.deleteCategory({ payload: { operationId: yield* drawOperationId(), type, name } })
+      return Message.SucceededDeleteCategory()
+    }).pipe(Effect.orElseSucceed(() => Message.FailedCategoryEdit())),
+})
 
 // UPDATE
 
@@ -198,4 +256,65 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedClearFilters: () => filtered(model, () => noFilters),
     ClickedShowPieces: () => closeFilterSheet(model),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
+    ...categoryUpdates(model),
   })
+
+const editing = (model: Model, categoryEdit: CategoryEdit): UpdateReturn => ({
+  model: modifyFields(model, { categoryEdit: () => categoryEdit }),
+})
+
+/** The category the page shows, with its type: what a rename or a delete acts on. */
+const shownCategory = (model: Model) => Option.all({ type: model.type, name: model.category })
+
+/** Renaming or deleting the category the page shows; once done, the page shows where its pieces are now and the app
+ * reads them again. */
+const categoryUpdates = (model: Model) => ({
+  ClickedRenameCategory: () =>
+    editing(
+      model,
+      CategoryEdit.Renaming({ name: Option.getOrElse(model.category, () => ''), sending: false, failed: false }),
+    ),
+  UpdatedCategoryName: ({ value }: { readonly value: string }) =>
+    CategoryEdit.guards.Renaming(model.categoryEdit)
+      ? editing(model, CategoryEdit.Renaming({ ...model.categoryEdit, name: value }))
+      : { model },
+  SubmittedCategoryName: (): UpdateReturn => {
+    const edit = model.categoryEdit
+    const shown = shownCategory(model)
+    if (!CategoryEdit.guards.Renaming(edit) || edit.sending || Option.isNone(shown)) return { model }
+    const to = edit.name.trim()
+    if (to === '' || to === shown.value.name) return editing(model, CategoryEdit.Idle())
+    return {
+      ...editing(model, CategoryEdit.Renaming({ name: edit.name, sending: true, failed: false })),
+      commands: [RenameCategory({ ...shown.value, to })],
+    }
+  },
+  ClickedDeleteCategory: () => editing(model, CategoryEdit.Deleting({ sending: false, failed: false })),
+  ClickedConfirmDeleteCategory: (): UpdateReturn => {
+    const shown = shownCategory(model)
+    if (!CategoryEdit.guards.Deleting(model.categoryEdit) || model.categoryEdit.sending || Option.isNone(shown))
+      return { model }
+    return {
+      ...editing(model, CategoryEdit.Deleting({ sending: true, failed: false })),
+      commands: [DeleteCategory(shown.value)],
+    }
+  },
+  ClickedCancelCategoryEdit: () => editing(model, CategoryEdit.Idle()),
+  SucceededRenameCategory: ({ name }: { readonly name: string }) => {
+    const renamed = modifyFields(model, { category: () => Option.some(name), categoryEdit: () => CategoryEdit.Idle() })
+    return { model: renamed, outMessage: OutMessage.ChangedBrowse({ query: queryOf(renamed), reread: true }) }
+  },
+  SucceededDeleteCategory: () => {
+    const deleted = modifyFields(model, { category: () => Option.none(), categoryEdit: () => CategoryEdit.Idle() })
+    return { model: deleted, outMessage: OutMessage.ChangedBrowse({ query: queryOf(deleted), reread: true }) }
+  },
+  FailedCategoryEdit: () =>
+    editing(
+      model,
+      CategoryEdit.match(model.categoryEdit, {
+        Idle: () => CategoryEdit.Idle(),
+        Renaming: (edit) => CategoryEdit.Renaming({ ...edit, sending: false, failed: true }),
+        Deleting: () => CategoryEdit.Deleting({ sending: false, failed: true }),
+      }),
+    ),
+})

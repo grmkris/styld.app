@@ -53,10 +53,22 @@ sources:
     sl: 6b42de829fd1b
   wardrobe.backToGroup:
     sl: 714f962314936
+  wardrobe.categoryDelete:
+    sl: 5c38ebcf08608
+  wardrobe.categoryDeleteQuestion:
+    sl: 17b2454257f2be
+  wardrobe.categoryEditFailed:
+    sl: 1ab8d50220ec9b
   wardrobe.categoryLabel:
     sl: 1dc624b094a76
+  wardrobe.categoryNameLabel:
+    sl: 1f0a354628fcc3
   wardrobe.categoryPlaceholder:
     sl: 90cd09d61b7d1
+  wardrobe.categoryRename:
+    sl: 1a1ba5f1f2d0ef
+  wardrobe.categorySave:
+    sl: 3fe4b6b184d16
   wardrobe.colorsLabel:
     sl: 14fa0a8fb57d83
   wardrobe.groups.sport:

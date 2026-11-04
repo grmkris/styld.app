@@ -118,3 +118,6 @@ export const sheetActions = style({
   gap: 'actions',
   marginBlockStart: '24px',
 })
+/** Renaming or deleting a category of the person's own: its field or its question, then its actions in a row. */
+export const categoryEdit = style({ display: 'grid', gap: 'related', justifyItems: 'start' })
+export const categoryActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })

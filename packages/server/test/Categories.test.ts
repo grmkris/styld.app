@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
+import { CurrentAccount, OperationId } from '@styld/protocol'
+import { Categories } from '../src/wardrobe/Categories.ts'
 import { Database, query } from '../src/kernel/Db.ts'
 import { WardrobeStore } from '../src/wardrobe/Store.ts'
 import { localD1 } from './LocalD1.ts'
@@ -64,3 +66,40 @@ describe("a category of the person's own", () => {
     }).pipe(Effect.provide(WardrobeStore.layer.pipe(Layer.provide(Database.layer(database)))))
   })
 })
+
+describe('renaming and deleting a category through its operations (PATCH and DELETE /api/categories)', () => {
+  it.effect('a rename moves the pieces once per operation id; a delete leaves them under the type', () => {
+    const database = seeded()
+    const layer = Layer.mergeAll(
+      Categories.layer.pipe(Layer.provide(WardrobeStore.layer)),
+      WardrobeStore.layer,
+      Layer.succeed(CurrentAccount, { accountId: 'ac_1', via: 'session' }),
+    ).pipe(Layer.provide(Database.layer(database)))
+    return Effect.gen(function* () {
+      const service = yield* Categories
+      const rename = {
+        operationId: OperationId.make('rename-ski-pants'),
+        type: 'sportswear',
+        name: 'Ski pants',
+        to: 'Snow trousers',
+      } as const
+      yield* service.rename(rename)
+      // Its pieces renamed back by hand, the same operation again writes nothing.
+      database.sqlite.exec("UPDATE pieces SET category = 'Ski pants' WHERE id = 'pc_1'")
+      yield* service.rename(rename)
+      expect(categoryColumn(database)).toEqual(['Ski pants', 'Snow trousers', 'Ski pants', null])
+      yield* service.delete({
+        operationId: OperationId.make('delete-snow-trousers'),
+        type: 'sportswear',
+        name: 'Snow trousers',
+      })
+      expect(categoryColumn(database)).toEqual(['Ski pants', null, 'Ski pants', null])
+    }).pipe(Effect.provide(layer))
+  })
+})
+
+const categoryColumn = (database: ReturnType<typeof seeded>) =>
+  database.sqlite
+    .prepare('SELECT category FROM pieces ORDER BY id')
+    .all()
+    .map(({ category }) => category)

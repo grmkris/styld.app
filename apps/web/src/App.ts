@@ -54,7 +54,6 @@ import {
   routeMeta,
   signInHref,
   tabOf,
-  wardrobeRouter,
 } from './route.ts'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
@@ -347,9 +346,7 @@ const foldWardrobe = Update.foldChild({
   ...at(lenses.wardrobe),
   foldOutMessage: Wardrobe.OutMessage.match<Step>({
     RequestedPieces: () => revisitPieces,
-    ChangedBrowse:
-      ({ query }) =>
-      (model) => ({ model, commands: [ReplaceInternal({ href: wardrobeRouter(query) })] }),
+    ChangedBrowse: ({ query, reread }) => NavigationState.browsedTo(query, reread === true ? [revisitPieces] : []),
   }),
 })
 

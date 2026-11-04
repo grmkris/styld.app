@@ -327,7 +327,13 @@
     "backToGroup": "Back to {group}",
     "rainproof": "Rainproof",
     "categoryLabel": "Your own category (optional)",
-    "categoryPlaceholder": "e.g. Ski pants"
+    "categoryPlaceholder": "e.g. Ski pants",
+    "categoryRename": "Rename",
+    "categoryDelete": "Delete category",
+    "categoryNameLabel": "Category name",
+    "categorySave": "Save name",
+    "categoryDeleteQuestion": "Delete {name}? Its pieces stay, under {type}.",
+    "categoryEditFailed": "That didn’t go through. Try again."
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

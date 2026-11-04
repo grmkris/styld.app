@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import { AsyncData, type Update } from 'foldkit'
+import { AsyncData, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { Model } from './App.ts'
 import type { Message } from './Message.ts'
@@ -7,8 +7,17 @@ import { Navigate, ReplaceInternal, ReturnToParent, ScrollToAnchor } from './Nav
 import { Page } from './Page.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute, boardRouter, parentReturn, wardrobeRouter } from './route.ts'
+import type { BrowseQuery } from './WardrobeBrowse.ts'
 
 type NavigationUpdate = Update.Return<Model, Message>
+
+/** The wardrobe's browsing in place of the current address, then what follows it: reading the pieces again once a
+ * category it showed was renamed or deleted (T-12). */
+export const browsedTo = <R>(query: BrowseQuery, after: ReadonlyArray<Update.Step<Model, Message, R>>) =>
+  Update.combine<Model, Message, R>([
+    (model) => ({ model, commands: [ReplaceInternal({ href: wardrobeRouter(query) })] }),
+    ...after,
+  ])
 
 export const navigateTo =
   (href: string) =>

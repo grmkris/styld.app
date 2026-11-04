@@ -1,7 +1,19 @@
 import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { brandsOf, init, Message, newestOf, OutMessage, restore, shownPieces, update } from '../src/page/Wardrobe.ts'
+import {
+  brandsOf,
+  CategoryEdit,
+  DeleteCategory,
+  init,
+  Message,
+  newestOf,
+  OutMessage,
+  RenameCategory,
+  restore,
+  shownPieces,
+  update,
+} from '../src/page/Wardrobe.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 describe('the wardrobe tab', () => {
@@ -77,5 +89,59 @@ describe('filtering the wardrobe', () => {
 
   test('offers the brands written on the pieces, once each, in order', () => {
     expect(brandsOf([...pieces, pieceFixture('bag', { brand: 'COS' })])).toEqual(['COS', 'Levi’s'])
+  })
+})
+
+describe("a category of the person's own, from its page (T-12)", () => {
+  const skiPants = init({ group: 'sport', type: 'sportswear', category: 'Ski pants' })
+
+  test('renamed: its pieces move to the new name, the page shows it, and the app reads the pieces again', () => {
+    story(
+      update,
+      given(skiPants),
+      message(Message.ClickedRenameCategory()),
+      model(({ categoryEdit }) =>
+        expect(categoryEdit).toEqual(CategoryEdit.Renaming({ name: 'Ski pants', sending: false, failed: false })),
+      ),
+      message(Message.UpdatedCategoryName({ value: ' Snow trousers ' })),
+      message(Message.SubmittedCategoryName()),
+      Command.expectExact(RenameCategory({ type: 'sportswear', name: 'Ski pants', to: 'Snow trousers' })),
+      Command.resolve(RenameCategory, Message.SucceededRenameCategory({ name: 'Snow trousers' })),
+      model(({ category, categoryEdit }) => {
+        expect(category).toEqual(Option.some('Snow trousers'))
+        expect(categoryEdit).toEqual(CategoryEdit.Idle())
+      }),
+      expectOutMessage(
+        OutMessage.ChangedBrowse({
+          query: { group: 'sport', type: 'sportswear', category: 'Snow trousers' },
+          reread: true,
+        }),
+      ),
+    )
+  })
+
+  test('deleted after asking: the page shows the plain type, and a failed try says so', () => {
+    story(
+      update,
+      given(skiPants),
+      message(Message.ClickedDeleteCategory()),
+      message(Message.ClickedConfirmDeleteCategory()),
+      Command.expectExact(DeleteCategory({ type: 'sportswear', name: 'Ski pants' })),
+      Command.resolve(DeleteCategory, Message.FailedCategoryEdit()),
+      model(({ categoryEdit }) =>
+        expect(categoryEdit).toEqual(CategoryEdit.Deleting({ sending: false, failed: true })),
+      ),
+      message(Message.ClickedConfirmDeleteCategory()),
+      Command.resolve(DeleteCategory, Message.SucceededDeleteCategory()),
+      model(({ category }) => expect(category).toEqual(Option.none())),
+      expectOutMessage(OutMessage.ChangedBrowse({ query: { group: 'sport', type: 'sportswear' }, reread: true })),
+    )
+  })
+
+  test('the same name again, or none, sends nothing', () => {
+    const renaming = update(skiPants, Message.ClickedRenameCategory()).model
+    expect(update(renaming, Message.SubmittedCategoryName()).commands ?? []).toEqual([])
+    const emptied = update(renaming, Message.UpdatedCategoryName({ value: '  ' })).model
+    expect(update(emptied, Message.SubmittedCategoryName()).commands ?? []).toEqual([])
   })
 })
