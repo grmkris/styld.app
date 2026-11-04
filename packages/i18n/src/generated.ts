@@ -144,8 +144,12 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.replaced': Readonly<Record<string, never>>
   'board.saveFailed': Readonly<Record<string, never>>
   'board.saveLook': Readonly<Record<string, never>>
+  'board.saveSelectedLook': { readonly count: number }
   'board.saved': Readonly<Record<string, never>>
   'board.saving': Readonly<Record<string, never>>
+  'board.select': Readonly<Record<string, never>>
+  'board.selectDone': Readonly<Record<string, never>>
+  'board.selectHint': Readonly<Record<string, never>>
   'board.selectPiece': { readonly name: string | number }
   'board.selected': Readonly<Record<string, never>>
   'board.sendBack': Readonly<Record<string, never>>
@@ -846,4 +850,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'e400bf65d80dbcb1fc7632022c053a998d7261fefb848d16544a8981cb232f12'
+export const catalogVersion = '52e6a5fa67169815886fdc591dbda4c8d55daaa1fff3f4fe47aed6f67cd814ba'

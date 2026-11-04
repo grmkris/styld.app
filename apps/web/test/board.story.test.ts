@@ -1,11 +1,22 @@
-import { Board, BoardImageId, type BoardItem, BoardItemId, PieceItem } from '@styld/protocol'
+import { Board, BoardImageId, type BoardItem, BoardItemId, LookId, PieceItem, PiecePin, PinId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { SaveItems, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
+import { SaveItems, SaveLook, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
 import { Message } from '../src/page/Board/Message.ts'
-import { fromBoard, Gesture, init, type Model, ownBoard, Saving, Toast, Upload } from '../src/page/Board/Model.ts'
+import {
+  fromBoard,
+  Gesture,
+  init,
+  LookSave,
+  type Model,
+  ownBoard,
+  Saving,
+  Ticks,
+  Toast,
+  Upload,
+} from '../src/page/Board/Model.ts'
 import { update } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -241,5 +252,65 @@ describe('the board’s paper', () => {
       Message.SucceededUpdatePaper({ board: Schema.decodeUnknownSync(Board)({ ...board, paper: 'sand' }) }),
     ).model
     expect(withPaper(answeredFirst)).toEqual(Option.some('sage'))
+  })
+})
+
+describe('saving a look from the board (T-16)', () => {
+  const lookId = LookId.make(`lk_${'weekend'.padEnd(22, 'x')}`)
+  const pinned = PiecePin.make({
+    id: PinId.make(`pn_${'knit'.padEnd(22, 'x')}`),
+    piece: pieceFixture('knit'),
+    addedAt: '2026-11-04T08:00:00.000Z',
+  })
+
+  test('select mode ticks and unticks pieces, and saves only the ticked ones, then pins the look', () => {
+    story(
+      update,
+      given(open),
+      message(Message.ClickedSelect()),
+      message(Message.ToggledTick({ id: knit.id })),
+      message(Message.ToggledTick({ id: shorts.id })),
+      message(Message.ToggledTick({ id: knit.id })),
+      model((current) => expect(current.ticks).toEqual(Ticks.On({ itemIds: [shorts.id] }))),
+      message(Message.ClickedSaveLook()),
+      Command.expectExact(SaveLook({ boardId: board.id, name: 'Weekend', pieceIds: [shorts.pieceId] })),
+      model((current) => {
+        expect(Ticks.guards.Off(current.ticks)).toBe(true)
+        expect(LookSave.guards.Saving(current.look)).toBe(true)
+      }),
+      Command.resolve(SaveLook, Message.SucceededSaveLook({ lookId, board: { ...board, pins: [pinned] } })),
+      model((current) => {
+        expect(current.look).toEqual(LookSave.Saved({ lookId }))
+        expect(current.pins).toEqual([pinned])
+        expect(current.items).toEqual(open.items)
+      }),
+    )
+  })
+
+  test('with nothing ticked outside select mode, every piece on the table is saved, top of the stack first', () => {
+    story(
+      update,
+      given(open),
+      message(Message.ClickedSaveLook()),
+      Command.expectExact(SaveLook({ boardId: board.id, name: 'Weekend', pieceIds: [shorts.pieceId, knit.pieceId] })),
+      Command.resolve(SaveLook, Message.FailedSaveLook()),
+      model((current) => expect(LookSave.guards.Failed(current.look)).toBe(true)),
+    )
+  })
+
+  test('select mode with nothing ticked saves nothing, a tap moves nothing, and Done leaves it', () => {
+    story(
+      update,
+      given(open),
+      message(Message.ClickedSelect()),
+      message(Message.ClickedSaveLook()),
+      Command.expectNone(),
+      model((current) => {
+        expect(LookSave.guards.NoPieces(current.look)).toBe(true)
+        expect(current.items).toEqual(open.items)
+      }),
+      message(Message.ClickedDoneSelecting()),
+      model((current) => expect(Ticks.guards.Off(current.ticks)).toBe(true)),
+    )
   })
 })

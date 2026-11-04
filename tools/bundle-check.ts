@@ -53,8 +53,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // light/dark token pair in the first stylesheet. With main's Gallery photo work (T-17, 6e5c21d alone measures 358,117)
 // the three measure 361,785, so 362,500. Raised to 363,500 on 2026-11-04: main measured 362,480 before the person's
 // own categories (T-12, b210567), which add 782 (the category field, its chips and their cards), and the add page's
-// own words for a refused upload (3ba3213) add 98, for 363,360.
-if (initialGzip > 363500) throw new Error(`Initial browser assets exceed the 363,500-byte gzip budget: ${initialGzip}`)
+// own words for a refused upload (3ba3213) add 98, for 363,360. Raised to 364,500 on 2026-11-04 for T-16: keeping a
+// look on a board (6885ee4) adds 23 (its endpoint in the client's API), the collage editor's Select mode 1,090 (its
+// Messages and tick state, the ticked outline, Select/Done and the counted Save, and their words), for 364,473.
+if (initialGzip > 364500) throw new Error(`Initial browser assets exceed the 364,500-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -147,6 +147,16 @@ export const item = style({
     borderRadius: 'calc(10px / var(--k)) !custom',
     pointerEvents: 'none',
   },
+  '&[data-ticked]::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 'calc(-6px / var(--k)) !custom',
+    borderWidth: 'calc(3px / var(--k)) !custom',
+    borderStyle: 'solid',
+    borderColor: 'ink',
+    borderRadius: 'calc(10px / var(--k)) !custom',
+    pointerEvents: 'none',
+  },
   '&[data-leaving]': {
     pointerEvents: 'none',
     animationName: itemOut,

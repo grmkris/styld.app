@@ -184,16 +184,19 @@ export const ReadClipboard = Command.define('ReadClipboard', {
   ),
 })
 
-/** The board's pieces, from the top of the stack down, become a look named after the board. */
+/** Pieces of the board, from the top of the stack down, become a look named after the board, pinned on it (T-16). */
 export const SaveLook = Command.define('SaveLook', {
-  args: { name: Schema.String, pieceIds: Schema.Array(PieceId) },
+  args: { boardId: Schema.String, name: Schema.String, pieceIds: Schema.Array(PieceId) },
   messages: [Message.SucceededSaveLook, Message.FailedSaveLook],
-  execute: ({ name, pieceIds }) =>
+  execute: ({ boardId, name, pieceIds }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const operationId = yield* drawOperationId()
-      const look = yield* api.look.createLook({ payload: { operationId, name, pieceIds } })
-      return Message.SucceededSaveLook({ lookId: look.id })
+      const { look, board } = yield* api.board.keepLook({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: { operationId, name, pieceIds },
+      })
+      return Message.SucceededSaveLook({ lookId: look.id, board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveLook())),
 })
 

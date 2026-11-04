@@ -12,12 +12,12 @@ import type { PiecesData } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
 import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
-import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
+import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload } from './Model.ts'
 import * as styles from './View.styles.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
 import { piecePickerView } from './PiecePickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
-import { paperChoiceView, selectedView, toolbarView } from './ViewTools.ts'
+import { paperChoiceView, selectHintView, selectedView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
 
@@ -94,37 +94,48 @@ const itemView = (
 ): Html => {
   const isSelected = Option.contains(model.maybeSelectedId, item.id)
   const isHeld = Option.contains(heldId(model.gesture), item.id)
+  // In select mode (T-16) a tap or Space ticks the item for a look, or unticks it, and nothing moves.
+  const ticks = Ticks.guards.On(model.ticks) ? Option.some(model.ticks.itemIds) : Option.none()
+  const isTicked = Option.exists(ticks, (ids) => ids.includes(item.id))
+  const tick = Option.some(Message.ToggledTick({ id: item.id }))
   return h.keyed('div')(
     item.id,
     [
       h.Role('button'),
       h.Tabindex(0),
       h.AriaLabel(itemLabel(pieces, item, locale)),
-      h.AriaPressed(isSelected ? 'true' : 'false'),
+      h.AriaPressed(isSelected || isTicked ? 'true' : 'false'),
       h.AriaDescribedBy('board-keys'),
       h.DataAttribute('item', item.id),
       ...(isSelected ? [h.DataAttribute('selected', '')] : []),
+      ...(isTicked ? [h.DataAttribute('ticked', '')] : []),
       ...(isHeld ? [h.DataAttribute('held', '')] : []),
       ...styled(h, itemStyle(item)),
       h.Style(placement(item)),
       h.OnPointerDown((type, button, _sx, _sy, _time, clientX, clientY, pointerId) =>
-        button === primaryButton
-          ? Option.some(
-              Message.PressedItem({
-                id: item.id,
-                pointer: { pointerId, x: clientX, y: clientY },
-                isTouch: type === 'touch',
-              }),
-            )
-          : Option.none(),
+        button !== primaryButton
+          ? Option.none()
+          : Option.isSome(ticks)
+            ? tick
+            : Option.some(
+                Message.PressedItem({
+                  id: item.id,
+                  pointer: { pointerId, x: clientX, y: clientY },
+                  isTouch: type === 'touch',
+                }),
+              ),
       ),
       h.OnFocus(Message.FocusedItem({ id: item.id })),
       h.OnKeyDownPreventDefault((key, modifiers) =>
-        Option.flatMap(Option.fromNullishOr(keySteps.get(key)), (step) =>
-          modifiers.metaKey || modifiers.ctrlKey
-            ? Option.none()
-            : Option.some(Message.PressedItemKey({ id: item.id, step, isShifted: modifiers.shiftKey })),
-        ),
+        Option.isSome(ticks)
+          ? key === ' ' || key === 'Enter'
+            ? tick
+            : Option.none()
+          : Option.flatMap(Option.fromNullishOr(keySteps.get(key)), (step) =>
+              modifiers.metaKey || modifiers.ctrlKey
+                ? Option.none()
+                : Option.some(Message.PressedItemKey({ id: item.id, step, isShifted: modifiers.shiftKey })),
+            ),
       ),
     ],
     [itemContent(item, h, 'full', source), isSelected ? handleView(item, locale, h) : h.empty],
@@ -233,6 +244,7 @@ export const editorView = (
   h.div(styled(h, styles.stage()), [
     toolbarView(model, locale, h),
     statusView(model, locale, h),
+    selectHintView(model, locale, h),
     lookView(model, locale, h),
     paperView(model, pieces, paper, locale, h),
     toastView(model, locale, h),

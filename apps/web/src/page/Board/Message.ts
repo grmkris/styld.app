@@ -136,8 +136,11 @@ export const Message = defineMessageUnion({
   SucceededPins: { board: Board },
   FailedPins: {},
 
+  ClickedSelect: {},
+  ClickedDoneSelecting: {},
+  ToggledTick: { id: Schema.String },
   ClickedSaveLook: {},
-  SucceededSaveLook: { lookId: LookId },
+  SucceededSaveLook: { lookId: LookId, board: Board },
   FailedSaveLook: {},
   ClickedRetry: {},
 })

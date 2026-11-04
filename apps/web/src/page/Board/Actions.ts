@@ -16,7 +16,7 @@ import {
   type TextStyle,
   topZ,
 } from '@styld/protocol'
-import { Array, Option, Schema } from 'effect'
+import { Array, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { AddImage, SaveLook, UpdatePaper, WaitForExit, WaitForToast } from './Commands.ts'
 import { committed, findItem, refillIds, takeId, type UpdateReturn, withItem } from './Edits.ts'
@@ -26,6 +26,7 @@ import {
   LookSave,
   type Model,
   ownBoard,
+  Ticks,
   Toast,
   Upload,
   type UploadProblem,
@@ -203,13 +204,43 @@ export const picturesChosen = (model: Model, files: ReadonlyArray<File>): Update
   }
 }
 
+/** The pieces a look keeps: those ticked in select mode, else every piece on the table; top of the stack first. */
+export const lookPieces = (model: Model): ReadonlyArray<PieceId> => {
+  const onTable = piecesOnTable(model.items)
+  return Ticks.match(model.ticks, {
+    Off: () => onTable,
+    On: ({ itemIds }) => {
+      const ticked = new Set(
+        Array.filterMap(model.items, (item) =>
+          Schema.is(PieceItem)(item) && itemIds.includes(item.id) ? Result.succeed(item.pieceId) : Result.failVoid,
+        ),
+      )
+      return Array.filter(onTable, (pieceId) => ticked.has(pieceId))
+    },
+  })
+}
+
 export const lookRequested = (model: Model): UpdateReturn => {
-  const pieceIds = Array.take(piecesOnTable(model.items), maximumLookPieces)
+  const pieceIds = Array.take(Array.dedupe(lookPieces(model)), maximumLookPieces)
   const own = ownBoard(model.board)
   if (Option.isNone(own) || Array.isReadonlyArrayEmpty(pieceIds))
     return { model: modifyFields(model, { look: () => LookSave.NoPieces() }) }
   return {
-    model: modifyFields(model, { look: () => LookSave.Saving() }),
-    commands: [SaveLook({ name: own.value.name, pieceIds })],
+    model: modifyFields(model, { look: () => LookSave.Saving(), ticks: () => Ticks.Off() }),
+    commands: [SaveLook({ boardId: model.boardId, name: own.value.name, pieceIds })],
   }
 }
+
+/** A tap in select mode ticks the item, or unticks it. */
+export const tickToggled = (model: Model, id: string): UpdateReturn =>
+  Ticks.match(model.ticks, {
+    Off: () => ({ model }),
+    On: ({ itemIds }) => ({
+      model: modifyFields(model, {
+        ticks: () =>
+          Ticks.On({
+            itemIds: itemIds.includes(id) ? Array.filter(itemIds, (ticked) => ticked !== id) : [...itemIds, id],
+          }),
+      }),
+    }),
+  })

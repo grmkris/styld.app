@@ -12,6 +12,7 @@ import {
   flipped,
   layered,
   lookRequested,
+  tickToggled,
   imageFailed,
   paperFailed,
   paperSaved,
@@ -36,7 +37,7 @@ import {
   releasedPointer,
 } from './Gestures.ts'
 import { Message } from './Message.ts'
-import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving } from './Model.ts'
+import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving, Ticks } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
 import { closePiecePicker, pageSteps } from './Page.ts'
 import * as People from '../People.ts'
@@ -101,7 +102,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     PressedPaper: ({ pointer }) => pressedPaper(model, pointer),
     MovedPointer: ({ pointer }) => movedPointer(model, pointer),
     ReleasedPointer: ({ pointerId }) => releasedPointer(model, pointerId),
-    FocusedItem: ({ id }) => ({ model: modifyFields(model, { maybeSelectedId: () => Option.some(id) }) }),
+    FocusedItem: ({ id }) =>
+      Ticks.guards.On(model.ticks)
+        ? { model }
+        : { model: modifyFields(model, { maybeSelectedId: () => Option.some(id) }) },
     PressedItemKey: ({ id, step, isShifted }) =>
       step === 'remove' ? removed(model, id) : keyed(model, id, step, isShifted),
     PressedUndoKey: () => undone(model),
@@ -141,8 +145,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
+    ClickedSelect: () => ({
+      model: modifyFields(model, { ticks: () => Ticks.On({ itemIds: [] }), maybeSelectedId: () => Option.none() }),
+    }),
+    ClickedDoneSelecting: () => ({ model: modifyFields(model, { ticks: () => Ticks.Off() }) }),
+    ToggledTick: ({ id }) => tickToggled(model, id),
     ClickedSaveLook: () => lookRequested(model),
-    SucceededSaveLook: ({ lookId }) => ({ model: modifyFields(model, { look: () => LookSave.Saved({ lookId }) }) }),
+    SucceededSaveLook: ({ lookId, board }) => ({
+      model: modifyFields(model, { look: () => LookSave.Saved({ lookId }), pins: () => board.pins }),
+    }),
     FailedSaveLook: () => ({ model: modifyFields(model, { look: () => LookSave.Failed() }) }),
     ClickedRetry: () => ({ model: modifyFields(model, { board: () => AsyncData.Loading() }), commands: load(model) }),
   })

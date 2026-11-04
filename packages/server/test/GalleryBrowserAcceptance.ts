@@ -152,6 +152,19 @@ const openNewBoard = async (page: Page, origin: string) => {
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
 }
 
+/** Select mode: the knit and the shorts, ticked from the keyboard (Space on a focused piece ticks it, as a tap does),
+ * become a look pinned on the board (T-16). */
+const keepTwoAsLook = async (page: Page) => {
+  await page.getByRole('button', { name: 'Select pieces' }).click()
+  for (const name of ['Cable knit', 'Denim shorts']) {
+    await page.getByRole('button', { name, exact: true }).focus()
+    await page.keyboard.press('Space')
+    await page.getByRole('button', { name, exact: true, pressed: true }).waitFor({ state: 'attached' })
+  }
+  await page.getByRole('button', { name: 'Save 2 pieces as a look' }).click()
+  await page.getByText('Saved as a look and pinned on this board.').waitFor({ state: 'visible' })
+}
+
 const verifyBoard = async (context: BrowserContext, page: Page, origin: string) => {
   await openNewBoard(page, origin)
   // The editor has the whole phone screen: the navigation pill would sit over the tray of pieces.
@@ -232,8 +245,7 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
   expect(await page.locator('[data-item]').count()).toBe(5)
 
-  await page.getByRole('button', { name: 'Save as a look' }).click()
-  await page.getByText('Saved as a look.').waitFor({ state: 'visible' })
+  await keepTwoAsLook(page)
   await page.getByRole('link', { name: 'Open the look' }).click()
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
   await verifyBoardPage(page, origin)
@@ -246,13 +258,13 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   // A board's tile reads as its name and pin count.
   await page.getByRole('link', { name: /^Weekend/ }).click()
   await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByText('4 pins').waitFor({ state: 'visible' })
+  await page.getByText('5 pins').waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
     await page.getByRole('img', { name, exact: true }).first().waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Take Derby shoes off the board' }).click()
   await page.getByRole('button', { name: 'Take off', exact: true }).click()
-  await page.getByText('3 pins').waitFor({ state: 'visible' })
+  await page.getByText('4 pins').waitFor({ state: 'visible' })
   await shoot(page, 'phone-board-page')
 
   const name = page.getByLabel('Board name')
@@ -261,7 +273,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
   await page.reload({ waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByText('3 pins').waitFor({ state: 'visible' })
+  await page.getByText('4 pins').waitFor({ state: 'visible' })
 
   // The piece taken off goes back on from its own page.
   // The wardrobe opens on its groups; a type's own page lists its pieces (T-07).
@@ -271,7 +283,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByRole('button', { name: /^Weekend away/ }).click()
   await page.getByText('Saved to Weekend away').waitFor({ state: 'visible' })
   await page.getByRole('link', { name: 'Open', exact: true }).click()
-  await page.getByText('4 pins').waitFor({ state: 'visible' })
+  await page.getByText('5 pins').waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Derby shoes', exact: true }).waitFor({ state: 'visible' })
   expect(await page.locator('[data-item]').count()).toBe(5)
 }
@@ -456,8 +468,8 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     // Boards is the Lab's first tab, under the Lab's own title (T-08).
     await page.getByRole('heading', { name: 'Laboratorij', level: 1 }).waitFor({ state: 'visible' })
     await page.getByRole('link', { name: /^Weekend away/ }).click()
-    // Four pins: the piece taken off was saved back from its own page.
-    await page.getByText('4 kartice').waitFor({ state: 'visible' })
+    // Five pins: the look kept from the board, and the piece taken off saved back from its own page.
+    await page.getByText('5 kartic').waitFor({ state: 'visible' })
     await page.getByRole('region', { name: 'Miza' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Besedilo: Weekend in Piran' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Shrani kot videz' }).waitFor({ state: 'visible' })

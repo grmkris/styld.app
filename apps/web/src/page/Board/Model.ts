@@ -118,6 +118,10 @@ export const LookSave = defineTaggedUnion({
 })
 export type LookSave = typeof LookSave.Type
 
+/** Select mode (T-16): taps tick items for a look instead of moving them, and what is ticked, by item id. */
+export const Ticks = defineTaggedUnion({ Off: {}, On: { itemIds: Schema.Array(Schema.String) } })
+export type Ticks = typeof Ticks.Type
+
 /** Pinning from the picker, or taking a pin off the board. */
 export const PinWork = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type PinWork = typeof PinWork.Type
@@ -183,6 +187,7 @@ export const Model = Schema.Struct({
   /** Items on their way out, kept on the page until their exit animation ends. */
   leaving: Schema.Array(BoardItem),
   maybeSelectedId: Schema.Option(Schema.String),
+  ticks: Ticks,
   gesture: Gesture,
   /** How many page pixels one table unit is; the paper reports its width. */
   pxPerUnit: Schema.Number,
@@ -234,6 +239,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   looks: AsyncData.Idle(),
   leaving: [],
   maybeSelectedId: Option.none(),
+  ticks: Ticks.Off(),
   gesture: Gesture.Idle(),
   pxPerUnit: 0.36,
   past: [],

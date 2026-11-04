@@ -94,6 +94,22 @@ describe('the collage editor', () => {
     )
   })
 
+  test('Select pieces turns taps into ticks for a look, holds Save until one is ticked, and Done leaves it', () => {
+    scene(
+      { update, view },
+      given(editing([knit])),
+      measured,
+      expect(role('button', { name: 'Select pieces' })).toHaveAttr('aria-pressed', 'false'),
+      click(role('button', { name: 'Select pieces' })),
+      expect(role('button', { name: 'Done' })).toHaveAttr('aria-pressed', 'true'),
+      expect(text('Tap the pieces that make the look.')).toExist(),
+      expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: 'Done' })),
+      expect(role('button', { name: 'Select pieces' })).toExist(),
+      expect(role('button', { name: 'Save as a look' })).not.toHaveAttr('aria-disabled', 'true'),
+    )
+  })
+
   test('tells every piece in its tray apart: its name, or what it is and its colours, in both languages', () => {
     const wardrobe = [
       pieceFixture('knit', { type: 'knitwear', colours: ['white', 'navy'] }),
