@@ -19,7 +19,7 @@ import {
   type ViewPiece,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { Array, Effect, Option, Schema } from 'effect'
+import { Array, Duration, Effect, Option, Schedule, Schema } from 'effect'
 import { tryOnWords } from '../generation/TryOnPrompt.ts'
 import type { TryOns } from '../generation/TryOn.ts'
 import { type MediaGrant, withViewThumbnails } from '../kernel/SignedMedia.ts'
@@ -119,12 +119,20 @@ const piecePictures = (grants: ReadonlyArray<MediaGrant>) =>
     ([left], [right]) => left === right,
   )
 
+/** How long tryon_show waits for a try-on still being drawn, reading it again every 2.5 s, so an assistant that shows it
+ * straight after tryon_start gets the result in one call (Muse took 13 s at the median and 28 s at most in the try-on
+ * spike). It stays well under the minute a host gives one tool call; past it the view says it is still drawing. */
+const drawingWait = Duration.seconds(40)
+const drawingRead = Duration.millis(2500)
+
+const drawn = ({ status }: TryOn) => status !== 'admitting' && status !== 'drawing'
+
 const tryOnShow = (services: MediaServices) =>
   tool({
     name: 'tryon_show',
     title: 'Show a try-on',
     description:
-      'Shows a try-on as the person sees it: their photo and the picture Styld drew of them in the chosen pieces, side by side, and the pieces it wears. While it is still being drawn it says so: show it again once tryon_get reads done.',
+      'Shows a try-on as the person sees it: their photo and the picture Styld drew of them in the chosen pieces, side by side, and the pieces it wears. Call it right after tryon_start: it waits up to 40 seconds while the picture is drawn. If it still says drawing, show it again a little later.',
     parameters: Schema.Struct({ tryOnId: TryOnId }),
     annotations: { readOnlyHint: true, openWorldHint: false },
     meta: showsView,
@@ -132,7 +140,13 @@ const tryOnShow = (services: MediaServices) =>
       Effect.gen(function* () {
         const { value, images } = yield* withViewThumbnails(
           Effect.gen(function* () {
-            const tryOn = yield* services.tryOns.get(tryOnId)
+            const tryOn = yield* services.tryOns
+              .get(tryOnId)
+              .pipe(
+                Effect.repeat({ schedule: Schedule.spaced(drawingRead), until: drawn }),
+                Effect.timeoutOption(drawingWait),
+                Effect.flatMap(Option.match({ onNone: () => services.tryOns.get(tryOnId), onSome: Effect.succeed })),
+              )
             yield* services.photos
               .getPhoto(tryOn.photoId)
               .pipe(Effect.catchTag('NotFound', () => Effect.succeed(undefined)))

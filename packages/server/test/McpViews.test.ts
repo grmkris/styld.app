@@ -13,7 +13,9 @@ import {
   TryOnView,
   ViewImages,
 } from '@styld/protocol'
-import { Effect, Option, Redacted, Schema } from 'effect'
+import { it } from '@effect/vitest'
+import { Effect, Fiber, Option, Redacted, Schema } from 'effect'
+import { TestClock } from 'effect/testing'
 import { describe, expect, test } from 'vitest'
 import { mediaViewTools, type MediaServices } from '../src/mcp/MediaViewTools.ts'
 import { viewTools } from '../src/mcp/ViewTools.ts'
@@ -150,12 +152,40 @@ const servicesFor = (status: TryOn['status'], bytes = 4): MediaServices => ({
   },
 })
 
-const call = (services: MediaServices, name: string, args: unknown) =>
-  Effect.runPromise(
-    callTool(mediaViewTools(services), name, args).pipe(
-      Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
-    ),
+const calling = (services: MediaServices, name: string, args: unknown) =>
+  callTool(mediaViewTools(services), name, args).pipe(
+    Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
   )
+
+const call = (services: MediaServices, name: string, args: unknown) => Effect.runPromise(calling(services, name, args))
+
+/** A try-on read as each status in turn, one per read, staying on the last; `reads` counts the reads. */
+const drawnAfter = (statuses: ReadonlyArray<TryOn['status']>) => {
+  const reads = { count: 0 }
+  const at = (index: number) => statuses[Math.min(index, statuses.length - 1)] ?? 'drawing'
+  const services: MediaServices = {
+    ...servicesFor('done'),
+    tryOns: {
+      get: () =>
+        Effect.suspend(() => {
+          const status = at(reads.count)
+          reads.count += 1
+          return signing(
+            tryOn(status),
+            status === 'done' ? [thumb(tryOnId, `photos/${photoId}/try-ons/${tryOnId}.png`)] : [],
+          )
+        }),
+    },
+  }
+  return { services, reads }
+}
+
+const shownAfter = (services: MediaServices, wait: string) =>
+  Effect.gen(function* () {
+    const fiber = yield* Effect.forkChild(calling(services, 'tryon_show', { tryOnId }))
+    yield* TestClock.adjust(wait)
+    return yield* Schema.decodeUnknownEffect(Shown)(yield* Fiber.join(fiber))
+  })
 
 /** A view result as a host receives it: the view the model reads, and the pictures only the view gets. */
 const Shown = Schema.Struct({
@@ -197,11 +227,31 @@ describe('the media views', () => {
     modelSeesNoPicture(result)
   })
 
-  test('a try-on still being drawn says so, with no result to show', async () => {
-    const result = await shownBy(servicesFor('drawing'), 'tryon_show', { tryOnId })
-    expect(result.structuredContent).toMatchObject({ _tag: 'TryOnView', status: 'drawing' })
-    expect(imagesOf(result)).not.toHaveProperty(`tryOn:${tryOnId}`)
+  test('a try-on being drawn is read again until it is drawn, then shown with its result', async () => {
+    const { services, reads } = drawnAfter(['admitting', 'done'])
+    const result = await shownBy(services, 'tryon_show', { tryOnId })
+    expect(result.structuredContent).toMatchObject({ _tag: 'TryOnView', status: 'done' })
+    expect(imagesOf(result)).toHaveProperty(`tryOn:${tryOnId}`)
+    expect(reads.count).toBe(2)
   })
+
+  it.effect('a try-on still being drawn after 40 seconds says so, with no result to show', () =>
+    Effect.gen(function* () {
+      const { services } = drawnAfter(['drawing'])
+      const result = yield* shownAfter(services, '41 seconds')
+      expect(result.structuredContent).toMatchObject({ _tag: 'TryOnView', status: 'drawing' })
+      expect(imagesOf(result)).not.toHaveProperty(`tryOn:${tryOnId}`)
+    }),
+  )
+
+  it.effect('a refused try-on is shown at once, without waiting', () =>
+    Effect.gen(function* () {
+      const { services, reads } = drawnAfter(['refused'])
+      const result = yield* shownAfter(services, '0 seconds')
+      expect(result.structuredContent).toMatchObject({ _tag: 'TryOnView', status: 'stopped' })
+      expect(reads.count).toBe(1)
+    }),
+  )
 
   test('the Gallery shows the newest twelve photos, numbered, with what Styld found in each', async () => {
     const result = await shownBy(servicesFor('done'), 'gallery_show', {})
