@@ -15,6 +15,17 @@ import StyldWorkerLive, { StyldWorker } from '@styld/server/StyldWorker'
  * environment, robots, Analytics Engine dataset and rate-limit namespaces (`Resources.ts` `stages`). Its state lives in
  * the account's Cloudflare state store, so any operator's checkout plans against the same resources. The worker's
  * stable URL is the only output used by acceptance tests. */
+/** Sign in with Google: v1's OAuth client and a dedicated keyring that seals each sign-in in progress
+ * (`AuthConfiguration.ts` › decodeOAuthKeyring). Google is offered only when all three are set. */
+const googleEnv = Effect.gen(function* () {
+  const id = yield* Config.String('STYLD_GOOGLE_CLIENT_ID').pipe(Config.option)
+  const secret = yield* Config.Redacted('STYLD_GOOGLE_CLIENT_SECRET').pipe(Config.option)
+  const keys = yield* Config.Redacted('STYLD_AUTH_OAUTH_KEYS').pipe(Config.option)
+  return Option.isSome(id) && Option.isSome(secret) && Option.isSome(keys)
+    ? { GOOGLE_CLIENT_ID: id.value, GOOGLE_CLIENT_SECRET: secret.value, AUTH_OAUTH_KEYS: keys.value }
+    : {}
+})
+
 export default Alchemy.Stack(
   'StyldAppV2',
   { providers: Cloudflare.providers(), state: Cloudflare.state() },
@@ -94,6 +105,7 @@ export default Alchemy.Stack(
         VIDEO_GATEWAY_API_KEY: yield* Config.Redacted('STYLD_AI_GATEWAY_API_KEY').pipe(
           Config.orElse(() => Config.Redacted('AI_GATEWAY_API_KEY')),
         ),
+        ...(yield* googleEnv),
         // The operator's token, for administrative tasks from the operator's own tools such as the v1 importer
         // (`@styld/protocol` › Operator); without one the stage has no operator.
         ...Option.match(yield* Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option), {

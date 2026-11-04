@@ -1,4 +1,4 @@
-import { Auth, Password, Schema as AuthSchema } from '@yielded/auth'
+import { Auth, OAuth, Password, Schema as AuthSchema } from '@yielded/auth'
 import { AuthPersistence } from '@yielded/auth-persistence-drizzle/D1'
 import { Effect } from 'effect'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
@@ -13,7 +13,8 @@ const makeAuth = () =>
   Auth.make(AuthApi, {
     sessions: sessionOptions,
     // `email` binds to the `styld/Auth/email` namespace: request binding, proofs, credentials.
-    strategies: { password: Password.make(), email: EmailEntry.make() },
+    // `google` binds to `styld/Auth/google`: an account's Google identity and the sign-in flows in progress.
+    strategies: { password: Password.make(), email: EmailEntry.make(), google: OAuth.make() },
     defaultStrategy: 'password',
   })
 
@@ -41,7 +42,16 @@ export const storage = Persistence.managed({
 const authSchema = storage.schema
 // Drizzle Kit discovers table exports; keep the managed auth tables named and
 // stable so the generated D1 migration owns the complete persistence boundary.
-export const { identifiers, credentials, passwords, sessions, pending } = authSchema
+export const {
+  identifiers,
+  credentials,
+  passwords,
+  sessions,
+  pending,
+  oauthIdentities,
+  oauthCredentials,
+  oauthSignInFlows,
+} = authSchema
 
 /** One email sign-in credential per (module, address). Same shape as Yielded's managed
  * `emailCredentials` role (P/internal/storage-tables.ts:91-105). `credential_revision` always
@@ -99,4 +109,7 @@ export const authTables = {
   pending,
   emailCredentials,
   proofs,
+  oauthIdentities,
+  oauthCredentials,
+  oauthSignInFlows,
 }

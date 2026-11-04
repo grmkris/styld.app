@@ -1,4 +1,4 @@
-import { makeAuthRuntime } from '@styld/auth'
+import { googleProvider, makeAuthRuntime } from '@styld/auth'
 import { csrf, SessionHttp } from '@styld/auth/config'
 import { Unavailable } from '@styld/protocol'
 import { Http, Proofs, Sessions } from '@yielded/auth'
@@ -8,17 +8,41 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { AuthHttpOptions } from './AuthConfiguration.ts'
 import { networkOf } from './kernel/Pacing.ts'
+import { publicWebTransport } from './providers/PublicWeb.ts'
+
+/** Where Google returns: v1's path, so the redirect address registered on v1's OAuth client for styld.app keeps working
+ * when styld.app moves to v2. */
+const googleCallbackPath = '/api/auth/callback/google'
 
 /** Build the auth HTTP layer at the Worker boundary where the trusted origin
  * and the native D1 binding are available. */
 export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOptions) => {
-  const runtime = makeAuthRuntime(database.raw, options.secret, options.email)
+  const runtime = makeAuthRuntime(database.raw, options.secret, options.email, {
+    transactionKeys: Option.map(options.google, ({ transactionKeys }) => transactionKeys),
+    // A Google sign-in comes back to the login page, which goes on to where the person was going (`SignInReturn`).
+    returnTargets: ['/login', '/login/connect'],
+  })
   const http = Http.make(runtime.auth, {
     origin: options.origin,
     cookie: { secure: options.secureCookies },
     csrf,
+    oauth: {
+      providers: {
+        google: googleProvider(
+          Option.map(options.google, ({ client }) => client),
+          database.raw,
+        ),
+      },
+      callbacks: { google: { path: googleCallbackPath } },
+    },
   })
-  const dependencies = Layer.mergeAll(runtime.layer, Layer.succeed(Sessions.SessionSigningKeys, options.sessionKeys))
+  const dependencies = runtime
+    .provide(http.layer)
+    .pipe(
+      Layer.provide(publicWebTransport),
+      Layer.provideMerge(Layer.succeed(Sessions.SessionSigningKeys, options.sessionKeys)),
+      Layer.provideMerge(runtime.shared),
+    )
   return {
     layer: http.routes().pipe(Layer.provide(dependencies)),
     dependencies,

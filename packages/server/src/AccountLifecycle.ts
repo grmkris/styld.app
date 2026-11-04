@@ -109,6 +109,9 @@ const deleteRows = Effect.fnUntraced(function* (db: Drizzle, accountId: string) 
       ofSubject(db, authTables.pending, accountId),
       ofSubject(db, authTables.emailCredentials, accountId),
       ofSubject(db, authTables.passwords, accountId),
+      // The account's Google identity and its credential; a Google sign-in later starts a new account.
+      ofSubject(db, authTables.oauthCredentials, accountId),
+      ofSubject(db, authTables.oauthIdentities, accountId),
       ofSubject(db, authTables.credentials, accountId),
       ofSubject(db, authTables.identifiers, accountId),
       // Codes keep the address in their binding; they go with the account.

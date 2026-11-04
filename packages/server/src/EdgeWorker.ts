@@ -16,6 +16,16 @@ export type EdgeEnvironment = {
 
 const apiNamespaces = ['/api', '/mcp', '/oauth', '/.well-known', '/cdn'] as const
 
+/** Where Google returns (`AuthHttp.ts` › googleCallbackPath; named again here because this module may export nothing
+ * but its entrypoint). */
+const googleCallback = '/api/auth/callback/google'
+
+/** Yielded answers a Google sign-in it refuses with JSON; the person gets the login page and a sentence instead. */
+const signInPage = (response: Response, url: URL): Response =>
+  url.pathname === googleCallback && response.status >= 400
+    ? new Response(null, { status: 303, headers: { location: '/login?problem=google' } })
+    : response
+
 export const isApiPath = (path: string): boolean =>
   apiNamespaces.some((namespace) => path === namespace || path.startsWith(`${namespace}/`))
 
@@ -71,7 +81,7 @@ export default {
       !api && request.method === 'GET' && hasPreview(url.pathname)
         ? previewOf(forwarded, env, url.pathname)
         : Promise.resolve(undefined)
-    const response = await (api ? env.API : env.WEBSITE).fetch(forwarded)
+    const response = signInPage(await (api ? env.API : env.WEBSITE).fetch(forwarded), url)
     const secured = withSecurityHeaders(
       withPreview(response, await preview, url),
       api ? apiPolicy : documentPolicy,

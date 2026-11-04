@@ -25,6 +25,14 @@ export const accountOfEmail = (db: Database, email: string) =>
           and i.verified_at is not null and a.enabled = 1 limit 1`,
   )
 
+/** The verified address an enabled account signs in with, as a query. */
+export const emailOfAccount = (db: Database, accountId: string) =>
+  db.all<{ readonly email: string }>(
+    sql`select i.value as email from ${identifiers} i join ${accounts} a on a.id = i.subject_id
+        where i.subject_id = ${accountId} and i.namespace = 'email' and i.active = 1
+          and i.verified_at is not null and a.enabled = 1 limit 1`,
+  )
+
 /** What a new account is made of: its ids and revisions, random like registration's, and when its email counts as
  * verified (the operator vouches for it: it is the address the person used on v1). */
 export interface NewEmailAccount {

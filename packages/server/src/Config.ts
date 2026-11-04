@@ -5,6 +5,7 @@ import { operatorDigestOf } from './Operator.ts'
 import {
   decodeAuthSecret,
   decodeAuthSessionKeyring,
+  decodeOAuthKeyring,
   decodeProofKeyring,
   decodeRequestBindingKeyring,
 } from './AuthConfiguration.ts'
@@ -34,6 +35,11 @@ const deploymentConfig = Config.all({
   /** Styld's own paid text route; the key is restricted to its model and budget in LiteLLM. */
   textBase: Config.schema(Schema.NonEmptyString, 'STYLD_LITELLM_URL'),
   textKey: Config.Redacted('STYLD_LITELLM_KEY'),
+  /** Sign in with Google (v1's OAuth client) and the keys that seal each sign-in in progress; Google is offered only
+   * when all three are set. */
+  googleClientId: Config.String('GOOGLE_CLIENT_ID').pipe(Config.option),
+  googleClientSecret: Config.Redacted('GOOGLE_CLIENT_SECRET').pipe(Config.option),
+  oauthKeys: Config.String('AUTH_OAUTH_KEYS').pipe(Config.option),
   /** The operator's token (`Operator.ts`); none switches the operator's routes off. */
   operatorToken: Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option),
 })
@@ -53,6 +59,14 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
       sessionKeys: yield* decodeAuthSessionKeyring(raw.sessionKeys).pipe(Effect.orDie),
       proofKeys: yield* decodeProofKeyring(raw.proofKeys).pipe(Effect.orDie),
       requestBindingKeys: yield* decodeRequestBindingKeyring(raw.requestBindingKeys).pipe(Effect.orDie),
+      ...(Option.isSome(raw.googleClientId) && Option.isSome(raw.googleClientSecret) && Option.isSome(raw.oauthKeys)
+        ? {
+            google: {
+              client: { clientId: raw.googleClientId.value, clientSecret: raw.googleClientSecret.value },
+              transactionKeys: yield* decodeOAuthKeyring(raw.oauthKeys.value).pipe(Effect.orDie),
+            },
+          }
+        : {}),
     },
     textBase: raw.textBase.replace(/\/$/u, ''),
     // Only the token's digest is kept; a token too short to be a random secret stops the Worker.

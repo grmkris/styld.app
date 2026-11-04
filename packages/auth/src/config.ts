@@ -11,7 +11,7 @@ export const AccountClaims = Schema.Struct({
 })
 export type AccountClaims = typeof AccountClaims.Type
 
-/** A password (knowledge) or a fresh email code (possession). Without the possession alternative an
+/** A password (knowledge), or a fresh email code or Google sign-in (possession). Without the possession alternative an
  * email-code proof does not satisfy the subject requirement and completion falls into pending
  * authentication, which this installation does not configure (Y/sessions/module.ts:1306-1324). */
 export const requirement = Sessions.AuthenticationRequirement.make({
@@ -33,6 +33,10 @@ export const AuthApi = AuthContract.make('styld/Auth', {
   actions: (sessions) => ({
     signIn: AuthContract.passwordSignIn(sessions),
     ...emailEntryActions(sessions),
+    // Sign in with Google: the browser asks for Google's address, then Google returns to the callback
+    // (`/api/auth/callback/google`, AuthHttp.ts), which completes it and sets the session cookie.
+    googleSignIn: AuthContract.oauthSignIn({ strategy: 'google' }),
+    googleComplete: AuthContract.oauthCompleteSignIn(sessions, { strategy: 'google' }),
   }),
 })
 
