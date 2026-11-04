@@ -19,9 +19,13 @@ const preferences = (showMe: Audience | null, showMeAsked: boolean): ShowMe.Mode
     preferences: () => ShowMe.PreferencesData.Success({ data: { showMe, showMeAsked } }),
   })
 
-const home = (showMe: ShowMe.Model, locale: 'en' | 'sl' = 'en') =>
-  withPage(at('/', { signedIn: true, locale }), lenses.today, (today) =>
-    modifyFields(settled(today), { showMe: () => showMe }),
+const home = (showMe: ShowMe.Model, locale: 'en' | 'sl' = 'en', answeredHere = false) =>
+  withPage(
+    modifyFields(at('/', { signedIn: true, locale }), {
+      context: (context) => ({ ...context, showMeAnswered: answeredHere }),
+    }),
+    lenses.today,
+    (today) => modifyFields(settled(today), { showMe: () => showMe }),
   )
 
 describe('Show me on Home', () => {
@@ -37,6 +41,7 @@ describe('Show me on Home', () => {
         ShowMe.Message.SucceededSaveShowMe({ preferences: { showMe: 'men', showMeAsked: true } }),
       ),
       Command.resolve(WhatsNew.ReadFeed, WhatsNew.Message.FailedReadFeed()),
+      Command.resolve(ShowMe.RememberAnswered, ShowMe.Message.CompletedRememberAnswered()),
       expect(role('heading', { name: 'What should we show you first?' })).not.toExist(),
     )
   })
@@ -53,14 +58,26 @@ describe('Show me on Home', () => {
         ShowMe.SaveShowMe({ showMe: null }),
         ShowMe.Message.SucceededSaveShowMe({ preferences: { showMe: null, showMeAsked: true } }),
       ),
+      Command.resolve(ShowMe.RememberAnswered, ShowMe.Message.CompletedRememberAnswered()),
     )
   })
 
-  test('is not there once asked, nor while it is read', () => {
-    for (const showMe of [preferences('women', true), ShowMe.init()])
+  test('is there from the first paint while the choice is read, so it never moves Home as it arrives', () => {
+    scene(
+      { update, view },
+      given(home(ShowMe.init())),
+      expect(role('heading', { name: 'What should we show you first?' })).toExist(),
+    )
+  })
+
+  test('is not there once answered, nor in a browser that saw an answer (its cookie)', () => {
+    for (const [showMe, answeredHere] of [
+      [preferences('women', true), false],
+      [ShowMe.init(), true],
+    ] as const)
       scene(
         { update, view },
-        given(home(showMe)),
+        given(home(showMe, 'en', answeredHere)),
         expect(role('heading', { name: 'What should we show you first?' })).not.toExist(),
       )
   })
@@ -81,6 +98,7 @@ describe('Show me on the Account page', () => {
         ShowMe.SaveShowMe({ showMe: 'all' }),
         ShowMe.Message.SucceededSaveShowMe({ preferences: { showMe: 'all', showMeAsked: true } }),
       ),
+      Command.resolve(ShowMe.RememberAnswered, ShowMe.Message.CompletedRememberAnswered()),
       expect(role('button', { name: 'Everything' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('button', { name: "Women's" })).toHaveAttr('aria-pressed', 'false'),
     )

@@ -72,6 +72,9 @@ export const Flags = Schema.Struct({
   /** The public origin the page was served from: assistants connect to its `/mcp`. */
   origin: Schema.String,
   telemetryConsent: TelemetryConsent,
+  /** This browser saw its person answer Show me (its cookie): Home is drawn without the card, never with one that
+   * then goes. */
+  showMeAnswered: Schema.optionalKey(Schema.Boolean),
   /** A session cookie came with the request: Home waits for the session instead of showing the landing page
    * to someone who is signed in. Only a hint; the session is read in the browser. */
   hasSessionCookie: Schema.optionalKey(Schema.Boolean),

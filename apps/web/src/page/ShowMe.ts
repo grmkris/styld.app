@@ -10,7 +10,8 @@ import { StyldClient } from '../StyldClient.ts'
 
 // Show me (owner, 4 November 2026): what What's new starts with, Women's, Men's or Everything. Home asks once after
 // sign-in, above What's new, until the person answers or puts the card away; the Account page keeps the choice. It
-// only reorders: nothing is hidden.
+// only reorders: nothing is hidden. Home draws the card from its first paint, unless this browser's cookie says the
+// person answered already, so the card never arrives late and moves Home down (as the diagnostics prompt does).
 
 // MODEL
 
@@ -48,9 +49,18 @@ export const shownChoice = (model: Model): Option.Option<Audience> =>
 const putAway = (answer: Answer) =>
   Answer.guards.PutAway(answer) || (Answer.guards.Saving(answer) && answer.showMe === null)
 
-/** Whether Home's card asks: the person has not answered or put it away. */
-export const asks = (model: Model): boolean =>
-  Option.exists(AsyncData.getData(model.preferences), ({ showMeAsked }) => !showMeAsked) && !putAway(model.answer)
+/** Whether Home's card asks: this browser has not seen an answer (`answeredHere`, by its cookie), the person has not
+ * answered or put it away as far as Styld says, and has not just put it away. It asks while the choice is read. */
+export const asks = (model: Model, answeredHere: boolean): boolean =>
+  !answeredHere &&
+  !Option.exists(AsyncData.getData(model.preferences), ({ showMeAsked }) => showMeAsked) &&
+  !putAway(model.answer)
+
+const cookieName = 'styld_show_me'
+
+/** Whether a `Cookie` header says this browser's person answered Show me: the server renders Home without the card. */
+export const answeredIn = (cookies: string | null | undefined): boolean =>
+  (cookies ?? '').split(';').some((part) => part.trim() === `${cookieName}=asked`)
 
 // MESSAGE
 
@@ -62,6 +72,7 @@ export const Message = defineMessageUnion({
   ClickedNotNow: {},
   SucceededSaveShowMe: { preferences: Preferences },
   FailedSaveShowMe: {},
+  CompletedRememberAnswered: {},
 })
 export type Message = typeof Message.Type
 
@@ -90,6 +101,16 @@ export const SaveShowMe = Command.define('SaveShowMe', {
       })
       return Message.SucceededSaveShowMe({ preferences })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveShowMe())),
+})
+
+/** This browser remembers that its person answered, a first-party cookie the server reads to leave the card out. */
+export const RememberAnswered = Command.define('RememberAnswered', {
+  messages: [Message.CompletedRememberAnswered],
+  execute: Effect.sync(() => {
+    const secure = document.location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = `${cookieName}=asked; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+    return Message.CompletedRememberAnswered()
+  }),
 })
 
 // UPDATE
@@ -122,7 +143,7 @@ const answer = (model: Model, showMe: Audience | null): UpdateReturn =>
     ? { model }
     : { model: modifyFields(model, { answer: () => Answer.Saving({ showMe }) }), commands: [SaveShowMe({ showMe })] }
 
-/** A saved answer: What's new is read again when its order changed. */
+/** A saved answer, remembered by this browser: What's new is read again when its order changed. */
 const saved = (model: Model, preferences: Preferences): UpdateReturn => {
   const before = Option.map(AsyncData.getData(model.preferences), ({ showMe }) => orderOf(showMe))
   const next = modifyFields(model, {
@@ -130,8 +151,8 @@ const saved = (model: Model, preferences: Preferences): UpdateReturn => {
     answer: () => Answer.Idle(),
   })
   return Option.contains(before, orderOf(preferences.showMe))
-    ? { model: next }
-    : { model: next, outMessage: OutMessage.ChangedShowMe() }
+    ? { model: next, commands: [RememberAnswered()] }
+    : { model: next, commands: [RememberAnswered()], outMessage: OutMessage.ChangedShowMe() }
 }
 
 /** What an answer that did not save leaves. */
@@ -142,10 +163,12 @@ const failedAnswer = (current: Answer): Answer => {
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
+    // An answer given elsewhere is remembered here too, so this browser's next Home has no card to take away.
     SucceededReadPreferences: ({ preferences }) => ({
       model: modifyFields(model, { preferences: () => PreferencesData.Success({ data: preferences }) }),
+      commands: preferences.showMeAsked ? [RememberAnswered()] : [],
     }),
-    // A failed read keeps the choice already shown; Home's card stays away.
+    // A failed read keeps the choice already shown; an answer still saves.
     FailedReadPreferences: () => ({
       model: modifyFields(model, { preferences: (preferences) => AsyncData.settle(preferences, unavailable) }),
     }),
@@ -162,4 +185,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededSaveShowMe: ({ preferences }) => saved(model, preferences),
     // "Not now" that did not save puts the card away all the same; Home asks again next time.
     FailedSaveShowMe: () => ({ model: modifyFields(model, { answer: failedAnswer }) }),
+    CompletedRememberAnswered: () => ({ model }),
   })

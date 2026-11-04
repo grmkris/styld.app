@@ -11,6 +11,7 @@ import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
 import { AppRoute, routeFromPathname } from './route.ts'
 import { consentFromCookies } from './TelemetryConsent.ts'
+import { answeredIn } from './page/ShowMe.ts'
 import { view } from './View.ts'
 import { saveLocale } from './server/LocalePreference.ts'
 
@@ -36,6 +37,7 @@ const renderApplication = (
       referenceTime: yield* Clock.currentTimeMillis,
       origin: url.origin,
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
+      showMeAnswered: answeredIn(request.headers.get('cookie')),
       hasSessionCookie: (request.headers.get('cookie') ?? '').includes(`${SessionHttp.cookieName}=`),
     }
     const rendered = yield* Server.renderToString(application, { ...options, url: request.url, flags })

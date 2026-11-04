@@ -74,7 +74,12 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html => {
           h.submodel({
             ...slot(lenses.today, today),
             view: TodayView.view,
-            viewInputs: { locale, pieces, boards: model.data.boards },
+            viewInputs: {
+              locale,
+              pieces,
+              boards: model.data.boards,
+              showMeAnswered: model.context.showMeAnswered === true,
+            },
           }),
         h,
       )

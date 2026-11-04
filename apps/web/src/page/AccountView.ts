@@ -220,23 +220,22 @@ const showMeSection = Submodel.defineView<ShowMeModel, ShowMeMessage, { readonly
       [
         h.h2([h.Id('show-me-setting'), ...styled(h, sectionTitle())], [format(locale, 'showMe.title', {})]),
         h.p(styled(h, sectionText()), [format(locale, 'showMe.accountReason', {})]),
-        ...AsyncData.matchData(model.preferences, {
-          onEmpty: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
-          onFailure: () => [
-            h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'common.error', {})]),
-            h.div(styled(h, rowActions()), [
-              actionButton(
-                {
-                  label: format(locale, 'common.tryAgain', {}),
-                  style: linkAction(),
-                  onClick: ShowMeMessage.ClickedRetry(),
-                },
-                h,
-              ),
-            ]),
-          ],
-          onData: () => [choiceButtons(model, 'show-me-setting', locale, h), showMeFailure(model, locale, h)],
-        }),
+        // The choices stand from the first paint, none pressed until the saved one is read, so nothing below moves.
+        ...(AsyncData.isFailure(model.preferences)
+          ? [
+              h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'common.error', {})]),
+              h.div(styled(h, rowActions()), [
+                actionButton(
+                  {
+                    label: format(locale, 'common.tryAgain', {}),
+                    style: linkAction(),
+                    onClick: ShowMeMessage.ClickedRetry(),
+                  },
+                  h,
+                ),
+              ]),
+            ]
+          : [choiceButtons(model, 'show-me-setting', locale, h), showMeFailure(model, locale, h)]),
       ],
     ),
 )

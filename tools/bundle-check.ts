@@ -101,7 +101,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 388,000 the same day for Try with my wardrobe (the house boards' plan, S3): the button on a public board
 // that shows generated pieces, its request and retry under the same operation, the count and the way to the new board,
 // and their words add 808: HEAD measured 387,150 in a clean worktree at d377d399 and 387,958 with them.
-if (initialGzip > 388000) throw new Error(`Initial browser assets exceed the 388,000-byte gzip budget: ${initialGzip}`)
+// Raised to 388,200 the same day so Show me's card never moves Home: the browser's cookie that it saw an answer, read
+// into the page's flags, and the Account page's choices standing from the first paint add 203 over 42da42aa's 387,958.
+if (initialGzip > 388200) throw new Error(`Initial browser assets exceed the 388,200-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -43,28 +43,30 @@ export const failure = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'showMe.failed', {})])
     : h.empty
 
-/** Home's card, above What's new, until the person answers or puts it away. */
-export const card = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  asks(model)
-    ? h.section(
-        [h.AriaLabelledBy('show-me-title'), ...styled(h, styles.card())],
-        [
-          h.h2([h.Id('show-me-title'), ...styled(h, styles.title())], [format(locale, 'showMe.title', {})]),
-          h.p(styled(h, styles.reason()), [format(locale, 'showMe.reason', {})]),
-          h.div(styled(h, styles.choices()), [
-            choiceButtons(model, 'show-me-title', locale, h),
-            actionButton(
-              {
-                label: format(locale, 'showMe.notNow', {}),
-                style: linkAction(),
-                isDisabled: Answer.guards.Saving(model.answer),
-                onClick: Message.ClickedNotNow(),
-              },
-              h,
-            ),
-          ]),
-          failure(model, locale, h),
-        ],
-      )
-    : h.empty,
+/** Home's card, above What's new, until the person answers or puts it away; drawn from the first paint unless this
+ * browser saw an answer, so its arrival never moves Home. */
+export const card = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly answeredHere: boolean }>(
+  (model, { locale, answeredHere }, h) =>
+    asks(model, answeredHere)
+      ? h.section(
+          [h.AriaLabelledBy('show-me-title'), ...styled(h, styles.card())],
+          [
+            h.h2([h.Id('show-me-title'), ...styled(h, styles.title())], [format(locale, 'showMe.title', {})]),
+            h.p(styled(h, styles.reason()), [format(locale, 'showMe.reason', {})]),
+            h.div(styled(h, styles.choices()), [
+              choiceButtons(model, 'show-me-title', locale, h),
+              actionButton(
+                {
+                  label: format(locale, 'showMe.notNow', {}),
+                  style: linkAction(),
+                  isDisabled: Answer.guards.Saving(model.answer),
+                  onClick: Message.ClickedNotNow(),
+                },
+                h,
+              ),
+            ]),
+            failure(model, locale, h),
+          ],
+        )
+      : h.empty,
 )

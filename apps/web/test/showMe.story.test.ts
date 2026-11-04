@@ -10,6 +10,7 @@ import {
   Message,
   OutMessage,
   PreferencesData,
+  RememberAnswered,
   SaveShowMe,
   shownChoice,
   update,
@@ -22,18 +23,40 @@ const saved = (showMe: Audience | null, showMeAsked: boolean) =>
   modifyFields(init(), { preferences: () => PreferencesData.Success({ data: { showMe, showMeAsked } }) })
 
 describe('Show me', () => {
+  test('asks from the first paint while the choice is read, unless this browser saw an answer', () => {
+    expect(asks(init(), false)).toBe(true)
+    expect(asks(init(), true)).toBe(false)
+    expect(asks(saved(null, false), true)).toBe(false)
+    expect(asks(saved('men', true), false)).toBe(false)
+  })
+
+  test('an answer given elsewhere is remembered in this browser', () => {
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededReadPreferences({ preferences: { showMe: 'women', showMeAsked: true } })),
+      model((current) => expect(asks(current, false)).toBe(false)),
+      Command.expectExact(RememberAnswered()),
+      Command.resolve(RememberAnswered, Message.CompletedRememberAnswered()),
+      message(Message.SucceededReadPreferences({ preferences: { showMe: null, showMeAsked: false } })),
+      Command.expectNone(),
+    )
+  })
+
   test('asks until answered; the answer is saved, and What’s new reads again in the new order', () => {
     story(
       update,
       given(saved(null, false)),
-      model((current) => expect(asks(current)).toBe(true)),
+      model((current) => expect(asks(current, false)).toBe(true)),
       message(Message.ClickedChoice({ showMe: 'men' })),
       Command.expectExact(SaveShowMe({ showMe: 'men' })),
       model((current) => expect(shownChoice(current)).toEqual(Option.some('men'))),
       Command.resolve(SaveShowMe, Message.SucceededSaveShowMe({ preferences: { showMe: 'men', showMeAsked: true } })),
       expectOutMessage(OutMessage.ChangedShowMe()),
+      // This browser remembers the answer, so its next Home is drawn without the card.
+      Command.resolve(RememberAnswered, Message.CompletedRememberAnswered()),
       model((current) => {
-        expect(asks(current)).toBe(false)
+        expect(asks(current, false)).toBe(false)
         expect(shownChoice(current)).toEqual(Option.some('men'))
       }),
     )
@@ -56,10 +79,10 @@ describe('Show me', () => {
       given(saved(null, false)),
       message(Message.ClickedNotNow()),
       Command.expectExact(SaveShowMe({ showMe: null })),
-      model((current) => expect(asks(current)).toBe(false)),
+      model((current) => expect(asks(current, false)).toBe(false)),
       Command.resolve(SaveShowMe, Message.FailedSaveShowMe()),
       expectNoOutMessage(),
-      model((current) => expect(asks(current)).toBe(false)),
+      model((current) => expect(asks(current, false)).toBe(false)),
     )
   })
 
@@ -70,7 +93,7 @@ describe('Show me', () => {
       message(Message.ClickedChoice({ showMe: 'women' })),
       Command.resolve(SaveShowMe, Message.FailedSaveShowMe()),
       model((current) => {
-        expect(asks(current)).toBe(true)
+        expect(asks(current, false)).toBe(true)
         expect(Answer.guards.Failed(current.answer)).toBe(true)
         expect(shownChoice(current)).toEqual(Option.some('all'))
       }),
@@ -85,6 +108,7 @@ describe('Show me', () => {
       message(Message.ClickedChoice({ showMe: 'all' })),
       Command.resolve(SaveShowMe, Message.SucceededSaveShowMe({ preferences: { showMe: 'all', showMeAsked: true } })),
       expectNoOutMessage(),
+      Command.resolve(RememberAnswered, Message.CompletedRememberAnswered()),
     )
   })
 })

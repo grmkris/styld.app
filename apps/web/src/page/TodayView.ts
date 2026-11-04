@@ -326,49 +326,52 @@ const seasonOf = (model: Model) => Option.flatMap(model.maybeDay, (day) => Optio
 /** Home (Eva's sketch, 4 November): the day, What's new along a strip, today's outfit, then Challenges, Pick up and
  * the rest of What's new. On a desktop the day heads the page, the strip runs across it, and the outfit stands beside
  * the rest. */
-export const view = Submodel.defineView<Model, Message, HomeData & { readonly locale: Locale }>(
-  (model, { locale, pieces, boards }, h) =>
-    h.main(
-      [h.Id('main'), ...styled(h, styles.page())],
-      [
-        h.div(styled(h, styles.head()), [headlineView(model.maybeDay, locale, h)]),
-        h.div(styled(h, styles.pick()), [
-          h.submodel({
-            slotId: 'tombola',
-            model: model.tombola,
-            view: TombolaView.view,
-            viewInputs: { pieces, maybeSeason: seasonOf(model), locale },
-            toParentMessage: (message) => Message.GotTombolaMessage({ message }),
-          }),
-        ]),
-        h.div(styled(h, styles.news()), [
-          h.submodel({
-            slotId: 'show-me',
-            model: model.showMe,
-            view: ShowMeView.card,
-            viewInputs: { locale },
-            toParentMessage: (message) => Message.GotShowMeMessage({ message }),
-          }),
-          h.submodel({
-            slotId: 'whats-new-strip',
-            model: model.whatsNew,
-            view: stripView,
-            viewInputs: { locale },
-            toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
-          }),
-        ]),
-        todayView(model, pieces, locale, h),
-        h.div(styled(h, styles.side()), [
-          challengesView(locale, h),
-          pickUpView(model.pickUp, { pieces, boards }, locale, h),
-          h.submodel({
-            slotId: 'whats-new-earlier',
-            model: model.whatsNew,
-            view: earlierView,
-            viewInputs: { locale },
-            toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
-          }),
-        ]),
-      ],
-    ),
+export const view = Submodel.defineView<
+  Model,
+  Message,
+  HomeData & { readonly locale: Locale; readonly showMeAnswered: boolean }
+>((model, { locale, pieces, boards, showMeAnswered }, h) =>
+  h.main(
+    [h.Id('main'), ...styled(h, styles.page())],
+    [
+      h.div(styled(h, styles.head()), [headlineView(model.maybeDay, locale, h)]),
+      h.div(styled(h, styles.pick()), [
+        h.submodel({
+          slotId: 'tombola',
+          model: model.tombola,
+          view: TombolaView.view,
+          viewInputs: { pieces, maybeSeason: seasonOf(model), locale },
+          toParentMessage: (message) => Message.GotTombolaMessage({ message }),
+        }),
+      ]),
+      h.div(styled(h, styles.news()), [
+        h.submodel({
+          slotId: 'show-me',
+          model: model.showMe,
+          view: ShowMeView.card,
+          viewInputs: { locale, answeredHere: showMeAnswered },
+          toParentMessage: (message) => Message.GotShowMeMessage({ message }),
+        }),
+        h.submodel({
+          slotId: 'whats-new-strip',
+          model: model.whatsNew,
+          view: stripView,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
+        }),
+      ]),
+      todayView(model, pieces, locale, h),
+      h.div(styled(h, styles.side()), [
+        challengesView(locale, h),
+        pickUpView(model.pickUp, { pieces, boards }, locale, h),
+        h.submodel({
+          slotId: 'whats-new-earlier',
+          model: model.whatsNew,
+          view: earlierView,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
+        }),
+      ]),
+    ],
+  ),
 )
