@@ -160,6 +160,8 @@ const makeButton = (model: Model, anchor: Option.Option<Piece>, locale: Locale, 
   )
 }
 
+/** The piece step: what to choose from scrolls, and the season and Make the outfits stay under it in view (Eva's
+ * report of 4 November 2026: the button sat under the whole wardrobe). */
 const anchorView = (
   model: Model,
   pieces: ReadonlyArray<Piece>,
@@ -172,24 +174,28 @@ const anchorView = (
   )
   const anchor = Option.flatMap(model.maybeAnchor, (id) => Array.findFirst(ready, (piece) => piece.id === id))
   return [
-    h.button(
-      [h.Type('button'), h.OnClick(Message.ClickedTemplates()), ...styled(h, cx(linkAction(), styles.back()))],
-      [backIcon(h), format(locale, 'boards.templates', {})],
-    ),
-    h.p(styled(h, boardStyles.meta()), [format(locale, 'boards.pickAnchor', {})]),
-    groupsView(model, ready, locale, h),
-    Array.match(shown, {
-      onEmpty: () =>
-        h.p([h.Role('status'), ...styled(h, boardStyles.meta())], [format(locale, 'board.wardrobeEmpty', {})]),
-      onNonEmpty: (offered) =>
-        h.ul(
-          styled(h, boardStyles.pickGrid()),
-          offered.map((piece) => anchorButton(piece, model, locale, h)),
-        ),
-    }),
-    seasonsView(model, locale, h),
-    makeButton(model, anchor, locale, h),
-    problemView(model, locale, h),
+    h.div(styled(h, cx(boardStyles.sheetBody(), styles.choices())), [
+      h.button(
+        [h.Type('button'), h.OnClick(Message.ClickedTemplates()), ...styled(h, cx(linkAction(), styles.back()))],
+        [backIcon(h), format(locale, 'boards.templates', {})],
+      ),
+      h.p(styled(h, boardStyles.meta()), [format(locale, 'boards.pickAnchor', {})]),
+      groupsView(model, ready, locale, h),
+      Array.match(shown, {
+        onEmpty: () =>
+          h.p([h.Role('status'), ...styled(h, boardStyles.meta())], [format(locale, 'board.wardrobeEmpty', {})]),
+        onNonEmpty: (offered) =>
+          h.ul(
+            styled(h, boardStyles.pickGrid()),
+            offered.map((piece) => anchorButton(piece, model, locale, h)),
+          ),
+      }),
+    ]),
+    h.div(styled(h, styles.footer()), [
+      seasonsView(model, locale, h),
+      makeButton(model, anchor, locale, h),
+      problemView(model, locale, h),
+    ]),
   ]
 }
 
@@ -205,19 +211,15 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale
             Step.guards.Templates(model.step) ? 'boards.chooserTitle' : 'boards.templateOutfits',
             {},
           ),
-          body: () => [
-            h.div(
-              styled(h, boardStyles.sheetBody()),
-              Step.guards.Templates(model.step)
-                ? templatesView(locale, h)
-                : anchorView(
-                    model,
-                    Option.getOrElse(AsyncData.getData(pieces), () => []),
-                    locale,
-                    h,
-                  ),
-            ),
-          ],
+          body: () =>
+            Step.guards.Templates(model.step)
+              ? [h.div(styled(h, boardStyles.sheetBody()), templatesView(locale, h))]
+              : anchorView(
+                  model,
+                  Option.getOrElse(AsyncData.getData(pieces), () => []),
+                  locale,
+                  h,
+                ),
           toParentMessage: (message) => Message.GotSheetMessage({ message }),
           locale,
         },
