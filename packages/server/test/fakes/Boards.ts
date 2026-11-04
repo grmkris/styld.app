@@ -20,6 +20,7 @@ export const unusedBoards: Boards['Service'] = {
   seededOutfitBoard: notUsed,
   anotherOutfit: notUsed,
   anotherLayout: notUsed,
+  relayoutCentred: notUsed,
   addBoardImage: notUsed,
   addGeneratedImage: notUsed,
   addPhotoImage: notUsed,

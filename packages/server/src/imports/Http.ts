@@ -1,6 +1,7 @@
-import { StyldApi } from '@styld/protocol'
+import { CurrentAccount, StyldApi } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
+import { Boards } from '../boards/Boards.ts'
 import { Captures } from '../capture/Service.ts'
 import { Imports } from './Imports.ts'
 
@@ -31,6 +32,23 @@ export const pictureBackfillHandlers = HttpApiBuilder.group(StyldApi, 'pictureBa
             payload.backs ?? false,
           ),
           (done) => ({ accountId, ...done }),
+        ),
+      ),
+    )
+  }),
+)
+
+/** The operator's relayout of an account's outfit boards, which the operator's script calls: the account the email
+ * signs in to, then its boards laid out again as that account (`boards/Template.ts` › `relayoutCentred`). */
+export const boardRelayoutHandlers = HttpApiBuilder.group(StyldApi, 'boardRelayout', (handlers) =>
+  Effect.gen(function* () {
+    const imports = yield* Imports
+    const boards = yield* Boards
+    return handlers.handle('relayoutBoards', ({ payload }) =>
+      Effect.flatMap(imports.accountOf(payload.email), (accountId) =>
+        boards.relayoutCentred().pipe(
+          Effect.map((done) => ({ accountId, ...done })),
+          Effect.provideService(CurrentAccount, { accountId, via: 'assistant' }),
         ),
       ),
     )

@@ -12,6 +12,7 @@ export default {
         'tools/provider-live.ts',
         'tools/retype-pieces.ts',
         'tools/backfill-pictures.ts',
+        'tools/relayout-boards.ts',
         'tools/grant-membership.ts',
         'tools/retype-tops.ts',
         'tools/retype-sport.ts',

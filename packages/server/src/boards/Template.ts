@@ -361,6 +361,40 @@ const anotherLayout = Effect.fn('Styld.Boards.anotherLayout')(function* (boardId
   return yield* unavailable()
 })
 
+/** Every "One piece, many outfits" board of the account laid out again in its own layout, its outfits kept and
+ * centred in their places (Eva's report of 4 November 2026: holes in the table), for the operator's backfill
+ * (`tools/relayout-boards.ts`). Once per board: its receipt is kept, so a repeat lays out nothing twice. A board saved
+ * meanwhile or whose anchor is gone is skipped and counted. */
+const relayoutCentred = Effect.fn('Styld.Boards.relayoutCentred')(function* () {
+  const { accountId } = yield* CurrentAccount
+  const store = yield* BoardStore
+  const boards = (yield* stored(store.listBoards(accountId))).filter(
+    (board) => board.template === 'outfitsAround' && board.anchorPieceId !== null,
+  )
+  const outcomes = yield* Effect.forEach(boards, (board) =>
+    Effect.gen(function* () {
+      const operation = yield* identify({
+        accountId,
+        operationId: `relayout-${board.id}`,
+        command: 'relayoutCentred',
+        input: [board.id],
+      })
+      if (Option.isSome(yield* priorOf(operation))) return false
+      const target = yield* templateBoard(accountId, board.id)
+      const change = yield* relayoutOf(operation, target, layoutOf(target.board), Option.none())
+      return Option.isSome(yield* Effect.option(store.relayOut(change)))
+    }).pipe(
+      Effect.catchTags({
+        NotFound: () => Effect.succeed(false),
+        OutfitRefused: () => Effect.succeed(false),
+        OperationConflict: () => Effect.succeed(false),
+      }),
+    ),
+  )
+  const relaid = outcomes.filter(Boolean).length
+  return { boards: boards.length, relaid, skipped: boards.length - relaid }
+})
+
 export const template = Effect.map(Effect.context<BoardServices | Outfits>(), (context) => ({
   /** Start a "One piece, many outfits" board around one of the account's ready pieces, once per operation id: a layout
    * by chance, as many complete outfits by Fast as it holds, laid out around the piece on sand paper, every piece pinned.
@@ -445,4 +479,6 @@ export const template = Effect.map(Effect.context<BoardServices | Outfits>(), (c
   /** The board's outfits laid out in another layout (`anotherLayout`). */
   anotherLayout: (boardId: BoardId, input: AnotherLayout) =>
     anotherLayout(boardId, input).pipe(Effect.provide(context)),
+  /** Every "One piece, many outfits" board of the account laid out again (`relayoutCentred`). */
+  relayoutCentred: () => relayoutCentred().pipe(Effect.provide(context)),
 }))

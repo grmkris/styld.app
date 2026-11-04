@@ -44,6 +44,7 @@ const unkept = new Map([
     'pictureBackfill.backfillPictures',
     "the operator's: each run queues what is still missing, and a piece's picture row is its receipt",
   ],
+  ['boardRelayout.relayoutBoards', "the operator's: each board is laid out once, under a receipt of its own"],
 ])
 
 describe('StyldApi', () => {

@@ -27,6 +27,7 @@ import { PreferencesApi } from './Preferences.ts'
 import { TasteApi } from './Taste.ts'
 import { TryBoardApi } from './TryBoard.ts'
 import { ImportApi } from './Import.ts'
+import { BoardRelayoutApi } from './BoardRelayout.ts'
 import { PictureBackfillApi } from './PictureBackfill.ts'
 import {
   CreateReport,
@@ -486,6 +487,7 @@ export class StyldApi extends HttpApi.make('styld')
   .add(PhotoApi)
   .add(ImportApi)
   .add(PictureBackfillApi)
+  .add(BoardRelayoutApi)
   .add(MembershipGrantApi)
   .add(GalleryOperatorApi)
   .add(SeedApi)

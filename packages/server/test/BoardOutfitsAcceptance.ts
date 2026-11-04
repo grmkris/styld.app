@@ -3,6 +3,7 @@ import { Schema } from 'effect'
 import {
   Board,
   type BoardOutfit,
+  BoardsRelaid,
   boardHeight,
   boardWidth,
   KeptLook,
@@ -17,6 +18,7 @@ import {
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 import { addedPiece } from './GalleryAcceptance.ts'
 import { ready } from './OutfitAcceptance.ts'
+import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 /** Test-only acceptance: outfits put together on a board and kept as looks pinned on it (T-16), through the public
  * edge. */
@@ -161,7 +163,30 @@ const verifyOutfitBoard = async (origin: string, { owner, other }: { readonly ow
   expect((await boardOf(await send(owner, '/api/boards/outfits', 'POST', create))).id).toBe(board.id)
   const theirs = { ...create, operationId: 'native-ob-theirs' }
   expect((await send(other, '/api/boards/outfits', 'POST', theirs)).status).toBe(404)
-  return { board, wardrobe }
+  return { board: await verifyRelayout(origin, owner, board), wardrobe }
+}
+
+/** The operator's relayout (Eva's report of 4 November): the account's outfit board laid out again in its own layout,
+ * its outfits kept, once per board; to a signed-in person it is not there. */
+const verifyRelayout = async (origin: string, owner: Call, board: Board) => {
+  const email = { operationId: 'native-ob-relayout', email: 'native-outfit-board@example.invalid' }
+  expect((await send(owner, '/api/operator/boards/relayout', 'POST', email)).status).toBe(404)
+  const operator = operatorClient(origin, nativeOperatorToken)
+  const relaid = async () => {
+    const response = await send(operator, '/api/operator/boards/relayout', 'POST', email)
+    expect(response.status).toBe(200)
+    return Schema.decodeUnknownSync(BoardsRelaid)(await response.json())
+  }
+  expect(await relaid()).toMatchObject({ boards: 1, relaid: 1, skipped: 0 })
+  const after = await boardOf(await owner(`/api/boards/${board.id}`))
+  expect(after.version).toBe(board.version + 1)
+  expect(after.outfitsAround?.layout).toBe(board.outfitsAround?.layout)
+  expect(outfitsOf(after).map(keyOf)).toEqual(outfitsOf(board).map(keyOf))
+  expectLaidOut(after, board.outfitsAround?.anchor?.id ?? '')
+  // Again: laid out once.
+  expect(await relaid()).toMatchObject({ boards: 1, relaid: 0, skipped: 1 })
+  expect((await boardOf(await owner(`/api/boards/${board.id}`))).version).toBe(after.version)
+  return after
 }
 
 /** Another outfit in place of one, none of those shown, its cluster replaced where it was even after the table was
