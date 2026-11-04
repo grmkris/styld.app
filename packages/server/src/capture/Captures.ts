@@ -220,6 +220,20 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
   }, Effect.provide(context)),
 }))
 
+/** What the review offers for a found piece: the decision model's suggestion, with the type it was torn with when
+ * that differs from the first. */
+export const suggestionOfRow = (row: DetectionRow) => ({
+  type: row.suggestedType,
+  ...(row.suggestedAlternative === null || row.suggestedAlternative === row.suggestedType
+    ? {}
+    : { alternative: row.suggestedAlternative }),
+  colours: row.suggestedColours,
+  seasons: row.suggestedSeasons,
+  rainproof: row.suggestedRainproof,
+  occasions: row.suggestedOccasions,
+  pattern: row.suggestedPattern,
+})
+
 const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings: number) {
   const signed = yield* SignedMedia
   const images: Record<string, string> = {}
@@ -248,14 +262,7 @@ const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings:
     ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
     // Under the bar for one whole garment (`verdictOf`), it was offered unticked as part of one.
     partial: row.whole !== null && verdictOf(row.whole) !== 'preselect',
-    suggestion: {
-      type: row.suggestedType,
-      colours: row.suggestedColours,
-      seasons: row.suggestedSeasons,
-      rainproof: row.suggestedRainproof,
-      occasions: row.suggestedOccasions,
-      pattern: row.suggestedPattern,
-    },
+    suggestion: suggestionOfRow(row),
     ...(Object.keys(images).length === 0 ? {} : { images }),
   }
 })

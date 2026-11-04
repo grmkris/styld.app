@@ -140,6 +140,9 @@ export const detections = sqliteTable(
     confidence: real('confidence'),
     preselected: integer('preselected', { mode: 'boolean' }).notNull(),
     suggestedType: text('suggested_type', { enum: PieceType.literals }),
+    /** The type the decision model was torn with, offered beside `suggestedType` as one tap (5 November). Added in
+     * place without a CHECK, so adding a garment type never rebuilds the table for it; the server decodes it. */
+    suggestedAlternative: text('suggested_alternative', { enum: PieceType.literals }),
     suggestedColours: text('suggested_colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     suggestedSeasons: text('suggested_seasons', { mode: 'json' })
       .notNull()

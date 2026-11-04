@@ -8,7 +8,7 @@ import { pngSize } from '../src/providers/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/providers/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/kernel/Metrics.ts'
-import { cutterFor, holding, kindPrompt, pieceOfKind, verdictOf } from '../src/capture/GarmentRules.ts'
+import { alternativeOf, cutterFor, holding, kindPrompt, pieceOfKind, verdictOf } from '../src/capture/GarmentRules.ts'
 import { decodePng, opaqueBounds } from '@styld/imaging'
 import { type Box, encodePng, type Rgba } from '@styld/imaging'
 import { cutOut, fitMask } from '../src/capture/Pixels.ts'
@@ -284,6 +284,8 @@ describe('Clef-flash', () => {
     expect(suggestion).toEqual(
       Exit.succeed({
         type: 'jeans',
+        // Torn between jeans (0.5) and trousers (0.3): the review offers trousers as one tap.
+        alternative: 'trousers',
         confidence: 0.8,
         colours: ['navy', 'white'],
         // Cold weather is autumn and winter (T-12); made for rain.
@@ -340,6 +342,46 @@ describe('Clef-flash', () => {
 
 /** A route with nobody in the picture. */
 const route = (garments: 'none' | 'one' | 'several', confidence: number) => ({ garments, confidence, person: 0.02 })
+
+describe('a torn answer', () => {
+  test('offers the runner-up only when the first type is under 0.75 and the runner-up at least 0.25', () => {
+    const torn = alternativeOf('trousers', [
+      ['trousers', 0.5],
+      ['sportBottoms', 0.4],
+      ['jeans', 0.1],
+    ])
+    expect(torn).toEqual(Option.some('sportBottoms'))
+    // Sure of the first type.
+    expect(
+      alternativeOf('skirts', [
+        ['skirts', 0.8],
+        ['shorts', 0.2],
+      ]),
+    ).toEqual(Option.none())
+    // Unsure, but spread over many types: no one runner-up is worth a tap.
+    expect(
+      alternativeOf('shorts', [
+        ['shorts', 0.4],
+        ['skirts', 0.2],
+        ['sportBottoms', 0.2],
+        ['loungewear', 0.2],
+      ]),
+    ).toEqual(Option.none())
+    // The bars are inclusive for the runner-up and exclusive for the first.
+    expect(
+      alternativeOf('sportsBras', [
+        ['sportsBras', 0.74],
+        ['sleevelessTops', 0.25],
+      ]),
+    ).toEqual(Option.some('sleevelessTops'))
+    expect(
+      alternativeOf('sportsBras', [
+        ['sportsBras', 0.75],
+        ['sleevelessTops', 0.25],
+      ]),
+    ).toEqual(Option.none())
+  })
+})
 
 describe('photo routing', () => {
   test('one garment it is sure of goes to background removal; several, or an unsure answer, to SAM', () => {

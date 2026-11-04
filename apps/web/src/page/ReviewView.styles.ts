@@ -99,6 +99,15 @@ export const caption = style({
 })
 export const captionText = style({ display: 'grid', minInlineSize: '0', fontSize: 'label', fontWeight: 600 })
 export const captionName = style({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+/** The type the decision model was torn with, one tap under a found piece's name ("Or Leggings & sport shorts?"): a
+ * chip at the touch target's full height, its words cut short rather than widening the tile. */
+export const otherType = style({
+  justifySelf: 'start',
+  maxInlineSize: '100%',
+  minBlockSize: '44px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+})
 export const captionKind = style({ fontSize: 'small', fontWeight: 400, color: 'ink2' })
 export const edit = style({
   display: 'inline-grid',

@@ -9,6 +9,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { chip } from '../Controls.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { backIcon, checkIcon, editIcon, loader } from '../Icon.ts'
 import { intlLocale } from '../Locale.ts'
@@ -17,7 +18,7 @@ import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { type PieceCategory, piecePickers } from './PieceFields.ts'
-import { type Decision, keptOf, Message, type Model, Saving } from './Review.ts'
+import { type Decision, keptOf, Message, type Model, otherTypeOf, Saving } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
 import { barStart, round } from './PageBar.styles.ts'
@@ -104,10 +105,34 @@ const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBu
             h,
           ),
         ]),
+        otherTypeChip(detection, decision, locale, h),
       ]),
     ],
   )
 }
+
+/** When the decision model was torn between two types, the other one, a tap away: choosing it keeps the piece. */
+const otherTypeChip = (
+  detection: Detection,
+  decision: Decision | undefined,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  Option.match(otherTypeOf(detection, decision), {
+    onNone: () => h.empty,
+    onSome: (type) =>
+      Button.view(
+        {
+          onClick: Message.ChoseOtherType({ detectionId: detection.id, type }),
+          toView: (attributes) =>
+            h.button(
+              [...attributes.button, ...styled(h, cx(chip(), styles.otherType()))],
+              [format(locale, 'capture.orType', { type: format(locale, kindName({ type }), {}) })],
+            ),
+        },
+        h,
+      ),
+  })
 
 const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(

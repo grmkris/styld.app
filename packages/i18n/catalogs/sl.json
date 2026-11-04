@@ -721,6 +721,7 @@
     "alreadyHave": "Že v tvoji garderobi?",
     "alreadyHaveHint": "Videti je kot ta kos, ki ga že imaš. Označi ga, da obdržiš oba.",
     "alreadyHaveImage": "Kos, ki ga že imaš",
+    "orType": "Ali {type}?",
     "betterLook": "Potrebuje boljši posnetek",
     "betterLookHint": "Viden je le del. Dvigni ga ali ga položi in ga dodaj znova.",
     "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",

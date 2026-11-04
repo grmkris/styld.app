@@ -69,6 +69,8 @@ export const CaptureCreated = Schema.Struct({ captureId: CaptureId })
 /** What the decision model suggested for a piece; the person confirms or changes it. */
 export const Suggestion = Schema.Struct({
   type: Schema.NullOr(PieceType),
+  /** The type the model was torn with: the review offers it beside `type` as one tap, rather than picking silently. */
+  alternative: Schema.optionalKey(PieceType),
   colours: Colours,
   seasons: Seasons,
   rainproof: Schema.Boolean,

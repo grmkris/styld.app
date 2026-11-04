@@ -77,6 +77,7 @@ export const Message = defineMessageUnion({
   ClickedEdit: { detectionId: Schema.String },
   ClickedDoneEditing: {},
   ChoseType: { type: PieceType },
+  ChoseOtherType: { detectionId: Schema.String, type: PieceType },
   ToggledColour: { colour: Colour },
   ToggledWorn: { when: WornWhen },
   UpdatedCategory: { value: Schema.String },
@@ -289,6 +290,28 @@ const decide = (model: Model, change: (decision: Decision) => Decision): UpdateR
 const changed = (model: Model, change: (details: Details) => Details): UpdateReturn =>
   decide(model, (decision) => ({ ...decision, details: change(decision.details) }))
 
+/** The type a found piece's card offers as one tap when the decision model was torn between two: the one not chosen
+ * now, of the first type and the runner-up; none once the person chose another type themselves. */
+export const otherTypeOf = (
+  detection: TrayContract['captures'][number]['detections'][number],
+  decision: Decision | undefined,
+): Option.Option<PieceType> => {
+  const { type, alternative } = detection.suggestion
+  if (type === null || alternative === undefined || decision === undefined) return Option.none()
+  return Option.flatMap(decision.details.type, (chosen) => {
+    if (chosen === type) return Option.some(alternative)
+    return chosen === alternative ? Option.some(type) : Option.none()
+  })
+}
+
+/** Choosing the other type on a found piece's card: as the type picker would, it keeps the piece. */
+const choseOtherType = (model: Model, detectionId: string, type: PieceType): UpdateReturn => {
+  const decision = model.decisions[detectionId]
+  if (decision === undefined) return { model }
+  const chosen = { ...decision, details: changeDetails.type(type)(decision.details), keep: true }
+  return { model: modifyFields(model, { decisions: (decisions) => ({ ...decisions, [detectionId]: chosen }) }) }
+}
+
 /** Ticking a piece without a type opens it, so the person can say what it is. */
 const toggled = (model: Model, detectionId: string): UpdateReturn => {
   const decision = model.decisions[detectionId]
@@ -360,6 +383,8 @@ const editHandlers = (model: Model) => ({
 /** Adding the kept pieces, and what the server answered. */
 const savingHandlers = (model: Model) => ({
   ToggledKeep: ({ detectionId }: { readonly detectionId: string }) => toggled(model, detectionId),
+  ChoseOtherType: ({ detectionId, type }: { readonly detectionId: string; readonly type: PieceType }) =>
+    choseOtherType(model, detectionId, type),
   ClickedAdd: () => clickedAdd(model),
   SucceededReview: ({ count }: { readonly count: number }): UpdateReturn => ({
     model: modifyFields(model, { saving: () => Saving.Idle() }),

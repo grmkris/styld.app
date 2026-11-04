@@ -305,6 +305,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.linkProblem.slowDown': Readonly<Record<string, never>>
   'capture.linkTitle': Readonly<Record<string, never>>
   'capture.notSupported': { readonly name: string | number }
+  'capture.orType': { readonly type: string | number }
   'capture.preparingVideo': Readonly<Record<string, never>>
   'capture.problem.dailyLimit': Readonly<Record<string, never>>
   'capture.problem.network': Readonly<Record<string, never>>
@@ -1175,4 +1176,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '501bc4922b4f780a1f5408116678e32dfa8b349ee482c471a15731af0b51eccd'
+export const catalogVersion = 'bd90db99eaaaa22e2ee3d7f17de5878f0dac835b287dd0a8735b6010f33b1a8d'

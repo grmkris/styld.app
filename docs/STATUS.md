@@ -148,6 +148,24 @@ an upside-down cut-out stayed upside down.
   - Eva's look at her top on her phone.
   - From 900 px up, a 90° or 270° turn overflows the non-square picture box, as the photo and cut-out already do.
 
+## Ask instead of guess: the review offers the type Clef was torn with (5 November, on main, not deployed)
+
+Owner (5 November), after Eva's leggings, sports bras and skirts: an audit of her 393 pieces showed Clef right on
+shape and torn on what a piece is for (sport or everyday, loungewear or everyday). Where it is torn, the review now
+asks with one tap instead of picking silently.
+
+- **Rule** (`capture/GarmentRules.ts` › `alternativeOf`, bars in `Policy.ts` › `alternative`): the runner-up type is
+  offered when the first type's own share is under 0.75 and the runner-up's at least 0.25. `confidence` (the group's
+  share) and every preselection bar are unchanged. Tested in `CaptureProviders.test.ts`.
+- **Stored** on the detection: migration `20261104224356_suggested_alternative` adds `detections.suggested_alternative`
+  in place (no CHECK, so adding a type never rebuilds for it); a delivery recorded before it decodes as none.
+- **Tray**: `Suggestion.alternative` (optional in the protocol) reaches the review item (`Captures.ts` ›
+  `suggestionOfRow`, `TornSuggestion.test.ts`). The found piece's card shows "Or Leggings & sport shorts?" (sl "Ali …?")
+  as a 44px chip under its name; a tap sets the type as the type picker does and keeps the piece, and the chip then
+  offers the first type back; a type chosen in the editor leaves no chip (`review.story.test.ts`).
+- Photo garments (My Gallery) carry none: they are matched to pieces, not typed. Bundle budget 418,800 (418,727).
+- **Open:** native run, deploy, and seeing a torn answer on a real capture.
+
 ## A piece is sorted beside the photo it was cut from (4 November, on main, not deployed)
 
 Eva (4 November): leggings, sports bras, skirts and "a bit of everything" were sorted into the wrong type. Clef's
