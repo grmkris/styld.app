@@ -350,7 +350,7 @@
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",
-    "feedEmpty": "No public boards yet. When there are, you'll find them in Explore.",
+    "feedEmpty": "No public boards yet.",
     "retry": "Try again",
     "title": "A wardrobe shaped by you.",
     "description": "Photograph your clothes and Styld cuts out every piece, lays out what to wear today and keeps boards of what you love.",
@@ -359,7 +359,8 @@
     "signIn": "Sign in",
     "contact": "Contact",
     "feedFailed": "The boards didn't load.",
-    "seeAll": "See all boards in Explore"
+    "edits": "Edits from Styld",
+    "newest": "Newest boards"
   },
   "studio": {
     "add": "Add",
@@ -463,7 +464,7 @@
     "publishFirst": "Publish your profile first to make this public",
     "check": {
       "pending": "Styld is checking it. Others see it once the check is done.",
-      "unsure": "On your profile and at its link, but kept out of Explore and search.",
+      "unsure": "On your profile and at its link, but kept out of What’s new and search.",
       "failed": "Hidden from others: {reason}.",
       "hidden": "Hidden from others after reports.",
       "reasons": {
@@ -515,33 +516,7 @@
   },
   "follow": {
     "follow": "Follow",
-    "following": "Following",
-    "failed": "Couldn't update who you follow. Try again."
-  },
-  "explore": {
-    "title": "Explore",
-    "edits": "Edits from Styld",
-    "featured": "Featured",
-    "people": "People to follow",
-    "newest": "Newest boards",
-    "allMoods": "All",
-    "empty": "Nothing public here yet.",
-    "moods": {
-      "knitwear": "Knitwear",
-      "rain": "Rain",
-      "office": "Office",
-      "weekend": "Weekend",
-      "evening": "Evening",
-      "sport": "Sport"
-    },
-    "moodsLabel": "Moods for Explore",
-    "noneInMood": "No public boards in this mood yet.",
-    "searchLabel": "Search people and boards",
-    "clearSearch": "Clear the search",
-    "searching": "Searching…",
-    "resultsFor": "Found for “{query}”",
-    "noResults": "No people or boards match “{query}”.",
-    "searchFailed": "The search didn’t go through."
+    "following": "Following"
   },
   "feed": {
     "save": "Save"
@@ -862,7 +837,16 @@
     "outfits_slowDown": "Too many at once. Try again in a moment.",
     "outfits_failed": "The board wasn’t made. Try again.",
     "addTop": "Add a top",
-    "outfitsBoardName": "{piece}: outfits"
+    "outfitsBoardName": "{piece}: outfits",
+    "moods": {
+      "knitwear": "Knitwear",
+      "rain": "Rain",
+      "office": "Office",
+      "weekend": "Weekend",
+      "evening": "Evening",
+      "sport": "Sport"
+    },
+    "moodsLabel": "Moods, for search"
   },
   "outfits": {
     "title": "Outfits",

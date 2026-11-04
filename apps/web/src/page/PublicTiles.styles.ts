@@ -40,3 +40,32 @@ export const credit = style({
   fontSize: 'small',
   color: 'ink2',
 })
+
+/** Public boards as cards in a grid: the landing's and Ask's people-and-boards results. */
+export const boards = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
+  gap: 'cozy',
+  margin: '0',
+  padding: '0',
+  listStyle: 'none',
+})
+/** People in one row that scrolls sideways (Ask's results). */
+export const people = style({
+  display: 'flex',
+  gap: 'related',
+  margin: '0',
+  padding: '0',
+  listStyle: 'none',
+  overflowX: 'auto',
+})
+export const person = style({
+  display: 'grid',
+  justifyItems: 'center',
+  gap: 'tight',
+  minInlineSize: '96px',
+  color: 'ink',
+  textDecorationLine: 'none',
+})
+export const personName = style({ fontSize: 'label', fontWeight: 600, textAlign: 'center' })
+export const handle = style({ fontSize: 'small', color: 'ink2' })

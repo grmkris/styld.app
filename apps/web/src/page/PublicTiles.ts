@@ -138,3 +138,20 @@ export const creditedBoardCard = <Message>(
     locale,
     h,
   )
+
+/** A person: their initials, name and handle, linking to their profile. */
+export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
+  h.keyed('li')(
+    person.handle,
+    [],
+    [
+      h.a(
+        [h.Href(personRouter({ handle: person.handle })), ...styled(h, styles.person())],
+        [
+          avatar(person.name, person.tone, 'medium', h),
+          h.span(styled(h, styles.personName()), [person.name]),
+          h.span(styled(h, styles.handle()), [`@${person.handle}`]),
+        ],
+      ),
+    ],
+  )

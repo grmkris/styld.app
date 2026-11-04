@@ -87,7 +87,7 @@ const dressed = () =>
   )
 
 describe('Home', () => {
-  test('the bar holds Home, Ask, Wardrobe and the Lab, and Explore is the round in Home’s head', () => {
+  test('the bar holds Home, Ask, Wardrobe and the Lab, and Home’s head holds only the day', () => {
     scene(
       { update, view },
       given(home(0, Option.none())),
@@ -99,7 +99,7 @@ describe('Home', () => {
         expect(role('link', { name: 'Lab' })).toHaveAttr('href', '/boards'),
         expect(role('link', { name: 'Explore' })).not.toExist(),
       ),
-      inside(role('main'), expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore')),
+      inside(role('main'), expect(role('link', { name: 'Explore' })).not.toExist()),
     )
   })
 

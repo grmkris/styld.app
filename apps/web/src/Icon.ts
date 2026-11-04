@@ -27,7 +27,6 @@ import {
   CaretLeftRegular,
   CheckRegular,
   CircleNotchRegular,
-  CompassLight,
   HouseLight,
   ImageRegular,
   LinkRegular,
@@ -108,7 +107,6 @@ export const favouriteOnIcon = control(HeartFill)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)
-export const exploreTabIcon = tab(CompassLight)
 export const wardrobeTabIcon = tab(TShirtLight)
 export const askTabIcon = tab(SparkleLight)
 export const boardsTabIcon = tab(SquaresFourLight)

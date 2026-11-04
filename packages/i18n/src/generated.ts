@@ -182,6 +182,13 @@ export interface MessageArgumentsByKey<_T = string> {
   'boards.loading': Readonly<Record<string, never>>
   'boards.makeOutfits': Readonly<Record<string, never>>
   'boards.making': Readonly<Record<string, never>>
+  'boards.moods.evening': Readonly<Record<string, never>>
+  'boards.moods.knitwear': Readonly<Record<string, never>>
+  'boards.moods.office': Readonly<Record<string, never>>
+  'boards.moods.rain': Readonly<Record<string, never>>
+  'boards.moods.sport': Readonly<Record<string, never>>
+  'boards.moods.weekend': Readonly<Record<string, never>>
+  'boards.moodsLabel': Readonly<Record<string, never>>
   'boards.new': Readonly<Record<string, never>>
   'boards.outfitsBoardName': { readonly piece: string | number }
   'boards.outfits_failed': Readonly<Record<string, never>>
@@ -305,40 +312,19 @@ export interface MessageArgumentsByKey<_T = string> {
   'connect.copied': Readonly<Record<string, never>>
   'connect.copy': Readonly<Record<string, never>>
   'connect.copyFailed': Readonly<Record<string, never>>
-  'explore.allMoods': Readonly<Record<string, never>>
-  'explore.clearSearch': Readonly<Record<string, never>>
-  'explore.edits': Readonly<Record<string, never>>
-  'explore.empty': Readonly<Record<string, never>>
-  'explore.featured': Readonly<Record<string, never>>
-  'explore.moods.evening': Readonly<Record<string, never>>
-  'explore.moods.knitwear': Readonly<Record<string, never>>
-  'explore.moods.office': Readonly<Record<string, never>>
-  'explore.moods.rain': Readonly<Record<string, never>>
-  'explore.moods.sport': Readonly<Record<string, never>>
-  'explore.moods.weekend': Readonly<Record<string, never>>
-  'explore.moodsLabel': Readonly<Record<string, never>>
-  'explore.newest': Readonly<Record<string, never>>
-  'explore.noResults': { readonly query: string | number }
-  'explore.noneInMood': Readonly<Record<string, never>>
-  'explore.people': Readonly<Record<string, never>>
-  'explore.resultsFor': { readonly query: string | number }
-  'explore.searchFailed': Readonly<Record<string, never>>
-  'explore.searchLabel': Readonly<Record<string, never>>
-  'explore.searching': Readonly<Record<string, never>>
-  'explore.title': Readonly<Record<string, never>>
   'feed.save': Readonly<Record<string, never>>
-  'follow.failed': Readonly<Record<string, never>>
   'follow.follow': Readonly<Record<string, never>>
   'follow.following': Readonly<Record<string, never>>
   'lab.title': Readonly<Record<string, never>>
   'landing.browse': Readonly<Record<string, never>>
   'landing.contact': Readonly<Record<string, never>>
   'landing.description': Readonly<Record<string, never>>
+  'landing.edits': Readonly<Record<string, never>>
   'landing.feedDescription': Readonly<Record<string, never>>
   'landing.feedEmpty': Readonly<Record<string, never>>
   'landing.feedFailed': Readonly<Record<string, never>>
+  'landing.newest': Readonly<Record<string, never>>
   'landing.retry': Readonly<Record<string, never>>
-  'landing.seeAll': Readonly<Record<string, never>>
   'landing.signIn': Readonly<Record<string, never>>
   'landing.start': Readonly<Record<string, never>>
   'landing.title': Readonly<Record<string, never>>
@@ -908,4 +894,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '0e89153f79f3c26aca2aecf359e7e8cd22bb8941671d7fc98812668e58a9d0fe'
+export const catalogVersion = '2b12f91c0558970e8c3d2c21df51bc862e41d6ee6e0d3ed6eeba6a23c8fa07ab'

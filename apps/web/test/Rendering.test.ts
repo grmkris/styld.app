@@ -246,6 +246,8 @@ test('every page answers 200 and paths beside them answer 404', async () => {
     '/wardrobe/add',
     '/wardrobe/review',
     '/wardrobe/pc_abc',
+    // Explore's former address opens Home (owner, 4 November).
+    '/explore',
   ])
     expect(await statusOf(path)).toBe(200)
   for (const path of ['/login/elsewhere', '/account/settings', '/connect', '/wardrobe/add/more'])

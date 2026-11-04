@@ -92,7 +92,14 @@ describe('only a page that shows the pieces follows them', () => {
   })
 
   test('pages that do not show them do not', () => {
-    for (const path of ['/boards', '/looks', '/account', '/wardrobe/review', `/wardrobe/${processing.id}`, '/explore'])
+    for (const path of [
+      '/boards',
+      '/looks',
+      '/account',
+      '/wardrobe/review',
+      `/wardrobe/${processing.id}`,
+      '/@nika.kovac',
+    ])
       expect(polled(path)).toEqual(Option.none())
   })
 })

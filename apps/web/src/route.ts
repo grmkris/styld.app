@@ -50,8 +50,6 @@ export const AppRoute = defineRouteUnion({
   Person: { handle: Schema.String },
   /** A piece as others see it, from a public profile, board or look. */
   PublicPiece: { pieceId: Schema.String },
-  /** Edits from Styld, featured boards, people to follow and the newest public boards. */
-  Explore: {},
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -94,9 +92,11 @@ const formerPhotoRouter = pipe(
 )
 
 /** The address the app puts in place of the one a page opened at: a board's collage address becomes the board's (its
- * editor opens on the board's own page), and the Gallery's former addresses its current one. */
+ * editor opens on the board's own page), Explore's former address Home's, and the Gallery's former addresses its
+ * current one. */
 export const addressInPlace = (pathname: string, route: AppRoute): Option.Option<string> => {
   if (AppRoute.guards.BoardCollage(route)) return Option.some(boardRouter({ boardId: route.boardId }))
+  if (pathname === '/explore') return Option.some(homeRouter({}))
   if (pathname !== '/wardrobe/gallery' && !pathname.startsWith('/wardrobe/gallery/')) return Option.none()
   return Option.some(AppRoute.guards.Photo(route) ? photoRouter({ photoId: route.photoId }) : photosRouter({}))
 }
@@ -134,7 +134,8 @@ const atHandle = param<{ readonly handle: string }>(
 )
 export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
 export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
-export const exploreRouter = pipe(literal('explore'), mapTo(AppRoute.Explore))
+// Explore was a page until What's new on Home took its place (owner, 4 November): its old address opens Home.
+const formerExploreRouter = pipe(literal('explore'), mapTo(AppRoute.Home))
 
 // `/wardrobe/add`, `/wardrobe/review` and the former `/wardrobe/gallery` are declared before `/wardrobe/:pieceId`,
 // which would otherwise take them.
@@ -159,7 +160,7 @@ const parser = oneOf(
   boardRouter,
   boardsRouter,
   publicPieceRouter,
-  exploreRouter,
+  formerExploreRouter,
   personRouter,
   homeRouter,
 )
@@ -217,7 +218,7 @@ export const parentReturn = (from: string | undefined, parent: 'Wardrobe' | 'Pho
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
-export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account'])
+export const Tab = Schema.Literals(['Home', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
 /** The navigation's sections; a page marks the one it belongs to. */
@@ -269,8 +270,6 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   BoardCollage: () => meta('/boards/:board/collage', 'boards.title', { session: required, section: 'lab' }),
   Person: () => meta('/@:handle', 'profile.public.people'),
   PublicPiece: () => meta('/pieces/:piece', 'profile.public.pieces'),
-  // Explore is reached from Home's head (owner, 2026-10-31), so Home stays marked there.
-  Explore: () => meta('/explore', 'explore.title', { tab: 'Explore', section: 'home' }),
   NotFound: () => meta('other', 'common.notFoundTitle'),
 })
 

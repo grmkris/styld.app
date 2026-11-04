@@ -9,8 +9,8 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { chip } from '../Controls.styles.ts'
-import { addIcon, checkIcon, exploreTabIcon, loader, retryIcon, spinIcon } from '../Icon.ts'
-import { addPiecesRouter, boardRouter, exploreRouter, photoRouter, reviewRouter } from '../route.ts'
+import { addIcon, checkIcon, loader, retryIcon, spinIcon } from '../Icon.ts'
+import { addPiecesRouter, boardRouter, photoRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
@@ -18,7 +18,6 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { fromStyld, stillTable } from './Board/Table.ts'
 import { canSwap, Message, type Model, showsWornOutfit, Swap, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { BoardsData, PiecesData } from '../ServerData.ts'
-import { barEnd, round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
@@ -217,19 +216,7 @@ const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBu
         onSome: (day) => [headline(day, locale)],
       }),
     ),
-    // Explore left the tab bar (owner, 2026-10-31): its way in is the head's round, where other tabs keep their action.
-    Option.some(
-      h.a(
-        [
-          h.Href(exploreRouter({})),
-          h.AriaLabel(format(locale, 'explore.title', {})),
-          h.Title(format(locale, 'explore.title', {})),
-          // Its icon lines up with the gutter, where the avatar above and the table below end.
-          ...styled(h, cx(round(), barEnd())),
-        ],
-        [exploreTabIcon(h)],
-      ),
-    ),
+    Option.none(),
     h,
   )
 

@@ -35,6 +35,7 @@ import * as Looks from './page/Looks.ts'
 import * as Photo from './page/Photo.ts'
 import * as Photos from './page/Photos.ts'
 import * as Piece from './page/Piece.ts'
+import * as LandingBoards from './page/LandingBoards.ts'
 import * as Visit from './page/Visit.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
@@ -197,7 +198,7 @@ const startOnEnter = Update.foldChildStep({ update: Boards.startOnEnter, ...fold
 const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
     Match.withReturnType<ReadonlyArray<Step>>(),
-    // Signed out, Home is the landing, which shows Edits from Styld.
+    // Signed out, Home is the landing, which shows Edits from Styld or the newest public boards.
     Match.tag('Home', () =>
       signedIn
         ? [
@@ -205,7 +206,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
             revisitPieces,
             revisitBoards,
           ]
-        : [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })],
+        : [Update.foldChildStep({ update: LandingBoards.enter, ...at(lenses.landing) })],
     ),
     Match.tag('Wardrobe', () => [revisitPieces]),
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
@@ -217,7 +218,6 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
       revisitPieces,
       Update.foldChildStep({ update: Boards.revisit, ...foldBoards }),
     ]),
-    Match.tag('Explore', () => [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })]),
     // The account needs a session; signed out the page sends the visitor to sign in.
     Match.tag('Account', () =>
       signedIn ? [Update.foldChildStep({ update: Account.enter, ...at(lenses.account) })] : [],
@@ -425,12 +425,11 @@ const foldPages = {
   photos: Update.foldChild({ update: Photos.update, ...at(lenses.photos) }),
   stylist: Update.foldChild({ update: Stylist.update, ...at(lenses.stylist) }),
   visit: Update.foldChild({ update: Visit.update, ...at(lenses.visit) }),
-  explore: Update.foldChild({ update: Visit.update, ...at(lenses.explore) }),
+  landing: Update.foldChild({ update: LandingBoards.update, ...at(lenses.landing) }),
   data: Update.foldChild({ update: ServerData.update, ...data }),
 }
 
-/** The landing's Try again, through Explore's own step. */
-const retryLanding = Update.foldChildStep({ update: Visit.retry, ...at(lenses.explore) })
+const retryLanding = Update.foldChildStep({ update: LandingBoards.retry, ...at(lenses.landing) })
 
 // SUBSCRIPTION
 
@@ -573,7 +572,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotBoardsMessage: (got) => foldPages.boards(model, got.message),
     GotBoardMessage: (got) => foldPages.board(model, got.message),
     GotVisitMessage: (got) => foldPages.visit(model, got.message),
-    GotExploreMessage: (got) => foldPages.explore(model, got.message),
+    GotLandingMessage: (got) => foldPages.landing(model, got.message),
     GotServerDataMessage: (got) =>
       Update.combine<Model, Message, Services>(model, [
         (stepModel) => foldPages.data(stepModel, got.message),

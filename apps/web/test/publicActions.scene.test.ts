@@ -23,11 +23,11 @@ const showing = (model: Model, shown: ShownData): Model =>
   withPage(model, lenses.visit, (visit) => modifyFields(visit, { shown: () => shown }))
 
 describe('a public page’s head bar and Share', () => {
-  test('a profile goes back to Explore and shares its link; a share sheet says the rest itself', () => {
+  test('a profile goes back Home and shares its link; a share sheet says the rest itself', () => {
     scene(
       { update, view },
       given(showing(at('/@ana.novak', { signedIn: false }), shownAs.Person({ profile: profileOf(false) }))),
-      expect(role('link', { name: 'Back' })).toHaveAttr('href', '/explore'),
+      expect(role('link', { name: 'Back' })).toHaveAttr('href', '/'),
       click(role('button', { name: 'Share' })),
       Command.resolve(
         ShareLink({ path: '/@ana.novak', title: 'Ana Novak' }),

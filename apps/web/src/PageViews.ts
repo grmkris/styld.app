@@ -78,10 +78,10 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html => {
           }),
         h,
       )
-    : onPage(model, lenses.explore, (explore) => landingView(explore, locale, h), h)
+    : onPage(model, lenses.landing, (landing) => landingView(landing, locale, h), h)
 }
 
-/** Someone's public profile or piece, and Explore. */
+/** Someone's public profile or piece. */
 const visitPage = (model: Model, lens: PageLens<Visit.Model, Visit.Message>, h: HtmlBuilder<Message>): Html =>
   onPage(
     model,
@@ -162,7 +162,6 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
           }),
         h,
       ),
-    Explore: () => visitPage(model, lenses.explore, h),
   }
 }
 

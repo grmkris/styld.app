@@ -23,10 +23,10 @@ describe('the masthead', () => {
     )
   })
 
-  test('a session that could not be read leaves a way on and reads it again, rather than an empty bar', () => {
+  test('a session that could not be read offers to read it again, rather than an empty bar', () => {
     scene(
       { update, view },
-      given(modifyFields(at('/explore', { signedIn: false }), { session: () => Session.Unavailable() })),
+      given(modifyFields(at('/@nika.kovac', { signedIn: false }), { session: () => Session.Unavailable() })),
       click(role('button', { name: 'Your account could not be reached. Try again' })),
       Command.resolve(ReadSession, Message.ReceivedSession({ claims })),
       Command.resolve(ReadYou, Message.FailedReadYou()),

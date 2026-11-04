@@ -1,11 +1,11 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import type { Mood, PublicPiecePage, PublicProfile } from '@styld/protocol'
+import type { PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon } from '../Icon.ts'
-import { accountRouter, exploreRouter, personRouter, pieceRouter, profileRouter, publicPieceRouter } from '../route.ts'
+import { accountRouter, homeRouter, personRouter, pieceRouter, profileRouter, publicPieceRouter } from '../route.ts'
 import { avatar } from '../Avatar.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -15,12 +15,8 @@ import { publicPieceImage } from './Board/Table.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, tileGrid } from './PublicTiles.ts'
-import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
-import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
-import { pageTitle } from './PageHead.ts'
 import { retryView } from './Retry.ts'
-import { PublicSearch } from './Search.ts'
-import { exploreOf, Message, type Model, type PersonTab, Target, VisitShown } from './Visit.ts'
+import { Message, type Model, type PersonTab, Target, VisitShown } from './Visit.ts'
 import * as Share from './Share.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
@@ -142,14 +138,14 @@ const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
   ])
 }
 
-/** A published profile: Back, its head, then its Boards and Looks. Back goes to Explore, where people are found;
+/** A published profile: Back, its head, then its Boards and Looks. Back goes Home, where people's new things show;
  * from one's own profile, to Account, where it is reached. */
 const personView = (model: Model, profile: PublicProfile, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
   const tab = model.tab
   return h.div(styled(h, styles.page()), [
     h.div(styled(h, styles.bar()), [
-      backRound(profile.yours ? accountRouter({}) : exploreRouter({}), locale, h),
+      backRound(profile.yours ? accountRouter({}) : homeRouter({}), locale, h),
       profile.yours ? h.empty : peopleSlot('visit-more', PeopleView.moreView, model, inputs, h),
     ]),
     personHead(model, profile, inputs, h),
@@ -221,37 +217,6 @@ const pieceView = (
   ])
 }
 
-/** What Explore shows under its search: its sections once they are in, or what a search found in their place. */
-const exploreContent = (
-  model: Model,
-  mood: Option.Option<Mood>,
-  { locale, signedIn }: PeopleView.Inputs,
-  h: HtmlBuilder<Message>,
-): ReadonlyArray<Html> => {
-  if (!PublicSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
-  return Option.match(exploreOf(model.shown), {
-    onSome: (explore) => exploreSections(explore, mood, model, signedIn, locale, h),
-    onNone: () => (AsyncData.isFailure(model.shown) ? [failedView(locale, h)] : exploreLoading(locale, h)),
-  })
-}
-
-/** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads, then the
- * search, which works while the sections load too. */
-const exploreMain = (
-  model: Model,
-  mood: Option.Option<Mood>,
-  inputs: PeopleView.Inputs,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.div(styled(h, explorePage()), [
-    h.div(styled(h, exploreHead()), [
-      // The shared title box, so Explore's title starts where every tab's does.
-      pageTitle(format(inputs.locale, 'explore.title', {}), h),
-      exploreSearchForm(model.query, inputs.locale, h),
-    ]),
-    ...exploreContent(model, mood, inputs, h),
-  ])
-
 /** A profile's or a piece's shape while it loads, under the room its head bar takes, and what is loading for assistive
  * technology. */
 const loadingView = (target: Target, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -286,20 +251,16 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
   return h.main(
     [h.Id('main')],
     [
-      Target.guards.Explore(model.target)
-        ? exploreMain(model, model.target.mood, inputs, h)
-        : AsyncData.matchData(model.shown, {
-            onEmpty: () => loadingView(model.target, locale, h),
-            onFailure: (error) =>
-              error === 'NotFound' ? h.h1([], [format(locale, 'common.notFoundTitle', {})]) : failedView(locale, h),
-            onData: (shown) =>
-              VisitShown.match(shown, {
-                Person: ({ profile }) => personView(model, profile, inputs, h),
-                Piece: ({ page }) => pieceView(model, page, inputs, h),
-                // Explore is drawn above; a stray answer for it elsewhere shows nothing.
-                Explore: () => h.empty,
-              }),
+      AsyncData.matchData(model.shown, {
+        onEmpty: () => loadingView(model.target, locale, h),
+        onFailure: (error) =>
+          error === 'NotFound' ? h.h1([], [format(locale, 'common.notFoundTitle', {})]) : failedView(locale, h),
+        onData: (shown) =>
+          VisitShown.match(shown, {
+            Person: ({ profile }) => personView(model, profile, inputs, h),
+            Piece: ({ page }) => pieceView(model, page, inputs, h),
           }),
+      }),
     ],
   )
 })

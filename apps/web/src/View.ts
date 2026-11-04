@@ -14,7 +14,6 @@ import {
   AppRoute,
   stylistRouter,
   boardsRouter,
-  exploreRouter,
   homeRouter,
   signInHref,
   routeMeta,
@@ -140,13 +139,9 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
       ),
     SigningOut: () => h.empty,
     Checking: () => h.empty,
-    // The session could not be read: the bar keeps a way on (Explore) and offers to read it again, rather than
-    // standing empty.
+    // The session could not be read: the bar offers to read it again, rather than standing empty.
     Unavailable: () =>
       h.div(styled(h, signedOutLinks()), [
-        AppRoute.guards.Explore(model.route)
-          ? h.empty
-          : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
         h.button(
           [
             h.Type('button'),
@@ -157,13 +152,10 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
           [format(locale, 'common.tryAgain', {})],
         ),
       ]),
-    // Signed out the bar keeps Explore and Sign in (DESIGN › Navigation); neither shows on its own page.
+    // Signed out the bar keeps Sign in (DESIGN › Navigation), except on sign-in itself.
     SignedOut: () => {
       const onLogin = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
       return h.div(styled(h, signedOutLinks()), [
-        AppRoute.guards.Explore(model.route)
-          ? h.empty
-          : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
         onLogin
           ? h.empty
           : h.a([h.Href(signInHref), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
@@ -195,7 +187,7 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
   )
 
 /** The navigation (owner, 2026-10-31; the Lab 2026-11-03): Home, Ask, Wardrobe and the Lab (boards, gallery and looks);
- * you are in the masthead, and Explore is a link in Home's head. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
+ * you are in the masthead. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
  * page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context

@@ -22,9 +22,8 @@ import { round } from './PageBar.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import type { PiecesData } from '../ServerData.ts'
 import { colourName, pieceLabel, typeName } from './WardrobeWords.ts'
-import { personTile } from './ExploreView.ts'
-import * as exploreStyles from './ExploreView.styles.ts'
-import { boardCard, byline } from './PublicTiles.ts'
+import { boardCard, byline, personTile } from './PublicTiles.ts'
+import * as publicStyles from './PublicTiles.styles.ts'
 
 /** The languages the search reads a piece's words in: the page's first, and the other once it has loaded. */
 const searchLocales = (model: Model, locale: Locale): ReadonlyArray<Locale> =>
@@ -224,7 +223,7 @@ const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
                     [format(locale, 'profile.public.people', {})],
                   ),
                   h.ul(
-                    styled(h, exploreStyles.people()),
+                    styled(h, publicStyles.people()),
                     results.people.map((person) => personTile(person, h)),
                   ),
                 ],
@@ -239,7 +238,7 @@ const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
                     [format(locale, 'profile.public.boards', {})],
                   ),
                   h.ul(
-                    styled(h, exploreStyles.boards()),
+                    styled(h, publicStyles.boards()),
                     results.boards.map(({ board, by }) =>
                       h.keyed('li')(board.id, [], [boardCard(board, locale, h), byline(by, locale, h)]),
                     ),

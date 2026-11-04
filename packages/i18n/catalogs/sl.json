@@ -350,7 +350,7 @@
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",
-    "feedEmpty": "Javnih zbirk še ni. Ko bodo, jih najdeš v Razišči.",
+    "feedEmpty": "Javnih zbirk še ni.",
     "retry": "Poskusi znova",
     "title": "Garderoba po tvojem okusu.",
     "description": "Fotografiraj svoja oblačila in Styld izreže vsak kos, sestavi, kaj obleči danes, in hrani zbirke tega, kar ti je všeč.",
@@ -359,7 +359,8 @@
     "signIn": "Prijava",
     "contact": "Kontakt",
     "feedFailed": "Zbirke se niso naložile.",
-    "seeAll": "Poglej vse zbirke v Razišči"
+    "edits": "Izbor Stylda",
+    "newest": "Najnovejše zbirke"
   },
   "studio": {
     "add": "Dodaj",
@@ -463,7 +464,7 @@
     "publishFirst": "Za javno objavo najprej objavi svoj profil",
     "check": {
       "pending": "Styld jo preverja. Drugi jo vidijo, ko je preverjanje končano.",
-      "unsure": "Na tvojem profilu in na njeni povezavi, ne pa v Razišči in iskanju.",
+      "unsure": "Na tvojem profilu in na njeni povezavi, ne pa med novostmi in v iskanju.",
       "failed": "Skrito pred drugimi: {reason}.",
       "hidden": "Skrito pred drugimi zaradi prijav.",
       "reasons": {
@@ -515,33 +516,7 @@
   },
   "follow": {
     "follow": "Sledi",
-    "following": "Slediš",
-    "failed": "Sledenja ni bilo mogoče posodobiti. Poskusi znova."
-  },
-  "explore": {
-    "title": "Razišči",
-    "edits": "Izbor Stylda",
-    "featured": "Izpostavljeno",
-    "people": "Ljudje, ki jim lahko slediš",
-    "newest": "Najnovejše zbirke",
-    "allMoods": "Vse",
-    "empty": "Tu še ni nič javnega.",
-    "moods": {
-      "knitwear": "Pletenine",
-      "rain": "Dež",
-      "office": "Pisarna",
-      "weekend": "Vikend",
-      "evening": "Večer",
-      "sport": "Šport"
-    },
-    "moodsLabel": "Razpoloženja za Razišči",
-    "noneInMood": "V tem razpoloženju še ni javnih zbirk.",
-    "searchLabel": "Išči ljudi in zbirke",
-    "clearSearch": "Počisti iskanje",
-    "searching": "Iskanje …",
-    "resultsFor": "Najdeno za »{query}«",
-    "noResults": "Za »{query}« ni ne ljudi ne zbirk.",
-    "searchFailed": "Iskanje ni uspelo."
+    "following": "Slediš"
   },
   "feed": {
     "save": "Shrani"
@@ -862,7 +837,16 @@
     "outfits_slowDown": "Preveč naenkrat. Poskusi znova čez trenutek.",
     "outfits_failed": "Zbirka ni nastala. Poskusi znova.",
     "addTop": "Dodaj zgornji del",
-    "outfitsBoardName": "{piece}: oprave"
+    "outfitsBoardName": "{piece}: oprave",
+    "moods": {
+      "knitwear": "Pletenine",
+      "rain": "Dež",
+      "office": "Pisarna",
+      "weekend": "Vikend",
+      "evening": "Večer",
+      "sport": "Šport"
+    },
+    "moodsLabel": "Razpoloženja za iskanje"
   },
   "outfits": {
     "title": "Oprave",

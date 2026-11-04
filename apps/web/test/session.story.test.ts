@@ -195,6 +195,12 @@ describe('the wardrobe pages', () => {
     expect(opening('/wardrobe/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ReplaceInternal', 'ListPhotos'])
   })
 
+  test('Explore’s former address opens Home, and the address becomes Home’s', () => {
+    const opened = init(flags(false), urlOf('/explore'))
+    expect(opened.model.route).toEqual(AppRoute.Home())
+    expect(opened.commands?.map(({ name }) => name)).toContain('ReplaceInternal')
+  })
+
   test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {
     story(
       update,

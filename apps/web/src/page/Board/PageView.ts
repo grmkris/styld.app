@@ -288,12 +288,12 @@ const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     h,
   )
 
-/** The board's moods for Explore: up to three of the six. */
+/** The board's moods, which search finds it by: up to three of the six. */
 const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.sharing()), [
-    h.p(styled(h, styles.moodsLabel()), [format(locale, 'explore.moodsLabel', {})]),
+    h.p(styled(h, styles.moodsLabel()), [format(locale, 'boards.moodsLabel', {})]),
     h.div(
-      [h.Role('group'), h.AriaLabel(format(locale, 'explore.moodsLabel', {})), ...styled(h, styles.moods())],
+      [h.Role('group'), h.AriaLabel(format(locale, 'boards.moodsLabel', {})), ...styled(h, styles.moods())],
       Mood.literals.map((mood) =>
         h.button(
           [
@@ -302,7 +302,7 @@ const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
             h.OnClick(Message.ToggledMood({ mood })),
             ...styled(h, cx(chip(), chosen())),
           ],
-          [format(locale, `explore.moods.${mood}`, {})],
+          [format(locale, `boards.moods.${mood}`, {})],
         ),
       ),
     ),

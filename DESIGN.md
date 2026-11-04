@@ -138,13 +138,15 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 - Sheets rise from the bottom edge with 24px top corners, stock fill and a soft shadow (the diagnostics prompt is one).
 - Translucency (frost, scrim, veil) only over photos and behind sheets; never blur behind text.
 - **Navigation (signed in): Home, Ask, Wardrobe, Boards** (owner, 2026-10-31). Ask is a filled ink circle, the one
-  thing to do from anywhere. You is reached through the avatar; Explore through the compass round in Home's head.
+  thing to do from anywhere. You is reached through the avatar. There is no Explore page (owner, 4 November 2026):
+  What's new on Home shows what people share, and Ask finds people and boards.
 - **Mobile:** a floating glass pill at the bottom carries the four items. The top bar keeps the logo and the avatar.
   The board editor is the exception: it has the whole screen and its own way back to Boards, because the pill would
   sit over its tray of pieces.
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
-- **Signed out:** the top bar keeps the logo, Explore and "Sign in". Public pages (a profile, a public board, a shared
-  look or piece, Explore) read the same as signed in; Sign in appears only when the visitor saves, follows or reports.
+- **Signed out:** the top bar keeps the logo and "Sign in". Public pages (a profile, a public board, a shared look or
+  piece) read the same as signed in; Sign in appears only when the visitor saves, follows or reports. Home is the
+  landing, with Edits from Styld (or the newest public boards) under its words.
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
   and under `prefers-reduced-transparency` they are solid stock.
 
@@ -166,9 +168,9 @@ on Home and the surface of a board.
   - Escape cancels a drag;
   - ⌘Z undoes.
 
-### Boards, people and Explore
+### Boards and people
 
-Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist` and `ask-desktop` screens.
+Follow the prototype's `board`, `boards`, `person`, `pin`, `wishlist` and `ask-desktop` screens.
 
 - **A board** opens on its collage, a still table, above a grid of its pins; the collage opens the editor. Pins you own
   are cutouts on paper. Someone else's piece carries a credit chip (their initials avatar and "Luka's"), a picture keeps
@@ -178,12 +180,11 @@ Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist`
 - **Avatars** are initials on one of the tone tokens; there are no photo avatars yet.
 - **A profile** (`person`): the avatar, name, handle and city, the bio, Follow and Share, then Boards, Looks and Pieces
   tabs.
-- **Explore** (`explore`): the search field, Edits from Styld, mood chips, newest boards and People to follow.
 - **The Ask panel** (`ask-desktop`): "Search your clothes, people and boards", suggestions, then the Add clothes cards
   (Add a piece, Add from a link, Scan your clothes, Film your wardrobe). Results come in three sections: in your
   wardrobe, people, boards.
 - **Your public things** say where they stand in one quiet line under their title: publishing while the check runs,
-  public, public but not in Explore, or not shown, with the reason.
+  public, public but not in What's new and search, or not shown, with the reason.
 
 ## Icons
 

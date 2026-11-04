@@ -21,6 +21,7 @@ import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
+import * as LandingBoards from './page/LandingBoards.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute } from './route.ts'
@@ -34,7 +35,7 @@ import type * as SecureRandom from 'effect/crypto/SecureRandom'
 
 // MODEL
 
-/** The tab pages, each as the person left it. Explore's Model also draws the landing a signed-out Home shows. */
+/** The tab pages, each as the person left it, and the public boards the landing a signed-out Home shows. */
 const Tabs = Schema.Struct({
   today: Today.Model,
   wardrobe: Wardrobe.Model,
@@ -43,7 +44,7 @@ const Tabs = Schema.Struct({
   ask: Ask.Model,
   boards: Boards.Model,
   account: Account.Model,
-  explore: Visit.Model,
+  landing: LandingBoards.Model,
 })
 type Tabs = typeof Tabs.Type
 
@@ -141,11 +142,11 @@ export const lenses = {
     (tabs, account: Account.Model) => modifyFields(tabs, { account: () => account }),
     (message: Account.Message) => Message.GotAccountMessage({ message }),
   ),
-  explore: tab(
-    'explore',
-    (tabs) => tabs.explore,
-    (tabs, explore: Visit.Model) => modifyFields(tabs, { explore: () => explore }),
-    (message: Visit.Message) => Message.GotExploreMessage({ message }),
+  landing: tab(
+    'landing',
+    (tabs) => tabs.landing,
+    (tabs, landing: LandingBoards.Model) => modifyFields(tabs, { landing: () => landing }),
+    (message: LandingBoards.Message) => Message.GotLandingMessage({ message }),
   ),
   login: onlyPage(
     'login',
@@ -252,7 +253,7 @@ const tabs = (signedIn: boolean, route: AppRoute): Page =>
       ask: Ask.init(),
       boards: Boards.init(),
       account: Account.init(),
-      explore: Visit.init(Visit.Target.Explore({ mood: Option.none() }), signedIn),
+      landing: LandingBoards.init(),
     },
   })
 
@@ -273,7 +274,7 @@ const opened = <Child, ChildMessage>(
 export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean): Opened =>
   Match.value(route).pipe(
     Match.withReturnType<Opened>(),
-    Match.tag('Home', 'Explore', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account', () => ({
+    Match.tag('Home', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account', () => ({
       model: tabs(signedIn, route),
     })),
     Match.tag('Login', 'LoginForConnection', () => opened(lenses.login, Login.init(), [])),
