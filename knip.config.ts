@@ -13,6 +13,7 @@ export default {
         'tools/retype-pieces.ts',
         'tools/backfill-pictures.ts',
         'tools/retype-tops.ts',
+        'tools/retype-sport.ts',
         'tools/refind-photos.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/seed/Run.ts',

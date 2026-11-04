@@ -7,6 +7,40 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Sport by shape: four Sport types instead of Sportswear (4 November, on main, not deployed)
+
+Eva: "Narobe mi kategorizira: vse sorte vecinoma leggings, sprtne modrce, krila, razicne stvari in cist vse po
+malem" (it sorts everything wrong, mostly leggings, sports bras and skirts). The owner chose Sports bras,
+Sports tops, Sports leggings & shorts and Tracksuits & ski wear in place of the one type `sportswear`.
+
+- **Types** (`packages/protocol/src/Garment.ts`): `sportsBras` and `sportTops` sit in the outfit slot `top`,
+  `sportBottoms` in `bottom`, `tracksuits` in `set`; the Sport group reads bras, tops, bottoms, tracksuits, then sports
+  and outdoor shoes. Named in en and sl, with search words; plain "leggings" now search, and sort, as sport bottoms.
+- **Clef** (`providers/Clef.ts`): each Sport type says what it is not (a sports bra is not a bikini top or a camisole),
+  trousers no longer include leggings, shorts are everyday shorts (not cycling, running or swim), and a skirt includes
+  a skort or a tennis skirt and is never a dress. Track A's two-picture `suggest` is separate.
+- **Pictures** (`capture/CleanPrompt.ts`): the photo fallback named every sportswear piece "sports top" and every
+  loungewear piece "loungewear top", so leggings and pyjama trousers were asked for as tops; each Sport type now has its
+  own words, and loungewear is "loungewear".
+- **Outfits** (`outfits/Rules.ts`, Proposer): everything in Sport (not only its shoes) is worn only for sport; a sports
+  bra or top with sport bottoms is a whole outfit for it, or a tracksuit. A needed place with nothing suitable takes an
+  everyday piece before a sport one. Analyze my wardrobe counts nothing made for sport among the everyday areas.
+- **Migration** `20261104212538_sport_types`: rebuilds pieces, detections, photo_garments and piece_provenance (their
+  type CHECKs) with the keep-aside pattern, now also keeping piece_back_pictures and try_on_pieces. Every stored
+  `sportswear` becomes `sportTops`; the house seed's four sportswear garments (leggings, track trousers) become
+  `sportBottoms`, and their manifest ids `-sportswear-` become `-sportBottoms-` so the seed finds them instead of drawing
+  them again (catalogue and manifest renamed to match). MigrationSafety covers it; on a private copy of the preview's
+  data (dump of 4 November 08:16, migrated forward) all 65 tables keep their row counts, no foreign key breaks, and its
+  47 sportswear pieces became sport tops.
+- **Re-sort** `tools/retype-sport.ts` (rule in `tools/Sport.ts`, tested): asks Clef which kind of sportswear each
+  stored sport top is, from its cut-out with the photo it was cut from beside it (when that photo is at most 4 MB),
+  and moves it to sports bras, sport bottoms or tracksuits on an answer of at least 0.7; "not sport" is reported, never
+  written. Dry by default; `--apply` writes only while the piece is still a sport top. Not run against any database.
+- **v1 importer**: names like "sports bra", "leggings", "cycling shorts", "running tee" and "ski pants" pick the Sport
+  types.
+- **Open:** deploy, then `retype-sport` dry run on the preview and production, a sample checked by eye, then `--apply`;
+  Eva's check on her phone; the Tops and Bottoms group navigation she asked for in the same message.
+
 ## Styld learns the person: taste, memory, first run (4 November, on main)
 
 Kris's plan of 4 November (`~/.claude/plans/okay-so-please-look-sprightly-brook.md`), built as a track of its own
