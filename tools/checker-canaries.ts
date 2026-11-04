@@ -80,7 +80,7 @@ export const asserted = (value: string | undefined) => value!.length
       'json',
       `${directory}/fixture.ts`,
     ],
-    await oxlintEnv(),
+    oxlintEnv(),
   )
   for (const rule of [
     'no-floating-promises',

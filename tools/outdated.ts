@@ -1,8 +1,7 @@
 /**
  * What the pins are behind: every exact version the workspace installs (each package.json, the catalog, the overrides
- * and Bun itself) against the npm registry, and the tsrs-lint release (tools/tsrs-lint.ts) against its repository's
- * releases. A report for whoever upgrades, run by hand; it is not part of `check`, because a release upstream must not
- * turn main red.
+ * and Bun itself) against the npm registry. A report for whoever upgrades, run by hand; it is not part of `check`,
+ * because a release upstream must not turn main red.
  *
  *   bun run deps:outdated            prints every pin that is behind; exits 0
  *   bun run deps:outdated --strict   exits 1 when a pin that is not held is behind
@@ -15,15 +14,10 @@
  */
 import { Schema } from 'effect'
 import { readFile } from 'node:fs/promises'
-import { TSRS_LINT } from './tsrs-lint.ts'
-
-const tsrsLintOxlint = `the pinned tsrs-lint (${TSRS_LINT.tag}) knows Oxlint 1.89's type-aware rules; 1.91 asks it for no-unsafe-enum-assignment and every type-aware lint fails`
 
 /** Pins kept below a version on purpose. */
 export const held: Readonly<Record<string, { readonly below: string; readonly reason: string }>> = {
   '@types/node': { below: '25.0.0', reason: 'Node 24 LTS runs the tools on the box and in CI' },
-  oxlint: { below: '1.90.0', reason: tsrsLintOxlint },
-  '@oxlint/plugins': { below: '1.90.0', reason: tsrsLintOxlint },
 }
 
 const versionPattern = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/u
@@ -107,9 +101,6 @@ const Manifest = Schema.Struct({
   ),
 })
 const Packument = Schema.Struct({ versions: Schema.Record(Schema.String, Schema.Unknown) })
-const Releases = Schema.Array(
-  Schema.Struct({ tag_name: Schema.String, published_at: Schema.String, draft: Schema.Boolean }),
-)
 
 interface Pin {
   readonly name: string
@@ -168,48 +159,29 @@ const published = async (name: string): Promise<ReadonlyArray<string>> => {
   return Object.keys(Schema.decodeUnknownSync(Packument)(await response.json()).versions)
 }
 
-/** The newest tsrs-lint release of the pinned repository, when it is not the pinned tag. */
-const newerLintRelease = async (): Promise<string | undefined> => {
-  const response = await fetch(`https://api.github.com/repos/${TSRS_LINT.repository}/releases?per_page=30`, {
-    headers: { accept: 'application/vnd.github+json' },
-  })
-  if (!response.ok) throw new Error(`GitHub: ${TSRS_LINT.repository} releases answered ${response.status}`)
-  const newest = Schema.decodeUnknownSync(Releases)(await response.json())
-    .filter((release) => !release.draft && release.tag_name.startsWith('lint-'))
-    .toSorted((left, right) => (left.published_at < right.published_at ? 1 : -1))
-    .at(0)
-  return newest === undefined || newest.tag_name === TSRS_LINT.tag ? undefined : newest.tag_name
-}
-
 const report = async (strict: boolean) => {
   const pins = await collectPins()
-  const [rows, lint] = await Promise.all([
-    Promise.all(
-      pins.map(async (pin) => {
-        const versions = await published(pin.name)
-        const hold = held[pin.name]
-        return {
-          pin,
-          hold,
-          inLine: newestFor(pin.version, versions, hold?.below),
-          beyond: hold === undefined ? undefined : newestFor(pin.version, versions),
-        }
-      }),
-    ),
-    newerLintRelease(),
-  ])
+  const rows = await Promise.all(
+    pins.map(async (pin) => {
+      const versions = await published(pin.name)
+      const hold = held[pin.name]
+      return {
+        pin,
+        hold,
+        inLine: newestFor(pin.version, versions, hold?.below),
+        beyond: hold === undefined ? undefined : newestFor(pin.version, versions),
+      }
+    }),
+  )
   const width = Math.max(...pins.map((pin) => pin.name.length))
   const behind = rows.filter((row) => row.inLine !== undefined)
   for (const { pin, inLine } of behind)
     console.log(`behind  ${pin.name.padEnd(width)}  ${pin.version} → ${inLine}  (${pin.where.join(', ')})`)
-  if (lint !== undefined)
-    console.log(`behind  ${'tsrs-lint'.padEnd(width)}  ${TSRS_LINT.tag} → ${lint}  (tools/tsrs-lint.ts)`)
   for (const { pin, hold, beyond } of rows)
     if (hold !== undefined && beyond !== undefined)
       console.log(`held    ${pin.name.padEnd(width)}  ${pin.version}, ${beyond} out: ${hold.reason}`)
-  const count = behind.length + (lint === undefined ? 0 : 1)
-  console.log(`deps:outdated: ${pins.length + 1} pins, ${count} behind`)
-  if (strict && count > 0) process.exitCode = 1
+  console.log(`deps:outdated: ${pins.length} pins, ${behind.length} behind`)
+  if (strict && behind.length > 0) process.exitCode = 1
 }
 
 if (import.meta.main) await report(process.argv.includes('--strict'))

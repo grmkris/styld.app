@@ -17,13 +17,13 @@ heavy --wait bun run check          # the full gate CI runs: format, agents (ski
                                     # Knip, jscpd, build, budgets, unit, native
 bun run format                      # oxfmt; cheap gates run directly: format:check, graph:check, unused:check
 heavy --wait bun run typecheck      # effect-tsrs: TypeScript and Effect diagnostics
-heavy --wait bun run lint           # Oxlint with the checksum-verified tsrs-lint backend
+heavy --wait bun run lint           # Oxlint with tsrs-lint, the pinned tsrs package's type-aware backend
 heavy --wait bun run test:unit
 heavy --wait bun run test:native    # builds, then workerd + Chromium acceptance through the real edge
 STYLD_PREVIEW_URL=… heavy --wait bun test tools/preview.native.test.ts  # deployed readback; release must be HEAD
 bun run translations:check          # x18n; bun run i18n:generate after catalog edits
 bun run icons:generate              # after editing apps/web/src/icons.json (Phosphor, DESIGN.md › Icons)
-bun run deps:outdated               # which pins are behind (npm by channel, Bun, tsrs-lint); a report, not a gate
+bun run deps:outdated               # which pins are behind (npm by channel, and Bun); a report, not a gate
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
 
@@ -35,7 +35,7 @@ The `foldkit-devtools` MCP server (`.mcp.json`) reads the running app's Model, M
 
 Use exact manifest/lockfile pins: Bun, Effect 4, Alchemy v2, Foldkit with `@foldkit/ui` headless controls, Yielded Auth, Drizzle SQLite/D1, Domain on Durable Objects, R2, native Cloudflare telemetry. Alchemy owns infrastructure. The single public origin serves pages, API, auth, media and MCP.
 
-The `@yielded/effect-tsrs` gate checks TS and Effect. The editor uses pinned tsrs. Oxlint's type-aware backend is checksum-verified tsrs-lint with no fallback. Oxfmt formats. New code has zero lint debt. Keep anti-slop provenance, graph boundaries, suppression census, Knip and native runtime tests effective.
+The `@yielded/effect-tsrs` gate checks TS and Effect. The editor uses pinned tsrs. Oxlint's type-aware backend is the pinned tsrs package's tsrs-lint with no fallback. Oxfmt formats. New code has zero lint debt. Keep anti-slop provenance, graph boundaries, suppression census, Knip and native runtime tests effective.
 
 Read installed library source before using unfamiliar APIs. Domain models follow the pinned `.agents/skills/alchemy-domain` instructions. `repos/foldkit/` is a read-only snapshot of Foldkit at the installed release tag; refresh it with `bun tools/vendored.ts --pull foldkit foldkit@<version>` and its skills with `repoagents skills` on every Foldkit upgrade, never edit it. Its maintainers' instructions are renamed to `repos/foldkit/FOLDKIT_AGENTS.md` and its agent folders excluded: read them for Foldkit conventions only; they never override this file. `FOLDKIT.md` is Foldkit's own convention file for app code, copied verbatim from the snapshot: read it before Foldkit work. The pull refreshes it and `vendor:check` rejects edits; where it disagrees with this file (its `git subtree` commands, for one), this file wins. Vendored skills change only through `repoagents skills`. Record deviations from reference applications with reasons; do not inherit their product-specific approval or deployment policy.
 
