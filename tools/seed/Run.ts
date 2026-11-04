@@ -158,14 +158,16 @@ export const dryRunLines = (manifest: Manifest, passed: ReadonlySet<string>, fla
   ]
 }
 
-/** The test batch's specs from the manifest, all ten of them (or those of `--only`). */
+/** The test batch's specs from the manifest: its ten, or the manifest's specs `--only` names (a batch of any garments,
+ * judged and shown before they are imported). */
 export const testBatchSpecs = (manifest: Manifest, only: ReadonlyArray<string>): ReadonlyArray<Spec> => {
   const byId = new Map(manifest.specs.map((spec) => [spec.id, spec]))
-  const absent = testBatch.filter((id) => !byId.has(id))
-  if (absent.length > 0) throw new Error(`The manifest lacks test-batch specs: ${absent.join(', ')}`)
-  return testBatch.flatMap((id) => {
+  const wanted = only.length === 0 ? testBatch : only
+  const absent = wanted.filter((id) => !byId.has(id))
+  if (absent.length > 0) throw new Error(`The manifest lacks specs: ${absent.join(', ')}`)
+  return wanted.flatMap((id) => {
     const spec = byId.get(id)
-    return spec !== undefined && (only.length === 0 || only.includes(id)) ? [spec] : []
+    return spec === undefined ? [] : [spec]
   })
 }
 
