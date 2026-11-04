@@ -214,9 +214,43 @@ cheap checks only; the coordinator merges, deploys and runs native.
   same try-on, another under the same id conflicts; another account's photo or pieces are NotFound and nothing is sent;
   past the day's credits the try-on is undone; delete takes the result and refunds an unfinished one). Native
   `TryOnAcceptance` written, not run here. `test:unit` on the rebased result: 1,177 of 1,177 pass.
-- **Open:** the coordinator's merge, deploy, migration and native run; a live try-on on the preview with Kris's photos;
-  MCP tools for try-on (the operation is shared, the tools are not written); a remembered default photo (the person
-  picks a photo each time).
+- **Review round (4 November evening, plan `okay-now-that-this-buzzing-clover`).**
+  - Server: a try-on reads only its pieces (`piecesWithIds`, `pictureOf`) and sends its photo as one JPEG, sized by a
+    pure `jpegSize`. `confirmed_at` is gone, and the migration was generated again on main's schema as
+    `20261104193830_try_ons` (two CREATE TABLEs). A result drawn after the person deleted its try-on is removed.
+  - Web: a try-on has its own address, `/try-on/:tryOn`. A lost start or delete is asked again under its operation id,
+    so nothing is charged twice. A failed start is Spent, Refused or Lost. "This is me" belongs to one photo, and the
+    Checkbox comes from @foldkit/ui. The spent refusal links to more credits (`spentWords`). Captions, piece states and
+    the alertdialog delete are in.
+  - Cut: the skeleton loader, and sharing the list helpers with Photos.
+- **In ChatGPT and Claude.** `photo_list` and `tryon_start`/`get`/`list`/`delete`/`pin` (`mcp/TryOnTools.ts`) run the
+  same operations as the website. `tryon_start` refuses anything but `thisIsMe: true`, and its words tell the assistant
+  to ask first (owner).
+- **Media views (`ui://styld/views-v3.html`).** `tryon_show` (before and after), `gallery_show` (numbered photos to
+  pick from), `pieces_show`, `outfits_show` and `piece_show` (all of a piece's pictures) show inline.
+  - Thumbnails come from `mcp/Thumbnails.ts`, with per-view limits and 1.5 MiB per result. The collector also keeps
+    every grant of an entity.
+  - Owner: the person's own Gallery photos, before photos and results may go to the host as these thumbnails
+    (ARCHITECTURE).
+  - The assistant-views bundle is 379,415 of 393,216 bytes.
+- **Styld's chat.** It lists `photo_list` and `tryon_start`/`get`/`list`, its prompt says the price and that it asks
+  first, and a try-on it started shows as a card (`ReplyPart.TryOn`, `page/StylistTryOns.ts`), read with the person's
+  session.
+- **Bundle:** 417,300, with the try-on page, its fixes, the chat card and the contract measured at 417,212.
+- **Evidence:**
+  - Unit: `McpTryOn`, `McpViews`, `assistantViews.story`, `Stylist`, `stylistTryOns.story/scene` and the try-on
+    story/scene.
+  - `test:unit` on the integrated tree: 1,254 of 1,254 pass.
+  - Native (`TryOnAcceptance`, `TryOnBrowserAcceptance`, McpAcceptance's `views-v3` and its view calls) is written, not
+    run: it waits for the final round.
+- **Not ours, seen on main:** `format:check` fails on `tools/seed/catalogue.yaml`, and `unused:production` reports
+  `packages/server/src/seed/Whole.ts`.
+- **Open:**
+  - The production promotion (0f) and the preview deploy (51).
+  - A live try-on with Kris's photos; the ChatGPT/Claude walk (refresh the connector for the new tools and
+    `views-v3`).
+  - The final native round.
+  - A remembered default photo; the later views (ROADMAP).
 
 ## Pictures that look like a shop's, and a piece turned to its back (4 November)
 
