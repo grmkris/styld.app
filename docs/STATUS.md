@@ -60,8 +60,8 @@ cheap checks only; the coordinator merges, deploys and runs native.
   pieces in one tap or up to nine pieces, a required "This is me" tick, the 2-credit cost; the page follows it by
   reading the list every 2 s; before and after side by side on a wide screen, a toggle on a phone; Delete after a
   question; Add to board through Save to board's `tryOn` target. A lost answer is retried under the same operation
-  id. en and sl copy. Bundle budget 398,600: the page adds 5,773 gzip over the contract's 391,342 (clean worktree); the rebased build
-  measures 398,575.
+  id. en and sl copy. Bundle budget 401,200: the page adds 5,773 gzip over the contract's 391,342 (clean worktree); the rebased build
+  measures 401,187.
   Story and scene tests `tryOn.story/scene`; native `TryOnBrowserAcceptance` written, not run.
 - **Evidence:** unit `TryOnPrompt.test` (words, numbering, canvas, Muse body order and model, the privacy rule, the
   `thisIsMe` and nine-piece contract) and `TryOn.test` over real SQLite and the in-memory Wallet (2 credits held and
