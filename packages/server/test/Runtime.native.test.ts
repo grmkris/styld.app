@@ -26,6 +26,7 @@ import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
 import { verifyPhotos } from './PhotosAcceptance.ts'
 import { verifyImports } from './ImportAcceptance.ts'
+import { verifySeed } from './SeedAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
@@ -162,6 +163,11 @@ test(
 test(
   'imports a v1 wardrobe for an admin, into the account its email signs in to or one made for it, once',
   overHttp(verifyImports),
+  { timeout: 90000 },
+)
+test(
+  'seeds a house account’s profile and boards for the operator only, once, public once whole, in its reader’s language',
+  overHttp(verifySeed),
   { timeout: 90000 },
 )
 test(

@@ -51,6 +51,7 @@ const SeedRequest = Schema.Struct({ ids: Schema.Array(Schema.String) })
 const doneWhenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
   whenFree(write).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 })))
 import { importRoutes } from './ImportFixture.ts'
+import { seedRoutes } from './SeedFixture.ts'
 import { storageHealth } from './StorageHealth.ts'
 
 // The server formats in every language: page renders and code emails.
@@ -93,6 +94,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       scanRoutes(database, media, yield* pieceQueue.raw),
       socialRoutes(database, media),
       importRoutes(database, media),
+      seedRoutes(database, media),
       // Accounts for a test: `{ ids }`, each with a verified email and the test password (test/Accounts.ts).
       HttpRouter.add(
         'POST',
@@ -199,7 +201,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/pictures/') ||
           url.pathname.startsWith('/test/scan/') ||
           url.pathname.startsWith('/test/social/') ||
-          url.pathname.startsWith('/test/imports/')
+          url.pathname.startsWith('/test/imports/') ||
+          url.pathname.startsWith('/test/seed/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.
           return yield* (yield* authHandle(undefined)).pipe(
