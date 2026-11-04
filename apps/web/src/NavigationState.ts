@@ -7,17 +7,13 @@ import { Navigate, ReplaceInternal, ReturnToParent, ScrollToAnchor } from './Nav
 import { Page } from './Page.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute, boardRouter, parentReturn, wardrobeRouter } from './route.ts'
-import type { BrowseQuery } from './WardrobeBrowse.ts'
 
 type NavigationUpdate = Update.Return<Model, Message>
 
-/** The wardrobe's browsing in place of the current address, then what follows it: reading the pieces again once a
- * category it showed was renamed or deleted (T-12). */
-export const browsedTo = <R>(query: BrowseQuery, after: ReadonlyArray<Update.Step<Model, Message, R>>) =>
-  Update.combine<Model, Message, R>([
-    (model) => ({ model, commands: [ReplaceInternal({ href: wardrobeRouter(query) })] }),
-    ...after,
-  ])
+/** What the wardrobe page is given with each Message: the browse its address shows, while it shows. */
+export const wardrobeContext = (route: AppRoute): Wardrobe.Context => ({
+  maybeBrowse: AppRoute.guards.Wardrobe(route) ? Option.some(route.browse) : Option.none(),
+})
 
 export const navigateTo =
   (href: string) =>
@@ -41,7 +37,10 @@ export const restoreBrowsing = (model: Model, route: AppRoute, hash: Option.Opti
     page: (page) =>
       AppRoute.guards.Wardrobe(route) && Page.guards.Tabs(page)
         ? modifyFields(page, {
-            tabs: (tabs) => modifyFields(tabs, { wardrobe: (wardrobe) => Wardrobe.restore(wardrobe, route) }),
+            tabs: (tabs) =>
+              modifyFields(tabs, {
+                wardrobe: Wardrobe.reflectBrowse(wardrobeContext(model.route).maybeBrowse, route.browse),
+              }),
           })
         : page,
   })

@@ -5,6 +5,7 @@ import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
 import { AppRoute, homeRouter, isSameTab, parentReturn, returnPath, routeFromUrl, tabOf } from './route.ts'
 import { noteReturn, tookNext } from './SignInReturn.ts'
+import { sameLevel } from './WardrobeBrowse.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
 // tab pages switch inside the page, keeping the navigation and what the app already has; every other page loads
@@ -143,11 +144,7 @@ const specialNavigation = (route: AppRoute, target: AppRoute, href: string) => {
       : Option.none()
   if (Option.exists(parent, (path) => new URL(path, href).href === href)) return [ReturnToParent({ href })]
   // A step through the wardrobe's groups and types is a page of its own: Back goes a step up (T-07).
-  if (
-    AppRoute.guards.Wardrobe(route) &&
-    AppRoute.guards.Wardrobe(target) &&
-    (route.group !== target.group || route.type !== target.type || route.category !== target.category)
-  )
+  if (AppRoute.guards.Wardrobe(route) && AppRoute.guards.Wardrobe(target) && !sameLevel(route.browse, target.browse))
     return [NavigateInternal({ href })]
   const wardrobeReturn =
     AppRoute.guards.Wardrobe(route) && AppRoute.guards.Piece(target)

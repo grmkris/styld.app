@@ -1,6 +1,7 @@
 import { OperationId } from '@styld/protocol'
 import { Option } from 'effect'
 import { AsyncData } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Deletion } from '../src/Confirm.ts'
@@ -8,6 +9,7 @@ import * as ServerData from '../src/ServerData.ts'
 import * as Wardrobe from '../src/page/Wardrobe.ts'
 import { DeletePieces, init, Message, Model, OutMessage, update } from '../src/page/WardrobeSelect.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { browseGroup, browseType } from '../src/WardrobeBrowse.ts'
 
 const knit = pieceFixture('knit').id
 const tee = pieceFixture('tee').id
@@ -94,12 +96,15 @@ describe('select mode on the wardrobe grid', () => {
 })
 
 describe('the wardrobe page with select mode', () => {
-  const browsing = Wardrobe.init({ group: 'clothing', type: 'shortSleeveTops' })
+  const tops = browseType('shortSleeveTops')
+  const browsing = Wardrobe.init()
+  const atTops = (current: Wardrobe.Model, next: Wardrobe.Message) =>
+    Wardrobe.update(current, next, { maybeBrowse: Option.some(tops) })
 
   test('pieces deleted from the grid ask the app to read the pieces again', () => {
     story(
-      Wardrobe.update,
-      given(Wardrobe.restore(browsing, { group: 'clothing', type: 'shortSleeveTops' })),
+      atTops,
+      given(Wardrobe.reflectBrowse(Option.some(tops), tops)(browsing)),
       message(Wardrobe.Message.GotSelectMessage({ message: Message.ClickedSelect() })),
       message(Wardrobe.Message.GotSelectMessage({ message: Message.SucceededDeletePieces() })),
       model((current) => expect(current.selection).toEqual(Model.Off())),
@@ -108,9 +113,16 @@ describe('the wardrobe page with select mode', () => {
   })
 
   test('browsing elsewhere ends select mode', () => {
-    const selecting = Wardrobe.update(browsing, Wardrobe.Message.GotSelectMessage({ message: Message.ClickedSelect() }))
+    const selecting = atTops(browsing, Wardrobe.Message.GotSelectMessage({ message: Message.ClickedSelect() }))
     expect(Model.guards.On(selecting.model.selection)).toBe(true)
-    expect(Wardrobe.restore(selecting.model, { group: 'clothing' }).selection).toEqual(Model.Off())
+    // A filter on the same type keeps it; another level ends it.
+    const winter = modifyFields(tops, {
+      filters: (filters) => modifyFields(filters, { season: () => Option.some('winter' as const) }),
+    })
+    expect(Model.guards.On(Wardrobe.reflectBrowse(Option.some(tops), winter)(selecting.model).selection)).toBe(true)
+    expect(Wardrobe.reflectBrowse(Option.some(tops), browseGroup('clothing'))(selecting.model).selection).toEqual(
+      Model.Off(),
+    )
   })
 
   test('the pieces are read again even while an older read is on its way, which may predate the delete', () => {

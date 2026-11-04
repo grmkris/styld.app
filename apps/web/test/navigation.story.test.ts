@@ -22,6 +22,7 @@ import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import * as ShowMe from '../src/page/ShowMe.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
 import { AppRoute } from '../src/route.ts'
+import { browseGroup, unfiltered } from '../src/WardrobeBrowse.ts'
 import { at, pageOf, urlOf } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -34,7 +35,9 @@ const tee = pieceFixture('tee', { name: 'White tee' })
 
 describe('following a link', () => {
   test('between tab pages the page stays and only the address changes', () => {
-    expect(names(followLink(AppRoute.Wardrobe({}), true, internal('/ask')))).toEqual(['NavigateInternal'])
+    expect(names(followLink(AppRoute.Wardrobe({ browse: unfiltered }), true, internal('/ask')))).toEqual([
+      'NavigateInternal',
+    ])
     expect(names(followLink(AppRoute.Home(), true, internal('/account')))).toEqual(['NavigateInternal'])
   })
 
@@ -45,7 +48,10 @@ describe('following a link', () => {
       `/looks/lk_${'a'.repeat(22)}`,
       '/wardrobe/add',
     ])
-      expect({ path, commands: names(followLink(AppRoute.Wardrobe({}), true, internal(path))) }).toEqual({
+      expect({
+        path,
+        commands: names(followLink(AppRoute.Wardrobe({ browse: unfiltered }), true, internal(path))),
+      }).toEqual({
         path,
         commands: ['Navigate'],
       })
@@ -71,13 +77,15 @@ describe('following a link', () => {
 
   test('someone signed out loads whole; the current tab scrolls back up; a section of it is scrolled to', () => {
     expect(names(followLink(AppRoute.Home(), false, internal('/wardrobe')))).toEqual(['Navigate'])
-    expect(names(followLink(AppRoute.Wardrobe({}), true, internal('/wardrobe')))).toEqual(['ScrollToTop'])
+    expect(names(followLink(AppRoute.Wardrobe({ browse: unfiltered }), true, internal('/wardrobe')))).toEqual([
+      'ScrollToTop',
+    ])
     expect(names(followLink(AppRoute.Home(), false, internal('/#inspiration')))).toEqual(['NavigateInternal'])
   })
 
   test('a step through the wardrobe’s groups and types adds a Back step; the same step only scrolls up', () => {
-    const groups = AppRoute.Wardrobe({})
-    const shoes = AppRoute.Wardrobe({ group: 'shoes' })
+    const groups = AppRoute.Wardrobe({ browse: unfiltered })
+    const shoes = AppRoute.Wardrobe({ browse: browseGroup('shoes') })
     expect(names(followLink(groups, true, internal('/wardrobe?group=shoes')))).toEqual(['NavigateInternal'])
     expect(names(followLink(shoes, true, internal('/wardrobe?group=shoes&type=boots')))).toEqual(['NavigateInternal'])
     expect(names(followLink(shoes, true, internal('/wardrobe')))).toEqual(['NavigateInternal'])
@@ -85,7 +93,7 @@ describe('following a link', () => {
   })
 
   test('only a change of tab cross-fades', () => {
-    expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe({}))).toBe(true)
+    expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe({ browse: unfiltered }))).toBe(true)
     expect(isTabChange(AppRoute.Ask({ q: Option.none() }), AppRoute.Ask({ q: Option.none() }))).toBe(false)
   })
 })

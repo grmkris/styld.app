@@ -265,3 +265,14 @@ test('every page answers 200 and paths beside them answer 404', async () => {
   for (const path of ['/login/elsewhere', '/account/settings', '/connect', '/wardrobe/add/more'])
     expect(await statusOf(path)).toBe(404)
 })
+
+test('an old or broken wardrobe link renders the wardrobe without the part that is not ours, never Not found', async () => {
+  for (const path of ['/wardrobe?group=nonsense', '/wardrobe?group=shoes&type=flats&rainproof=no&colours=teal']) {
+    const html = await renderPage(path, sessionCookie)
+    expect({ path, loading: html.includes('Loading pieces…'), notFound: html.includes('Page not found') }).toEqual({
+      path,
+      loading: true,
+      notFound: false,
+    })
+  }
+})

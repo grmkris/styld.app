@@ -1,8 +1,9 @@
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Dialog } from '@foldkit/ui'
-import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
+import { Colour, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
 import { Array, Effect, Option, Order, Schema } from 'effect'
 import { Command, Update } from 'foldkit'
+import { replaceUrl } from 'foldkit/navigation'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -10,32 +11,17 @@ import { sheetFolds } from './Sheet.ts'
 import * as WardrobeSelect from './WardrobeSelect.ts'
 import { drawOperationId } from '../OperationIds.ts'
 import { StyldClient } from '../StyldClient.ts'
-import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
+import { browseRouter } from '../route.ts'
+import { Browse, type Filters, noFilters, sameLevel } from '../WardrobeBrowse.ts'
 
 // The wardrobe tab: the person's pieces (the app's, read once for every page that shows them), browsed as a shop is
 // (owner, 2026-11-03, T-07): the groups as cards, then the chosen group's types as cards, then the chosen type's
-// pieces, narrowed by the filter sheet. Each step down is a link, so the phone's Back goes a step up.
+// pieces, narrowed by the filter sheet. Each step down is a link, so the phone's Back goes a step up. What is browsed
+// lives only in the address (`WardrobeBrowse.ts`, Foldkit's query-sync): the view and update get it from the route,
+// a filter replaces the address, and this Model keeps only what is the page's own (the sheet, a category being
+// edited, Select mode).
 
 // MODEL
-
-/** What else narrows the grid, from the filter sheet: any of these colours, a season, made for rain, an occasion, a
- * brand. */
-export const Filters = Schema.Struct({
-  colours: Schema.Array(Colour),
-  season: Schema.Option(Season),
-  rainproof: Schema.Boolean,
-  occasion: Schema.Option(Occasion),
-  brand: Schema.Option(Schema.String),
-})
-export type Filters = typeof Filters.Type
-
-const noFilters: Filters = {
-  colours: [],
-  season: Option.none(),
-  rainproof: false,
-  occasion: Option.none(),
-  brand: Option.none(),
-}
 
 /** How many filters are set, for the button that opens them. */
 export const filterCount = (filters: Filters) =>
@@ -52,26 +38,27 @@ const sameCategory = (category: string | null, asked: string | null) =>
 /** The pieces the browsing and the filters leave: in the group and type chosen, of any chosen colour, worn in the
  * chosen season (a piece with no season is worn in any), made for rain when asked, for the chosen occasion and of the
  * chosen brand. */
-export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): ReadonlyArray<Piece> =>
+export const shownPieces = (pieces: ReadonlyArray<Piece>, browse: Browse): ReadonlyArray<Piece> =>
   Array.filter(
     pieces,
     (piece) =>
-      Option.match(model.group, { onNone: () => true, onSome: (group) => groupOf(piece.type) === group }) &&
-      Option.match(model.type, { onNone: () => true, onSome: (type) => piece.type === type }) &&
+      Option.match(browse.group, { onNone: () => true, onSome: (group) => groupOf(piece.type) === group }) &&
+      Option.match(browse.type, { onNone: () => true, onSome: (type) => piece.type === type }) &&
       // Under a type, its pieces of no category of the person's own, or those of the one chosen, whatever its case
       // (a rename that joins a category keeps that one's spelling; T-12).
-      (Option.isNone(model.type) || sameCategory(piece.category, Option.getOrNull(model.category))) &&
-      (model.filters.colours.length === 0 || piece.colours.some((colour) => model.filters.colours.includes(colour))) &&
-      Option.match(model.filters.season, {
+      (Option.isNone(browse.type) || sameCategory(piece.category, Option.getOrNull(browse.category))) &&
+      (browse.filters.colours.length === 0 ||
+        piece.colours.some((colour) => browse.filters.colours.includes(colour))) &&
+      Option.match(browse.filters.season, {
         onNone: () => true,
         onSome: (season) => piece.seasons.length === 0 || piece.seasons.includes(season),
       }) &&
-      (!model.filters.rainproof || piece.rainproof) &&
-      Option.match(model.filters.occasion, {
+      (!browse.filters.rainproof || piece.rainproof) &&
+      Option.match(browse.filters.occasion, {
         onNone: () => true,
         onSome: (occasion) => piece.occasions.includes(occasion),
       }) &&
-      Option.match(model.filters.brand, { onNone: () => true, onSome: (brand) => piece.brand === brand }),
+      Option.match(browse.filters.brand, { onNone: () => true, onSome: (brand) => piece.brand === brand }),
   )
 
 /** The brands the person has written on their pieces, in order. */
@@ -97,63 +84,31 @@ export const CategoryEdit = defineTaggedUnion({
 export type CategoryEdit = typeof CategoryEdit.Type
 
 export const Model = Schema.Struct({
-  /** The group being browsed, then one of its types, whose pieces show; none shows the groups. */
-  group: Schema.Option(GarmentGroup),
-  type: Schema.Option(PieceType),
-  category: Schema.Option(Schema.String),
   categoryEdit: CategoryEdit,
-  filters: Filters,
   filterSheet: Dialog.Model,
   /** Select mode on a type's pieces, to delete several at once (`WardrobeSelect.ts`). */
   selection: WardrobeSelect.Model,
 })
 export type Model = typeof Model.Type
 
-export const init = (query: BrowseQuery = {}): Model => ({
-  ...browsing(query),
+export const init = (): Model => ({
   categoryEdit: CategoryEdit.Idle(),
   filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
   selection: WardrobeSelect.init(),
 })
 
-const browsing = (query: BrowseQuery) => ({
-  group: Option.fromNullishOr(query.group),
-  type: Option.filter(
-    Option.fromNullishOr(query.type),
-    (type) => query.group === undefined || groupOf(type) === query.group,
-  ),
-  category: query.type === undefined ? Option.none() : Option.fromNullishOr(query.category),
-  filters: {
-    colours: Option.getOrElse(browseColours(query.colours?.split(',') ?? []), () => []),
-    season: Option.fromNullishOr(query.season),
-    rainproof: query.rainproof === 'yes',
-    occasion: Option.fromNullishOr(query.occasion),
-    brand: Option.fromNullishOr(query.brand),
-  },
-})
+/** What the page is given with each Message: the browse the address shows, when the wardrobe is on screen (a rename
+ * or a Select mode answer can land while another tab shows). */
+export type Context = Readonly<{ maybeBrowse: Option.Option<Browse> }>
 
-export const restore = (model: Model, query: BrowseQuery): Model => {
-  const restored = browsing(query)
-  return modifyFields(model, {
-    group: () => restored.group,
-    type: () => restored.type,
-    category: () => restored.category,
-    categoryEdit: () => CategoryEdit.Idle(),
-    filters: () => restored.filters,
-    selection: () => WardrobeSelect.init(),
-  })
-}
-
-export const queryOf = (model: Model): BrowseQuery => ({
-  ...Option.match(model.group, { onNone: () => ({}), onSome: (group) => ({ group }) }),
-  ...Option.match(model.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
-  ...Option.match(model.category, { onNone: () => ({}), onSome: (category) => ({ category }) }),
-  ...(model.filters.colours.length === 0 ? {} : { colours: model.filters.colours.join(',') }),
-  ...Option.match(model.filters.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
-  ...(model.filters.rainproof ? { rainproof: 'yes' as const } : {}),
-  ...Option.match(model.filters.occasion, { onNone: () => ({}), onSome: (occasion) => ({ occasion }) }),
-  ...Option.match(model.filters.brand, { onNone: () => ({}), onSome: (brand) => ({ brand }) }),
-})
+/** The address moved to another browse: a category being edited and Select mode belong to the one left, so they end;
+ * the filter sheet stays open while its filters change the address. */
+export const reflectBrowse =
+  (maybePrevious: Option.Option<Browse>, next: Browse) =>
+  (model: Model): Model =>
+    Option.exists(maybePrevious, (previous) => sameLevel(previous, next))
+      ? model
+      : modifyFields(model, { categoryEdit: () => CategoryEdit.Idle(), selection: () => WardrobeSelect.init() })
 
 // MESSAGE
 
@@ -174,19 +129,20 @@ export const Message = defineMessageUnion({
   ClickedDeleteCategory: {},
   ClickedConfirmDeleteCategory: {},
   ClickedCancelCategoryEdit: {},
-  SucceededRenameCategory: { name: Schema.String },
-  SucceededDeleteCategory: {},
+  /** The category renamed, under its type: the address follows only while the page still shows it. */
+  SucceededRenameCategory: { type: PieceType, name: Schema.String, to: Schema.String },
+  SucceededDeleteCategory: { type: PieceType, name: Schema.String },
   FailedCategoryEdit: {},
   GotSelectMessage: { message: WardrobeSelect.Message },
+  CompletedReplaceBrowse: {},
 })
 export type Message = typeof Message.Type
 
-/** The pieces are the app's: the page asks for them again after a failure, once a category it shows was renamed or
- * deleted (`reread`), with the address it now shows, and once some were deleted here, at once. */
+/** The pieces are the app's: the page asks for them again after a failure and once a category was renamed or
+ * deleted, and at once once some were deleted here. */
 export const OutMessage = defineMessageUnion({
   RequestedPieces: {},
   DeletedPieces: {},
-  ChangedBrowse: { query: BrowseQuery, reread: Schema.optionalKey(Schema.Boolean) },
 })
 export type OutMessage = typeof OutMessage.Type
 
@@ -200,7 +156,7 @@ export const RenameCategory = Command.define('RenameCategory', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       yield* api.wardrobe.renameCategory({ payload: { operationId: yield* drawOperationId(), type, name, to } })
-      return Message.SucceededRenameCategory({ name: to })
+      return Message.SucceededRenameCategory({ type, name, to })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCategoryEdit())),
 })
 
@@ -212,8 +168,15 @@ export const DeleteCategory = Command.define('DeleteCategory', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       yield* api.wardrobe.deleteCategory({ payload: { operationId: yield* drawOperationId(), type, name } })
-      return Message.SucceededDeleteCategory()
+      return Message.SucceededDeleteCategory({ type, name })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCategoryEdit())),
+})
+
+/** Show another browse in place of this one: the address changes without a Back step, and the route follows. */
+export const ReplaceBrowse = Command.define('ReplaceBrowse', {
+  args: { browse: Browse },
+  messages: [Message.CompletedReplaceBrowse],
+  execute: ({ browse }) => replaceUrl(browseRouter({ browse })).pipe(Effect.as(Message.CompletedReplaceBrowse())),
 })
 
 // UPDATE
@@ -245,38 +208,43 @@ const foldSelection = Update.foldChild({
 const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
   Option.contains(chosen, value) ? Option.none() : Option.some(value)
 
-const browsed = (model: Model): UpdateReturn => ({
-  model,
-  outMessage: OutMessage.ChangedBrowse({ query: queryOf(model) }),
-})
+/** The browse shown with its filters changed, in place of the address; nothing while no browse is shown. */
+const filtered = (model: Model, context: Context, change: (filters: Filters) => Filters): UpdateReturn =>
+  Option.match(context.maybeBrowse, {
+    onNone: () => ({ model }),
+    onSome: (browse) => ({
+      model,
+      commands: [ReplaceBrowse({ browse: modifyFields(browse, { filters: change }) })],
+    }),
+  })
 
-const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateReturn =>
-  browsed(modifyFields(model, { filters: change }))
-
-export const update = (model: Model, message: Message): UpdateReturn =>
+export const update = (model: Model, message: Message, context: Context): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedFilters: () => openFilterSheet(model),
     GotFilterSheetMessage: ({ message: sheetMessage }) => foldFilterSheet(model, sheetMessage),
     ToggledFilterColour: ({ colour }) =>
-      filtered(model, (filters) =>
+      filtered(model, context, (filters) =>
         modifyFields(filters, {
           colours: (colours) =>
             colours.includes(colour) ? colours.filter((each) => each !== colour) : [...colours, colour],
         }),
       ),
     ChoseFilterSeason: ({ season }) =>
-      filtered(model, (filters) => modifyFields(filters, { season: (chosen) => chosenAgain(season, chosen) })),
+      filtered(model, context, (filters) => modifyFields(filters, { season: (chosen) => chosenAgain(season, chosen) })),
     ToggledFilterRainproof: () =>
-      filtered(model, (filters) => modifyFields(filters, { rainproof: (rainproof) => !rainproof })),
+      filtered(model, context, (filters) => modifyFields(filters, { rainproof: (rainproof) => !rainproof })),
     ChoseFilterOccasion: ({ occasion }) =>
-      filtered(model, (filters) => modifyFields(filters, { occasion: (chosen) => chosenAgain(occasion, chosen) })),
+      filtered(model, context, (filters) =>
+        modifyFields(filters, { occasion: (chosen) => chosenAgain(occasion, chosen) }),
+      ),
     ChoseFilterBrand: ({ brand }) =>
-      filtered(model, (filters) => modifyFields(filters, { brand: (chosen) => chosenAgain(brand, chosen) })),
-    ClickedClearFilters: () => filtered(model, () => noFilters),
+      filtered(model, context, (filters) => modifyFields(filters, { brand: (chosen) => chosenAgain(brand, chosen) })),
+    ClickedClearFilters: () => filtered(model, context, () => noFilters),
     ClickedShowPieces: () => closeFilterSheet(model),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     GotSelectMessage: ({ message: selectMessage }) => foldSelection(model, selectMessage),
-    ...categoryUpdates(model),
+    CompletedReplaceBrowse: () => ({ model }),
+    ...categoryUpdates(model, context),
   })
 
 const editing = (model: Model, categoryEdit: CategoryEdit): UpdateReturn => ({
@@ -284,15 +252,46 @@ const editing = (model: Model, categoryEdit: CategoryEdit): UpdateReturn => ({
 })
 
 /** The category the page shows, with its type: what a rename or a delete acts on. */
-const shownCategory = (model: Model) => Option.all({ type: model.type, name: model.category })
+const shownCategory = (context: Context) =>
+  Option.flatMap(context.maybeBrowse, (browse) => Option.all({ type: browse.type, name: browse.category }))
+
+/** A rename or delete done: the pieces are read again, and the address follows only while the page still shows the
+ * category acted on (the person may have browsed on while it was sent). */
+const categoryChanged = (
+  model: Model,
+  context: Context,
+  done: { readonly type: PieceType; readonly name: string },
+  to: Option.Option<string>,
+): UpdateReturn => {
+  const stillShown = Option.flatMap(context.maybeBrowse, (browse) =>
+    Option.contains(browse.type, done.type) && Option.contains(browse.category, done.name)
+      ? Option.some(browse)
+      : Option.none(),
+  )
+  return {
+    model: modifyFields(model, { categoryEdit: () => CategoryEdit.Idle() }),
+    commands: Option.match(stillShown, {
+      onNone: () => [],
+      onSome: (browse) => [ReplaceBrowse({ browse: modifyFields(browse, { category: () => to }) })],
+    }),
+    outMessage: OutMessage.RequestedPieces(),
+  }
+}
 
 /** Renaming or deleting the category the page shows; once done, the page shows where its pieces are now and the app
  * reads them again. */
-const categoryUpdates = (model: Model) => ({
+const categoryUpdates = (model: Model, context: Context) => ({
   ClickedRenameCategory: () =>
     editing(
       model,
-      CategoryEdit.Renaming({ name: Option.getOrElse(model.category, () => ''), sending: false, failed: false }),
+      CategoryEdit.Renaming({
+        name: Option.getOrElse(
+          Option.map(shownCategory(context), ({ name }) => name),
+          () => '',
+        ),
+        sending: false,
+        failed: false,
+      }),
     ),
   UpdatedCategoryName: ({ value }: { readonly value: string }) =>
     CategoryEdit.guards.Renaming(model.categoryEdit)
@@ -300,7 +299,7 @@ const categoryUpdates = (model: Model) => ({
       : { model },
   SubmittedCategoryName: (): UpdateReturn => {
     const edit = model.categoryEdit
-    const shown = shownCategory(model)
+    const shown = shownCategory(context)
     if (!CategoryEdit.guards.Renaming(edit) || edit.sending || Option.isNone(shown)) return { model }
     const to = edit.name.trim()
     if (to === '' || to === shown.value.name) return editing(model, CategoryEdit.Idle())
@@ -311,7 +310,7 @@ const categoryUpdates = (model: Model) => ({
   },
   ClickedDeleteCategory: () => editing(model, CategoryEdit.Deleting({ sending: false, failed: false })),
   ClickedConfirmDeleteCategory: (): UpdateReturn => {
-    const shown = shownCategory(model)
+    const shown = shownCategory(context)
     if (!CategoryEdit.guards.Deleting(model.categoryEdit) || model.categoryEdit.sending || Option.isNone(shown))
       return { model }
     return {
@@ -320,14 +319,10 @@ const categoryUpdates = (model: Model) => ({
     }
   },
   ClickedCancelCategoryEdit: () => editing(model, CategoryEdit.Idle()),
-  SucceededRenameCategory: ({ name }: { readonly name: string }) => {
-    const renamed = modifyFields(model, { category: () => Option.some(name), categoryEdit: () => CategoryEdit.Idle() })
-    return { model: renamed, outMessage: OutMessage.ChangedBrowse({ query: queryOf(renamed), reread: true }) }
-  },
-  SucceededDeleteCategory: () => {
-    const deleted = modifyFields(model, { category: () => Option.none(), categoryEdit: () => CategoryEdit.Idle() })
-    return { model: deleted, outMessage: OutMessage.ChangedBrowse({ query: queryOf(deleted), reread: true }) }
-  },
+  SucceededRenameCategory: (done: { readonly type: PieceType; readonly name: string; readonly to: string }) =>
+    categoryChanged(model, context, done, Option.some(done.to)),
+  SucceededDeleteCategory: (done: { readonly type: PieceType; readonly name: string }) =>
+    categoryChanged(model, context, done, Option.none()),
   FailedCategoryEdit: () =>
     editing(
       model,

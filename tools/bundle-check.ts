@@ -113,7 +113,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 392,400 on 4 November for what Styld knows about the person (taste, L1): the client's contract gains the
 // taste group (its read, the occasions, notes and first-run writes, their schemas and the notes' limit) and adds 87:
 // main measured 392,238 at 03299488 and 392,325 with it.
-if (initialGzip > 392400) throw new Error(`Initial browser assets exceed the 392,400-byte gzip budget: ${initialGzip}`)
+// Raised to 392,900 the same day for the wardrobe's address as its only copy (Foldkit's query-sync): the lenient
+// per-parameter codecs, the browse's normalising and ReplaceBrowse add 444 (main 392,390 at 89f4a29 and 392,834 with
+// it, each measured in a clean worktree).
+if (initialGzip > 392900) throw new Error(`Initial browser assets exceed the 392,900-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

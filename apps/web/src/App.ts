@@ -347,15 +347,15 @@ const foldAccount = Update.foldChild({
   }),
 })
 
-const foldWardrobe = Update.foldChild({
-  update: Wardrobe.update,
-  ...at(lenses.wardrobe),
-  foldOutMessage: Wardrobe.OutMessage.match<Step>({
-    RequestedPieces: () => revisitPieces,
-    DeletedPieces: () => readPiecesAgain,
-    ChangedBrowse: ({ query, reread }) => NavigationState.browsedTo(query, reread === true ? [revisitPieces] : []),
-  }),
-})
+const foldWardrobe = (context: Wardrobe.Context) =>
+  Update.foldChild({
+    update: (child: Wardrobe.Model, message: Wardrobe.Message) => Wardrobe.update(child, message, context),
+    ...at(lenses.wardrobe),
+    foldOutMessage: Wardrobe.OutMessage.match<Step>({
+      RequestedPieces: () => revisitPieces,
+      DeletedPieces: () => readPiecesAgain,
+    }),
+  })
 
 const foldPiece = Update.foldChild({
   update: Piece.update,
@@ -561,7 +561,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     CompletedFocusPageTitle: () => ({ model }),
     GotLoginMessage: (got) => foldLogin(model, got.message),
     GotAccountMessage: (got) => foldAccount(model, got.message),
-    GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
+    GotWardrobeMessage: (got) => foldWardrobe(NavigationState.wardrobeContext(model.route))(model, got.message),
     GotPieceMessage: (got) => foldPiece(model, got.message),
     GotAddPiecesMessage: (got) => foldAddPieces(model, got.message),
     GotReviewMessage: (got) => foldReview(model, got.message),

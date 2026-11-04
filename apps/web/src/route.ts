@@ -1,5 +1,5 @@
 import type { MessageKey } from '@styld/i18n'
-import { BrowseQuery } from './WardrobeBrowse.ts'
+import { Browse, BrowseQuery, unfiltered } from './WardrobeBrowse.ts'
 import { Effect, Equivalence, Option, Schema, pipe } from 'effect'
 import {
   defineRouteUnion,
@@ -26,7 +26,8 @@ export const AppRoute = defineRouteUnion({
   Account: {},
   /** The person's public profile, edited. */
   Profile: {},
-  Wardrobe: BrowseQuery.fields,
+  /** What the wardrobe shows: the address is its only copy (`WardrobeBrowse.ts`). */
+  Wardrobe: { browse: Browse },
   AddPieces: {},
   /** Pieces found in the person's photos and videos, waiting for them to keep or drop. */
   Review: { from: Schema.optionalKey(Schema.String) },
@@ -69,7 +70,9 @@ const loginRouter = pipe(
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
 export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
 export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
-export const wardrobeRouter = pipe(literal('wardrobe'), query(BrowseQuery), mapTo(AppRoute.Wardrobe))
+export const browseRouter = pipe(literal('wardrobe'), query(BrowseQuery), mapTo(AppRoute.Wardrobe))
+/** The wardrobe at a browse given in part: what is left out is the groups' and unfiltered. */
+export const wardrobeRouter = (browse: Partial<Browse> = {}) => browseRouter({ browse: { ...unfiltered, ...browse } })
 export const addPiecesRouter = pipe(literal('wardrobe'), slash(literal('add')), mapTo(AppRoute.AddPieces))
 const returnQuery = Schema.Struct({ from: Schema.optionalKey(Schema.String) })
 export const reviewRouter = pipe(
@@ -155,7 +158,7 @@ const parser = oneOf(
   formerPhotoRouter,
   formerPhotosRouter,
   pieceRouter,
-  wardrobeRouter,
+  browseRouter,
   lookRouter,
   looksRouter,
   photoRouter,

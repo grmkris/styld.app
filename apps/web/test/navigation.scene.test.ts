@@ -1,10 +1,9 @@
 import { Dialog } from '@foldkit/ui'
 import { Command, Mount, click, expect, given, role, scene } from 'foldkit/scene'
 import { test } from 'vitest'
-import { Message, update } from '../src/App.ts'
-import { ReplaceInternal } from '../src/Navigation.ts'
+import { update } from '../src/App.ts'
 import { view } from '../src/View.ts'
-import { at, withPieces } from './AppFixtures.ts'
+import { at, sceneReplacedBrowse, withPieces } from './AppFixtures.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -43,8 +42,7 @@ test('choosing a filter replaces the current address rather than adding a Back s
     Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
     ...sceneSheetOpened,
     click(role('button', { name: 'Smart' })),
-    Command.expectExact(ReplaceInternal({ href: '/wardrobe?group=shoes&type=flats&season=winter&occasion=smart' })),
-    Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
+    ...sceneReplacedBrowse('/wardrobe?group=shoes&type=flats&season=winter&occasion=smart'),
     expect(role('link', { name: 'Blue flats' })).toExist(),
   )
 })

@@ -25,6 +25,7 @@ import * as VisitView from './page/VisitView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
 import { AppRoute, homeRouter, parentReturn } from './route.ts'
+import { unfiltered } from './WardrobeBrowse.ts'
 import { piecesOf } from './ServerData.ts'
 import { categoriesOf } from './page/PieceFields.ts'
 import { styled } from './Styled.ts'
@@ -129,7 +130,15 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
         model,
         lenses.wardrobe,
         (wardrobe) =>
-          h.submodel({ ...slot(lenses.wardrobe, wardrobe), view: WardrobeView.view, viewInputs: { locale, pieces } }),
+          h.submodel({
+            ...slot(lenses.wardrobe, wardrobe),
+            view: WardrobeView.view,
+            viewInputs: {
+              locale,
+              pieces,
+              browse: AppRoute.guards.Wardrobe(model.route) ? model.route.browse : unfiltered,
+            },
+          }),
         h,
       ),
     Looks: () =>

@@ -10,12 +10,13 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { filtersIcon, loader } from '../Icon.ts'
-import { addPiecesRouter, pieceRouter, wardrobeRouter } from '../route.ts'
+import { addPiecesRouter, browseRouter, pieceRouter } from '../route.ts'
+import { type Browse, browseGroup, browseType } from '../WardrobeBrowse.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import type { PiecesData } from '../ServerData.ts'
-import { brandsOf, CategoryEdit, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
+import { brandsOf, CategoryEdit, filterCount, Message, type Model, newestOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
 import { categoriesOf, chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
@@ -32,8 +33,8 @@ const thumbnailPath = (piece: Piece) => cdn.piece(piece, 'thumb')
 
 /** Opens the filter sheet, a control rather than a category: it opens a dialog and toggles nothing. Once filters are
  * set it is filled in and says how many. */
-const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const count = filterCount(model.filters)
+const filtersButton = (model: Model, browse: Browse, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const count = filterCount(browse.filters)
   return Button.view(
     {
       onClick: Message.ClickedFilters(),
@@ -105,7 +106,7 @@ const pieceState = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
   return h.empty
 }
 
-const pieceTile = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const pieceTile = (piece: Piece, browse: Browse, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const label = pieceLabel(piece, locale)
   return h.keyed('li')(
     piece.id,
@@ -113,7 +114,7 @@ const pieceTile = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Me
     [
       h.a(
         [
-          h.Href(pieceRouter({ pieceId: piece.id, from: `${wardrobeRouter(queryOf(model))}#piece-${piece.id}` })),
+          h.Href(pieceRouter({ pieceId: piece.id, from: `${browseRouter({ browse })}#piece-${piece.id}` })),
           // No label under the cut-out (Eva's review, F-11): the link carries the piece's name for whoever cannot see
           // the picture, and the piece's page says the rest.
           h.AriaLabel(label),
@@ -131,7 +132,7 @@ const pieceTile = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Me
 /** The filter sheet's pickers: colours, when and what for, and the brands the person wrote down. */
 const filterPickers = (
   pieces: ReadonlyArray<Piece>,
-  model: Model,
+  browse: Browse,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
@@ -142,7 +143,7 @@ const filterPickers = (
         id: 'filter-colours',
         legend: 'wardrobe.colorsLabel',
         problem: Option.none(),
-        chosen: model.filters.colours,
+        chosen: browse.filters.colours,
         onToggle: (colour) => Message.ToggledFilterColour({ colour }),
       },
       locale,
@@ -156,7 +157,7 @@ const filterPickers = (
         values: WornWhen.literals,
         label: (when) => format(locale, when === 'rainproof' ? 'wardrobe.rainproof' : seasonName(when), {}),
         isChosen: (when) =>
-          when === 'rainproof' ? model.filters.rainproof : Option.contains(model.filters.season, when),
+          when === 'rainproof' ? browse.filters.rainproof : Option.contains(browse.filters.season, when),
         onChoose: (when) =>
           when === 'rainproof' ? Message.ToggledFilterRainproof() : Message.ChoseFilterSeason({ season: when }),
       },
@@ -170,7 +171,7 @@ const filterPickers = (
         problem: Option.none(),
         values: Occasion.literals,
         label: (occasion) => format(locale, occasionName(occasion), {}),
-        isChosen: (occasion) => Option.contains(model.filters.occasion, occasion),
+        isChosen: (occasion) => Option.contains(browse.filters.occasion, occasion),
         onChoose: (occasion) => Message.ChoseFilterOccasion({ occasion }),
       },
       locale,
@@ -185,7 +186,7 @@ const filterPickers = (
             problem: Option.none(),
             values: brands,
             label: (brand) => brand,
-            isChosen: (brand) => Option.contains(model.filters.brand, brand),
+            isChosen: (brand) => Option.contains(browse.filters.brand, brand),
             onChoose: (brand) => Message.ChoseFilterBrand({ brand }),
           },
           locale,
@@ -196,8 +197,14 @@ const filterPickers = (
 
 /** The filter sheet: colours, when and what for, and the brands the person wrote down; Show closes it on what is
  * left. */
-const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const left = shownPieces(pieces, model).length
+const filterSheet = (
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  browse: Browse,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html => {
+  const left = shownPieces(pieces, browse).length
   return bottomSheet(
     {
       dialog: model.filterSheet,
@@ -206,14 +213,14 @@ const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale,
       toParentMessage: (message) => Message.GotFilterSheetMessage({ message }),
       body: () => [
         h.div(styled(h, sheetBody()), [
-          ...filterPickers(pieces, model, locale, h),
+          ...filterPickers(pieces, browse, locale, h),
           h.div(styled(h, styles.sheetActions()), [
             actionButton(
               {
                 label: format(locale, 'wardrobe.clearFilters', {}),
                 style: secondaryAction(),
                 onClick: Message.ClickedClearFilters(),
-                isDisabled: filterCount(model.filters) === 0,
+                isDisabled: filterCount(browse.filters) === 0,
               },
               h,
             ),
@@ -357,25 +364,26 @@ const typeView = (
   type: PieceType,
   pieces: ReadonlyArray<Piece>,
   model: Model,
+  browse: Browse,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
-  const shown = shownPieces(pieces, model)
+  const shown = shownPieces(pieces, browse)
   const selecting = WardrobeSelect.Model.guards.On(model.selection)
   const toggle = selectSlot('wardrobe-select', WardrobeSelectView.toggle, shown, model, locale, h)
   return [
     levelHead(
       backTo(
-        wardrobeRouter({ group }),
+        browseRouter({ browse: browseGroup(group) }),
         format(locale, 'wardrobe.backToGroup', { group: format(locale, groupName(group), {}) }),
         h,
       ),
       // A category of the person's own is named as they named it (T-12).
-      Option.getOrElse(model.category, () => format(locale, typeName(type), {})),
-      selecting ? [toggle] : [filtersButton(model, locale, h), ...(shown.length === 0 ? [] : [toggle])],
+      Option.getOrElse(browse.category, () => format(locale, typeName(type), {})),
+      selecting ? [toggle] : [filtersButton(model, browse, locale, h), ...(shown.length === 0 ? [] : [toggle])],
       h,
     ),
-    Option.match(model.category, {
+    Option.match(browse.category, {
       onNone: () => h.empty,
       onSome: (name) => categoryEditView(model, name, type, locale, h),
     }),
@@ -385,30 +393,36 @@ const typeView = (
         ? selectSlot('wardrobe-ticks', WardrobeSelectView.ticks, shown, model, locale, h)
         : h.ul(
             styled(h, styles.grid()),
-            shown.map((piece) => pieceTile(piece, model, locale, h)),
+            shown.map((piece) => pieceTile(piece, browse, locale, h)),
           ),
-    sheetShown(model.filterSheet) ? filterSheet(pieces, model, locale, h) : h.empty,
+    sheetShown(model.filterSheet) ? filterSheet(pieces, model, browse, locale, h) : h.empty,
   ]
 }
 
 /** One step of browsing (owner, 2026-11-03, T-07): the groups, a group's types, or a type's pieces. */
-const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
+const levelView = (
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  browse: Browse,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+) => {
   const inGroup = (group: GarmentGroup) => pieces.filter((piece) => groupOf(piece.type) === group)
-  if (Option.isNone(model.group))
+  if (Option.isNone(browse.group))
     return [
       categoryCards(
         format(locale, 'wardrobe.filterCategories', {}),
         GarmentGroup.literals.map((group) => ({
           name: format(locale, groupName(group), {}),
-          href: wardrobeRouter({ group }),
+          href: browseRouter({ browse: browseGroup(group) }),
           pieces: inGroup(group),
         })),
         h,
       ),
     ]
-  const group = model.group.value
+  const group = browse.group.value
   const pieceOfGroup = inGroup(group)
-  if (Option.isSome(model.type)) return typeView(group, model.type.value, pieceOfGroup, model, locale, h)
+  if (Option.isSome(browse.type)) return typeView(group, browse.type.value, pieceOfGroup, model, browse, locale, h)
   const groupLabel = format(locale, groupName(group), {})
   return [
     levelHead(backToWardrobe(locale, h), groupLabel, [], h),
@@ -420,12 +434,12 @@ const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h
             // The shop's types hold the pieces of no category of the person's own; each of theirs is a card too.
             ...typesIn(group).map((type) => ({
               name: format(locale, typeName(type), {}),
-              href: wardrobeRouter({ group, type }),
+              href: browseRouter({ browse: browseType(type) }),
               pieces: pieceOfGroup.filter((piece) => piece.type === type && piece.category === null),
             })),
             ...categoriesOf(pieceOfGroup).map(({ type, name }) => ({
               name,
-              href: wardrobeRouter({ group, type, category: name }),
+              href: browseRouter({ browse: browseType(type, Option.some(name)) }),
               pieces: pieceOfGroup.filter((piece) => piece.type === type && piece.category === name),
             })),
           ],
@@ -434,7 +448,13 @@ const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h
   ]
 }
 
-const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const loadedView = (
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  browse: Browse,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   pieces.length === 0
     ? h.section(styled(h, styles.message()), [
         h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
@@ -445,7 +465,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
           [format(locale, 'wardrobe.scanPhotosCta', {})],
         ),
       ])
-    : h.div(styled(h, styles.wardrobePage()), levelView(pieces, model, locale, h))
+    : h.div(styled(h, styles.wardrobePage()), levelView(pieces, model, browse, locale, h))
 
 const skeletonCards = ['a', 'b', 'c', 'd'] as const
 
@@ -469,18 +489,21 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   ])
 
 /** The person's pieces on paper, browsed by group and type as a shop is (Gallery `wardrobe.html`; T-07). */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
-  (model, { locale, pieces }, h) =>
-    wardrobeMain(
-      styles.wardrobePage(),
-      [
-        AsyncData.matchData(pieces, {
-          onEmpty: () => loadingView(locale, h),
-          onFailure: () => failedView(locale, h),
-          onData: (shown) => loadedView(shown, model, locale, h),
-        }),
-      ],
-      locale,
-      h,
-    ),
+export const view = Submodel.defineView<
+  Model,
+  Message,
+  { readonly locale: Locale; readonly pieces: PiecesData; readonly browse: Browse }
+>((model, { locale, pieces, browse }, h) =>
+  wardrobeMain(
+    styles.wardrobePage(),
+    [
+      AsyncData.matchData(pieces, {
+        onEmpty: () => loadingView(locale, h),
+        onFailure: () => failedView(locale, h),
+        onData: (shown) => loadedView(shown, model, browse, locale, h),
+      }),
+    ],
+    locale,
+    h,
+  ),
 )

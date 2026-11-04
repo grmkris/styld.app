@@ -3,9 +3,12 @@ import type { BoardSummary, Piece } from '@styld/protocol'
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { fromString } from 'foldkit/url'
-import { type Flags, init, type Model, Session } from '../src/App.ts'
+import { Command as SceneCommand, Subscription as SceneSubscription } from 'foldkit/scene'
+import { type Flags, init, Message, type Model, Session } from '../src/App.ts'
 import type { PageLens } from '../src/Page.ts'
 import { BoardsData, PiecesData } from '../src/ServerData.ts'
+import * as Wardrobe from '../src/page/Wardrobe.ts'
+import { AppRoute, routeFromUrl } from '../src/route.ts'
 
 /** Ana, signed in with a verified address. */
 export const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
@@ -47,3 +50,15 @@ export const withPieces = (model: Model, pieces: ReadonlyArray<Piece>): Model =>
 /** The app with the person's boards read. */
 export const withBoards = (model: Model, boards: ReadonlyArray<BoardSummary>): Model =>
   modifyFields(model, { data: (data) => modifyFields(data, { boards: () => BoardsData.Success({ data: boards }) }) })
+
+/** A filter replacing the wardrobe's address in a scene: the Command with the browse `path` shows, its answer, and the
+ * address change it makes, which the page then reads. */
+export const sceneReplacedBrowse = (path: string) => {
+  const route = routeFromUrl(urlOf(path))
+  if (!AppRoute.guards.Wardrobe(route)) throw new Error(`Not a wardrobe address: ${path}`)
+  return [
+    SceneCommand.expectExact(Wardrobe.ReplaceBrowse({ browse: route.browse })),
+    SceneCommand.resolve(Wardrobe.ReplaceBrowse, Wardrobe.Message.CompletedReplaceBrowse()),
+    SceneSubscription.emit(Message.ChangedUrl({ url: urlOf(path) })),
+  ]
+}

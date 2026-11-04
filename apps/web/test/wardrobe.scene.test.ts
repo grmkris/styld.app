@@ -3,9 +3,8 @@ import { Dialog } from '@foldkit/ui'
 import { Command, Mount, click, expect, given, inside, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Message, update } from '../src/App.ts'
-import { ReplaceInternal } from '../src/Navigation.ts'
-import { at } from './AppFixtures.ts'
+import { update } from '../src/App.ts'
+import { at, sceneReplacedBrowse } from './AppFixtures.ts'
 import { AsyncData } from 'foldkit'
 import { ListPieces, Message as PiecesMessage, PiecesData } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
@@ -144,7 +143,7 @@ describe('the wardrobe page', () => {
       ...sceneSheetOpened,
       expect(role('heading', { name: 'Filter your wardrobe' })).toExist(),
       click(role('button', { name: 'Winter' })),
-      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
+      ...sceneReplacedBrowse('/wardrobe?group=clothing&type=coats&season=winter'),
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),
       expect(role('link', { name: 'Light mac' })).not.toExist(),

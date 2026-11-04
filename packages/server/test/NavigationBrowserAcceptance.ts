@@ -43,6 +43,18 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     expect(await page.evaluate(() => history.length)).toBe(historyLength + 2)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('heading', { name: 'Flats', level: 2 }).waitFor()
+    // A filter replaces the address (no Back step), survives a reload, and Clear takes it off (the address is the
+    // only copy, 4 November).
+    await page.getByRole('button', { name: /^Filters/ }).click()
+    await page.getByRole('button', { name: 'Winter', exact: true }).click()
+    await page.waitForFunction(() => location.search.includes('season=winter'))
+    expect(await page.evaluate(() => history.length)).toBe(historyLength + 2)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /^Filters 1/ }).click()
+    await page.getByRole('button', { name: 'Clear', exact: true }).click()
+    await page.waitForFunction(() => !location.search.includes('season='))
+    await page.keyboard.press('Escape')
+    await page.getByRole('dialog').waitFor({ state: 'hidden' })
     await page.getByRole('link', { name: 'Navigation flats 20', exact: true }).click()
     await page.getByRole('button', { name: 'Edit', exact: true }).waitFor()
     await page.getByRole('link', { name: 'Back to wardrobe', exact: true }).click()
@@ -58,6 +70,10 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     await shootPiece(page, 'after', width)
     await page.goBack({ waitUntil: 'networkidle' })
     await returnedToPiece(page)
+
+    // An old or broken link opens the wardrobe without the part that is not ours, never Not found.
+    await page.goto(`${origin}/wardrobe?group=nonsense&rainproof=no`, { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Shoes', exact: true }).waitFor()
 
     await page.goto(`${origin}/gallery/${navigationPhoto}`, { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Open the review tray', exact: true }).click()

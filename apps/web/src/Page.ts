@@ -244,11 +244,11 @@ export const lenses = {
 // INIT
 
 /** The tab pages as they first open: each tab asks for its own when it is entered. */
-const tabs = (signedIn: boolean, route: AppRoute): Page =>
+const tabs = (): Page =>
   Page.Tabs({
     tabs: {
       today: Today.init(),
-      wardrobe: Wardrobe.init(AppRoute.guards.Wardrobe(route) ? route : {}),
+      wardrobe: Wardrobe.init(),
       looks: Looks.init(),
       photos: Photos.init(),
       ask: Ask.init(),
@@ -276,7 +276,7 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
   Match.value(route).pipe(
     Match.withReturnType<Opened>(),
     Match.tag('Home', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account', () => ({
-      model: tabs(signedIn, route),
+      model: tabs(),
     })),
     Match.tag('Login', 'LoginForConnection', () => opened(lenses.login, Login.init(), [])),
     Match.tag('Profile', () => opened(lenses.profile, ProfileEditor.init(), ProfileEditor.load())),
