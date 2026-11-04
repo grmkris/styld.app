@@ -52,6 +52,32 @@ Eva saw her shop-style pictures as plain cut-outs, and found swiping through thr
     deploy and run native.
 - **Redraw of existing drawings (deployed, `42911477`).** `tools/backfill-pictures.ts <email> --redraw` draws again
   every drawing made before its start, a minute's worth at a time. The coordinator started it for Eva, Andraž and Ivona.
+- **Prompt fix, refusal fallback, redraw of ended pictures only (worktree track, `b4a41715`, `9fea0eab`,
+  `7530026e`, not merged or deployed).** The owner's decisions after the spike on the 24 rejected drawings
+  (`~/code/meta-hackathon/out/styld-rejected/`).
+  - Prompt (`CleanPrompt.ts`): pressing smooths the fabric only and keeps the garment's own shape and every detail.
+    The line "sleeves, sides and hem fall straight and symmetrically" is gone. Shoes and bags are drawn from the
+    angle their cut-out shows, not "from the front".
+  - Checked with 20 Muse calls in `~/code/meta-hackathon/out/styld-prompt-fix/`. The before/after page is the spike's
+    Pages project at `/prompt/`. The hiking boot kept its side view, the slouchy bag its shape, and trainers their
+    three-quarter view. Plain trousers, jeans, a tee and a bodysuit came back as before.
+  - Not fixed: the lace-up knit, the cross-strap top and the printed tee still came back plain. Their cut-outs show
+    the garment's back, and asked for the front, Muse draws a plain front. A wording that drew "the side the
+    reference shows" kept all three, but it drew the back of front-facing trousers and jeans, so it was not shipped.
+  - Refusal fallback (`Drawing.ts`): when Muse refuses a front cut-out, it is asked once more with the piece's photo
+    first and the cut-out second. The photo is Styld's re-encoded working copy, turned as the cut-out is. The prompt
+    names the garment by colour and type ("the grey sleeveless top"). The second ask belongs to the same drawing:
+    one credit, at most. A second refusal, or a piece whose cut-out is its photo, fails as before. A back has no
+    fallback. The bodysuit Muse refused was refused twice more when the prompt said "one garment" without naming it.
+    Named, it was drawn.
+  - Backfill: `--ended` (`ended: true` with `redrawBefore`) queues again only drawings that ended 'rejected' or
+    'failed' before the moment, and leaves shown ones alone. `--before <ISO>` fixes the moment, so a resumed run
+    never widens the set. A request that fails on the way, or gets a 5xx answer, is retried after a minute.
+  - Evidence: unit tests. `Drawing.test` covers the fallback: drawn on the second ask, two refusals fail, no photo
+    gives one ask. `CleanPicture.test` covers the prompt lines and the photo-first body. `Backfill.test` covers
+    `ended` over SQLite: ready untouched, rejected and failed queued once, a repeat queues nothing. The native
+    `CleanPictureAcceptance` step `ended` was written for the coordinator's run, not run here.
+  - Open: merge, deploy, native. Then `--ended` for the testers. A wording for cut-outs of a back.
 - **Backs free (deployed at f7852a6f, `b4e8e768`).** A camera back shot and "Add the back" hold no credits; a front
   with its back now costs 1 credit, not 2. Of 13 camera fronts on the preview, 10 backs had been skipped.
 - **A pressed back from the real one (deployed at f7852a6f, `bc845983`).**
