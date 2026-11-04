@@ -702,6 +702,36 @@ export interface MessageArgumentsByKey<_T = string> {
   'tryBoard.missingKind': { readonly type: string | number }
   'tryBoard.open': Readonly<Record<string, never>>
   'tryBoard.tried': { readonly fromWardrobe: string | number; readonly of: string | number }
+  'tryOn.after': Readonly<Record<string, never>>
+  'tryOn.afterAlt': Readonly<Record<string, never>>
+  'tryOn.back': Readonly<Record<string, never>>
+  'tryOn.before': Readonly<Record<string, never>>
+  'tryOn.beforeAlt': Readonly<Record<string, never>>
+  'tryOn.chosen': { readonly count: string | number; readonly most: string | number }
+  'tryOn.cost': { readonly credits: number }
+  'tryOn.delete': Readonly<Record<string, never>>
+  'tryOn.deleteFailed': Readonly<Record<string, never>>
+  'tryOn.deleteQuestion': Readonly<Record<string, never>>
+  'tryOn.drawing': Readonly<Record<string, never>>
+  'tryOn.emptyHint': Readonly<Record<string, never>>
+  'tryOn.emptyTitle': Readonly<Record<string, never>>
+  'tryOn.failed': Readonly<Record<string, never>>
+  'tryOn.fromLook': Readonly<Record<string, never>>
+  'tryOn.loadFailed': Readonly<Record<string, never>>
+  'tryOn.making': Readonly<Record<string, never>>
+  'tryOn.new': Readonly<Record<string, never>>
+  'tryOn.noPhotos': Readonly<Record<string, never>>
+  'tryOn.notDrawn': Readonly<Record<string, never>>
+  'tryOn.open': { readonly date: string | number }
+  'tryOn.openGallery': Readonly<Record<string, never>>
+  'tryOn.photoTitle': Readonly<Record<string, never>>
+  'tryOn.refused': Readonly<Record<string, never>>
+  'tryOn.startFailed': Readonly<Record<string, never>>
+  'tryOn.thisIsMe': Readonly<Record<string, never>>
+  'tryOn.thisIsMeNote': Readonly<Record<string, never>>
+  'tryOn.title': Readonly<Record<string, never>>
+  'tryOn.tryOn': Readonly<Record<string, never>>
+  'tryOn.wearTitle': Readonly<Record<string, never>>
   'wardrobe.addBack': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_beige': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_black': Readonly<Record<string, never>>
@@ -958,4 +988,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '62ec30167539503e027aa8774c5d070cbe167cd6ad7ddd63f2bda8434ff6865e'
+export const catalogVersion = '0a58330037b4aed21f9f72ccc4f3906817f29b7507b6e0f3099357fed08c1471'

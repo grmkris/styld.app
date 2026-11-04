@@ -2,7 +2,7 @@ import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { Option } from 'effect'
-import { askRouter, boardsRouter, looksRouter, photosRouter } from '../route.ts'
+import { askRouter, boardsRouter, looksRouter, photosRouter, tryOnRouter } from '../route.ts'
 import { searchIcon } from '../Icon.ts'
 import { round } from './PageBar.styles.ts'
 import { styled } from '../Styled.ts'
@@ -10,12 +10,13 @@ import { addPiecesAction, pageTitle } from './PageHead.ts'
 import * as styles from './SectionMain.styles.ts'
 
 /** The Lab's pages (owner, 2026-11-03, T-08): Wardrobe holds the ingredients, the Lab is where they are tried out. */
-export type LabTab = 'boards' | 'gallery' | 'looks'
+export type LabTab = 'boards' | 'gallery' | 'looks' | 'tryOn'
 
 const labTabs = [
   { tab: 'boards', href: boardsRouter({}), label: 'nav.boards' },
   { tab: 'gallery', href: photosRouter({}), label: 'wardrobe.tabGallery' },
   { tab: 'looks', href: looksRouter({}), label: 'looks.title' },
+  { tab: 'tryOn', href: tryOnRouter({}), label: 'tryOn.title' },
 ] as const
 
 const labNav = <Message>(current: LabTab, locale: Locale, h: HtmlBuilder<Message>): Html =>

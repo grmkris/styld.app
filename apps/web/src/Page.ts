@@ -21,6 +21,7 @@ import * as Piece from './page/Piece.ts'
 import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
+import * as TryOn from './page/TryOn.ts'
 import * as Today from './page/Today.ts'
 import * as LandingBoards from './page/LandingBoards.ts'
 import * as Visit from './page/Visit.ts'
@@ -42,6 +43,7 @@ const Tabs = Schema.Struct({
   wardrobe: Wardrobe.Model,
   looks: Looks.Model,
   photos: Photos.Model,
+  tryOn: TryOn.Model,
   ask: Ask.Model,
   boards: Boards.Model,
   account: Account.Model,
@@ -124,6 +126,12 @@ export const lenses = {
     (tabs) => tabs.photos,
     (tabs, photos: Photos.Model) => modifyFields(tabs, { photos: () => photos }),
     (message: Photos.Message) => Message.GotPhotosMessage({ message }),
+  ),
+  tryOn: tab(
+    'try-on',
+    (tabs) => tabs.tryOn,
+    (tabs, tryOn: TryOn.Model) => modifyFields(tabs, { tryOn: () => tryOn }),
+    (message: TryOn.Message) => Message.GotTryOnMessage({ message }),
   ),
   ask: tab(
     'ask',
@@ -251,6 +259,7 @@ const tabs = (): Page =>
       wardrobe: Wardrobe.init(),
       looks: Looks.init(),
       photos: Photos.init(),
+      tryOn: TryOn.init(),
       ask: Ask.init(),
       boards: Boards.init(),
       account: Account.init(),
@@ -275,7 +284,7 @@ const opened = <Child, ChildMessage>(
 export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean): Opened =>
   Match.value(route).pipe(
     Match.withReturnType<Opened>(),
-    Match.tag('Home', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account', () => ({
+    Match.tag('Home', 'Wardrobe', 'Looks', 'Photos', 'TryOn', 'Ask', 'Boards', 'Account', () => ({
       model: tabs(),
     })),
     Match.tag('Login', 'LoginForConnection', () => opened(lenses.login, Login.init(), [])),

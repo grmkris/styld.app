@@ -1,6 +1,7 @@
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import type { Model } from './App.ts'
+import type { AppRoute } from './route.ts'
 import { Message } from './Message.ts'
 import type { PageLens } from './Page.ts'
 import type * as ServerData from './ServerData.ts'
@@ -10,6 +11,15 @@ export const at = <Child, ChildMessage>(lens: PageLens<Child, ChildMessage>) => 
   read: (model: Model) => lens.read(model.page),
   write: (model: Model, child: Child) => modifyFields(model, { page: (page) => lens.write(page, child) }),
   toParentMessage: lens.toParentMessage,
+})
+
+/** A tab page's lens for its Subscriptions: a tab keeps its Model while another tab shows, so they wait for its route. */
+export const onTab = <Child, ChildMessage>(
+  lens: PageLens<Child, ChildMessage>,
+  isOpen: (route: AppRoute) => boolean,
+) => ({
+  ...at(lens),
+  when: (model: Model) => isOpen(model.route),
 })
 
 export const data = {

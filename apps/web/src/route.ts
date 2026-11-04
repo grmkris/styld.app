@@ -36,6 +36,8 @@ export const AppRoute = defineRouteUnion({
   /** My Gallery: the person's own outfit photos, a tab of the wardrobe. */
   Photos: {},
   Photo: { photoId: Schema.String },
+  /** Try on: the person's own photos drawn again wearing their pieces, a tab of the Lab. */
+  TryOn: {},
   /** What the person wants one like: a tab of the wardrobe. */
   Look: { lookId: Schema.String },
   /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
@@ -90,6 +92,7 @@ export const pieceRouter = pipe(
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const photosRouter = pipe(literal('gallery'), mapTo(AppRoute.Photos))
 export const photoRouter = pipe(literal('gallery'), slash(string('photoId')), mapTo(AppRoute.Photo))
+export const tryOnRouter = pipe(literal('try-on'), mapTo(AppRoute.TryOn))
 // The Gallery lived at `/wardrobe/gallery` until it moved to the Lab (T-08, 3 November): old links still open it, and
 // the app replaces the address with the new one (`App.ts` › init).
 const formerPhotosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
@@ -165,6 +168,7 @@ const parser = oneOf(
   looksRouter,
   photoRouter,
   photosRouter,
+  tryOnRouter,
   stylistRouter,
   askRouter,
   boardCollageRouter,
@@ -229,7 +233,7 @@ export const parentReturn = (from: string | undefined, parent: 'Wardrobe' | 'Pho
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
-export const Tab = Schema.Literals(['Home', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account'])
+export const Tab = Schema.Literals(['Home', 'Wardrobe', 'Looks', 'Photos', 'TryOn', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
 /** The navigation's sections; a page marks the one it belongs to. */
@@ -274,6 +278,7 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   Look: () => meta('/looks/:look', 'looks.title', { section: 'lab' }),
   Photos: () => meta('/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'lab' }),
   Photo: () => meta('/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'lab' }),
+  TryOn: () => meta('/try-on', 'tryOn.title', { session: required, tab: 'TryOn', section: 'lab' }),
   Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'wardrobe' }),
   Stylist: () => meta('/ask/stylist', 'stylist.title', { session: required, section: 'ask' }),
   Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'lab' }),

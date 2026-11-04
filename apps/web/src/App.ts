@@ -12,7 +12,7 @@ import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
 import { arrive, followLink, Navigate, NavigateInternal, ReplaceInternal, returnAfterSignIn } from './Navigation.ts'
 import * as NavigationState from './NavigationState.ts'
-import { at, data } from './AppLens.ts'
+import { at, data, onTab } from './AppLens.ts'
 import { lenses, openPage, Page } from './Page.ts'
 import * as ServerData from './ServerData.ts'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
@@ -34,6 +34,7 @@ import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Photo from './page/Photo.ts'
 import * as Photos from './page/Photos.ts'
+import * as TryOn from './page/TryOn.ts'
 import * as Piece from './page/Piece.ts'
 import * as LandingBoards from './page/LandingBoards.ts'
 import * as Visit from './page/Visit.ts'
@@ -213,10 +214,10 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
           ]
         : [Update.foldChildStep({ update: LandingBoards.enter, ...at(lenses.landing) })],
     ),
-    Match.tag('Wardrobe', () => [revisitPieces]),
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
     Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
     Match.tag('Photos', () => [Update.foldChildStep({ update: Photos.revisit, ...at(lenses.photos) })]),
+    Match.tag('TryOn', () => [revisitPieces, Update.foldChildStep({ update: TryOn.revisit, ...at(lenses.tryOn) })]),
     // A board's table names its pieces by id; their pictures come with the person's pieces.
     Match.tag('Boards', () => [
       revisitBoards,
@@ -227,10 +228,9 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
     Match.tag('Account', () =>
       signedIn ? [Update.foldChildStep({ update: Account.enter, ...at(lenses.account) })] : [],
     ),
-    // Styld's answers name the person's pieces, and a photo's garments are matched to them.
-    Match.tag('Stylist', 'Photo', () => [revisitPieces]),
-    // A garment taken for one of the person's pieces shows that piece beside it.
-    Match.tag('Review', () => [revisitPieces]),
+    // The wardrobe shows the pieces, Styld's answers name them, a photo's garments are matched to them, and a garment
+    // taken for one of them in the review tray shows that piece beside it.
+    Match.tag('Wardrobe', 'Stylist', 'Photo', 'Review', () => [revisitPieces]),
     // The collage's tray shows the pieces; signed out a board can only be someone's public one.
     Match.tag('Board', 'BoardCollage', () => (signedIn ? [revisitPieces] : [])),
     Match.orElse(() => []),
@@ -427,6 +427,7 @@ const foldPages = {
   board: Update.foldChild({ update: Board.update, ...at(lenses.board) }),
   looks: Update.foldChild({ update: Looks.update, ...at(lenses.looks) }),
   photos: Update.foldChild({ update: Photos.update, ...at(lenses.photos) }),
+  tryOn: Update.foldChild({ update: TryOn.update, ...at(lenses.tryOn), foldOutMessage: () => revisitBoards }),
   stylist: Update.foldChild({ update: Stylist.update, ...at(lenses.stylist) }),
   visit: Update.foldChild({ update: Visit.update, ...at(lenses.visit) }),
   landing: Update.foldChild({ update: LandingBoards.update, ...at(lenses.landing) }),
@@ -448,13 +449,10 @@ const showsPieces = (model: Model) =>
 export const subscriptions = Subscription.aggregate(
   Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>(at(lenses.addPieces)),
   Subscription.lift(ServerData.subscriptions)<Model, Message>({ ...data, when: showsPieces }),
-  // Tab pages keep their Model while another tab shows, so My Gallery's poll also waits for its own route.
-  Subscription.lift(Photos.subscriptions)<Model, Message>({
-    ...at(lenses.photos),
-    when: (model) => AppRoute.guards.Photos(model.route),
-  }),
+  Subscription.lift(Photos.subscriptions)<Model, Message>(onTab(lenses.photos, AppRoute.guards.Photos)),
   Subscription.lift(Photo.subscriptions)<Model, Message>(at(lenses.photo)),
   Subscription.lift(Login.subscriptions)<Model, Message>(at(lenses.login)),
+  Subscription.lift(TryOn.subscriptions)<Model, Message>(onTab(lenses.tryOn, AppRoute.guards.TryOn)),
   Subscription.lift(Piece.subscriptions)<Model, Message>(at(lenses.piece)),
   Subscription.lift(Review.subscriptions)<Model, Message>(at(lenses.review)),
   Subscription.lift(Stylist.subscriptions)<Model, Message>(at(lenses.stylist)),
@@ -569,6 +567,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotLooksMessage: (got) => foldPages.looks(model, got.message),
     GotPhotosMessage: (got) => foldPages.photos(model, got.message),
     GotPhotoMessage: (got) => foldPhoto(model, got.message),
+    GotTryOnMessage: (got) => foldPages.tryOn(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),

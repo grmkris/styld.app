@@ -25,6 +25,7 @@ import * as Wardrobe from './page/Wardrobe.ts'
 // My Gallery's pages.
 import * as Photo from './page/Photo.ts'
 import * as Photos from './page/Photos.ts'
+import * as TryOn from './page/TryOn.ts'
 
 /** Everything that can happen in the website: its own Messages and each page's, wrapped. Its own module so the
  * navigation can build them without importing the app. */
@@ -60,6 +61,7 @@ export const Message = defineMessageUnion({
   GotLooksMessage: { message: Looks.Message },
   GotPhotosMessage: { message: Photos.Message },
   GotPhotoMessage: { message: Photo.Message },
+  GotTryOnMessage: { message: TryOn.Message },
   GotLookMessage: { message: Look.Message },
   GotProfileMessage: { message: ProfileEditor.Message },
   GotTodayMessage: { message: Today.Message },

@@ -1,6 +1,6 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
-import { BoardId, BoardName, LookId, OperationId, PhotoId, PieceId } from '@styld/protocol'
+import { BoardId, BoardName, LookId, OperationId, PhotoId, PieceId, TryOnId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, Update } from 'foldkit'
@@ -15,9 +15,12 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-/** What is saved: a piece or a look as a pin, or an outfit photo of My Gallery or the person cut out of it (whichever
- * its page shows, T-17), put on the board with its look and shown to its owner only. */
-export const Target = Schema.Struct({ kind: Schema.Literals(['piece', 'look', 'photo', 'cutout']), id: Schema.String })
+/** What is saved: a piece or a look as a pin, an outfit photo of My Gallery or the person cut out of it (whichever
+ * its page shows, T-17), put on the board with its look and shown to its owner only, or a try-on's picture. */
+export const Target = Schema.Struct({
+  kind: Schema.Literals(['piece', 'look', 'photo', 'cutout', 'tryOn']),
+  id: Schema.String,
+})
 export type Target = typeof Target.Type
 
 export const Saving = defineTaggedUnion({
@@ -99,7 +102,12 @@ const boardFor = (destination: Destination, createdBoardId: Option.Option<string
 const pinned = (target: Target, boardId: BoardId, operationId: OperationId) =>
   Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    if (target.kind === 'photo' || target.kind === 'cutout')
+    if (target.kind === 'tryOn')
+      yield* api.tryOn.addTryOnToBoard({
+        params: { tryOnId: yield* Schema.decodeUnknownEffect(TryOnId)(target.id) },
+        payload: { operationId, boardId },
+      })
+    else if (target.kind === 'photo' || target.kind === 'cutout')
       yield* api.photo.addToBoard({
         params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
         payload: { operationId, boardId, picture: target.kind },

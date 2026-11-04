@@ -20,6 +20,7 @@ import * as ProfileEditorView from './page/ProfileEditorView.ts'
 import * as ReviewView from './page/ReviewView.ts'
 import * as StylistView from './page/StylistView.ts'
 import * as TodayView from './page/TodayView.ts'
+import * as TryOnView from './page/TryOnView.ts'
 import type * as Visit from './page/Visit.ts'
 import * as VisitView from './page/VisitView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
@@ -154,6 +155,18 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
         lenses.photos,
         (photos) =>
           h.submodel({ ...slot(lenses.photos, photos), view: PhotosView.view, viewInputs: { locale, timeZone } }),
+        h,
+      ),
+    TryOn: () =>
+      onPage(
+        model,
+        lenses.tryOn,
+        (tryOn) =>
+          h.submodel({
+            ...slot(lenses.tryOn, tryOn),
+            view: TryOnView.view,
+            viewInputs: { locale, timeZone, pieces, boards: model.data.boards },
+          }),
         h,
       ),
     Ask: () =>
