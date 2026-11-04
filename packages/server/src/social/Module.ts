@@ -5,6 +5,7 @@ import { BoardStore } from '../boards/Store.ts'
 import { boardHandlers } from '../boards/Http.ts'
 import { consumer } from '../jobs/Jobs.ts'
 import { module } from '../kernel/Module.ts'
+import { outfits } from '../outfits/Module.ts'
 import { lookHandlers } from '../looks/Http.ts'
 import { Looks } from '../looks/Looks.ts'
 import { Checks } from '../safety/Checks.ts'
@@ -30,7 +31,7 @@ export const social = module({
       Layer.mergeAll(Looks.layer, PublicPages.layer, Profiles.layer, Curation.layer, Worn.layer, PieceChanged.layer),
     ),
     Layer.provideMerge(Checks.layer),
-    Layer.provide([WardrobeStore.layer, BoardStore.layer]),
+    Layer.provide([WardrobeStore.layer, BoardStore.layer, outfits.layer]),
   ),
   api: Layer.mergeAll(
     lookHandlers,

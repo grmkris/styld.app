@@ -8,6 +8,9 @@ import {
   boardWidth,
   landed,
   landing,
+  type OutfitPiece,
+  outfitsAround,
+  paperFor,
   PieceId,
   PieceItem,
   piecesOnTable,
@@ -140,5 +143,70 @@ describe('an assistant laying out a table', () => {
     expect(outfit.every(({ size }) => size === 400)).toBe(true)
     expect(arranged(items, 'keep')).toBe(items)
     expect(arranged(items, 'tidy')).toEqual(tidied(items))
+  })
+})
+
+describe('a "One piece, six outfits" board (T-10)', () => {
+  const anchor: OutfitPiece = { id: pieceId('jeans'), type: 'jeans' }
+  const outfit = (seed: string): ReadonlyArray<OutfitPiece> => [
+    { id: pieceId(`${seed}-tee`), type: 'tops' },
+    anchor,
+    { id: pieceId(`${seed}-shoes`), type: 'trainers' },
+    { id: pieceId(`${seed}-bag`), type: 'bags' },
+    { id: pieceId(`${seed}-belt`), type: 'belts' },
+  ]
+  const six = ['a', 'b', 'c', 'd', 'e', 'f'].map(outfit)
+
+  test('six clusters two across, each piece in its own cell, on the table and within the size limits', () => {
+    const placed = outfitsAround(anchor.id, six)
+    expect(placed).toHaveLength(30)
+    for (const spot of placed) {
+      const column = spot.outfit % 2
+      const row = Math.floor(spot.outfit / 2)
+      expect(spot.x).toBeGreaterThanOrEqual((column * boardWidth) / 2)
+      expect(spot.x).toBeLessThanOrEqual(((column + 1) * boardWidth) / 2)
+      expect(spot.y).toBeGreaterThanOrEqual((row * boardHeight) / 3)
+      expect(spot.y).toBeLessThanOrEqual(((row + 1) * boardHeight) / 3)
+      expect(spot.size).toBeGreaterThan(40)
+    }
+    expect(new Set(placed.map(({ z }) => z)).size).toBe(placed.length)
+  })
+
+  test('the anchor is the same size and turn in every cluster; the rest are arranged differently next door', () => {
+    const placed = outfitsAround(anchor.id, six)
+    const anchors = placed.filter(({ pieceId: id }) => id === anchor.id)
+    expect(anchors).toHaveLength(6)
+    expect(new Set(anchors.map(({ size, turn }) => `${String(size)}/${String(turn)}`)).size).toBe(1)
+    const bagSpot = (index: number) => {
+      const bag = placed.find(
+        ({ outfit: place, pieceId: id }) => place === index && id === pieceId(`${'abcdef'[index] ?? ''}-bag`),
+      )
+      const column = index % 2
+      const row = Math.floor(index / 2)
+      return bag === undefined
+        ? ''
+        : `${String(bag.x - (column * boardWidth) / 2)}/${String(bag.y - (row * boardHeight) / 3)}`
+    }
+    expect(bagSpot(0)).not.toBe(bagSpot(1))
+    expect(bagSpot(1)).not.toBe(bagSpot(2))
+  })
+
+  test('the same outfits and shift lay out the same; fewer outfits take larger cells', () => {
+    expect(outfitsAround(anchor.id, six, 4)).toEqual(outfitsAround(anchor.id, six, 4))
+    const one = outfitsAround(anchor.id, [outfit('a')])
+    const ofSix = outfitsAround(anchor.id, six)
+    expect(one.find(({ pieceId: id }) => id === anchor.id)?.size).toBeGreaterThan(
+      ofSix.find(({ pieceId: id }) => id === anchor.id)?.size ?? Infinity,
+    )
+    expect(outfitsAround(anchor.id, [])).toEqual([])
+  })
+
+  test('the paper follows the anchor’s main colour', () => {
+    expect(paperFor(['blue'])).toBe('sand')
+    expect(paperFor(['black', 'white'])).toBe('slate')
+    expect(paperFor(['green'])).toBe('sage')
+    expect(paperFor(['pink'])).toBe('clay')
+    expect(paperFor(['yellow'])).toBe('sand')
+    expect(paperFor([])).toBe('paper')
   })
 })

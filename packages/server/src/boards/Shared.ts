@@ -73,7 +73,7 @@ export const shownItem = (row: BoardItemRow, pictures: PictureAddresses = new Ma
 }
 
 /** An item as a row: its kind and the one column that kind uses. */
-export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
+export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId' | 'outfitId'> => {
   const row = {
     id: item.id,
     x: item.x,
@@ -157,10 +157,55 @@ const publicPinIds = (rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinRow>
   )
 }
 
+/** What the template boards among these show besides their table (T-10): each one's anchor and its outfits, with the
+ * pieces still in the wardrobe. A blank board has none. */
+const outfitsAroundOf = (rows: ReadonlyArray<BoardRow>) =>
+  Effect.gen(function* () {
+    const templates = rows.filter(({ template }) => template === 'outfitsAround')
+    const store = yield* BoardStore
+    const outfits = yield* stored(store.outfitsOf(templates.map(({ id }) => id)))
+    const worn = yield* stored(store.outfitPiecesOf(outfits.map(({ id }) => id)))
+    const anchorIds = templates.flatMap(({ anchorPieceId }) => (anchorPieceId === null ? [] : [anchorPieceId]))
+    const anchors = yield* stored(store.piecesById(anchorIds))
+    const shownAnchors = new Map(
+      yield* Effect.forEach(anchors, ({ piece, picture }) =>
+        Effect.map(toPiece(piece, picture ?? undefined), (shownPiece) => [piece.id, shownPiece] as const),
+      ),
+    )
+    const shownOutfits = yield* Effect.forEach(outfits, (outfit) =>
+      Effect.map(
+        Effect.forEach(
+          worn.filter(({ outfitId }) => outfitId === outfit.id),
+          ({ piece, picture }) => toPiece(piece, picture ?? undefined),
+        ),
+        (outfitPieces) => ({
+          boardId: outfit.boardId,
+          outfit: {
+            id: outfit.id,
+            pieces: outfitPieces,
+            lookId: outfit.lookId,
+            session: outfit.session,
+            mode: outfit.mode,
+          },
+        }),
+      ),
+    )
+    return (row: BoardRow) =>
+      row.template === 'outfitsAround'
+        ? {
+            outfitsAround: {
+              anchor: row.anchorPieceId === null ? null : (shownAnchors.get(row.anchorPieceId) ?? null),
+              outfits: shownOutfits.filter(({ boardId }) => boardId === row.id).map(({ outfit }) => outfit),
+            },
+          }
+        : {}
+  })
+
 /** Boards as their owner sees them, each with its table, its pins and which of them others see. */
 export const shown = (rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
+    const templateOf = yield* outfitsAroundOf(rows)
     const items = yield* stored((yield* BoardStore).itemsOf(ids))
     const pins = yield* stored((yield* BoardStore).pinsOf(ids))
     const pictures = yield* picturesOf(items, pins)
@@ -182,6 +227,7 @@ export const shown = (rows: ReadonlyArray<BoardRow>) =>
         visibility: row.visibility,
         check: checks.get(row.id) ?? null,
         updatedAt: row.updatedAt.toISOString(),
+        ...templateOf(row),
       }).pipe(Effect.orDie),
     )
   })

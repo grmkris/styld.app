@@ -39,12 +39,16 @@ import {
   Board,
   BoardId,
   BoardImage,
+  BoardOutfitId,
   BoardItemRefused,
   BoardVersionConflict,
   Boards,
+  AnotherOutfit,
   CreateBoard,
+  CreateOutfitBoard,
   KeepLook,
   KeptLook,
+  OutfitRefused,
   PinRefused,
   RemovePins,
   SaveBoardItems,
@@ -232,6 +236,21 @@ class BoardApi extends HttpApiGroup.make('board')
     }),
   )
   .add(
+    HttpApiEndpoint.post('createOutfitBoard', '/boards/outfits', {
+      payload: CreateOutfitBoard,
+      success: Board,
+      error: [NotFound, SlowDown, OutfitRefused, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('anotherOutfit', '/boards/:boardId/outfits/:outfitId/another', {
+      params: { boardId: BoardId, outfitId: BoardOutfitId },
+      payload: AnotherOutfit,
+      success: Board,
+      error: [NotFound, SlowDown, OutfitRefused, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
     HttpApiEndpoint.get('getBoard', '/boards/:boardId', {
       params: { boardId: BoardId },
       success: Board,
@@ -275,7 +294,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: KeepLook,
       success: KeptLook,
-      error: [NotFound, PinRefused, OperationConflict, Unavailable],
+      error: [NotFound, PinRefused, OutfitRefused, OperationConflict, Unavailable],
     }),
   )
   .add(

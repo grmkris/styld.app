@@ -62,6 +62,8 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   boards: ['boards/'],
   boardItems: ['boards/'],
   boardPins: ['boards/'],
+  boardOutfits: ['boards/'],
+  boardOutfitPieces: ['boards/'],
   boardImages: ['boards/'],
   profiles: ['social/'],
   follows: ['social/'],

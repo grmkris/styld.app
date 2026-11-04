@@ -1,6 +1,16 @@
-import { Paper, TextStyle, Visibility } from '@styld/protocol'
+import { BoardTemplate, OutfitMode, Paper, Season, TextStyle, Visibility } from '@styld/protocol'
 import { sql } from 'drizzle-orm'
-import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import {
+  type AnySQLiteColumn,
+  check,
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 import { jsonArray, oneOf } from './checks.ts'
 import { accounts } from './identity.ts'
 import { looks } from './looks.ts'
@@ -30,6 +40,11 @@ export const boards = sqliteTable(
     featuredAt: integer('featured_at', { mode: 'timestamp_ms' }),
     /** The name, folded the way search folds what people type. */
     searchText: text('search_text').notNull(),
+    /** What the board was started from (T-10), none for a blank one. Read through the protocol's schema: a CHECK
+     * added to this table would make drizzle rebuild it, which D1 cascades into its children. */
+    template: text('template', { enum: BoardTemplate.literals }),
+    /** The piece a template board was built around; it stays when the piece goes, without it. */
+    anchorPieceId: text('anchor_piece_id').references(() => pieces.id, { onDelete: 'set null' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
@@ -92,6 +107,8 @@ export const boardItems = sqliteTable(
     turn: real('turn').notNull(),
     z: integer('z').notNull(),
     flipped: integer('flipped', { mode: 'boolean' }).notNull(),
+    /** The outfit of a template board this item shows (T-10), so another outfit replaces exactly its cluster. */
+    outfitId: text('outfit_id').references((): AnySQLiteColumn => boardOutfits.id, { onDelete: 'set null' }),
   },
   (table) => [
     primaryKey({ columns: [table.boardId, table.id] }),
@@ -135,5 +152,45 @@ export const boardPins = sqliteTable(
       'board_pins_target',
       sql`(${table.kind} = 'piece') = (${table.pieceId} IS NOT NULL) AND (${table.kind} = 'picture') = (${table.imageId} IS NOT NULL) AND (${table.kind} = 'look') = (${table.lookId} IS NOT NULL)`,
     ),
+  ],
+)
+
+/** An outfit of a template board (T-10): one of the complete outfits made around its anchor, in its place on the board,
+ * the run and way that made it and for which season, and the look it became when the person kept it. */
+export const boardOutfits = sqliteTable(
+  'board_outfits',
+  {
+    ...boardOwned(),
+    position: integer('position').notNull(),
+    mode: text('mode', { enum: OutfitMode.literals }).notNull(),
+    session: text('session').notNull(),
+    /** The season it was made for, if one was asked: another outfit in its place keeps to it. */
+    season: text('season', { enum: Season.literals }),
+    lookId: text('look_id').references(() => looks.id, { onDelete: 'set null' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('board_outfits_board_position').on(table.boardId, table.position),
+    index('board_outfits_look').on(table.lookId),
+    oneOf('board_outfits_mode', table.mode, OutfitMode.literals),
+    oneOf('board_outfits_season', table.season, Season.literals),
+  ],
+)
+
+/** The pieces of a board's outfit, in wearing order. Deleting a piece takes it out of the outfit. */
+export const boardOutfitPieces = sqliteTable(
+  'board_outfit_pieces',
+  {
+    outfitId: text('outfit_id')
+      .notNull()
+      .references(() => boardOutfits.id, { onDelete: 'cascade' }),
+    pieceId: text('piece_id')
+      .notNull()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.outfitId, table.pieceId] }),
+    index('board_outfit_pieces_piece').on(table.pieceId),
   ],
 )

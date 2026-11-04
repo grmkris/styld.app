@@ -1,6 +1,8 @@
 import { imageAddresses } from '../kernel/SignedMedia.ts'
 import {
   type AddBoardImage,
+  type AnotherOutfit,
+  type BoardOutfitId,
   type AddPins,
   Board,
   type BoardId,
@@ -30,6 +32,7 @@ import { usableUpload } from '../wardrobe/Shared.ts'
 import { type BoardRow, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
 import { keeping } from './Keeping.ts'
+import { template } from './Template.ts'
 import { placePins } from './PinTable.ts'
 import {
   lookTarget,
@@ -104,6 +107,8 @@ const changes = Effect.map(Effect.context<BoardServices>(), (context) => ({
       publishedAt: null,
       featuredAt: null,
       searchText: searchText(input.name),
+      template: null,
+      anchorPieceId: null,
       createdAt: at,
       updatedAt: at,
     }
@@ -353,6 +358,7 @@ const make = Effect.gen(function* () {
     ...(yield* pinning),
     ...(yield* pictures),
     ...(yield* keeping),
+    ...(yield* template),
   }
   return {
     ...(yield* reads),
@@ -365,6 +371,8 @@ const make = Effect.gen(function* () {
     addPins: checked(edits.addPins),
     removePins: checked(edits.removePins),
     keepLook: checked(edits.keepLook),
+    anotherOutfit: (boardId: BoardId, outfitId: BoardOutfitId, input: AnotherOutfit) =>
+      checked((id: BoardId, change: AnotherOutfit) => edits.anotherOutfit(id, outfitId, change))(boardId, input),
     addBoardImage: checked(edits.addBoardImage),
     /** A picture Styld generated for the board, marked Generated. */
     addGeneratedImage: checked((boardId: BoardId, input: AddBoardImage) =>

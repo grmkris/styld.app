@@ -214,6 +214,9 @@ describe('the outfit rules', () => {
     expect(missingOf(brief([tee, bag]))).toEqual(['bottom', 'shoes'])
     expect(missingOf(brief([dress]))).toEqual(['shoes'])
     expect(missingOf(brief([tee, jeans, trainers]))).toEqual([])
+    // A fixed top sets separates: with no bottom in the wardrobe, the bottom is what is missing.
+    expect(missingOf(brief([tee, trainers], { fixed: [tee] }))).toEqual(['bottom'])
+    expect(missingOf(brief([dress], { fixed: [dress] }))).toEqual(['shoes'])
     // Without a bottom, what there is is still worn: the top, and a bag now and then.
     const partial = drawnOver(brief([tee, bag]))
     expect(partial.length).toBeGreaterThan(0)

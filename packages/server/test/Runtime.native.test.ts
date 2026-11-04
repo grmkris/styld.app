@@ -131,9 +131,11 @@ test(
   { timeout: 60000 },
 )
 
-test('keeps outfits put together on a board as looks pinned on it, once each', overHttp(verifyBoardOutfits), {
-  timeout: 60000,
-})
+test(
+  'keeps outfits put together on a board as looks pinned on it, and builds six complete outfits around one piece',
+  overHttp(verifyBoardOutfits),
+  { timeout: 120000 },
+)
 
 test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
 test('makes stickers and mood boards of the person’s pieces for a board, once each', overHttp(verifyGeneration), {

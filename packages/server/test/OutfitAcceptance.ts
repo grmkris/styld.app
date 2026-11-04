@@ -27,7 +27,7 @@ const proposalsOf = async (response: Response): Promise<Proposals> => {
 }
 
 /** A ready piece of a type, added from a received photo. */
-const ready = async (origin: string, call: Call, operationId: string, type: string) => {
+export const ready = async (origin: string, call: Call, operationId: string, type: string) => {
   const pieceId = await idOf(
     await send(call, '/api/pieces', 'POST', { operationId, uploadId: await receivedPhoto(origin, call), type }),
   )

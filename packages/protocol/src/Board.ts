@@ -1,4 +1,4 @@
-import { maximumBoardItems, maximumLookPieces, maximumMoods, pinsAtOnce } from './Limits.ts'
+import { maximumBoardItems, maximumLookPieces, maximumMoods, mostSeen, pinsAtOnce } from './Limits.ts'
 import { Name, textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
@@ -6,7 +6,8 @@ import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
 import { Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
-import { ProposalRef } from './Outfit.ts'
+import { OutfitKey, OutfitMode, OutfitSession, ProposalRef } from './Outfit.ts'
+import { Season, Slot } from './Garment.ts'
 import { Piece, PieceId, UploadId } from './Wardrobe.ts'
 
 /** Opaque ids: a kind prefix and 22 base64url characters (16 random bytes). The website makes item ids
@@ -19,6 +20,8 @@ export const BoardImageId = entityId('bm').pipe(Schema.brand('BoardImageId'))
 export type BoardImageId = typeof BoardImageId.Type
 export const PinId = entityId('pn').pipe(Schema.brand('PinId'))
 export type PinId = typeof PinId.Type
+export const BoardOutfitId = entityId('bo').pipe(Schema.brand('BoardOutfitId'))
+export type BoardOutfitId = typeof BoardOutfitId.Type
 
 /** A board's table is a sheet 1000 units across and 1250 down (4:5); placements are in those units. */
 export const boardWidth = 1000
@@ -29,6 +32,10 @@ export const maximumItemSize = 1200
 /** The sheet's colour. */
 export const Paper = Schema.Literals(['paper', 'stock', 'sand', 'sage', 'slate', 'clay'])
 export type Paper = typeof Paper.Type
+
+/** What a board was started from (T-10): one piece and outfits around it. A blank board has none. */
+export const BoardTemplate = Schema.Literals(['outfitsAround'])
+export type BoardTemplate = typeof BoardTemplate.Type
 
 /** A text label's face: a plain label, or the headline in the logo's condensed voice. */
 export const TextStyle = Schema.Literals(['label', 'headline'])
@@ -87,6 +94,22 @@ export type LookPin = typeof LookPin.Type
 export const Pin = Schema.Union([PiecePin, PicturePin, LookPin])
 export type Pin = typeof Pin.Type
 
+/** One outfit of a "One piece, six outfits" board (T-10): its pieces still in the wardrobe, in wearing order; the look
+ * it became once kept; and the run and way that made it, which a keep names so it is counted. */
+export const BoardOutfit = Schema.Struct({
+  id: BoardOutfitId,
+  pieces: Schema.Array(Piece),
+  lookId: Schema.NullOr(LookId),
+  session: OutfitSession,
+  mode: OutfitMode,
+})
+export type BoardOutfit = typeof BoardOutfit.Type
+
+/** What a board started from "One piece, six outfits" holds besides its table: the piece it was built around (none
+ * once that piece is deleted) and its outfits, in their places. */
+export const OutfitsAround = Schema.Struct({ anchor: Schema.NullOr(Piece), outfits: Schema.Array(BoardOutfit) })
+export type OutfitsAround = typeof OutfitsAround.Type
+
 /** A board: its pins, newest first, and its table, which places some of them. */
 export const Board = Schema.Struct({
   id: BoardId,
@@ -105,6 +128,8 @@ export const Board = Schema.Struct({
   /** The model's check, once the board has been public; others see it only while the check lets them. */
   check: Schema.NullOr(CheckStatus),
   updatedAt: Schema.String,
+  /** Only on a board started from "One piece, six outfits". */
+  outfitsAround: Schema.optionalKey(OutfitsAround),
 })
 export type Board = typeof Board.Type
 
@@ -168,12 +193,31 @@ export const KeepLook = Schema.Struct({
   name: Name,
   pieceIds: Schema.Array(PieceId).check(Schema.isMinLength(1), Schema.isMaxLength(maximumLookPieces)),
   proposal: Schema.optionalKey(ProposalRef),
+  /** The outfit of a "One piece, six outfits" board kept, which then shows it as kept. */
+  outfitId: Schema.optionalKey(BoardOutfitId),
 })
 export type KeepLook = typeof KeepLook.Type
 
 /** The look kept, and the board it is now pinned on. */
 export const KeptLook = Schema.Struct({ look: Look, board: Board })
 export type KeptLook = typeof KeptLook.Type
+
+/** Start a "One piece, six outfits" board (T-10): complete outfits around one of the person's pieces, for a season if
+ * one is given, laid out on its table. Free, at the account's outfit pace. */
+export const CreateOutfitBoard = Schema.Struct({
+  operationId: OperationId,
+  name: BoardName,
+  anchorPieceId: PieceId,
+  season: Schema.optionalKey(Season),
+})
+export type CreateOutfitBoard = typeof CreateOutfitBoard.Type
+
+/** Another outfit in place of one not kept, none of the combinations already shown. */
+export const AnotherOutfit = Schema.Struct({
+  operationId: OperationId,
+  seen: Schema.Array(OutfitKey).check(Schema.isMaxLength(mostSeen)),
+})
+export type AnotherOutfit = typeof AnotherOutfit.Type
 
 /** Something to lay on a board's table without an id of its own: the server gives it one. */
 export const TablePiece = Schema.TaggedStruct('TablePiece', { pieceId: PieceId })
@@ -278,6 +322,27 @@ export class PinRefused extends Schema.TaggedError<PinRefused>()(
       lookNotFound: refusal('look_not_found', 'One of those looks is not this account’s.', 'Call look_list.'),
       nothingToPin: refusal('nothing_to_pin', 'There was nothing to pin.', 'Give pieceIds or lookIds.'),
       boardFull: refusal('board_full', 'That would put more on the board than it holds.', 'Unpin something first.'),
+    }),
+  },
+) {}
+
+const OutfitRefusal = Schema.Literals(['noOutfits', 'kept', 'anchorGone'])
+
+/** Why a template board's outfits could not be made: the wardrobe has no complete outfit around the piece (and what it
+ * lacks), the outfit was kept as a look, or the piece it was built around is gone. */
+export class OutfitRefused extends Schema.TaggedError<OutfitRefused>()(
+  'OutfitRefused',
+  { reason: OutfitRefusal, missing: Schema.Array(Slot) },
+  {
+    httpApiStatus: 422,
+    guide: byCase<typeof OutfitRefusal.Type>('reason', {
+      noOutfits: refusal(
+        'no_outfits',
+        'This wardrobe has no complete outfit around that piece.',
+        'Add the pieces it lacks (missing), or choose another piece.',
+      ),
+      kept: refusal('outfit_kept', 'That outfit is kept as a look.', 'Ask for another outfit in another place.'),
+      anchorGone: refusal('anchor_gone', 'The piece this board was built around was deleted.', 'Start a new board.'),
     }),
   },
 ) {}

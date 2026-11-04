@@ -1,4 +1,14 @@
-import { boardImages, boardItems, boardPins, boards, operationReceipts, piecePictures, pieces } from '@styld/db'
+import {
+  boardImages,
+  boardItems,
+  boardOutfitPieces,
+  boardOutfits,
+  boardPins,
+  boards,
+  operationReceipts,
+  piecePictures,
+  pieces,
+} from '@styld/db'
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
@@ -10,18 +20,19 @@ export type BoardRow = typeof boards.$inferSelect
 export type BoardItemRow = typeof boardItems.$inferSelect
 export type BoardImageRow = typeof boardImages.$inferSelect
 export type BoardPinRow = typeof boardPins.$inferSelect
+export type BoardOutfitRow = typeof boardOutfits.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
 
 /** The most boards a list shows. */
 const listLimit = 100
 
 /** A save of a board's table, from the version its editor loaded, with the pins the table needs that the
- * board does not hold yet. */
+ * board does not hold yet. An item keeps the outfit it showed (`saveItems`). */
 export interface TableSave {
   readonly accountId: string
   readonly boardId: string
   readonly version: number
-  readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId'>>
+  readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId' | 'outfitId'>>
   readonly pins: ReadonlyArray<BoardPinRow>
   readonly receipt: ReceiptRow
   readonly at: Date
@@ -38,7 +49,130 @@ export interface PinRemoval {
   readonly at: Date
 }
 
+/** A board started from "One piece, six outfits" (T-10): the board, its outfits with their pieces, its table and pins,
+ * and the operation's receipt. */
+export interface OutfitBoard {
+  readonly board: BoardRow
+  readonly outfits: ReadonlyArray<{ readonly row: BoardOutfitRow; readonly pieceIds: ReadonlyArray<string> }>
+  readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId'>>
+  readonly pins: ReadonlyArray<BoardPinRow>
+  readonly receipt: ReceiptRow
+}
+
+/** Another outfit in place of one (T-10): its run, way and pieces, its cluster's items, the pins they need, the
+ * receipt; from the board's version, which it moves on so an open editor reloads. */
+export interface OutfitReplacement {
+  readonly accountId: string
+  readonly boardId: string
+  readonly version: number
+  readonly outfit: Pick<BoardOutfitRow, 'id' | 'session' | 'mode'>
+  readonly pieceIds: ReadonlyArray<string>
+  readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId'>>
+  readonly pins: ReadonlyArray<BoardPinRow>
+  readonly receipt: ReceiptRow
+  readonly at: Date
+}
+
 type Database = Db['Service']
+
+const outfitPieceRows = (db: Database, outfitId: string | SQL<string>, pieceIds: ReadonlyArray<string>) =>
+  pieceIds.map((pieceId, position) => db.insert(boardOutfitPieces).values({ outfitId, pieceId, position }))
+
+const outfitRows = (db: Database) => ({
+  /** The outfits of these boards, in their places. */
+  outfitsOf: (boardIds: ReadonlyArray<string>) =>
+    inChunks(boardIds, (chunk) =>
+      db.select().from(boardOutfits).where(inArray(boardOutfits.boardId, chunk)).orderBy(asc(boardOutfits.position)),
+    ),
+  /** The pieces of these outfits still in the wardrobe, in wearing order, each with its picture. */
+  outfitPiecesOf: (outfitIds: ReadonlyArray<string>) =>
+    inChunks(outfitIds, (chunk) =>
+      db
+        .select({ outfitId: boardOutfitPieces.outfitId, piece: pieces, picture: piecePictures })
+        .from(boardOutfitPieces)
+        .innerJoin(pieces, eq(pieces.id, boardOutfitPieces.pieceId))
+        .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
+        .where(inArray(boardOutfitPieces.outfitId, chunk))
+        .orderBy(asc(boardOutfitPieces.position)),
+    ),
+  /** These pieces with their pictures, whoever's: the anchors of boards being shown. */
+  piecesById: (pieceIds: ReadonlyArray<string>) =>
+    inChunks(pieceIds, (chunk) =>
+      db
+        .select({ piece: pieces, picture: piecePictures })
+        .from(pieces)
+        .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
+        .where(inArray(pieces.id, chunk)),
+    ),
+  findOutfit: (boardId: string, outfitId: string) =>
+    query(() =>
+      db
+        .select()
+        .from(boardOutfits)
+        .where(and(eq(boardOutfits.id, outfitId), eq(boardOutfits.boardId, boardId)))
+        .limit(1),
+    ).pipe(Effect.map(first)),
+})
+
+const outfitWrites = (db: Database) => ({
+  /** The statement that marks an outfit kept as a look, for the keep's batch. */
+  outfitKept: (boardId: string, outfitId: string, lookId: string) =>
+    db
+      .update(boardOutfits)
+      .set({ lookId })
+      .where(and(eq(boardOutfits.id, outfitId), eq(boardOutfits.boardId, boardId))),
+  /** The board, its outfits, table, pins and receipt, as one atomic batch. */
+  createOutfitBoard: (made: OutfitBoard) =>
+    query(() =>
+      db.batch([
+        db.insert(boards).values(made.board),
+        ...made.outfits.flatMap(({ row, pieceIds }) => [
+          db.insert(boardOutfits).values(row),
+          ...outfitPieceRows(db, row.id, pieceIds),
+        ]),
+        ...made.items.map((item) => db.insert(boardItems).values({ ...item, boardId: made.board.id })),
+        ...made.pins.map((pin) => db.insert(boardPins).values(pin)),
+        db.insert(operationReceipts).values(made.receipt),
+      ]),
+    ).pipe(Effect.asVoid),
+  /** Another outfit in its place: its pieces and run, its cluster's items, the pins they need and the receipt, as one
+   * atomic batch, only while the board and the outfit are as they were read: still at the version, still not kept. The
+   * outfit's pieces and the items name them by reading them so, and a replacement that lost the race writes a null
+   * into a column that refuses one, which fails the whole batch. */
+  replaceOutfit: (change: OutfitReplacement) => {
+    const loaded = and(
+      eq(boards.id, change.boardId),
+      eq(boards.accountId, change.accountId),
+      eq(boards.version, change.version),
+    )
+    const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
+    const notKept = and(eq(boardOutfits.id, change.outfit.id), sql`${boardOutfits.lookId} IS NULL`)
+    const outfitNotKept = sql<string>`${db
+      .select({ id: boardOutfits.id })
+      .from(boardOutfits)
+      .where(and(notKept, eq(boardOutfits.boardId, boardAtVersion)))}`
+    return query(() =>
+      db.batch([
+        db.insert(operationReceipts).values(change.receipt),
+        db.delete(boardOutfitPieces).where(eq(boardOutfitPieces.outfitId, change.outfit.id)),
+        ...outfitPieceRows(db, outfitNotKept, change.pieceIds),
+        db
+          .update(boardOutfits)
+          .set({ session: change.outfit.session, mode: change.outfit.mode })
+          .where(eq(boardOutfits.id, change.outfit.id)),
+        db
+          .delete(boardItems)
+          .where(and(eq(boardItems.boardId, change.boardId), eq(boardItems.outfitId, change.outfit.id))),
+        ...change.items.map((item) => db.insert(boardItems).values({ ...item, boardId: boardAtVersion })),
+        ...change.pins.map((pin) => db.insert(boardPins).values(pin).onConflictDoNothing()),
+        db
+          .update(boards)
+          .set({ version: change.version + 1, updatedAt: change.at })
+          .where(loaded),
+      ]),
+    ).pipe(Effect.asVoid)
+  },
+})
 
 const boardRows = (db: Database) => ({
   ...receiptRows(db),
@@ -86,6 +220,36 @@ const boardRows = (db: Database) => ({
     ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
 })
 
+/** The batch of a table save (`saveItems`), each item with its outfit. */
+const writeItems = (db: Database, save: TableSave, outfitOf: ReadonlyMap<string, string | null>) => {
+  const loaded = and(
+    eq(boards.id, save.boardId),
+    eq(boards.accountId, save.accountId),
+    eq(boards.version, save.version),
+  )
+  const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
+  return query(() =>
+    db.batch([
+      db.delete(boardItems).where(eq(boardItems.boardId, boardAtVersion)),
+      ...save.items.map((item) =>
+        db.insert(boardItems).values({ ...item, outfitId: outfitOf.get(item.id) ?? null, boardId: boardAtVersion }),
+      ),
+      ...save.pins.map((pin) => db.insert(boardPins).values(pin).onConflictDoNothing()),
+      db.insert(operationReceipts).values({ ...save.receipt, result: boardAtVersion }),
+      db
+        .update(boards)
+        .set({ version: save.version + 1, updatedAt: save.at })
+        .where(loaded)
+        .returning({ version: boards.version }),
+    ]),
+  ).pipe(
+    Effect.map((results) => {
+      const counted = results.at(-1)
+      return Option.fromNullishOr(Array.isArray(counted) ? counted[0] : undefined)
+    }),
+  )
+}
+
 const itemRows = (db: Database) => ({
   /** The items of these boards, bottom of the stack first. */
   itemsOf: (boardIds: ReadonlyArray<string>) =>
@@ -99,33 +263,18 @@ const itemRows = (db: Database) => ({
   /** Replace the board's items, pin what they need, record the operation and count the save, as one atomic
    * batch, only while the board is still at the version the editor loaded. Each item's board and the
    * receipt's board are read at that version, so a save that lost the race writes a null, which fails the
-   * whole batch, an empty table included. */
-  saveItems: (save: TableSave) => {
-    const loaded = and(
-      eq(boards.id, save.boardId),
-      eq(boards.accountId, save.accountId),
-      eq(boards.version, save.version),
-    )
-    const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
-    return query(() =>
-      db.batch([
-        db.delete(boardItems).where(eq(boardItems.boardId, boardAtVersion)),
-        ...save.items.map((item) => db.insert(boardItems).values({ ...item, boardId: boardAtVersion })),
-        ...save.pins.map((pin) => db.insert(boardPins).values(pin).onConflictDoNothing()),
-        db.insert(operationReceipts).values({ ...save.receipt, result: boardAtVersion }),
+   * whole batch, an empty table included. An item keeps the template outfit it showed (T-10), by its id: one moved by
+   * hand still belongs to its cluster. They are read first; a save in between moves the version, and the batch fails. */
+  saveItems: (save: TableSave) =>
+    Effect.flatMap(
+      query(() =>
         db
-          .update(boards)
-          .set({ version: save.version + 1, updatedAt: save.at })
-          .where(loaded)
-          .returning({ version: boards.version }),
-      ]),
-    ).pipe(
-      Effect.map((results) => {
-        const counted = results.at(-1)
-        return Option.fromNullishOr(Array.isArray(counted) ? counted[0] : undefined)
-      }),
-    )
-  },
+          .select({ id: boardItems.id, outfitId: boardItems.outfitId })
+          .from(boardItems)
+          .where(eq(boardItems.boardId, save.boardId)),
+      ),
+      (held) => writeItems(db, save, new Map(held.map(({ id, outfitId }) => [id, outfitId]))),
+    ),
 })
 
 /** The pin's own columns, with the piece a piece pin holds and where a picture pin's picture came from. */
@@ -305,6 +454,8 @@ const imageRows = (db: Database) => ({
  * and items of a board are read by the board's id once the board is known. */
 export const boardStore = (db: Database) => ({
   ...boardRows(db),
+  ...outfitRows(db),
+  ...outfitWrites(db),
   ...itemRows(db),
   ...pinReads(db),
   ...pinWrites(db),

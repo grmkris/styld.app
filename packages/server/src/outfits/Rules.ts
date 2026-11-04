@@ -152,8 +152,12 @@ const shapesFor = (request: Brief, pools: ReadonlyMap<Slot, ReadonlyArray<Wearab
 export const missingOf = (request: Brief): ReadonlyArray<Slot> => {
   const pools = poolsOf(request)
   const shapes = shapesFor(request, pools)
-  const base: ReadonlyArray<Slot> =
-    shapes.length > 0 ? [] : Array.filter(['top', 'bottom'] as const, (slot) => !has(pools, slot))
+  // A fixed piece sets the shape whatever the wardrobe holds: a top with no bottom to go with it lacks the bottom.
+  const [first] = shapes
+  const fillable = shapes.some((shape) => shapeSlots[shape].every((slot) => has(pools, slot)))
+  const base: ReadonlyArray<Slot> = fillable
+    ? []
+    : Array.filter(first === undefined ? (['top', 'bottom'] as const) : shapeSlots[first], (slot) => !has(pools, slot))
   return has(pools, 'shoes') ? base : [...base, 'shoes']
 }
 
