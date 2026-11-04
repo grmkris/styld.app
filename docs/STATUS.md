@@ -48,7 +48,7 @@ cheap checks only; the coordinator merges, deploys and runs native.
   (`TryOnShared.sendable`). The photo goes as Cloudflare Images' re-encoded JPEG (no EXIF or location), each piece as
   its shown picture (drawing, else cut-out, turned as its owner turned it) at most 1024 px WebP. Spans carry the try-on
   id only; no prompt, image or signed address is logged.
-- **Server (`generation/TryOn*.ts`):** migration `20261104175353_try_ons` only creates `try_ons` and
+- **Server (`generation/TryOn*.ts`):** migration `20261104182716_try_ons` only creates `try_ons` and
   `try_on_pieces` (owner: generation). `POST /api/try-ons` claims its operation id, paces like stickers, holds 2
   credits through the Wallet (`holdId('tryOn', id, 0)`), then the generation queue's `TakeTryOn` draws once: a claimed
   drawing (`started_at`) whose answer was lost is never drawn again; a refusal or a lost answer gives the credits back;
@@ -60,15 +60,15 @@ cheap checks only; the coordinator merges, deploys and runs native.
   pieces in one tap or up to nine pieces, a required "This is me" tick, the 2-credit cost; the page follows it by
   reading the list every 2 s; before and after side by side on a wide screen, a toggle on a phone; Delete after a
   question; Add to board through Save to board's `tryOn` target. A lost answer is retried under the same operation
-  id. en and sl copy. Bundle budget 397,200: the page adds 5,773 gzip over the contract's 391,342 (clean worktree).
+  id. en and sl copy. Bundle budget 398,600: the page adds 5,773 gzip over the contract's 391,342 (clean worktree); the rebased build
+  measures 398,575.
   Story and scene tests `tryOn.story/scene`; native `TryOnBrowserAcceptance` written, not run.
 - **Evidence:** unit `TryOnPrompt.test` (words, numbering, canvas, Muse body order and model, the privacy rule, the
   `thisIsMe` and nine-piece contract) and `TryOn.test` over real SQLite and the in-memory Wallet (2 credits held and
   spent once the result is kept; refunded on a refusal and on a lost answer, never drawn twice; a repeat answers the
   same try-on, another under the same id conflicts; another account's photo or pieces are NotFound and nothing is sent;
   past the day's credits the try-on is undone; delete takes the result and refunds an unfinished one). Native
-  `TryOnAcceptance` written, not run here. `test:unit` at this commit: every try-on test passes; four sign-in tests
-  (`GoogleEntry`, `controls.scene`, `session.story`) fail at d1ccf0b6 already, from the Google sign-in work.
+  `TryOnAcceptance` written, not run here. `test:unit` on the rebased result: 1,177 of 1,177 pass.
 - **Open:** the coordinator's merge, deploy, migration and native run; a live try-on on the preview with Kris's photos;
   MCP tools for try-on (the operation is shared, the tools are not written); a remembered default photo (the person
   picks a photo each time).
