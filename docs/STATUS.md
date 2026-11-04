@@ -27,6 +27,63 @@ Auth's persistence and drizzle took about 310 ms, `Modules.ts` 185 ms, the API 4
 - Open: deploy to the preview, then `cold.ts` and Workers Logs (no "hung", no startup errors), then production. No gate
   yet keeps the entry's static graph small.
 
+## Photo imports no longer stall styld.app (4 November, on main, not deployed)
+
+Eva (4 November, about 21:20 UTC): the app hung and lagged while about 80 photos were processing.
+
+- **The cause.** Workers Logs for production showed several piece-queue invocations ending `exceededCpu` (32.5 s of
+  CPU). One of them held 5 match messages, made 72 `Styld.Capture.sameGarment` calls and 79 R2 reads. Meanwhile,
+  wardrobe thumbnails waited 3–8 s on little CPU, `/api/captures/review` took 12 s and was cancelled, and p99 rose to
+  8 s, from under 1 s before the cutover.
+  - Matching made every compared cut-out into the model's picture again: decode, shrink, flatten, encode, 0.4–0.9 s of
+    CPU each at the working size. That is up to 17 per sighting.
+  - One delivery compared every waiting sighting of the import.
+  - The piece queue ran batches of 10, so one job past the CPU limit retried the nine beside it, spent their tries and
+    repeated their paid Clef calls.
+  - The queue consumer shares the API Worker's isolate, so every request waited behind it.
+- **The fix.**
+  - `capture/Comparable.ts`: the isolate keeps up to 48 comparable pictures, each with its R2 etag, and reads the
+    object again only when the etag changed (`onlyIf.etagDoesNotMatch`). Only finished pictures are kept, never a read
+    in progress.
+  - `processMatch` compares one sighting a delivery and sends the queue on to the next.
+  - The piece queue's batch size is 1.
+- **Evidence.** `Comparable.test.ts` (unchanged, overwritten, deleted, not a picture, least recently used) and
+  `Jobs.test.ts` (batch size); typecheck, lint, Knip, graph, patterns and unit. The native suite and the production
+  readback after the deploy are open.
+- **Open.**
+  - Moving piece processing into its own Worker would keep image work out of the API's isolate altogether.
+  - A thumbnail answering 304 still spends about 300 ms of CPU.
+  - MCP clients get 404 on `/api/auth/oauth2/token` and `/.well-known/openid-configuration`.
+
+## Rotate turns the shop-style picture too (4 November, `0f29dcd4`, live on the preview and styld.app)
+
+Eva (4 November): Rotate turned her photo and cut-out but never the shop-style picture, so a drawing Muse made from
+an upside-down cut-out stayed upside down.
+
+- **The cause.** The drawing was always served at 0. Since `4cb61c56`, Muse draws from the cut-out turned by the
+  piece's rotation, but nothing recorded which rotation a drawing was made at.
+- **The fix.**
+  - `piece_pictures.drawn_rotation` (migration `20261104210909_drawn_rotation`, an in-place ALTER) records the
+    rotation a claim draws at.
+  - The drawing is served turned by `drawingTurn`, the piece's rotation minus the drawn one. This applies wherever it
+    shows: piece page, wardrobe, boards, public pages, MCP and try-on.
+  - In Edit, Rotate previews the turn on the shop-style slide. The spin, whose frames are served as made, turns by
+    `PiecePicture.rotation`.
+- **The backfill.** Drawings finished after 13:35 UTC on pieces last changed before them were drawn at the piece's
+  rotation: one on the preview, one in production. Every other drawing was drawn at 0. Production read back after the
+  deploy:
+  - four drawings on rotated pieces are now served turned 180° or 270°;
+  - one drawing made at 180 is served upright.
+- **Evidence.**
+  - Unit: `PieceImages` and `Wardrobe` cover `drawingTurn` and `pictureView`; `Drawing` checks that the rotation is
+    recorded at the claim.
+  - Scene: `piece.scene` covers Rotate on the shop-style slide and the spin's turn.
+  - Deployed: the preview and styld.app both report release `0f29dcd4`, and the migration is applied on both.
+- **Open:**
+  - The full gate with native, run after the deploy.
+  - Eva's look at her top on her phone.
+  - From 900 px up, a 90° or 270° turn overflows the non-square picture box, as the photo and cut-out already do.
+
 ## A piece is sorted beside the photo it was cut from (4 November, on main, not deployed)
 
 Eva (4 November): leggings, sports bras, skirts and "a bit of everything" were sorted into the wrong type. Clef's
@@ -42,7 +99,43 @@ original by default.
 - Cost: each suggest carries a second image, roughly doubling its Clef input tokens (counted by `clefCost` in the
   provider metrics), plus one Images transform per imported piece.
 - Not measured (owner: "just build it"). Open: whether the photo moves Eva's leggings, sports bras and skirts into the
-  right types, read on the preview with her next captures; the four Sport types are a separate track.
+  right types, read on the preview with her next captures, together with the four Sport types below.
+
+## Sport by shape: four Sport types instead of Sportswear (4 November, on main, not deployed)
+
+Eva: "Narobe mi kategorizira: vse sorte vecinoma leggings, sprtne modrce, krila, razicne stvari in cist vse po
+malem" (it sorts everything wrong, mostly leggings, sports bras and skirts). The owner chose Sports bras,
+Sports tops, Sports leggings & shorts and Tracksuits & ski wear in place of the one type `sportswear`.
+
+- **Types** (`packages/protocol/src/Garment.ts`): `sportsBras` and `sportTops` sit in the outfit slot `top`,
+  `sportBottoms` in `bottom`, `tracksuits` in `set`; the Sport group reads bras, tops, bottoms, tracksuits, then sports
+  and outdoor shoes. Named in en and sl, with search words; plain "leggings" now search, and sort, as sport bottoms.
+- **Clef** (`providers/Clef.ts`): each Sport type says what it is not (a sports bra is not a bikini top or a camisole),
+  trousers no longer include leggings, shorts are everyday shorts (not cycling, running or swim), and a skirt includes
+  a skort or a tennis skirt and is never a dress. Track A's two-picture `suggest` is separate.
+- **Pictures** (`capture/CleanPrompt.ts`): the photo fallback named every sportswear piece "sports top" and every
+  loungewear piece "loungewear top", so leggings and pyjama trousers were asked for as tops; each Sport type now has its
+  own words, and loungewear is "loungewear".
+- **Outfits** (`outfits/Rules.ts`, Proposer): everything in Sport (not only its shoes) is worn only for sport; a sports
+  bra or top with sport bottoms is a whole outfit for it, or a tracksuit. A needed place with nothing suitable takes an
+  everyday piece before a sport one. Analyze my wardrobe counts nothing made for sport among the everyday areas.
+- **Migration** `20261104212538_sport_types`: rebuilds pieces, detections, photo_garments and piece_provenance (their
+  type CHECKs) with the keep-aside pattern, now also keeping piece_back_pictures and try_on_pieces. Every stored
+  `sportswear` becomes `sportTops`; the house seed's four sportswear garments (leggings, track trousers) become
+  `sportBottoms`, and their manifest ids `-sportswear-` become `-sportBottoms-` so the seed finds them instead of drawing
+  them again (catalogue and manifest renamed to match). MigrationSafety covers it; on a private copy of the preview's
+  data (dump of 4 November 08:16, migrated forward) all 65 tables keep their row counts, no foreign key breaks, and its
+  47 sportswear pieces became sport tops.
+- **Re-sort** `tools/retype-sport.ts` (rule in `tools/Sport.ts`, tested): asks Clef which kind of sportswear each
+  stored sport top is, from its cut-out with the photo it was cut from beside it (when that photo is at most 4 MB),
+  and moves it to sports bras, sport bottoms or tracksuits on an answer of at least 0.7; "not sport" is reported, never
+  written. Dry by default; `--apply` writes only while the piece is still a sport top. Not run against any database.
+- **v1 importer**: names like "sports bra", "leggings", "cycling shorts", "running tee" and "ski pants" pick the Sport
+  types.
+- **Open:** deploy, then `retype-sport` dry run on the preview and production, a sample checked by eye, then `--apply`;
+  Eva's check on her phone; the Tops and Bottoms group navigation she asked for in the same message.
+
+> > > > > > > worktree-agent-ad62803b3f2949ede
 
 ## Styld learns the person: taste, memory, first run (4 November, on main)
 

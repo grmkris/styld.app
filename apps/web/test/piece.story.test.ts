@@ -161,13 +161,13 @@ describe('a piece you own', () => {
   })
 
   test('a category of the person’s own sets its type; chosen again it goes, and a new one is typed (T-12)', () => {
-    const chosen = edited([Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' })])
+    const chosen = edited([Message.ChoseCategory({ type: 'tracksuits', name: 'Ski pants' })])
     expect(Option.map(chosen.draft, ({ details }) => [details.type, details.category])).toEqual(
-      Option.some([Option.some('sportswear'), 'Ski pants']),
+      Option.some([Option.some('tracksuits'), 'Ski pants']),
     )
     const unchosen = edited([
-      Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' }),
-      Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' }),
+      Message.ChoseCategory({ type: 'tracksuits', name: 'Ski pants' }),
+      Message.ChoseCategory({ type: 'tracksuits', name: 'Ski pants' }),
     ])
     expect(Option.map(unchosen.draft, ({ details }) => details.category)).toEqual(Option.some(''))
     const typed = edited([Message.UpdatedCategory({ value: '  Ski pants ' })])

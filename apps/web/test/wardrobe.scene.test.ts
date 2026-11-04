@@ -59,49 +59,52 @@ describe('the wardrobe page', () => {
   })
 
   test('a category of the person’s own is a card of its own beside its type, holding only its pieces (T-12)', () => {
-    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'sportswear', category: 'Ski pants' })
-    const leggings = pieceFixture('leggings', { name: 'Black leggings', type: 'sportswear' })
+    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'tracksuits', category: 'Ski pants' })
+    const trackPants = pieceFixture('trackPants', { name: 'Black track pants', type: 'tracksuits' })
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=sport', skiPants, leggings)),
-      expect(role('link', { name: 'Sportswear' })).toHaveAttr('href', '/wardrobe?group=sport&type=sportswear'),
+      given(loadedAt('/wardrobe?group=sport', skiPants, trackPants)),
+      expect(role('link', { name: 'Tracksuits & ski wear' })).toHaveAttr(
+        'href',
+        '/wardrobe?group=sport&type=tracksuits',
+      ),
       expect(role('link', { name: 'Ski pants' })).toHaveAttr(
         'href',
-        '/wardrobe?group=sport&type=sportswear&category=Ski+pants',
+        '/wardrobe?group=sport&type=tracksuits&category=Ski+pants',
       ),
     )
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=sport&type=sportswear&category=Ski+pants', skiPants, leggings)),
+      given(loadedAt('/wardrobe?group=sport&type=tracksuits&category=Ski+pants', skiPants, trackPants)),
       expect(role('heading', { name: 'Ski pants' })).toExist(),
       expect(role('link', { name: 'Blue ski pants' })).toExist(),
-      expect(role('link', { name: 'Black leggings' })).not.toExist(),
+      expect(role('link', { name: 'Black track pants' })).not.toExist(),
     )
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=sport&type=sportswear', skiPants, leggings)),
-      expect(role('link', { name: 'Black leggings' })).toExist(),
+      given(loadedAt('/wardrobe?group=sport&type=tracksuits', skiPants, trackPants)),
+      expect(role('link', { name: 'Black track pants' })).toExist(),
       expect(role('link', { name: 'Blue ski pants' })).not.toExist(),
     )
   })
 
   test('a category’s page renames it in place and asks before deleting it, saying its pieces stay (T-12)', () => {
-    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'sportswear', category: 'Ski pants' })
+    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'tracksuits', category: 'Ski pants' })
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=sport&type=sportswear&category=Ski+pants', skiPants)),
+      given(loadedAt('/wardrobe?group=sport&type=tracksuits&category=Ski+pants', skiPants)),
       click(role('button', { name: 'Rename' })),
       expect(role('textbox', { name: 'Category name' })).toHaveValue('Ski pants'),
       click(role('button', { name: 'Cancel' })),
       click(role('button', { name: 'Delete category' })),
       inside(
         role('alertdialog', { name: 'Delete category' }),
-        expect(text('Delete Ski pants? Its pieces stay, under Sportswear.')).toExist(),
+        expect(text('Delete Ski pants? Its pieces stay, under Tracksuits & ski wear.')).toExist(),
       ),
     )
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=sport&type=sportswear', pieceFixture('leggings', { type: 'sportswear' }))),
+      given(loadedAt('/wardrobe?group=sport&type=tracksuits', pieceFixture('trackPants', { type: 'tracksuits' }))),
       expect(role('button', { name: 'Rename' })).not.toExist(),
     )
   })

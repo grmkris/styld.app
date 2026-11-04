@@ -55,8 +55,8 @@ describe("the wardrobe's address", () => {
     )
     expect(browseAt(path)).toEqual(Option.some(browse))
     expect(browseRouter({ browse: unfiltered })).toBe('/wardrobe')
-    expect(browseRouter({ browse: browseType('sportswear', Option.some('Ski pants')) })).toBe(
-      '/wardrobe?group=sport&type=sportswear&category=Ski+pants',
+    expect(browseRouter({ browse: browseType('tracksuits', Option.some('Ski pants')) })).toBe(
+      '/wardrobe?group=sport&type=tracksuits&category=Ski+pants',
     )
   })
 
@@ -168,7 +168,7 @@ describe('filtering the wardrobe', () => {
 })
 
 describe("a category of the person's own, from its page (T-12)", () => {
-  const skiPants = browseType('sportswear', Option.some('Ski pants'))
+  const skiPants = browseType('tracksuits', Option.some('Ski pants'))
 
   test('renamed: its pieces move to the new name, the address shows it, and the app reads the pieces again', () => {
     story(
@@ -180,12 +180,12 @@ describe("a category of the person's own, from its page (T-12)", () => {
       ),
       message(Message.UpdatedCategoryName({ value: ' Snow trousers ' })),
       message(Message.SubmittedCategoryName()),
-      Command.expectExact(RenameCategory({ type: 'sportswear', name: 'Ski pants', to: 'Snow trousers' })),
+      Command.expectExact(RenameCategory({ type: 'tracksuits', name: 'Ski pants', to: 'Snow trousers' })),
       Command.resolve(
         RenameCategory,
-        Message.SucceededRenameCategory({ type: 'sportswear', name: 'Ski pants', to: 'Snow trousers' }),
+        Message.SucceededRenameCategory({ type: 'tracksuits', name: 'Ski pants', to: 'Snow trousers' }),
       ),
-      Command.expectExact(ReplaceBrowse({ browse: browseType('sportswear', Option.some('Snow trousers')) })),
+      Command.expectExact(ReplaceBrowse({ browse: browseType('tracksuits', Option.some('Snow trousers')) })),
       model(({ categoryEdit }) => expect(categoryEdit).toEqual(CategoryEdit.Idle())),
       expectOutMessage(OutMessage.RequestedPieces()),
       Command.resolve(ReplaceBrowse, Message.CompletedReplaceBrowse()),
@@ -198,14 +198,14 @@ describe("a category of the person's own, from its page (T-12)", () => {
       given(init()),
       message(Message.ClickedDeleteCategory()),
       message(Message.ClickedConfirmDeleteCategory()),
-      Command.expectExact(DeleteCategory({ type: 'sportswear', name: 'Ski pants' })),
+      Command.expectExact(DeleteCategory({ type: 'tracksuits', name: 'Ski pants' })),
       Command.resolve(DeleteCategory, Message.FailedCategoryEdit()),
       model(({ categoryEdit }) =>
         expect(categoryEdit).toEqual(CategoryEdit.Deleting({ sending: false, failed: true })),
       ),
       message(Message.ClickedConfirmDeleteCategory()),
-      Command.resolve(DeleteCategory, Message.SucceededDeleteCategory({ type: 'sportswear', name: 'Ski pants' })),
-      Command.expectExact(ReplaceBrowse({ browse: browseType('sportswear') })),
+      Command.resolve(DeleteCategory, Message.SucceededDeleteCategory({ type: 'tracksuits', name: 'Ski pants' })),
+      Command.expectExact(ReplaceBrowse({ browse: browseType('tracksuits') })),
       expectOutMessage(OutMessage.RequestedPieces()),
       Command.resolve(ReplaceBrowse, Message.CompletedReplaceBrowse()),
     )
@@ -214,7 +214,7 @@ describe("a category of the person's own, from its page (T-12)", () => {
   test('a rename that lands after the person browsed elsewhere leaves the address alone', () => {
     const landed = at(browseGroup('shoes'))(
       init(),
-      Message.SucceededRenameCategory({ type: 'sportswear', name: 'Ski pants', to: 'Snow trousers' }),
+      Message.SucceededRenameCategory({ type: 'tracksuits', name: 'Ski pants', to: 'Snow trousers' }),
     )
     expect(landed.commands ?? []).toEqual([])
     expect(landed.outMessage).toEqual(OutMessage.RequestedPieces())

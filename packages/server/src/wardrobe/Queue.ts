@@ -6,12 +6,14 @@ import type { Photos } from '../photos/Photos.ts'
 import { pieceAttempts, WorkMessage } from './Processing.ts'
 import type { Wardrobe } from './Wardrobe.ts'
 
-/** The piece queue: three tries for each job before it shows as failed, its credits back. */
+/** The piece queue: three tries for each job before it shows as failed, its credits back. A delivery carries one job:
+ * each is seconds of image work and provider calls, and the jobs of a batch share one CPU limit, so one that ran past
+ * it retried the nine beside it and spent their tries (4 November). */
 export const pieceJobQueue = defineQueue({
   name: 'pieces',
   body: WorkMessage,
   attempts: pieceAttempts,
-  batchSize: 10,
+  batchSize: 1,
   retryDelay: '10 seconds',
   // A piece's work keeps the queue's own message id.
   jobOf: () => Option.none(),

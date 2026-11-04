@@ -163,58 +163,104 @@ const sleeveRows = [
   `INSERT INTO board_items (board_id, id, kind, text, text_style, x, y, size, turn, z, flipped) VALUES ('bd1','it2','text','Weekend','label',0,0,1,0,1,0);`,
 ]
 
+/** A database with `rows` written in the schema just before `rebuild`, then every migration from it on applied; every
+ * table keeps its row count across them. */
+const rebuiltOver = (rebuild: string, rows: ReadonlyArray<string>) => {
+  const db = new DatabaseSync(':memory:')
+  db.exec('PRAGMA foreign_keys = ON')
+  const applied = (folder: string) => {
+    for (const statement of statementsOf(folder)) db.exec(statement)
+  }
+  folders.filter((name) => name < rebuild).forEach(applied)
+  for (const row of rows) db.exec(row)
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .all()
+    .map(({ name }) => String(name))
+  const counts = () =>
+    Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT count(*) AS n FROM "${table}"`).get()]))
+  const before = counts()
+  folders.filter((name) => name >= rebuild).forEach(applied)
+  expect(counts()).toEqual(before)
+  return { db, one: (query: string) => db.prepare(query).get() }
+}
+
+/** The links `sleeveRows` make, each back where it was, and nothing kept aside left over. */
+const expectSleeveLinks = ({ db, one }: ReturnType<typeof rebuiltOver>) => {
+  expect(
+    db.prepare("SELECT id, kind, piece_id, outfit_id FROM board_items WHERE board_id = 'bd1' ORDER BY id").all(),
+  ).toEqual([
+    { id: 'it1', kind: 'piece', piece_id: 'pc1', outfit_id: 'bo1' },
+    { id: 'it2', kind: 'text', piece_id: null, outfit_id: null },
+  ])
+  expect(one("SELECT anchor_piece_id AS link FROM boards WHERE id = 'bd1'")).toEqual({ link: 'pc1' })
+  expect(one("SELECT detection_id AS link FROM pieces WHERE id = 'pc1'")).toEqual({ link: 'dt1' })
+  expect(one("SELECT garment_id AS link FROM captures WHERE id = 'cp1'")).toEqual({ link: 'pg1' })
+  expect(one("SELECT duplicate_of AS link FROM detections WHERE id = 'dt1'")).toEqual({ link: 'pc2' })
+  expect(one("SELECT group_of AS link FROM detections WHERE id = 'dt2'")).toEqual({ link: 'dt1' })
+  expect(one("SELECT seasons FROM pieces WHERE id = 'pc1'")).toEqual({ seasons: '["summer"]' })
+  expect(one("SELECT count(*) AS n FROM sqlite_master WHERE name LIKE '__keep_%'")).toEqual({ n: 0 })
+  expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+}
+
+/** The types the rebuilt tables hold for `sleeveRows`' top, which each rebuild renames. */
+const expectTopTyped = ({ db, one }: ReturnType<typeof rebuiltOver>, type: string) => {
+  expect(db.prepare("SELECT id, type FROM pieces WHERE id IN ('pc1', 'pc2', 'pc3') ORDER BY id").all()).toEqual([
+    { id: 'pc1', type },
+    { id: 'pc2', type: 'coats' },
+    { id: 'pc3', type: 'jeans' },
+  ])
+  expect(db.prepare('SELECT id, suggested_type AS type FROM detections ORDER BY id').all()).toEqual([
+    { id: 'dt1', type },
+    { id: 'dt2', type: 'jeans' },
+  ])
+  expect(one("SELECT type, piece_id AS link FROM photo_garments WHERE id = 'pg1'")).toEqual({ type, link: 'pc1' })
+}
+
 describe('the tops-by-sleeve rebuild of pieces, detections and photo garments', () => {
   test('keeps every row and link, and makes every top a short-sleeved one', () => {
-    const db = new DatabaseSync(':memory:')
-    db.exec('PRAGMA foreign_keys = ON')
-    const rebuild = '20261104111927'
-    const applied = (folder: string) => {
-      for (const statement of statementsOf(folder)) db.exec(statement)
-    }
-    folders.filter((name) => name < rebuild).forEach(applied)
-    for (const row of sleeveRows) db.exec(row)
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
-      .all()
-      .map(({ name }) => String(name))
-    const counts = () =>
-      Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT count(*) AS n FROM "${table}"`).get()]))
-    const before = counts()
-    folders.filter((name) => name >= rebuild).forEach(applied)
-    expect(counts()).toEqual(before)
-    const one = (query: string) => db.prepare(query).get()
-    expect(db.prepare('SELECT id, type FROM pieces ORDER BY id').all()).toEqual([
-      { id: 'pc1', type: 'shortSleeveTops' },
-      { id: 'pc2', type: 'coats' },
-      { id: 'pc3', type: 'jeans' },
-    ])
-    expect(db.prepare('SELECT id, suggested_type AS type FROM detections ORDER BY id').all()).toEqual([
-      { id: 'dt1', type: 'shortSleeveTops' },
-      { id: 'dt2', type: 'jeans' },
-    ])
-    expect(one("SELECT type, piece_id AS link FROM photo_garments WHERE id = 'pg1'")).toEqual({
-      type: 'shortSleeveTops',
-      link: 'pc1',
-    })
-    expect(
-      db.prepare("SELECT id, kind, piece_id, outfit_id FROM board_items WHERE board_id = 'bd1' ORDER BY id").all(),
-    ).toEqual([
-      { id: 'it1', kind: 'piece', piece_id: 'pc1', outfit_id: 'bo1' },
-      { id: 'it2', kind: 'text', piece_id: null, outfit_id: null },
-    ])
-    expect(one("SELECT anchor_piece_id AS link FROM boards WHERE id = 'bd1'")).toEqual({ link: 'pc1' })
-    expect(one("SELECT detection_id AS link FROM pieces WHERE id = 'pc1'")).toEqual({ link: 'dt1' })
-    expect(one("SELECT garment_id AS link FROM captures WHERE id = 'cp1'")).toEqual({ link: 'pg1' })
-    expect(one("SELECT duplicate_of AS link FROM detections WHERE id = 'dt1'")).toEqual({ link: 'pc2' })
-    expect(one("SELECT group_of AS link FROM detections WHERE id = 'dt2'")).toEqual({ link: 'dt1' })
-    expect(one("SELECT seasons FROM pieces WHERE id = 'pc1'")).toEqual({ seasons: '["summer"]' })
-    expect(one("SELECT count(*) AS n FROM sqlite_master WHERE name LIKE '__keep_%'")).toEqual({ n: 0 })
-    expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+    const rebuilt = rebuiltOver('20261104111927', sleeveRows)
+    const { db, one } = rebuilt
+    expectTopTyped(rebuilt, 'shortSleeveTops')
+    expectSleeveLinks(rebuilt)
     // A garment added to a photo by hand has no cut-out yet; one found by the photo keeps its own.
     expect(one("SELECT cutout_key AS key FROM photo_garments WHERE id = 'pg1'")).toEqual({ key: 'c' })
     db.exec(
       `INSERT INTO photo_garments (id, photo_id, account_id, position, cutout_key, type, colours, piece_id, state) VALUES ('pg2','ph1','ac1',1,NULL,'sleevelessTops','[]','pc1','confirmed');`,
     )
     expect(one("SELECT cutout_key AS key FROM photo_garments WHERE id = 'pg2'")).toEqual({ key: null })
+  })
+})
+
+/** Every kind of link the sport rebuild of pieces, detections, photo garments and provenance drops and must put back, in
+ * the schema just before it: the sleeve rebuild's links with sportswear for the top, plus a back picture, a try-on and
+ * the house seed's provenance of a generated pair of leggings. */
+const sportRows = [
+  ...sleeveRows.map((row) => row.replaceAll("'tops'", "'sportswear'")),
+  `INSERT INTO piece_back_pictures (piece_id, account_id, state, source_key, version, created_at, updated_at) VALUES ('pc1','ac1','ready','b',1,0,0);`,
+  `INSERT INTO try_ons (id, account_id, photo_id, status, created_at, updated_at) VALUES ('to1','ac1','ph1','done',0,0);`,
+  `INSERT INTO try_on_pieces (try_on_id, position, piece_id) VALUES ('to1',0,'pc1');`,
+  `INSERT INTO pieces (id, account_id, type, colours, seasons, occasions, status, source, original_key, content_type, created_at, updated_at) VALUES ('pc4','ac1','sportswear','["black"]','[]','["sport"]','ready','import','k','image/png',0,0);`,
+  `INSERT INTO piece_provenance (piece_id, account_id, origin, manifest_id, described_type, updated_at) VALUES ('pc4','ac1','generated','w-sportswear-black','sportswear',0);`,
+  `INSERT INTO piece_provenance (piece_id, account_id, origin, manifest_id, described_type, updated_at) VALUES ('pc3','ac1','generated','w-jeans-blue','jeans',0);`,
+]
+
+describe('the sport rebuild of pieces, detections, photo garments and provenance', () => {
+  test('keeps every row and link, makes sportswear a sport top, and the house leggings sport bottoms', () => {
+    const rebuilt = rebuiltOver('20261104212538', sportRows)
+    const { db, one } = rebuilt
+    expectTopTyped(rebuilt, 'sportTops')
+    expectSleeveLinks(rebuilt)
+    // The house seed finds its leggings under the id their new type spells, and an everyday garment keeps its own.
+    expect(one("SELECT type FROM pieces WHERE id = 'pc4'")).toEqual({ type: 'sportBottoms' })
+    expect(
+      db.prepare('SELECT piece_id, manifest_id, described_type FROM piece_provenance ORDER BY piece_id').all(),
+    ).toEqual([
+      { piece_id: 'pc3', manifest_id: 'w-jeans-blue', described_type: 'jeans' },
+      { piece_id: 'pc4', manifest_id: 'w-sportBottoms-black', described_type: 'sportBottoms' },
+    ])
+    expect(one("SELECT piece_id AS link FROM try_on_pieces WHERE try_on_id = 'to1'")).toEqual({ link: 'pc1' })
+    expect(one("SELECT state FROM piece_back_pictures WHERE piece_id = 'pc1'")).toEqual({ state: 'ready' })
+    expect(() => db.exec(`UPDATE pieces SET type = 'sportswear' WHERE id = 'pc2'`)).toThrow(/CHECK constraint failed/u)
   })
 })

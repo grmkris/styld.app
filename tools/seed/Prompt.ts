@@ -20,7 +20,8 @@ const tall: ReadonlySet<PieceType> = new Set([
   'jeans',
   'skirts',
   'scarves',
-  'sportswear',
+  'sportBottoms',
+  'tracksuits',
 ])
 
 export const sizeOf = (type: PieceType): MuseSize => (tall.has(type) ? '1024x1536' : '1024x1024')
@@ -50,7 +51,10 @@ const views: Readonly<Record<PieceType, string>> = {
   trousers: flat,
   shorts: flat,
   skirts: flat,
-  sportswear: flat,
+  sportsBras: flat,
+  sportTops: flat,
+  sportBottoms: flat,
+  tracksuits: flat,
   sportShoes: pair,
   outdoorShoes: pair,
   swimwear: onForm,

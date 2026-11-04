@@ -22,10 +22,10 @@ const seeded = () => {
          VALUES (?, 'ac_1', ?, '[]', '[]', ?, 'ready', 'website', 'k', 'image/png', 0, 0)`,
       )
       .run(id, type, category)
-  piece('pc_1', 'sportswear', 'Ski pants')
-  piece('pc_2', 'sportswear', 'Ski pants')
+  piece('pc_1', 'tracksuits', 'Ski pants')
+  piece('pc_2', 'tracksuits', 'Ski pants')
   piece('pc_3', 'trousers', 'Ski pants')
-  piece('pc_4', 'sportswear', null)
+  piece('pc_4', 'tracksuits', null)
   return database
 }
 
@@ -40,7 +40,7 @@ describe("a category of the person's own", () => {
     const database = seeded()
     return Effect.gen(function* () {
       const store = yield* WardrobeStore
-      expect(yield* store.categorySpelling('ac_1', 'sportswear', 'ski PANTS')).toBe('Ski pants')
+      expect(yield* store.categorySpelling('ac_1', 'tracksuits', 'ski PANTS')).toBe('Ski pants')
       expect(yield* store.categorySpelling('ac_1', 'jeans', 'Ski pants')).toBeNull()
     }).pipe(Effect.provide(WardrobeStore.layer.pipe(Layer.provide(Database.layer(database)))))
   })
@@ -49,14 +49,14 @@ describe("a category of the person's own", () => {
     const database = seeded()
     return Effect.gen(function* () {
       const store = yield* WardrobeStore
-      yield* query(() => store.recategorise('ac_1', 'sportswear', 'ski pants', 'Snow trousers', at))
+      yield* query(() => store.recategorise('ac_1', 'tracksuits', 'ski pants', 'Snow trousers', at))
       expect(categories(database)).toEqual([
         { id: 'pc_1', category: 'Snow trousers' },
         { id: 'pc_2', category: 'Snow trousers' },
         { id: 'pc_3', category: 'Ski pants' },
         { id: 'pc_4', category: null },
       ])
-      yield* query(() => store.recategorise('ac_1', 'sportswear', 'Snow trousers', null, at))
+      yield* query(() => store.recategorise('ac_1', 'tracksuits', 'Snow trousers', null, at))
       expect(categories(database)).toEqual([
         { id: 'pc_1', category: null },
         { id: 'pc_2', category: null },
@@ -79,7 +79,7 @@ describe('renaming and deleting a category through its operations (PATCH and DEL
       const service = yield* Categories
       const rename = {
         operationId: OperationId.make('rename-ski-pants'),
-        type: 'sportswear',
+        type: 'tracksuits',
         name: 'Ski pants',
         to: 'Snow trousers',
       } as const
@@ -90,7 +90,7 @@ describe('renaming and deleting a category through its operations (PATCH and DEL
       expect(categoryColumn(database)).toEqual(['Ski pants', 'Snow trousers', 'Ski pants', null])
       yield* service.delete({
         operationId: OperationId.make('delete-snow-trousers'),
-        type: 'sportswear',
+        type: 'tracksuits',
         name: 'Snow trousers',
       })
       expect(categoryColumn(database)).toEqual(['Ski pants', null, 'Ski pants', null])

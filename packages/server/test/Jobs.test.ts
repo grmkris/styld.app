@@ -119,6 +119,6 @@ describe('the queues', () => {
   })
 
   test('tell Cloudflare one spare delivery past the attempts that run the work', () => {
-    expect(consumerSettings(pieceJobQueue)).toEqual({ batchSize: 10, maxRetries: 3, retryDelay: '10 seconds' })
+    expect(consumerSettings(pieceJobQueue)).toEqual({ batchSize: 1, maxRetries: 3, retryDelay: '10 seconds' })
   })
 })

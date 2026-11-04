@@ -29,10 +29,18 @@ const names = (commands: ReadonlyArray<{ readonly name: string }> | undefined) =
   (commands ?? []).map(({ name }) => name)
 
 describe('the pieces a spin may land on', () => {
-  test('ready pieces with a picture, never sportswear, swimwear, loungewear, sport or outdoor shoes, or socks', () => {
-    const left = ['sportswear', 'swimwear', 'loungewear', 'sportShoes', 'outdoorShoes', 'socks'].map((type) =>
-      pieceFixture(type, { type }),
-    )
+  test('ready pieces with a picture, never sport clothes or shoes, swimwear, loungewear or socks', () => {
+    const left = [
+      'sportsBras',
+      'sportTops',
+      'sportBottoms',
+      'tracksuits',
+      'swimwear',
+      'loungewear',
+      'sportShoes',
+      'outdoorShoes',
+      'socks',
+    ].map((type) => pieceFixture(type, { type }))
     const processing = pieceFixture('new', { status: 'processing' })
     const unseen = Struct.omit(pieceFixture('unseen'), ['images'])
     expect(tombolaPool([...left, processing, unseen, tee], Option.none())).toEqual([tee.id])

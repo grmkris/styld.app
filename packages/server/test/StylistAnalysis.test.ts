@@ -64,8 +64,16 @@ describe('the wardrobe’s analysis', () => {
       ...repeat(2, () => piece('coats')),
       ...repeat(3, () => piece('boots')),
     ]
-    // Twelve tops of twenty everyday pieces is 60%, past 55%; sportswear is worn on its own and weighs nothing.
-    const analysis = analysisOf([...tops, ...rest, ...repeat(5, () => piece('sportswear'))], { days: 60, pieceIds: [] })
+    // Twelve tops of twenty everyday pieces is 60%, past 55%; what is made for sport weighs nothing, a sports bra and a
+    // pair of sport leggings no more than a tracksuit.
+    const sport = [
+      piece('tracksuits'),
+      piece('sportsBras'),
+      piece('sportTops'),
+      piece('sportBottoms'),
+      piece('sportShoes'),
+    ]
+    const analysis = analysisOf([...tops, ...rest, ...sport], { days: 60, pieceIds: [] })
     expect(analysis.surpluses).toEqual(['tops'])
     expect(analysis.gaps).toEqual([])
     expect(

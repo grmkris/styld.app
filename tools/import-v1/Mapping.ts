@@ -62,6 +62,11 @@ const categories: Readonly<Record<string, PieceType>> = {
 
 /** Words of a name that say which type it is, in the order they are tried. */
 const named: ReadonlyArray<readonly [RegExp, PieceType]> = [
+  // Sport by shape (4 November), before the everyday words their names share ("cycling shorts", "sports top").
+  [/\bsports? bras?\b|\bbra tops?\b/u, 'sportsBras'],
+  [/\b(tracksuit|track ?suit|ski (trousers|pants|suit))s?\b/u, 'tracksuits'],
+  [/\bleggings?\b|\b(cycling|bike|running|gym) shorts\b/u, 'sportBottoms'],
+  [/\b(sports?|gym|running|training) (top|tee|t-shirt|tank)s?\b/u, 'sportTops'],
   [/\bjeans?\b|denim trousers/u, 'jeans'],
   [/\bskirts?\b/u, 'skirts'],
   [/\bshorts\b/u, 'shorts'],
@@ -103,8 +108,10 @@ const narrowsTo: Partial<Readonly<Record<PieceType, ReadonlyArray<PieceType>>>> 
     'sleevelessTops',
     'dresses',
     'jumpsuits',
+    'sportsBras',
+    'sportTops',
   ],
-  trousers: ['jeans', 'shorts', 'skirts'],
+  trousers: ['jeans', 'shorts', 'skirts', 'sportBottoms', 'tracksuits'],
   jackets: ['coats', 'blazers', 'gilets', 'hoodies', 'knitwear'],
   dresses: ['jumpsuits', 'skirts'],
   trainers: ['boots', 'heels', 'flats', 'sandals'],
