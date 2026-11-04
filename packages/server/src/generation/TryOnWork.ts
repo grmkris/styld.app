@@ -3,8 +3,10 @@ import { Effect, Option, Predicate, Result } from 'effect'
 import { PictureWork, type Picture } from '../capture/Providers.ts'
 import { readObject, writeObject } from '../capture/Shared.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import { PhotoStore } from '../photos/Store.ts'
 import { Holds } from '../usage/Holds.ts'
+import { jpegSize } from '../providers/CloudflareImages.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { stored, unavailable } from './Shared.ts'
@@ -59,24 +61,27 @@ const piecesOf = (row: TryOnRow) =>
   Effect.gen(function* () {
     const chosen = (yield* stored((yield* TryOnStore).piecesOf([row.id]))).map(({ pieceId }) => pieceId)
     const wardrobe = yield* WardrobeStore
-    const pieces = new Map((yield* stored(wardrobe.listPieces(row.accountId))).map((piece) => [piece.id, piece]))
-    const pictures = new Map(
-      (yield* stored(wardrobe.picturesOf(row.accountId))).map((picture) => [picture.pieceId, picture]),
+    const found = yield* stored(wardrobe.piecesWithIds(chosen))
+    const pieces = new Map(
+      found.filter(({ accountId }) => accountId === row.accountId).map((piece) => [piece.id, piece]),
     )
     const work = yield* PictureWork
     return yield* Effect.forEach(
       chosen.flatMap((id) => Option.toArray(Option.fromNullishOr(pieces.get(id)))),
       (piece) =>
         Effect.gen(function* () {
-          const shown = shownImage(piece, pictures.get(piece.id))
+          const picture = yield* stored(wardrobe.pictureOf(row.accountId, piece.id))
+          const shown = shownImage(piece, Option.getOrUndefined(picture))
           const bytes = yield* readObject(shown.key)
           if (Option.isNone(bytes)) return Option.none()
           const webp = yield* work.thumbnail(bytes.value, pieceSide, shown.rotation).pipe(Effect.mapError(unavailable))
-          const picture: Picture = { bytes: webp, contentType: 'image/webp' }
-          return Option.some({ picture, words: tryOnWords(piece) })
+          return Option.some({
+            picture: { bytes: webp, contentType: 'image/webp' } satisfies Picture,
+            words: tryOnWords(piece),
+          })
         }),
       { concurrency: 3 },
-    ).pipe(Effect.map((found) => found.flatMap(Option.toArray)))
+    ).pipe(Effect.map((pictures) => pictures.flatMap(Option.toArray)))
   })
 
 /** What the try-on is drawn from, or none when it has nothing left to draw: its photo gone, not the account's own, or
@@ -87,21 +92,22 @@ const requestOf = (row: TryOnRow) =>
     if (Option.isNone(photo) || !sendable(photo.value, row)) return Option.none<TryOnRequest>()
     const original = yield* readObject(photo.value.originalKey)
     if (Option.isNone(original)) return Option.none<TryOnRequest>()
-    // Cloudflare Images re-encoded the photo when it was uploaded, so it carries no EXIF or location.
-    const copies = yield* (yield* PictureWork).workingCopies(original.value).pipe(Effect.mapError(unavailable))
+    // One JPEG at most 2048 px; Cloudflare Images re-encoded the photo when it was uploaded, so it carries no EXIF or
+    // location. The canvas follows the JPEG's own proportions.
+    const jpeg = yield* (yield* PictureWork).jpeg(original.value).pipe(Effect.mapError(unavailable))
     const pieces = yield* piecesOf(row)
     if (pieces.length === 0) return Option.none<TryOnRequest>()
     return Option.some<TryOnRequest>({
-      photo: { bytes: copies.jpeg, contentType: 'image/jpeg' },
+      photo: { bytes: jpeg, contentType: 'image/jpeg' },
       pieces,
-      size: tryOnSize(copies),
+      size: tryOnSize(Option.getOrUndefined(jpegSize(jpeg))),
     })
   })
 
 /** End a drawing try-on: refused or lost (its credits go back), or done with its stored result. */
 const finish = (row: TryOnRow, change: Pick<TryOnRow, 'status'> & Partial<Pick<TryOnRow, 'resultKey'>>) =>
   Effect.gen(function* () {
-    yield* stored((yield* TryOnStore).advance(row.id, ['drawing'], { ...change, updatedAt: yield* nowDate }))
+    return yield* stored((yield* TryOnStore).advance(row.id, ['drawing'], { ...change, updatedAt: yield* nowDate }))
   })
 
 /** Draw the try-on once and store its result. A refusal and an answer lost on the way both end it with its credits
@@ -117,7 +123,10 @@ const drawOnce = (row: TryOnRow, request: TryOnRequest) =>
     const key = tryOnKey(row)
     // The drawn bytes live only in this delivery: a result that cannot be stored now is lost.
     const kept = yield* Effect.result(writeObject(key, painted.success.bytes, painted.success.contentType))
-    yield* finish(row, Result.isSuccess(kept) ? { status: 'done', resultKey: key } : { status: 'failed' })
+    if (Result.isFailure(kept)) return yield* finish(row, { status: 'failed' })
+    // The person deleted the try-on while it was drawn, or it was given up: its result has no row to show it.
+    if (!(yield* finish(row, { status: 'done', resultKey: key })))
+      yield* deleteAfterRows((yield* Media).bucket, [key], 'tryOn')
   })
 
 /** The drawing's turn: claimed and drawn when nobody has it, ended when the delivery that claimed it died, and left to

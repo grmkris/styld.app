@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "f326a105-a0a6-4b88-9b06-51a106a70f5d",
+  "id": "78a37783-b339-4435-a264-91ef9672a134",
   "prevIds": ["9001bd3e-32a4-4b9f-8178-aaed44966a3b"],
   "ddl": [
     {
@@ -3674,16 +3674,6 @@
       "table": "try_ons",
       "name": "status",
       "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "try_ons",
-      "name": "confirmed_at",
-      "type": "integer",
       "notNull": true,
       "autoincrement": false,
       "default": null,

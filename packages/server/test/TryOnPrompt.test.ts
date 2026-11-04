@@ -3,6 +3,7 @@ import { maximumTryOnPieces, StartTryOn } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { tryOnPrompt, tryOnSize, tryOnWords } from '../src/generation/TryOnPrompt.ts'
 import { sendable } from '../src/generation/TryOnShared.ts'
+import { jpegSize } from '../src/providers/CloudflareImages.ts'
 import { tryOnBody } from '../src/providers/Muse.ts'
 
 const picture = (byte: number, contentType: 'image/jpeg' | 'image/webp') => ({
@@ -54,6 +55,16 @@ describe('a try-on request', () => {
       'data:image/webp;base64,Aw==',
     ])
     expect(body.prompt).toContain('- Image 2: grey hoodie\n- Image 3: navy jeans')
+  })
+})
+
+describe("a JPEG's size", () => {
+  it('is read from its start of frame, past the segments before it', () => {
+    const app0 = [0xff, 0xe0, 0x00, 0x04, 0x4a, 0x46]
+    const sof0 = [0xff, 0xc0, 0x00, 0x11, 0x08, 0x04, 0x00, 0x03, 0x00, 0x03]
+    expect(jpegSize(Uint8Array.from([0xff, 0xd8, ...app0, ...sof0]))).toEqual(Option.some({ width: 768, height: 1024 }))
+    expect(jpegSize(Uint8Array.from([0xff, 0xd8, ...app0]))).toEqual(Option.none())
+    expect(jpegSize(new Uint8Array([1, 2, 3]))).toEqual(Option.none())
   })
 })
 

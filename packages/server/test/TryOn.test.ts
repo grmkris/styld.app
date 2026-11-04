@@ -39,7 +39,7 @@ const jeans = PieceId.make(`pc_${'d'.repeat(22)}`)
 const theirShoes = PieceId.make(`pc_${'e'.repeat(22)}`)
 const photoKey = 'accounts/ac_1/uploads/up_1'
 
-type Behaviour = 'draw' | 'refuse' | 'lose'
+type Behaviour = 'draw' | 'refuse' | 'lose' | 'deletedMeanwhile'
 
 const over = (behaviour: Behaviour) => {
   const database = localD1()
@@ -69,15 +69,16 @@ const over = (behaviour: Behaviour) => {
         yield* Ref.update(asked, (requests) => [...requests, request])
         if (behaviour === 'refuse') return yield* refused('meta-muse')
         if (behaviour === 'lose') return yield* outcomeUnknown('meta-muse')
+        // The person deletes the try-on while Muse draws it.
+        if (behaviour === 'deletedMeanwhile') database.sqlite.exec('DELETE FROM try_ons')
         return { bytes: new Uint8Array([9, 9]), contentType: 'image/png' as const }
       }),
   })
   const work = PictureWork.of({
-    workingCopies: (original) =>
-      Effect.succeed({ width: 768, height: 1024, png: original, jpeg: original, small: original }),
+    workingCopies: () => Effect.die('not used by these tests'),
     thumbnail: (image) => Effect.succeed(image),
     foreground: () => Effect.die('not used by these tests'),
-    jpeg: () => Effect.die('not used by these tests'),
+    jpeg: (image) => Effect.succeed(image),
   })
   const signed = SignedMedia.of({
     address: (grant) => Effect.succeed(Option.some(`/cdn/media/${grant.entityId}/${grant.variant}`)),
@@ -202,6 +203,17 @@ describe('a try-on', () => {
       expect((yield* tryOns.list()).tryOns).toEqual([])
       expect(Option.isNone(yield* (yield* TryOnStore).findReceipt('ac_1', 'try-on-1'))).toBe(true)
       expect(yield* holds.remaining('ac_1')).toBe(1)
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect('leaves no result behind when it is deleted while it is drawn', () => {
+    const { layer, objects, asked } = over('deletedMeanwhile')
+    return Effect.gen(function* () {
+      const tryOns = yield* TryOns
+      const started = yield* tryOns.start(ask([top]))
+      yield* tryOns.work(started.id)
+      expect((yield* Ref.get(asked)).length).toBe(1)
+      expect([...objects.keys()].some((key) => key.includes('try-ons'))).toBe(false)
     }).pipe(Effect.provide(layer))
   })
 

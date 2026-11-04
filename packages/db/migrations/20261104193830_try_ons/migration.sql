@@ -12,7 +12,6 @@ CREATE TABLE `try_ons` (
 	`account_id` text NOT NULL,
 	`photo_id` text NOT NULL,
 	`status` text NOT NULL,
-	`confirmed_at` integer NOT NULL,
 	`started_at` integer,
 	`result_key` text,
 	`created_at` integer NOT NULL,

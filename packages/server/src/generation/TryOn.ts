@@ -91,12 +91,11 @@ const get = Effect.fn('Styld.TryOn.get')(function* (tryOnId: string) {
 
 /** The ready pieces of the account's among `pieceIds`, in the order asked, each once; NotFound when one is not there. */
 const chosenPieces = Effect.fnUntraced(function* (accountId: string, pieceIds: ReadonlyArray<string>) {
-  const ready = new Set(
-    (yield* stored((yield* WardrobeStore).listPieces(accountId)))
-      .filter(({ status }) => status === 'ready')
-      .map(({ id }) => id),
-  )
   const chosen = Arr.dedupe(pieceIds)
+  const found = yield* stored((yield* WardrobeStore).piecesWithIds(chosen))
+  const ready = new Set(
+    found.filter((piece) => piece.accountId === accountId && piece.status === 'ready').map(({ id }) => id),
+  )
   if (!chosen.every((id) => ready.has(id))) return yield* NotFound.make({})
   return chosen
 })
@@ -137,8 +136,6 @@ const start = Effect.fn('Styld.TryOn.start')(function* (input: StartTryOn) {
     accountId,
     photoId: photo.value.id,
     status: 'admitting',
-    // `thisIsMe` is required to be true by the contract: the person said, now, that the photo shows them.
-    confirmedAt: at,
     startedAt: null,
     resultKey: null,
     createdAt: at,

@@ -47,8 +47,8 @@ export const drawingPatienceMillis = 3 * 60 * 1000
 
 /** The privacy exception (owner, 31 October 2026; ROADMAP › Privacy exception): an original photo goes to the image
  * model only for a try-on of the person's own My Gallery photo. The person said it shows them when they started it:
- * the contract takes no try-on without `thisIsMe` (`StartTryOn`), and the row records when (`confirmedAt`). Every
- * other photo stays in Styld. */
+ * the contract takes no try-on without `thisIsMe` (`StartTryOn`), so every row is one they confirmed. Every other
+ * photo stays in Styld. */
 export const sendable = (photo: { readonly accountId: string }, tryOn: Pick<TryOnRow, 'accountId'>): boolean =>
   photo.accountId === tryOn.accountId
 

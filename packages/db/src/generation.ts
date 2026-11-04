@@ -95,8 +95,6 @@ export const tryOns = sqliteTable(
       .notNull()
       .references(() => outfitPhotos.id, { onDelete: 'cascade' }),
     status: text('status', { enum: TryOnStatus.literals }).notNull(),
-    /** "This is me": the person's word, at the try-on's start, that the photo shows them. */
-    confirmedAt: integer('confirmed_at', { mode: 'timestamp_ms' }).notNull(),
     /** When a delivery claimed the drawing; none until then. */
     startedAt: integer('started_at', { mode: 'timestamp_ms' }),
     /** The drawn picture, once there is one. */
