@@ -181,7 +181,7 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
     204,
   )
   const owner = client(origin, await signIn(origin, backfillAccount))
-  const email = { email: `${backfillAccount}@example.invalid` }
+  const email = { operationId: 'native-backfill-0001', email: `${backfillAccount}@example.invalid` }
   const earlier = (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.length
   const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
 
@@ -197,7 +197,14 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
       })
     ).status,
   ).toBe(404)
-  expect((await asOperator(origin, nativeOperatorToken, { email: 'nobody@example.invalid' })).status).toBe(404)
+  expect(
+    (
+      await asOperator(origin, nativeOperatorToken, {
+        operationId: 'native-backfill-0002',
+        email: 'nobody@example.invalid',
+      })
+    ).status,
+  ).toBe(404)
 
   const first = await decoded(PictureBackfilled, await asOperator(origin, nativeOperatorToken, email))
   expect(first).toEqual({ accountId: backfillAccount, queued: 1, shown: 1, remaining: 0 })
@@ -212,6 +219,7 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
   expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.processing}`))).picture).toBeUndefined()
 
   // Again: nothing to queue or show, and Muse was asked once in all, never on the person's credits.
+  // A repeat of the same operation is run again, not answered from a receipt: the picture rows are the receipt.
   const second = await decoded(PictureBackfilled, await asOperator(origin, nativeOperatorToken, email))
   expect(second).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
   const drawn = (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.slice(earlier)

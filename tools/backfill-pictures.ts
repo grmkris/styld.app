@@ -25,7 +25,7 @@ const origin = new URL(url).origin
 const answer = await fetch(`${origin}/api/operator/pictures/backfill`, {
   method: 'POST',
   headers: { origin, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-  body: JSON.stringify({ email }),
+  body: JSON.stringify({ operationId: `backfill-${crypto.randomUUID()}`, email }),
 })
 if (!answer.ok)
   throw new Error(

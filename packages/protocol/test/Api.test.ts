@@ -28,6 +28,10 @@ const takesOperationId = (endpoint: HttpApiEndpoint.Top) =>
 const unkept = new Map([
   ['capture.check', 'reads a camera frame and stores nothing, so a repeat is the same reading'],
   ['account.deleteMe', 'ends the session it is asked in, so a repeat is signed out; deleting again changes nothing'],
+  [
+    'pictureBackfill.backfillPictures',
+    "the operator's: each run queues what is still missing, and a piece's picture row is its receipt",
+  ],
 ])
 
 describe('StyldApi', () => {

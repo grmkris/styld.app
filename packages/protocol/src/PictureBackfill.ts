@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { NotFound, Unavailable } from './Errors.ts'
+import { OperationId } from './Ids.ts'
 import { OperatorAuth } from './Operator.ts'
 
 // A shop-style picture for every piece (owner, 4 November 2026): most of a tester's pieces were kept before clean
@@ -8,8 +9,10 @@ import { OperatorAuth } from './Operator.ts'
 // asks for them, one account at a time, by the email it signs in with; Styld pays, never the person's credits. Only
 // the operator, by the stage's operator token (`Operator.ts`), may ask; to anyone else it is not there.
 
-/** Whose pieces to draw: the account the email signs in to. */
+/** Whose pieces to draw: the account the email signs in to. Its operation id is not kept: each run queues what is
+ * still missing, and a piece's picture row is its receipt, so a repeat queues nothing twice. */
 export const PictureBackfill = Schema.Struct({
+  operationId: OperationId,
   email: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(320)),
 })
 export type PictureBackfill = typeof PictureBackfill.Type
