@@ -7,7 +7,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { closeIcon, diceIcon, loader } from '../Icon.ts'
+import { closeIcon, loader, whatToWearIcon } from '../Icon.ts'
 import { pieceRouter } from '../route.ts'
 import type { PiecesData } from '../ServerData.ts'
 import { block } from '../Skeleton.styles.ts'
@@ -60,7 +60,7 @@ const buttonView = (pieces: PiecesData, maybeSeason: Option.Option<Season>, loca
               h.OnClick(Message.ClickedOpen({ pool, maybeSeason })),
               ...styled(h, cx(secondaryAction(), styles.button())),
             ],
-            [diceIcon(h), format(locale, 'today.whatToWear', {})],
+            [whatToWearIcon(h), format(locale, 'today.whatToWear', {})],
           )
     },
   })

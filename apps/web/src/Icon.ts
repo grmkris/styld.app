@@ -19,7 +19,7 @@ import {
   SparkleLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
-  DiceFiveRegular,
+  SparkleRegular,
   SlidersHorizontalRegular,
   SquaresFourLight,
   TextTRegular,
@@ -96,8 +96,8 @@ export const moreIcon = control(DotsThreeRegular)
 export const forwardIcon = control(ArrowUpRegular)
 export const backwardIcon = control(ArrowDownRegular)
 export const spinIcon = control(ShuffleRegular)
-/** What to wear today: the tombola's dice. */
-export const diceIcon = control(DiceFiveRegular)
+/** What to wear today: the tombola's sparkle (Eva's report of 4 November 2026: the dice read oddly). */
+export const whatToWearIcon = control(SparkleRegular)
 /** The wardrobe's filters: a control, not a category. */
 export const filtersIcon = control(SlidersHorizontalRegular)
 export const searchIcon = control(MagnifyingGlassRegular)
