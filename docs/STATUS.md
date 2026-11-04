@@ -6,7 +6,25 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
-## Delete from the wardrobe grid (T-24, Track D of `docs/PLAN-gallery-delete-2026-11-04.md`, 4 November, not deployed)
+## Gallery: a piece chosen or added from the wardrobe, photos found again (G1–G4 of `docs/PLAN-gallery-delete-2026-11-04.md`, 4 November, deployed at 679e8d0)
+
+- Choosing a garment's piece (470f446c): the inline same-slot picker is gone. "Not this one", "Change" and "Choose from
+  your wardrobe" open the board's "Add your piece" sheet, now shared (`page/PiecePicker`), on the kind Styld read; All
+  is one tap away and a search reads every piece's name, brand, kind and colour across the whole wardrobe. Tiles say
+  what a piece is. A match sent for a garment in the review tray leaves it there.
+- Adding by hand (0ccdbacf): "Add from my wardrobe" adds a piece Styld did not find, as a confirmed garment with no
+  cut-out (`POST /api/photos/:photoId/pieces`, ready photos only); "Remove from this photo" takes it off. A photo with
+  nothing found says so.
+- A seated or cropped person (e81602d9): when nothing found counts as worn by the person, every garment counts.
+- Found again (0faaeb55): `tools/refind-photos.ts <email>` (operator token) re-finds an account's ready photos at
+  Styld's cost; confirmed, offered and hand-added garments stay, Styld's guesses are replaced.
+- Evidence: unit `photos.story/scene`, `collage.scene`, `GalleryPerson`, `PhotoRefind`. Native `PhotosAcceptance`
+  (adding by hand, the offered guard) passed in the coordinator's full gate on 671022d8; `verifyRefinding` first runs
+  in the gate on 679e8d09 (pending). Preview: the re-find ran once for Eva on 679e8d09; at 300 s her 7 photos were
+  ready, 13 garments (3 confirmed, 10 not in the wardrobe), and 2 photos still have nothing found.
+- Open: why 2 of Eva's photos still find nothing (the seated fallback did not reach them); Eva's check on her phone.
+
+## Delete from the wardrobe grid (T-24, Track D of `docs/PLAN-gallery-delete-2026-11-04.md`, 4 November, deployed at 679e8d0)
 
 - Server: `POST /api/pieces/delete` takes 1–50 piece ids (`piecesAtOnce`) under one operation id. Pieces already gone
   are skipped; another account's piece refuses the whole delete (NotFound). Rows, content checks and uploads go in one
@@ -18,9 +36,8 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 - Evidence: `Deletes.test.ts` (repeat answered once, conflict, the cascade to looks, pins, items, worn days, pictures
   and checks, the photo's garment kept unmatched), `wardrobeSelect.story.test.ts`, `wardrobeSelect.scene.test.ts`.
   Native `WardrobeAcceptance` (stranger refused, gone skipped, 204, GET 404, the upload's R2 key gone, repeat, conflict)
-  and `McpAcceptance` (`pieces_delete`) are written but not yet run; the coordinator runs the native suite and the full
-  gate on the merged result. Open: the deployed preview's readback and a phone-size check of Select mode in light and
-  dark.
+  and `McpAcceptance` (`pieces_delete`) passed in the coordinator's full gate on 671022d8. Open: Eva's check on her
+  phone.
 
 ## Dependencies and the lint backend (4 November, on main, not deployed)
 
