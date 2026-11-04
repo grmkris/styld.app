@@ -1019,7 +1019,8 @@
       "unavailable": "Styld trenutno ne more odgovoriti. Poskusi pozneje.",
       "network": "Ni poslano. Poskusi znova."
     },
-    "chatToday": "Danes ob {time}"
+    "chatToday": "Danes ob {time}",
+    "openTryOn": "Odpri pomerjanje"
   },
   "photos": {
     "back": "Nazaj v galerijo",

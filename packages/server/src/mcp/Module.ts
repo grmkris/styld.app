@@ -10,6 +10,7 @@ import { links } from '../links/Module.ts'
 import { mcpOAuthRoutes, mcpOAuthServer } from '../OAuth.ts'
 import { forgetExpiredAssertions } from '../OAuthAssertions.ts'
 import { outfits } from '../outfits/Module.ts'
+import { photos } from '../photos/Module.ts'
 import { Curation } from '../social/Curation.ts'
 import { social } from '../social/Module.ts'
 import { wardrobe } from '../wardrobe/Module.ts'
@@ -27,6 +28,7 @@ export const toolset = AssistantToolset.layer.pipe(
     social.layer,
     capture.layer,
     generation.layer,
+    photos.layer,
     outfits.layer,
     account.layer,
   ]),

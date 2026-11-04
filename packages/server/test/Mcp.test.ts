@@ -33,6 +33,7 @@ import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { unusedBoards } from './fakes/Boards.ts'
 import { unusedTastes } from './fakes/Tastes.ts'
+import { unusedServices } from './fakes/Services.ts'
 
 /** The account service: Ana, with her verified email. */
 const accounts = {
@@ -193,10 +194,6 @@ const discovery = Discovery.of({
   search: () => Effect.succeed({ people: [], boards: [] }),
   challenges: () => Effect.succeed({ challenges: [] }),
 })
-/** Generations: not part of these tests. */
-const generations = { admit: notUsed, get: notUsed }
-/** Outfits: not part of these tests. */
-const outfits = { make: notUsed, sweep: notUsed }
 /** What Styld fetches from the web, over the wardrobe above, at no pace. */
 const links = Effect.runSync(
   Links.pipe(
@@ -213,10 +210,9 @@ const tools = styldTools('https://styld.test', {
   profiles,
   social,
   discovery,
-  generations,
-  outfits,
   accounts,
   tastes: unusedTastes,
+  ...unusedServices,
 })
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {

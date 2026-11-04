@@ -6,6 +6,7 @@ import { passing } from './Errors.ts'
 import { LookId } from './Look.ts'
 import { GarmentGroup, PieceType } from './Garment.ts'
 import { Colour, PieceId } from './Wardrobe.ts'
+import { TryOnId } from './TryOn.ts'
 
 // Styld, the stylist in the app (owner, 2026-10-31): a chat about the person's own wardrobe and looks.
 
@@ -51,11 +52,13 @@ export const WardrobeAnalysis = Schema.Struct({
 })
 export type WardrobeAnalysis = typeof WardrobeAnalysis.Type
 
-/** What a reply shows besides its words: pieces of the wardrobe, a look it saved, or the wardrobe's analysis. */
+/** What a reply shows besides its words: pieces of the wardrobe, a look it saved, the wardrobe's analysis, or a try-on
+ * it started or read (its picture is read by the website with the person's session, never by Styld). */
 export const ReplyPart = Schema.Union([
   Schema.TaggedStruct('Pieces', { pieceIds: Schema.Array(PieceId) }),
   Schema.TaggedStruct('Look', { lookId: LookId, name: Schema.String }),
   Schema.TaggedStruct('Analysis', { analysis: WardrobeAnalysis }),
+  Schema.TaggedStruct('TryOn', { tryOnId: TryOnId }),
 ])
 export type ReplyPart = typeof ReplyPart.Type
 

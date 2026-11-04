@@ -676,6 +676,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'stylist.newChat': Readonly<Record<string, never>>
   'stylist.openLook': { readonly name: string | number }
   'stylist.openPiece': Readonly<Record<string, never>>
+  'stylist.openTryOn': Readonly<Record<string, never>>
   'stylist.placeholder': Readonly<Record<string, never>>
   'stylist.price': { readonly credits: number }
   'stylist.problem.busy': Readonly<Record<string, never>>
@@ -1063,4 +1064,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3405bc2c9e95db88ac2df8d67a4a6dadba1d7a2f0a34158714c2eee4c64ed5a0'
+export const catalogVersion = '4456a31e1c34b3c2262f5eb7d65b0529b0990b6fb91e2ec38aee0848e3e84ab8'

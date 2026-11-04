@@ -930,6 +930,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'stylist.problem.unavailable': 'Styld trenutno ne more odgovoriti. Poskusi pozneje.',
   'stylist.problem.network': 'Ni poslano. Poskusi znova.',
   'stylist.chatToday': 'Danes ob {time}',
+  'stylist.openTryOn': 'Odpri pomerjanje',
   'photos.back': 'Nazaj v galerijo',
   'photos.add': 'Dodaj fotografijo',
   'photos.addCost':

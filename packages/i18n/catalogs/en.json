@@ -1019,7 +1019,8 @@
       "unavailable": "Styld cannot answer just now. Try again later.",
       "network": "Not sent. Try again."
     },
-    "chatToday": "Today, {time}"
+    "chatToday": "Today, {time}",
+    "openTryOn": "Open the try-on"
   },
   "photos": {
     "back": "Back to the gallery",

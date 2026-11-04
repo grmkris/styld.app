@@ -10,7 +10,7 @@ import { actionButton } from '../ActionButton.ts'
 import { textArea, textField } from '../Fields.styles.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon, forwardIcon, loader } from '../Icon.ts'
-import { wardrobeRouter, lookRouter, pieceRouter } from '../route.ts'
+import { wardrobeRouter, lookRouter, pieceRouter, tryOnRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { barStart, round } from './PageBar.styles.ts'
@@ -186,6 +186,8 @@ const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Htm
         [format(inputs.locale, 'stylist.openLook', { name })],
       ),
     Analysis: ({ analysis }) => analysisView(analysis, inputs, h),
+    TryOn: () =>
+      h.a([h.Href(tryOnRouter({})), ...styled(h, secondaryAction())], [format(inputs.locale, 'stylist.openTryOn', {})]),
   })
 
 const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
