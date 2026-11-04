@@ -21,7 +21,8 @@ const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
  * asked for with its 5 credits held, the video model's job is kept and polled until its video is stored, the piece page
  * cuts the video into frames in Chromium, Clef checks them, and the turn plays on tap with its credits consumed once.
  * The video model and Clef are the fixture's stand-ins; the video is a recorded Veo 3.1 Lite take. It turns the green
- * shirt whose drawing `verifyCleanPictures` offered and the owner took, so it runs in the same test after it. */
+ * shirt whose drawing `verifyCleanPictures` showed (the owner set it aside and took it back), so it runs in the same
+ * test after it. */
 export const verifyTurn = async (
   browser: Browser,
   origin: string,

@@ -110,14 +110,6 @@ export const backPanel = style({ display: 'grid', gap: 'actions', marginBlock: '
 export const picturePanel = style({ display: 'grid', gap: 'actions', marginBlockStart: '8px' })
 export const cleanedLabel = style({ fontSize: 'small', fontWeight: 500, color: 'ink3' })
 export const pictureNote = style({ fontSize: 'label', color: 'ink2' })
-export const proposal = style({ display: 'flex', alignItems: 'center', gap: 'related' })
-export const proposalImage = style({
-  inlineSize: '88px',
-  blockSize: '88px',
-  objectFit: 'contain',
-  borderRadius: 'photo',
-  backgroundColor: 'stock',
-})
 /** The turn's player: the picture itself is the button that turns it. */
 export const turnButton = style({
   display: 'block',

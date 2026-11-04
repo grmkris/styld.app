@@ -73,7 +73,7 @@ const keptPieces = async (origin: string, owner: Call) => {
 }
 
 /** Kept cut-outs get clean pictures through the queue: Clef judges each, Muse draws the ones worth drawing on their
- * key colour, the drawing is keyed, stored and checked, then shown, offered or dropped. A redraw costs a credit once,
+ * key colour, the drawing is keyed, stored and checked, then shown or dropped; the owner's choice of their photo sticks. A redraw costs a credit once,
  * however often it is asked; a photo is never sent; deleting a piece deletes its drawings. Clef and Muse are the
  * fixture's stand-ins (PictureFixture.ts). The pieces it leaves are what `verifyTurn` turns. */
 export const verifyCleanPictures = async (origin: string, fixtures: string) => {
@@ -93,10 +93,11 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   // Keeping the three cut-outs queues a clean picture for each; the piece kept as its photo has none.
   const kept = await keptPieces(origin, owner)
 
-  // The red tee is drawn and matches, so it shows; the green shirt is drawn on magenta and offered; the scrap asks
-  // for a retake and is never drawn; the photo has no picture.
+  // The red tee is drawn and matches, so it shows; the green shirt is drawn on magenta and, less like its cut-out
+  // but past the reject bar, shows too (owner, 4 November); the scrap asks for a retake and is never drawn; the photo
+  // has no picture.
   expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
-  expect((await settled(owner, kept.green)).picture).toEqual({ state: 'proposed', shows: 'photo', version: 1 })
+  expect((await settled(owner, kept.green)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
   expect((await settled(owner, kept.blue)).picture).toEqual({ state: 'retake', shows: 'photo', version: 0 })
   expect((await settled(owner, kept.photo)).picture).toBeUndefined()
   const drawn = await prompts()
@@ -113,15 +114,21 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   for (const address of [red.full, red.clean ?? '']) expect((await fetch(`${origin}${address}`)).status).toBe(200)
   expect((await imagesOf(kept.blue)).clean).toBeUndefined()
 
-  // The owner takes the offered drawing; a scrap has none to take.
-  const choose = (pieceId: string) =>
-    owner(`/api/pieces/${pieceId}/picture`, { method: 'PUT', body: JSON.stringify({ use: 'clean' }) })
-  expect((await decoded(Piece, await choose(kept.green))).picture).toEqual({
-    state: 'proposed',
+  // The owner chooses their photo, and the choice sticks; then takes the drawing back. A scrap has none to take.
+  const choose = (pieceId: string, use: 'clean' | 'photo') =>
+    owner(`/api/pieces/${pieceId}/picture`, { method: 'PUT', body: JSON.stringify({ use }) })
+  expect((await decoded(Piece, await choose(kept.green, 'photo'))).picture).toEqual({
+    state: 'ready',
+    shows: 'photo',
+    version: 1,
+  })
+  expect((await decoded(Piece, await owner(`/api/pieces/${kept.green}`))).picture?.shows).toBe('photo')
+  expect((await decoded(Piece, await choose(kept.green, 'clean'))).picture).toEqual({
+    state: 'ready',
     shows: 'clean',
     version: 1,
   })
-  expect((await choose(kept.blue)).status).toBe(409)
+  expect((await choose(kept.blue, 'clean')).status).toBe(409)
 
   // A redraw holds a credit, sends the owner's words, replaces the drawing and consumes the credit once.
   const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining

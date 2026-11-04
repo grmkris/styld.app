@@ -52,10 +52,10 @@ export type PieceRotation = typeof PieceRotation.Type
 export const PieceSource = Schema.Literals(['website', 'assistant', 'import'])
 
 /** A piece's clean picture (owner, 2026-10-30): an image model's drawing of the garment from its kept cut-out, shown
- * beside the real photo and marked as AI-cleaned. `drawing` while it is made; `ready` when shown on its own; `proposed`
- * when the person chooses; `retake` when the cut-out shows too little of the garment; `kept` when the photo was
- * already clean or showed a face; `failed` when no drawing came of it. */
-export const PictureState = Schema.Literals(['drawing', 'ready', 'proposed', 'retake', 'kept', 'failed'])
+ * by default with the real photo one swipe away (owner, 2026-11-04) and marked as AI-cleaned. `drawing` while it is
+ * made; `ready` once it passed its check; `retake` when the cut-out shows too little of the garment; `kept` when the
+ * photo was already clean or showed a face; `failed` when no drawing came of it. */
+export const PictureState = Schema.Literals(['drawing', 'ready', 'retake', 'kept', 'failed'])
 export type PictureState = typeof PictureState.Type
 
 /** Which picture a piece shows: the clean drawing or the person's own photo. */

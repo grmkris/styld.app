@@ -10,13 +10,17 @@ export const isStale = (picture: Pick<PictureRow, 'state' | 'claimedAt'>, at: Da
   picture.state === 'generating' &&
   (picture.claimedAt === null || at.getTime() - picture.claimedAt.getTime() > patienceMillis)
 
-/** Which picture a piece shows: a ready drawing unless its owner chose the photo, a proposed one only once they chose
- * it, and the photo otherwise. */
-export const shows = (picture: PictureRow | undefined): PictureChoice => {
-  if (picture === undefined || picture.cleanKey === null) return 'photo'
-  if (picture.state === 'ready') return picture.shown ?? 'clean'
-  return picture.state === 'proposed' && picture.shown === 'clean' ? 'clean' : 'photo'
-}
+/** Whether a picture holds a drawing that passed its check: ready, or proposed (a drawing between the reject bar and
+ * 0.8, which waited for its owner's tap until 4 November and is shown like any other that passed, `Policy.ts`). */
+export const isDrawn = <P extends Pick<PictureRow, 'state' | 'cleanKey'>>(
+  picture: P | undefined,
+): picture is P & { readonly cleanKey: string } =>
+  picture !== undefined && picture.cleanKey !== null && (picture.state === 'ready' || picture.state === 'proposed')
+
+/** Which picture a piece shows: a drawing that passed its check unless its owner chose the photo, and the photo
+ * otherwise. */
+export const shows = (picture: PictureRow | undefined): PictureChoice =>
+  isDrawn(picture) ? (picture.shown ?? 'clean') : 'photo'
 
 /** The stored image a piece shows, wherever a piece's picture appears: its clean drawing (`shows`), else its cut-out,
  * else the photo it came from. */
@@ -35,7 +39,7 @@ const states: Record<PictureRow['state'], PiecePicture['state']> = {
   generating: 'drawing',
   checking: 'drawing',
   ready: 'ready',
-  proposed: 'proposed',
+  proposed: 'ready',
   retake: 'retake',
   'kept-real': 'kept',
   rejected: 'failed',

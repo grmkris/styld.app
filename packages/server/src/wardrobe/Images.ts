@@ -2,7 +2,7 @@ import type { PieceImages, PieceTurn } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { SignedMedia } from '../kernel/SignedMedia.ts'
 import type { ImageSize } from './Media.ts'
-import { shownImage, shows, turnView } from './Shown.ts'
+import { isDrawn, shownImage, shows, turnView } from './Shown.ts'
 import { piecePrefix } from './Media.ts'
 import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 
@@ -19,10 +19,7 @@ const pictureImage = (piece: PieceRow, picture: PictureRow | undefined, which: P
   // The stored object's own type is what is served (`deliverImage`).
   if (which === 'back')
     return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType: piece.contentType }))
-  const drawn = picture?.cleanKey ?? null
-  return drawn !== null && (picture?.state === 'ready' || picture?.state === 'proposed')
-    ? Option.some({ key: drawn, contentType: 'image/png' })
-    : Option.none()
+  return isDrawn(picture) ? Option.some({ key: picture.cleanKey, contentType: 'image/png' }) : Option.none()
 }
 
 /** The version a piece's picture is shown under: a change to the piece, a new drawing, or a change of which picture

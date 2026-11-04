@@ -104,8 +104,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.tabGallery': 'Gallery',
   'wardrobe.picture.cleaned': 'AI-cleaned picture',
   'wardrobe.picture.drawing': 'Drawing a clean picture…',
-  'wardrobe.picture.proposed': 'A clean picture is ready. Use it instead of your photo?',
-  'wardrobe.picture.use': 'Use this picture',
   'wardrobe.picture.showPhoto': 'Show my photo',
   'wardrobe.picture.showClean': 'Show the clean picture',
   'wardrobe.picture.retake': 'Too little of this piece showed to draw it. Take it again, or say what it is and redraw.',

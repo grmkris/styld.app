@@ -104,8 +104,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.tabGallery': 'Galerija',
   'wardrobe.picture.cleaned': 'Slika, očiščena z umetno inteligenco',
   'wardrobe.picture.drawing': 'Rišem čisto sliko …',
-  'wardrobe.picture.proposed': 'Čista slika je pripravljena. Jo želiš uporabiti namesto svoje fotografije?',
-  'wardrobe.picture.use': 'Uporabi to sliko',
   'wardrobe.picture.showPhoto': 'Pokaži mojo fotografijo',
   'wardrobe.picture.showClean': 'Pokaži čisto sliko',
   'wardrobe.picture.retake':

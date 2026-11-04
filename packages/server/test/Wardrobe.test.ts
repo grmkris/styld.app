@@ -226,14 +226,15 @@ const cutout = {
 }
 
 describe('the picture a piece shows', () => {
-  test('is a ready drawing, a proposed one once chosen, and the photo when chosen or when there is no drawing', () => {
+  test('is a drawing that passed its check, and the photo when chosen or when there is no drawing', () => {
     expect(shownImage(cutout, pictureRow('ready'))).toEqual({
       key: 'accounts/ac_1/pieces/pc_1/clean-2.png',
       contentType: 'image/png',
     })
     expect(shownImage(cutout, pictureRow('ready', { shown: 'photo' })).key).toBe(cutout.imageKey)
-    expect(shownImage(cutout, pictureRow('proposed')).key).toBe(cutout.imageKey)
-    expect(shownImage(cutout, pictureRow('proposed', { shown: 'clean' })).contentType).toBe('image/png')
+    // A drawing proposed before 4 November passed the reject bar, so it shows unless its owner chose the photo.
+    expect(shownImage(cutout, pictureRow('proposed')).contentType).toBe('image/png')
+    expect(shownImage(cutout, pictureRow('proposed', { shown: 'photo' })).key).toBe(cutout.imageKey)
     expect(shownImage(cutout, pictureRow('rejected', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)
     expect(shownImage(cutout, undefined)).toEqual({ key: cutout.imageKey, contentType: 'image/jpeg' })
     expect(shownImage({ ...cutout, imageKey: null }, undefined).key).toBe('photo.jpg')
@@ -242,6 +243,7 @@ describe('the picture a piece shows', () => {
   test('tells its owner where the drawing stands, and shows a claim no delivery finished as failed', () => {
     const at = new Date(10 * 60 * 1000)
     expect(pictureView(pictureRow('ready'), at)).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+    expect(pictureView(pictureRow('proposed'), at)).toEqual({ state: 'ready', shows: 'clean', version: 2 })
     expect(pictureView(pictureRow('generating', { claimedAt: new Date(at.getTime() - 60_000) }), at).state).toBe(
       'drawing',
     )

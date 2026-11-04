@@ -196,22 +196,21 @@ describe('the piece page', () => {
     )
   })
 
-  test('a proposed clean picture waits beside the photo until the owner takes it', () => {
+  test('a clean picture the owner set aside for the photo is shown again at a tap', () => {
     // The API signs a new address for every picture it shows, so taking the drawing loads a new one.
     const images = {
       thumb: signedPicture(jeans.id, 'thumb', 'photo2'),
       full: signedPicture(jeans.id, 'full', 'photo2'),
       clean: signedPicture(jeans.id, 'thumb', 'clean2'),
     }
-    const proposed = { ...jeans, images, picture: { state: 'proposed', shows: 'photo', version: 2 } } as const
+    const proposed = { ...jeans, images, picture: { state: 'ready', shows: 'photo', version: 2 } } as const
     const takenImages = { ...images, full: signedPicture(jeans.id, 'full', 'clean2') }
-    const taken = { ...jeans, images: takenImages, picture: { state: 'proposed', shows: 'clean', version: 2 } } as const
+    const taken = { ...jeans, images: takenImages, picture: { state: 'ready', shows: 'clean', version: 2 } } as const
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: proposed }))),
       expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.full),
-      expect(role('img', { name: 'AI-cleaned picture' })).toHaveAttr('src', images.clean),
-      click(role('button', { name: 'Use this picture' })),
+      click(role('button', { name: 'Show the clean picture' })),
       Command.resolve(
         ChoosePicture({ pieceId: proposed.id, use: 'clean' }),
         PieceMessage.SucceededChoosePicture({ piece: taken }),

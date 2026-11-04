@@ -245,9 +245,9 @@ describe('a piece you own', () => {
     )
   })
 
-  test('a proposed clean picture is chosen in place of the photo', () => {
-    const proposed = pieceFixture('jeans', { picture: { state: 'proposed', shows: 'photo', version: 1 } })
-    const chosen = pieceFixture('jeans', { picture: { state: 'proposed', shows: 'clean', version: 1 } })
+  test('the clean picture is chosen again in place of the photo the owner chose', () => {
+    const proposed = pieceFixture('jeans', { picture: { state: 'ready', shows: 'photo', version: 1 } })
+    const chosen = pieceFixture('jeans', { picture: { state: 'ready', shows: 'clean', version: 1 } })
     const shown = update(init(piece.id), Message.SucceededGetPiece({ piece: proposed })).model
     const sending = update(shown, Message.ClickedShowPicture({ use: 'clean' })).model
     expect(update(sending, Message.ClickedShowPicture({ use: 'clean' })).commands ?? []).toEqual([])

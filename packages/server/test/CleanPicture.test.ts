@@ -168,10 +168,11 @@ describe('what happens to a kept cut-out and to its drawing', () => {
     expect(planFor(judged('improve', 0.29), policy)).toEqual({ plan: 'draw' })
   })
 
-  test('a drawing is shown from 0.8, offered from 0.5, dropped below, by the weaker of its two answers', () => {
+  test('a drawing is shown from 0.5 and dropped below, by the weaker of its two answers', () => {
     expect(gateFor({ same: 0.8, faithful: 0.95 }, policy)).toBe('ready')
-    expect(gateFor({ same: 0.95, faithful: 0.79 }, policy)).toBe('proposed')
-    expect(gateFor({ same: 0.5, faithful: 0.9 }, policy)).toBe('proposed')
+    expect(gateFor({ same: 0.95, faithful: 0.79 }, policy)).toBe('ready')
+    expect(gateFor({ same: 0.5, faithful: 0.9 }, policy)).toBe('ready')
     expect(gateFor({ same: 0.49, faithful: 0.9 }, policy)).toBe('rejected')
+    expect(gateFor({ same: 0.9, faithful: 0.49 }, policy)).toBe('rejected')
   })
 })
