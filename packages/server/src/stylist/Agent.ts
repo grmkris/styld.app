@@ -1,4 +1,4 @@
-import { ChatMessage, Language, Replying } from '@styld/protocol'
+import { Audience, ChatMessage, Language, Learned, Occasions, Replying } from '@styld/protocol'
 import { DefinitionDigestInput } from '@yielded/agent/records'
 import { AgentId, ThreadId } from '@yielded/agent/identifiers'
 import { Schema } from 'effect'
@@ -9,8 +9,19 @@ import { catalogue } from './Catalogue.ts'
 // (`ThreadWorker.ts`). What the API Worker and the Thread both need to agree on lives here: the agent's id, its
 // input, the Thread of a chat and the definitions both sides digest.
 
+/** What Styld knows about how the person dresses (`taste/`), as a reply is told it: what they chose to see first, the
+ * occasions they dress for, the notes they said yes to keeping, and what was learned from what they saved and wore. */
+export const StylistAbout = Schema.Struct({
+  showMe: Schema.NullOr(Audience),
+  occasions: Occasions,
+  notes: Schema.Array(Schema.String),
+  learned: Learned,
+})
+export type StylistAbout = typeof StylistAbout.Type
+
 /** What admits a reply: the person's message, and what the API Worker read for it (the language to answer in, today's
- * date, the wardrobe in a line). The browser never writes these: the API Worker builds them from the session. */
+ * date, the wardrobe in a line, what Styld knows about the person). The browser never writes these: the API Worker
+ * builds them from the session. `about` is optional: messages admitted before it existed still read back. */
 export const StylistInput = Schema.Struct({
   text: Schema.String,
   language: Language,
@@ -20,6 +31,7 @@ export const StylistInput = Schema.Struct({
     byType: Schema.Record(Schema.String, Schema.Int),
     colours: Schema.Array(Schema.String),
   }),
+  about: Schema.optionalKey(StylistAbout),
 })
 export type StylistInput = typeof StylistInput.Type
 

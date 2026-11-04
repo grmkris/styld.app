@@ -2,11 +2,13 @@ import { Predicate } from 'effect'
 import type { JsonSchema } from 'effect/JsonSchema'
 import { lookCreate, lookGet, lookList } from '../mcp/LookTools.ts'
 import { outfitMake } from '../mcp/OutfitTools.ts'
+import { savedList } from '../mcp/SocialTools.ts'
+import { noteAdd, noteList } from '../mcp/TasteTools.ts'
 import { listed, type ToolAnnotations } from '../mcp/Tools.ts'
 import { pieceGet, pieceSearch } from '../mcp/WardrobeTools.ts'
 
 // The tools Styld's chat offers its model, as data: the Thread that writes replies lists them (`Thread.ts`), and the
-// API Worker runs them (`Tools.ts`). Six are the assistants' own, listed from the same specs MCP lists them from; two
+// API Worker runs them (`Tools.ts`). Nine are the assistants' own, listed from the same specs MCP lists them from; two
 // are the chat's: `pieces_show` and `wardrobe_analyze`.
 
 /** How a tool call may be repeated after a reply was interrupted (Yielded's execution class): a read any number of
@@ -76,11 +78,13 @@ const wardrobeAnalyze: CatalogueEntry = {
 
 /** The assistants' tools the chat uses: it reads the wardrobe and the saved looks, makes outfits, and saves a look
  * when asked. */
-const assistants = [pieceSearch, pieceGet, outfitMake, lookList, lookGet, lookCreate].map((spec): CatalogueEntry => {
-  const { name, description, inputSchema, annotations } = listed(spec)
-  const { schema, operation } = modelSchema(inputSchema)
-  return { name, description, parameters: schema, execution: executionOf(annotations, operation), operation }
-})
+const assistants = [pieceSearch, pieceGet, outfitMake, lookList, lookGet, lookCreate, noteAdd, noteList, savedList].map(
+  (spec): CatalogueEntry => {
+    const { name, description, inputSchema, annotations } = listed(spec)
+    const { schema, operation } = modelSchema(inputSchema)
+    return { name, description, parameters: schema, execution: executionOf(annotations, operation), operation }
+  },
+)
 
 /** Every tool the chat's model may call, in the order it is offered them. */
 export const catalogue: ReadonlyArray<CatalogueEntry> = [piecesShow, wardrobeAnalyze, ...assistants]

@@ -19,6 +19,7 @@ const Chat = Schema.Struct({
 })
 const Sent = Schema.Struct({ chatId: Schema.String })
 const Chats = Schema.Struct({ chats: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })) })
+const Taste = Schema.Struct({ notes: Schema.Array(Schema.Struct({ text: Schema.String })) })
 const Pieces = Schema.Struct({ pieces: Schema.Array(Schema.Struct({ id: Schema.String })) })
 
 /** One LiveText frame, as far as the test reads it. */
@@ -55,6 +56,23 @@ const watch = (response: Response) => {
     }
   })()
   return { frames, reading }
+}
+
+/** Styld remembers what the person said yes to (owner, 4 November 2026): note_add keeps it for the account, the Account
+ * page's read lists it, and a new chat is told it. Two messages, a credit each. */
+const verifyRemembers = async (
+  send: (operationId: string, text: string) => Promise<Response>,
+  until: (chatId: string, done: (chat: typeof Chat.Type) => boolean) => Promise<typeof Chat.Type>,
+  owner: (path: string) => Promise<Response>,
+) => {
+  const kept = await decoded(Sent, await send('native-stylist-0004', 'Yes, remember: Never heels'))
+  const keeping = await until(kept.chatId, (chat) => chat.messages.length >= 2)
+  expect(keeping.messages[1]?.text).toBe('I will remember that.')
+  const taste = await decoded(Taste, await owner('/api/me/taste'))
+  expect(taste.notes.map(({ text }) => text)).toEqual(['Never heels'])
+  const asked = await decoded(Sent, await send('native-stylist-0005', 'What do you remember?'))
+  const answer = await until(asked.chatId, (chat) => chat.messages.length >= 2)
+  expect(answer.messages[1]?.text).toBe('You told me: "Never heels"')
 }
 
 /** Someone else's chat is not there for another account, nor its live words, nor does it take their message. */
@@ -157,6 +175,9 @@ export const verifyStylist = async (origin: string, fixtures: string) => {
   expect(comment?.parts.map(({ _tag }) => _tag)).toEqual(['Analysis'])
   expect(comment?.parts[0]?.analysis?.pieces).toBe(ownPieces.size)
   expect(await credits(before - 2)).toBe(before - 2)
+
+  await verifyRemembers(send, until, owner)
+  expect(await credits(before - 4)).toBe(before - 4)
 
   await verifyPrivate(origin, chatId)
 }

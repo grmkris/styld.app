@@ -15,7 +15,7 @@ const tasteGet = toolSpec({
   annotations: { readOnlyHint: true, openWorldHint: false },
 })
 
-const styleNoteAdd = toolSpec({
+export const noteAdd = toolSpec({
   name: 'note_add',
   title: 'Remember something',
   description: `Remember one lasting thing about how the person dresses, in their words and in a short line (such as "Never heels; flats or trainers"). Only after you asked whether to remember it and they said yes. Never anything about their body, health or other people. At most ${String(mostStyleNotes)} notes are kept. Choose a new \`operationId\` for each note.`,
@@ -23,7 +23,7 @@ const styleNoteAdd = toolSpec({
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 })
 
-const styleNoteList = toolSpec({
+export const noteList = toolSpec({
   name: 'note_list',
   title: 'What Styld remembers',
   description: 'The notes the person asked Styld to remember, oldest first, each with its id.',
@@ -34,9 +34,9 @@ const styleNoteList = toolSpec({
 /** What Styld knows about the person, for the assistants. */
 export const tasteTools = (tastes: Tastes['Service']) => [
   tool({ ...tasteGet, handler: () => tastes.getTaste() }),
-  tool({ ...styleNoteAdd, handler: (input) => tastes.addStyleNote(input) }),
+  tool({ ...noteAdd, handler: (input) => tastes.addStyleNote(input) }),
   tool({
-    ...styleNoteList,
+    ...noteList,
     handler: () => tastes.getTaste().pipe(Effect.map(({ notes }) => ({ notes }))),
   }),
   tool({

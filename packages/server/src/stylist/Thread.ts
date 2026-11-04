@@ -75,8 +75,7 @@ const toolkit = Toolkit.make(...catalogue.map(toolOf))
 const stylist = Agent.make(stylistAgentId, {
   input: StylistInput,
   output: Output.text(Schema.String),
-  instructions: (input: StylistInput) =>
-    Effect.succeed(systemPrompt({ language: input.language, today: input.today, outline: input.outline })),
+  instructions: (input: StylistInput) => Effect.succeed(systemPrompt(input)),
   inputPrompt: (input: StylistInput) => Effect.succeed(input.text),
   toolkit,
   policy: { maxTurns: maxSteps, maxToolCalls: maxSteps * 2, maxDuration: '3 minutes', runStatus: 'off' },

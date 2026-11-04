@@ -6,6 +6,7 @@ import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { Worn } from '../worn/Worn.ts'
+import { Tastes } from '../taste/Taste.ts'
 import { accountOfThread, type Settled, threadIdOf, type ToolRequest } from './Agent.ts'
 import { analysisOf } from './Analysis.ts'
 import { ChatIndex } from './Index.ts'
@@ -58,31 +59,50 @@ const unavailable = () => Unavailable.make({})
 /** An operation for an account, as an assistant acts for it. */
 const asAccount = (accountId: string) => Effect.provideService(CurrentAccount, { accountId, via: 'assistant' as const })
 
+/** What Styld knows about the person, for a reply: left out when it cannot be read just now, so a chat never waits on
+ * it. */
+const aboutOf = (tastes: Tastes['Service'], accountId: string) =>
+  tastes.getTaste().pipe(
+    asAccount(accountId),
+    Effect.map(({ showMe, occasions, notes, learned }) => ({
+      showMe,
+      occasions,
+      notes: notes.map(({ text }) => text),
+      learned,
+    })),
+    Effect.option,
+  )
+
+/** What a reply is told besides the message: its language (the person's words, else the app's), today, the wardrobe in
+ * a line and what Styld knows about the person. */
+const inputFor =
+  (wardrobe: Wardrobe['Service'], tastes: Tastes['Service']) => (accountId: string, input: SendChatMessage) =>
+    Effect.gen(function* () {
+      const pieces = yield* wardrobe.listPieces().pipe(asAccount(accountId), Effect.mapError(unavailable))
+      const about = yield* aboutOf(tastes, accountId)
+      return {
+        text: input.text,
+        language: languageOf(input.text, input.locale === 'sl' ? 'sl' : 'en'),
+        today: DateTime.formatIsoDateUtc(yield* DateTime.now),
+        outline: outlineOf(pieces),
+        ...Option.match(about, { onNone: () => ({}), onSome: (value) => ({ about: value }) }),
+      }
+    })
+
 /** The person's side: sending, listing, reading and watching their chats. */
 const chatting = Effect.gen(function* () {
   const threads = yield* StylistThreads
   const index = yield* ChatIndex
   const holds = yield* Holds
   const wardrobe = yield* Wardrobe
+  const tastes = yield* Tastes
+  const inputOf = inputFor(wardrobe, tastes)
 
   /** The account's own chat, or `NotFound`. */
   const ownChat = (accountId: string, chatId: string) =>
     Effect.flatMap(Effect.mapError(index.find(accountId, chatId), unavailable), (found) =>
       Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
     )
-
-  /** What a reply is told besides the message: its language (the person's words, else the app's), today and the
-   * wardrobe in a line. */
-  const inputOf = (accountId: string, input: SendChatMessage) =>
-    Effect.gen(function* () {
-      const pieces = yield* wardrobe.listPieces().pipe(asAccount(accountId), Effect.mapError(unavailable))
-      return {
-        text: input.text,
-        language: languageOf(input.text, input.locale === 'sl' ? 'sl' : 'en'),
-        today: DateTime.formatIsoDateUtc(yield* DateTime.now),
-        outline: outlineOf(pieces),
-      }
-    })
 
   /** Sending a message: its chat listed, its credit held, then admitted to the chat's Thread. A message refused for
    * good gives its credit back at once; one whose admission was lost on the way is sent again as the same message

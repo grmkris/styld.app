@@ -49,8 +49,29 @@ const resultsSince = (messages: ReadonlyArray<Prompt.Message>) =>
       message.role === 'tool' ? message.content.flatMap((part) => (part.type === 'tool-result' ? [part] : [])) : [],
     )
 
+/** What a person says yes to remembering, and what they ask a new chat about it (the taste journey). */
+const remember = 'Yes, remember: '
+const remembered = 'What do you remember?'
+
+/** Told to remember something, it keeps it with `note_add`; asked what it remembers, it answers from its instructions
+ * alone. Anything else is not about taste. */
+const tasteAnswer = (
+  asked: string,
+  messages: ReadonlyArray<Prompt.Message>,
+  results: ReturnType<typeof resultsSince>,
+): Stream.Stream<Response.StreamPartEncoded> | undefined => {
+  if (asked.startsWith(remember))
+    return results.some(({ name }) => name === 'note_add')
+      ? saying('I will remember that.')
+      : toolCall('note_add', { text: asked.slice(remember.length) })
+  if (asked !== remembered) return undefined
+  const system = messages.find(({ role }) => role === 'system')
+  const told = /They asked you to remember: ("[^"]+")/u.exec(system === undefined ? '' : textOf(system))?.[1]
+  return saying(told === undefined ? 'Nothing yet.' : `You told me: ${told}`)
+}
+
 /** The next answer: first it searches the wardrobe, then it shows the first piece it found, then it suggests it.
- * Asked to analyse the wardrobe, it counts it with `wardrobe_analyze` and then comments. */
+ * Asked to analyse the wardrobe, it counts it with `wardrobe_analyze` and then comments; taste is `tasteAnswer`'s. */
 const answer = (
   messages: ReadonlyArray<Prompt.Message>,
 ): Stream.Stream<Response.StreamPartEncoded, AiError.AiError> => {
@@ -65,6 +86,8 @@ const answer = (
       }),
     )
   const results = resultsSince(messages)
+  const aboutTaste = tasteAnswer(asked, messages, results)
+  if (aboutTaste !== undefined) return aboutTaste
   if (/analy[sz]e|analiz/iu.test(asked))
     return results.some(({ name }) => name === 'wardrobe_analyze')
       ? saying('Mostly tops: a pair of trousers would make more of them.')
