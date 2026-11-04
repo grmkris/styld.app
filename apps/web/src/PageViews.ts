@@ -120,6 +120,25 @@ const loginPage = (model: Model, forConnection: boolean, h: HtmlBuilder<Message>
     h,
   )
 
+/** Try on's tab and a try-on's own page: the same view over their own Models. */
+const tryOnPage = (model: Model, lens: typeof lenses.tryOn | typeof lenses.tryOnPage, h: HtmlBuilder<Message>) =>
+  onPage(
+    model,
+    lens,
+    (tryOn) =>
+      h.submodel({
+        ...slot(lens, tryOn),
+        view: TryOnView.view,
+        viewInputs: {
+          locale: model.context.locale,
+          timeZone: model.context.timeZone,
+          pieces: model.data.pieces,
+          boards: model.data.boards,
+        },
+      }),
+    h,
+  )
+
 /** The tab pages: each shows its own Model, as the person left it. */
 const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
   const { locale, timeZone } = model.context
@@ -158,18 +177,8 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({ ...slot(lenses.photos, photos), view: PhotosView.view, viewInputs: { locale, timeZone } }),
         h,
       ),
-    TryOn: () =>
-      onPage(
-        model,
-        lenses.tryOn,
-        (tryOn) =>
-          h.submodel({
-            ...slot(lenses.tryOn, tryOn),
-            view: TryOnView.view,
-            viewInputs: { locale, timeZone, pieces, boards: model.data.boards },
-          }),
-        h,
-      ),
+    TryOn: () => tryOnPage(model, lenses.tryOn, h),
+    TryOnPage: () => tryOnPage(model, lenses.tryOnPage, h),
     Ask: () =>
       onPage(
         model,

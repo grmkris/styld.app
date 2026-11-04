@@ -142,7 +142,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // tab and its page (the try-ons, the Gallery photo and pieces or look to choose, This is me, the cost, the poll, before
 // and after, Delete, and Save to board's try-on target) and their en/sl words add 5,773 (391,342 to 397,115 measured
 // in a clean worktree on 4189172c's base); merged with main at 9daa3422 the build measures 405,539.
-if (initialGzip > 405600) throw new Error(`Initial browser assets exceed the 405,600-byte gzip budget: ${initialGzip}`)
+// Raised to 407,500 the same day for Try on's review fixes (track B): a try-on's own page at /try-on/:tryOn (its route,
+// page, lens and folds), the start's problem kept as Spent, Refused or Lost with its operation id, the delete's id kept
+// for a retry, the Checkbox for This is me, the alertdialog, captions and piece states, and their words add 1,884 over
+// abcc104c's 405,539, for 407,423.
+if (initialGzip > 407500) throw new Error(`Initial browser assets exceed the 407,500-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

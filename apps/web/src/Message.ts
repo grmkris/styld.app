@@ -62,6 +62,7 @@ export const Message = defineMessageUnion({
   GotPhotosMessage: { message: Photos.Message },
   GotPhotoMessage: { message: Photo.Message },
   GotTryOnMessage: { message: TryOn.Message },
+  GotTryOnPageMessage: { message: TryOn.Message },
   GotLookMessage: { message: Look.Message },
   GotProfileMessage: { message: ProfileEditor.Message },
   GotTodayMessage: { message: Today.Message },

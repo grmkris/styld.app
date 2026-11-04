@@ -1132,7 +1132,7 @@
     "startFailed": "That didn’t go through. Try again.",
     "back": "All try-ons",
     "drawing": "Drawing you in these clothes. It takes about 15 seconds.",
-    "refused": "Muse wouldn’t draw this one. Your credits are back.",
+    "refused": "Styld couldn’t draw this one. Your credits are back.",
     "failed": "This try-on didn’t come back. Your credits are back.",
     "before": "Before",
     "after": "After",
@@ -1140,7 +1140,13 @@
     "afterAlt": "You in the chosen pieces",
     "delete": "Delete try-on",
     "deleteQuestion": "Delete this try-on? Your photo stays in your Gallery.",
-    "deleteFailed": "That try-on wasn’t deleted. Try again."
+    "deleteFailed": "That try-on wasn’t deleted. Try again.",
+    "choosePhoto": "Photo from {date}",
+    "startRefused": "Styld couldn’t start this try-on. Check the photo and the pieces, then try again.",
+    "piecesFailed": "Your pieces didn’t load.",
+    "noPieces": "Your wardrobe has no ready pieces yet.",
+    "sides": "Before or after",
+    "gone": "This try-on isn’t here any more."
   },
   "legal": {
     "privacyTitle": "Privacy policy",

@@ -1,4 +1,4 @@
-import type { Piece, PieceImages, PieceTurn, Photo, PhotoGarment, Detection } from '@styld/protocol'
+import type { Piece, PieceImages, PieceTurn, Photo, PhotoGarment, Detection, TryOn } from '@styld/protocol'
 
 // Private media uses addresses supplied by the containing API response. Public media retains its visibility-checked
 // routes. No browser view constructs a session-backed private image address.
@@ -23,6 +23,8 @@ export const cdn = {
   /** The person cut out of an outfit photo, once there is one (T-17). */
   photoCutout: (photo: Photo, size: Size) => photo.cutoutImages?.[size] ?? '',
   photoGarment: (garment: PhotoGarment) => garment.image ?? '',
+  /** A try-on's drawing, once there is one. */
+  tryOn: (tryOn: TryOn, size: Size) => tryOn.images?.[size] ?? '',
   detection: (detection: Detection, cutout: boolean) => detection.images?.[cutout ? 'cutout' : 'original'] ?? '',
   boardImage: (
     picture: { readonly image?: { readonly thumb: string; readonly full: string } | undefined },

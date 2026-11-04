@@ -1132,7 +1132,7 @@
     "startFailed": "Ni šlo skozi. Poskusi znova.",
     "back": "Vsa pomerjanja",
     "drawing": "Rišem te v teh oblačilih. Traja približno 15 sekund.",
-    "refused": "Muse tega ne nariše. Krediti so ti vrnjeni.",
+    "refused": "Styld tega ne more narisati. Krediti so ti vrnjeni.",
     "failed": "To pomerjanje se ni vrnilo. Krediti so ti vrnjeni.",
     "before": "Prej",
     "after": "Potem",
@@ -1140,7 +1140,13 @@
     "afterAlt": "Ti v izbranih kosih",
     "delete": "Izbriši pomerjanje",
     "deleteQuestion": "Izbrišem to pomerjanje? Fotografija ostane v galeriji.",
-    "deleteFailed": "Pomerjanje ni bilo izbrisano. Poskusi znova."
+    "deleteFailed": "Pomerjanje ni bilo izbrisano. Poskusi znova.",
+    "choosePhoto": "Fotografija z dne {date}",
+    "startRefused": "Styld tega pomerjanja ne more začeti. Preveri fotografijo in kose, nato poskusi znova.",
+    "piecesFailed": "Tvoji kosi se niso naložili.",
+    "noPieces": "V garderobi še ni pripravljenih kosov.",
+    "sides": "Prej ali potem",
+    "gone": "Tega pomerjanja ni več."
   },
   "legal": {
     "privacyTitle": "Pravilnik o zasebnosti",
