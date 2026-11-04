@@ -13,7 +13,7 @@ import {
   TriedBoard,
 } from '@styld/protocol'
 import { Match, Schema } from 'effect'
-import { client, emailOf, seedAccounts, send, signIn } from './Accounts.ts'
+import { type Call, client, emailOf, seedAccounts, send, signIn } from './Accounts.ts'
 import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 // Test-only acceptance: the house inspiration boards (owner, 4 November 2026) seeded as the operator's seed runs them,
@@ -76,6 +76,27 @@ const garmentsShown = async (origin: string, boardId: string) => {
 /** A public read as a reader in a language, by the website's own cookie. */
 const readAs = (origin: string, locale: 'en' | 'sl') => (path: string) =>
   fetch(`${origin}${path}`, { headers: { cookie: `styld_locale=${locale}` } })
+
+/** Tried with a wardrobe that has none of its pieces: a private board of the reader's, a label where each piece lay
+ * and the board's own words, no house piece pinned; the same try again is the same board. Signed out, no try. */
+const expectTried = async (origin: string, reader: Call, boardId: string) => {
+  await garmentsShown(origin, boardId)
+  const tryPath = `/api/boards/${boardId}/try`
+  expect((await fetch(`${origin}${tryPath}`, { method: 'POST', body: '{}' })).status).not.toBe(200)
+  const tried = Schema.decodeUnknownSync(TriedBoard)(
+    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
+  )
+  expect([tried.fromWardrobe, tried.of]).toEqual([0, garments.length])
+  const mine = Schema.decodeUnknownSync(Board)(await (await reader(`/api/boards/${tried.boardId}`)).json())
+  expect([mine.name, mine.visibility, mine.pins.length]).toEqual(['Black dress, white trainers', 'private', 0])
+  const labels = mine.items.flatMap((item) => (Schema.is(TextItem)(item) ? [item.text] : []))
+  expect(labels).toContain('Four pieces')
+  expect(labels.filter((text) => text.startsWith('No ') && text.endsWith(' yet'))).toHaveLength(garments.length)
+  const triedAgain = Schema.decodeUnknownSync(TriedBoard)(
+    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
+  )
+  expect(triedAgain.boardId).toBe(tried.boardId)
+}
 
 export const verifySeed = async (origin: string, testUrl: string) => {
   await seedAccounts(testUrl, house, 'native-house-other', 'native-house-reader')
@@ -142,27 +163,17 @@ export const verifySeed = async (origin: string, testUrl: string) => {
     )
   expect(feed.items.flatMap(shows)).toEqual(['board'])
 
-  // Tried with a wardrobe that has none of its pieces: a private board of the reader's, a label where each piece lay
-  // and the board's own words, no house piece pinned; the same try again is the same board. Signed out, no try.
-  await garmentsShown(origin, created.boardId)
-  const tryPath = `/api/boards/${created.boardId}/try`
-  expect((await fetch(`${origin}${tryPath}`, { method: 'POST', body: '{}' })).status).not.toBe(200)
-  const tried = Schema.decodeUnknownSync(TriedBoard)(
-    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
-  )
-  expect([tried.fromWardrobe, tried.of]).toEqual([0, garments.length])
-  const mine = Schema.decodeUnknownSync(Board)(await (await reader(`/api/boards/${tried.boardId}`)).json())
-  expect([mine.name, mine.visibility, mine.pins.length]).toEqual(['Black dress, white trainers', 'private', 0])
-  const labels = mine.items.flatMap((item) => (Schema.is(TextItem)(item) ? [item.text] : []))
-  expect(labels).toContain('Four pieces')
-  expect(labels.filter((text) => text.startsWith('No ') && text.endsWith(' yet'))).toHaveLength(garments.length)
-  const triedAgain = Schema.decodeUnknownSync(TriedBoard)(
-    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
-  )
-  expect(triedAgain.boardId).toBe(tried.boardId)
+  await expectTried(origin, reader, created.boardId)
 
   // Removed, it is gone for good: its status and its page.
   expect((await send(operator, board, 'DELETE', { operationId: 'seed-native-remove-1', email })).status).toBe(204)
   expect((await operator(`${board}?email=${encodeURIComponent(email)}`)).status).toBe(404)
   expect((await fetch(`${origin}/api/public/boards/${created.boardId}`)).status).toBe(404)
+  // The same entry seeded again makes a new board: the removed one's receipts no longer answer for it.
+  const reseeded = Schema.decodeUnknownSync(SeededBoard)(
+    await (await send(operator, board, 'POST', entry('seed-native-board-4'))).json(),
+  )
+  expect(reseeded).toMatchObject({ outcome: 'created', visibility: 'public' })
+  expect(reseeded.boardId).not.toBe(created.boardId)
+  expect((await send(operator, board, 'DELETE', { operationId: 'seed-native-remove-2', email })).status).toBe(204)
 }

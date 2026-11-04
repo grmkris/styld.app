@@ -51,7 +51,7 @@ import {
 const layoutOf = (board: Pick<BoardRow, 'layout'>): OutfitLayout => board.layout ?? 'flanking'
 
 /** The engine's own operation id for a board operation's outfits: the request's, so a repeat asks it the same. */
-const outfitsOperation = (operationId: string) => OperationId.make(`${operationId.slice(0, 56)}-outfits`)
+export const outfitsOperation = (operationId: string) => OperationId.make(`${operationId.slice(0, 56)}-outfits`)
 
 /** Which arrangement a board's clusters start from: the same board, the same layout every time. */
 const shiftOf = (boardId: string) =>

@@ -27,7 +27,7 @@ import { profileTranslationWrite } from '../social/ProfileStore.ts'
 import { Profiles } from '../social/Profiles.ts'
 import { profileSourceDigest } from '../social/Translated.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { createdBoard, digestsOf, planOf, stepOf, updatedBoard } from './Boarding.ts'
+import { createdBoard, digestsOf, forgetSteps, planOf, stepOf, updatedBoard } from './Boarding.ts'
 import { seedPrefix, SeedStore } from './Store.ts'
 
 // The operator's seeding of the house inspiration boards (owner, 4 November 2026; `tools/seed/`). Only the configured
@@ -159,6 +159,7 @@ const removeSeededBoard = Effect.fnUntraced(function* (seedId: string, input: Re
   const accountId = yield* houseAccount(input.email)
   const prior = yield* stored((yield* SeedStore).seededAs(accountId, seedId))
   if (Option.isNone(prior)) return yield* NotFound.make({})
+  yield* stored(forgetSteps(prior.value))
   yield* (yield* Boards).deleteBoard(BoardId.make(prior.value.boardId), input.operationId).pipe(as(accountId))
 })
 

@@ -14,9 +14,11 @@ import {
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { Boards } from '../boards/Boards.ts'
+import { outfitsOperation } from '../boards/Template.ts'
 import { BoardRows } from '../boards/Rows.ts'
 import { Database, nowDate, query } from '../kernel/Db.ts'
 import { digestOf } from '../kernel/Ids.ts'
+import { forgetReceipt } from '../kernel/Receipts.ts'
 import type { Wearable } from '../outfits/Rules.ts'
 import { boardSourceDigest } from '../social/Translated.ts'
 import { type SeededRow, SeedRows } from './Store.ts'
@@ -88,6 +90,24 @@ export const stepOf = (seedId: string, step: string, version: number, digest: st
   Effect.map(digestOf(`${seedId}:${step}:${String(version)}:${digest}`), (hex) =>
     OperationId.make(`seed-${hex.replaceAll(/[^A-Za-z0-9]/gu, '').slice(0, 40)}`),
   )
+
+/** Every step an entry's board was made or last changed under. */
+const boardSteps = ['create', 'details', 'table', 'publish', 'unpin'] as const
+
+/** Forget the receipts of the steps an entry's board was made and last changed under, before the board is removed:
+ * the same entry seeded again then makes a new board, where the receipts would answer with the removed one. */
+export const forgetSteps = Effect.fnUntraced(function* (prior: SeededRow) {
+  const db = yield* Database
+  const steps = yield* Effect.forEach(boardSteps, (step) => stepOf(prior.seedId, step, prior.version, prior.digest))
+  const [create, ...rest] = steps
+  yield* query(() =>
+    db.batch([
+      forgetReceipt(db, prior.accountId, create),
+      forgetReceipt(db, prior.accountId, outfitsOperation(create)),
+      ...rest.map((id) => forgetReceipt(db, prior.accountId, id)),
+    ]),
+  )
+})
 
 /** The digest of the table an entry lays out, and of the whole entry: a changed name, tag or translation keeps the
  * table as it is, and a new catalogue version with the entry unchanged changes nothing. */
