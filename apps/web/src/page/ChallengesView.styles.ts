@@ -1,7 +1,7 @@
 import { style } from '../zyzz.config.ts'
 
-// Challenges, coming soon: three quiet cards in a row on the board papers' tints, under a head with a "Coming soon"
-// chip. They are not controls, so they take no press, hover or focus.
+// Challenges: three cards in a row on the board papers' tints, under a head with a "Coming soon" chip until a card
+// has a board to open. A card with no board is not a control, so it takes no press, hover or focus.
 
 export const section = style({ display: 'grid', gap: 'related', minInlineSize: '0' })
 export const head = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
@@ -36,4 +36,15 @@ export const card = style({
   '&[data-tint="clay"]': { backgroundColor: 'tintClay' },
   '&[data-tint="slate"]': { backgroundColor: 'tintSlate' },
   '&[data-tint="sage"]': { backgroundColor: 'tintSage' },
+})
+/** A card's board, the whole card: the card's colour and words, its focus ring at the card's corners. */
+export const open = style({
+  display: 'grid',
+  alignItems: 'end',
+  blockSize: '100%',
+  margin: '-12px',
+  padding: '12px',
+  borderRadius: 'panel',
+  color: 'ink',
+  textDecorationLine: 'none',
 })

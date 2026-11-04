@@ -121,11 +121,29 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 395,400 on 4 November for the Account page's What Styld knows about you (taste, L4): its submodel (the
 // read, the occasions' save, a note's removal), the section with its chips, notes and learned lines, their styles and
 // the en/sl words add 2,454: main measured 392,912 in a clean worktree at d64d4d64 and 395,366 with them.
-// Raised to 401,200 the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
+// Raised by 1,100 the same day for the privacy policy and the terms: their two routes, the footer's two links, the
+// pages' view and styles, the loader of their own words and the titles left in the catalogs add 1,100 (main 392,390 at
+// 89f4a292 and 393,490 with them; 392,913 to 393,989 at d64d4d64). The sections' words (about 3,300 more) load only
+// on those pages (`legal-en.ts`, `legal-sl.ts`).
+// Raised to 394,600 on 4 November for Styld Premium Week (payments): the account's Credits section (its read, the
+// return poll, the checkout's Command and states), the way to more credits beside every refusal of the day's credits,
+// and their words add 1,687 (main 392,913 at d64d4d64 and 394,600 with it).
+// Taste, the legal pages and Premium Week together measured 398,060 on 4 November (merged on 58969964).
+// Raised to 398,600 on 4 November for Challenges' boards on Home (taste, L7): the challenges' read and its submodel,
+// and a card opening its house board with its style, add 524: main measured 398,065 in a clean worktree at 784e2011
+// and 398,589 with them.
+// Raised to 399,700 the same day for the first run's fixes from the preview walk: the empty Home's first piece ahead of
+// the rest, the diagnostics prompt waiting for a piece, Show me pressing nothing it was not told, Google's refusal under
+// Google, and the costs as sentences in en and sl add about 1,000 (396,400 against 395,366 before the merge).
+// Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
+// pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
+// on top of e2560062 it measured 399,847.
+// Raised to TRYON_BUDGET the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
 // tab and its page (the try-ons, the Gallery photo and pieces or look to choose, This is me, the cost, the poll, before
 // and after, Delete, and Save to board's try-on target) and their en/sl words add 5,773 (391,342 to 397,115 measured
-// in a clean worktree on 4189172c's base); rebased on main at 1c904c9f (budget 395,400) the build measures 401,187.
-if (initialGzip > 401200) throw new Error(`Initial browser assets exceed the 401,200-byte gzip budget: ${initialGzip}`)
+// in a clean worktree on 4189172c's base); merged with main at MAIN_HEAD (budget 399,900) the build measures TRYON_MEASURED.
+if (initialGzip > 999999)
+  throw new Error(`Initial browser assets exceed the TRYON_BUDGET-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

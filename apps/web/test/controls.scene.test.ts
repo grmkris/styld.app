@@ -86,6 +86,16 @@ describe('email code sign-in', () => {
     )
   })
 
+  test('a Google sign-in that came back refused says so under Google, and leaves the address field alone', () => {
+    scene(
+      { update, view },
+      given(page('/login?problem=google')),
+      expect(role('alert')).toHaveText("Google sign-in didn't finish. Try again, or sign in with a code."),
+      expect(label('Email')).toHaveAttr('aria-invalid', 'false'),
+      expect(role('button', { name: 'Continue with Google' })).toExist(),
+    )
+  })
+
   test('a person signs in with the code from their email and lands on Home', () => {
     scene(
       { update, view },

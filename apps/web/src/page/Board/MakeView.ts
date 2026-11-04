@@ -13,6 +13,7 @@ import { styled } from '../../Styled.ts'
 import { bottomSheet, sheetShown } from '../Sheet.ts'
 import { canMake, Job, KindRadioGroup, kinds, type MakeProblem, Message, type Model } from './Make.ts'
 import * as styles from './MakeView.styles.ts'
+import { spentWords } from '../MoreCredits.ts'
 
 const problemKey: { readonly [Problem in MakeProblem]: MessageKey } = {
   dailyLimit: 'board.make.problem.dailyLimit',
@@ -163,7 +164,15 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
         h.p([h.Id(costId), ...styled(h, styles.note())], [costOf(model.kind, locale)]),
         h.p(styled(h, styles.note()), [format(locale, 'board.make.note', {})]),
         Job.guards.Failed(model.job)
-          ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, problemKey[model.job.problem], {})])
+          ? h.p(
+              [h.Role('alert'), ...styled(h, styles.problem())],
+              spentWords(
+                format(locale, problemKey[model.job.problem], {}),
+                model.job.problem === 'dailyLimit',
+                locale,
+                h,
+              ),
+            )
           : h.empty,
         // aria-disabled rather than disabled, so the button keeps focus while its ask goes (DESIGN › Controls); the
         // form's submit is refused while there is nothing to send.

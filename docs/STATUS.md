@@ -7,6 +7,74 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
+
+The wardrobe's filters (T-06) were kept twice, in the page's Model and in the address, and one bad parameter made the
+page Not found. Rebuilt the Foldkit way (query-sync; ARCHITECTURE › Website): commits `f67b6a92`, `ca2ce12f`, `37c3a735`.
+
+- **Built:**
+  - The wardrobe reads its group, type, category and filters from `/wardrobe?…`. A filter replaces the address (no Back
+    step) and a step to another level pushes. Each type opens unfiltered, and Back returns to the filtered list.
+  - A parameter that is not ours (`?group=nonsense`, `?rainproof=no`, a type renamed since) is left out instead of Not
+    found; the address is not rewritten.
+  - A category renamed or deleted after the person browsed elsewhere leaves the address alone.
+  - Ask's field shows `?q` as typed, a trailing space included. Every key replaces the address; people and boards are
+    searched once typing pauses, at once on Enter, and at once on Back to `/ask?q=…`.
+  - Styld takes `?q` into its draft once and the address drops it, so a reload does not bring a sent message back.
+- **Evidence:** `wardrobe.story` (the address printed and read back, the lenient reading, each filter's replace, the
+  rename race), `wardrobeSelect.story`, `wardrobe.scene` and `navigation.scene` (the replace and its address change),
+  `navigation.story` (Styld's hand-over, Back to an Ask search), `ask.story/scene` (a trailing space through the replace,
+  the pause, Enter), `Rendering.test` (a bad wardrobe link renders the wardrobe). Native, written and not run:
+  `NavigationBrowserAcceptance` (Winter in the address, reload, Clear, a bad link opens the groups) and
+  `GalleryBrowserAcceptance` (Styld's address drops `?q`). The bundle grew by 444, 49 and 265 gzip bytes.
+- **Open:** the preview deploy, the full gate with native, and the readback (`styldappv2-51`): filtering adds no Back
+  step and survives a reload; `/wardrobe?group=nonsense` opens the groups; Ask keeps a trailing space and Back to a
+  search searches; a reload on Styld after sending starts empty.
+
+## Privacy policy and terms of use (4 November, on main, not deployed)
+
+Google sign-in's consent screen and the app directories need both pages on styld.app.
+
+- **Built:** `/privacy` and `/terms` (`AppRoute.Privacy`/`Terms`, `page/LegalView.ts`), readable signed out, linked
+  from the footer beside Contact on every page (the sign-in page has no small print of its own; its footer carries
+  them). The words are in the en/sl catalogs under `legal`. Each statement was checked against the code; Premium Week
+  against `premiumWeek` in `Prices.ts` ($4.99, 500 credits a day for 7 days, buying again extends).
+  The sections' words (`legal.privacy.*`, `legal.terms.*`) are their own catalog modules (`legal-en.ts`,
+  `legal-sl.ts`) that the browser loads only on those two pages, so no other page carries them; the first load grows
+  by about 1,100 gzip bytes (393,989 at d64d4d64; budget 394,100).
+- **Evidence:** `apps/web/test/legal.scene.test.ts` (every section, the date and the contact address in en and sl; the
+  footer links signed in and out), `legalRoutes.test.ts`, and the i18n test of the legal words' loading.
+- **Open:**
+  - Kris reviews the content. v1 names no operator, company, address or governing law, so neither page does; the
+    minimum age of 16 is v1's, not enforced in v2. Docs' "original photos never leave Styld" is not true: a resized
+    copy of each photo (and each video) goes to Meta SAM, so the policy says so.
+  - The pages describe Dodo Payments and Premium Week (server on main at `eb92789e`). The policy says Dodo takes the payment; check that matches the checkout.
+  - Deployed readback of both paths on the preview.
+
+## Styld Premium Week: payments through Dodo (4 November, on main, not deployed)
+
+Owner decisions of 4 November: $4.99 once (no subscription), 500 credits a day instead of 100 for 7 days from the
+purchase, buying again extends from the current end, bought mid-day it tops today up at once; free stays 100 a day and
+no card is ever asked for.
+
+- **Built:** the Wallet records the allowance each day was granted and tops up a larger one the same day (old events
+  replay as 100; `Wallet.story`); migration `20261104181042_premium_week_purchases` (plain CREATE TABLEs `purchases`,
+  keyed by Dodo's payment id, and `premium`, the one record of an account's end); `server/src/billing/`:
+  `GET /api/credits`, `POST /api/billing/checkout` (Dodo's `POST /checkouts`), the raw `POST /api/billing/dodo/webhook`
+  (Standard Webhooks with WebCrypto, 5 minutes' tolerance; only the stage's product counts; one D1 batch per delivery,
+  idempotent on the payment id; refunds and lost disputes take the week back once, never before now); holds reserve
+  under premium's allowance through one function (`billing/Premium.ts` › `allowanceAt`, `usage/Holds.ts` › `balance`).
+  Web: the account's Credits section (today's credits, Premium until, Premium week · $4.99 opening Dodo's page; back on
+  `/account?premium=1` it says the payment arrived and reads the credits again every 3 s, 8 times); every refusal of
+  the day's credits links to it. Unit `Billing.test` (the Standard Webhooks reference vector, product filter, a payment
+  twice is one purchase and one week, refund and dispute once), `account.story`/`account.scene`; native
+  `BillingAcceptance` (a stage without payments) written, not run.
+- **Open:** deploy with `STYLD_DODO_API_KEY` and `STYLD_DODO_WEBHOOK_SECRET` (test mode on the preview), then a
+  test-card purchase on the preview: the webhook's 200, the purchase row, 500 a day and the top-up, a refund taking the
+  week back; then production's live readback after the cutover. A payment for an account deleted since its checkout is
+  answered 200 and logged (`Styld.Billing a payment arrived for an account that is gone`) for a refund by hand. The
+  initial bundle budget rose by 1,687 bytes to 394,600.
+
 ## Sign in with Google (4 November, on main, not deployed)
 
 The owner chose Google sign-in with v1's OAuth client and v1's linking, from Grok's competitor onboarding report.
@@ -257,7 +325,10 @@ check on her phone (Samsung, Android Chrome, dark mode), which is the acceptance
 - **Navigation (T-06):** the physical Android Back button on the wardrobe filters and the Gallery.
 - **Categories (T-12):** custom categories under a built-in type, suggested by Styld in the review tray and made on
   keep.
-- **Ask Styld (T-14):** a live readback on the preview through the real LiteLLM route.
+- **Ask Styld (T-14):** Eva's check only. The live readback on the preview through the real LiteLLM route passed on
+  4 November after LiteLLM moved to v1.108.0 (release 784e201, test account): English, Slovenian and a saved look were
+  answered in 5–14 s, every piece shown was the person's own, one credit a message, and a repeated operation id
+  reused its chat. Deleting the readback's look answered 400, so a "Readback autumn" look is left on the test account.
 - **Android (T-20):** the share sheet and the gallery picker on a phone; the Chrome tab-restore black screen was
   never reproduced.
 - **Signed media (T-21, F-43):** signed-in media loading under load, Workers Logs, and the addresses refreshing after

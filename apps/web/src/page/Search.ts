@@ -6,9 +6,10 @@ import { StyldClient } from '../StyldClient.ts'
 // The one public search, over people and public boards, which Ask and Explore both offer: the words searched, cut to
 // the protocol's length, the request, and where a search stands for the words typed.
 
-/** A search: none, asked, answered or failed, each for the words searched. */
+/** A search: none, waiting for typing to settle, asked, answered or failed, each for the words searched. */
 export const PublicSearch = defineTaggedUnion({
   Off: {},
+  Waiting: { query: Schema.String },
   Searching: { query: Schema.String },
   Found: { query: Schema.String, results: SearchResults },
   Failed: { query: Schema.String },

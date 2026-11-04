@@ -175,7 +175,8 @@ describe('Styld, the stylist in the app', () => {
           }),
         ),
       ),
-      expect(role('alert')).toHaveText('Today’s free allowance is spent. Ask again tomorrow.'),
+      expect(role('alert')).toHaveText('Today’s credits are spent. Ask again tomorrow. Get more credits'),
+      expect(role('link', { name: 'Get more credits' })).toHaveAttr('href', '/account#credits'),
       expect(text('Each message uses 1 credit of today’s free allowance.')).not.toExist(),
     )
   })

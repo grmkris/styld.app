@@ -39,7 +39,8 @@ describe('Show me on Home', () => {
           "Only you see this. What's new starts with these; nothing is hidden, and you can change it any time on your Account page.",
         ),
       ).toExist(),
-      expect(role('button', { name: 'Everything' })).toHaveAttr('aria-pressed', 'true'),
+      // Home asks: nothing is pressed until the person picks (Account shows the order in force).
+      expect(role('button', { name: 'Everything' })).toHaveAttr('aria-pressed', 'false'),
       click(role('button', { name: "Men's" })),
       Command.resolve(
         ShowMe.SaveShowMe({ showMe: 'men' }),

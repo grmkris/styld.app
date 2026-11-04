@@ -191,6 +191,7 @@ const social = Social.of({
 const discovery = Discovery.of({
   explore: () => Effect.succeed({ edits: [], featured: [], people: [], newest: [] }),
   search: () => Effect.succeed({ people: [], boards: [] }),
+  challenges: () => Effect.succeed({ challenges: [] }),
 })
 /** Generations: not part of these tests. */
 const generations = { admit: notUsed, get: notUsed }

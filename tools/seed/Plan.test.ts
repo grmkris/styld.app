@@ -68,7 +68,10 @@ describe('the plan', () => {
     expect(men?.request.board).toMatchObject({
       build: 'pack',
       pieces: ['m-shirts-blue-white', 'm-jeans-blue', 'm-coats-navy', 'u-trainers-white', 'm-scarves-navy-red'],
-      labels: [{ text: '5 pieces for a weekend', style: 'label', sl: '5 kosov za vikend' }],
+      labels: [
+        { text: 'A navy weekend', style: 'headline', sl: 'Temno moder vikend' },
+        { text: '5 pieces for a weekend', style: 'label', sl: '5 kosov za vikend' },
+      ],
       sl: { name: 'Temno moder vikend', review: 'pending' },
     })
     expect(men?.request.board.tags).toContainEqual({ kind: 'audience', value: 'men' })

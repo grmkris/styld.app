@@ -42,7 +42,12 @@ administrative tasks from the operator's own tools, such as the v1 importer (`@s
 random bytes, made with `openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'`). `alchemy.run.ts` reads them at deploy
 and binds them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, and `STYLD_OPERATOR_TOKEN` unset means no
 operator, so no imports. The Worker keeps only the token's digest, and the operator's routes answer 404 to anything
-but that token. `STYLD_RELEASE` (the commit) is
+but that token. `STYLD_DODO_API_KEY` and `STYLD_DODO_WEBHOOK_SECRET` (`whsec_<base64>`, the
+webhook endpoint's signing secret) switch on Styld Premium Week through Dodo Payments: test-mode values on the preview,
+live-mode ones in production's file; with either unset the stage sells nothing (no button, `/api/billing/*` answers
+404). Which Dodo mode and product a stage uses is a stage fact (`Resources.ts` `stages`, `billing`), passed as
+`STYLD_DODO_BASE` and `STYLD_DODO_PRODUCT` only when both secrets are set. Each mode's webhook endpoint is
+`<origin>/api/billing/dodo/webhook` (payment.succeeded, payment.failed, refund.succeeded, dispute.opened, dispute.lost). `STYLD_RELEASE` (the commit) is
 passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`
 of `{ id, material }`, material at least 32 random bytes as unpadded base64url. Never print the file, commit it, or use
 v1 or production secrets in it. `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` come from the environment (both:

@@ -1,7 +1,9 @@
-import { boards, boardTags, follows, profiles } from '@styld/db'
+import { boards, boardTags, follows, profiles, seededBoards } from '@styld/db'
 import {
   type Audience,
   type Author,
+  ChallengeKey,
+  type Challenges,
   type Explore,
   type FoundBoard,
   Mood,
@@ -28,6 +30,13 @@ const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unava
 
 /** How many boards and people each part of Explore and a search shows. */
 const rowLimit = 24
+
+/** The house board each of Eva's challenges opens, by its id in the seed catalogue (`tools/seed/catalogue.yaml`). */
+const challengeBoards: Readonly<Record<string, ChallengeKey | undefined>> = {
+  'u-30-days-red': 'red',
+  'w-witch-october': 'witch',
+  'u-one-coat-6': 'onePiece',
+}
 const peopleLimit = 12
 
 /** A board row's moods, as the protocol names them. */
@@ -80,6 +89,15 @@ const makeQueries = (db: Database['Service']) => {
         .limit(rowLimit),
     )
   return {
+    /** The public house boards Eva's challenges open, with the catalogue id each was seeded from. */
+    challengeBoards: () =>
+      read(() =>
+        db
+          .select({ seedId: seededBoards.seedId, board: boards })
+          .from(seededBoards)
+          .innerJoin(boards, eq(boards.id, seededBoards.boardId))
+          .where(and(inArray(seededBoards.seedId, Object.keys(challengeBoards)), eq(boards.visibility, 'public'))),
+      ),
     /** Edits from Styld: the house accounts' public boards, newest first (they go public interleaved by audience), or
      * for a reader who chose Show me, the boards for their choice first (owner, 4 November 2026), before the limit. */
     houseBoards: (choice: Audience | null) =>
@@ -185,6 +203,22 @@ const make = Effect.gen(function* () {
         newest: yield* found(yield* queries.newestBoards(mood), viewer),
       }
       return explore
+    }),
+    /** Eva's three challenges that have a house board discovery may show, in her order (owner, 4 November 2026). */
+    challenges: Effect.fn('Styld.Discovery.challenges')(function* (viewer: Option.Option<string>) {
+      const seeded = yield* queries.challengeBoards()
+      const shown = yield* found(
+        seeded.map(({ board }) => board),
+        viewer,
+      )
+      const keyOf = new Map(seeded.map(({ seedId, board }) => [board.id, challengeBoards[seedId]]))
+      const challenges = ChallengeKey.literals.flatMap((challenge) =>
+        shown
+          .filter(({ board }) => keyOf.get(board.id) === challenge)
+          .slice(0, 1)
+          .map((board) => ({ challenge, found: board })),
+      )
+      return { challenges } satisfies Challenges
     }),
     /** People by name and handle, an exact handle first, and boards by name or mood. */
     search: Effect.fn('Styld.Discovery.search')(function* (q: string, viewer: Option.Option<string>) {

@@ -7,7 +7,7 @@ import { replaceUrl } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
-import { awaits, PublicSearch, searchPublic } from './Search.ts'
+import { awaits, PublicSearch, searchPublic, searchWords } from './Search.ts'
 import { SearchResults } from '@styld/protocol'
 import { askRouter } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
@@ -19,10 +19,10 @@ import { StyldClient } from '../StyldClient.ts'
 export const SearchLanguages = defineTaggedUnion({ PageOnly: {}, Both: {}, OtherUnavailable: {} })
 
 /** Ask: search your own wardrobe, the stylist's hand-off to the assistants, and the + sheet. The pieces are the
- * wardrobe's, which the app keeps once for every page. */
+ * wardrobe's, which the app keeps once for every page. What is typed lives only in the address (`/ask?q=…`, Foldkit's
+ * query-sync): the view reads it from the route and update gets it as context. */
 export const Model = Schema.Struct({
-  /** What is typed in the search, as typed; the address carries it too, so coming back to Ask brings it back. */
-  query: Schema.String,
+  /** Counts the searches asked for, so an older pause or answer is dropped. */
   revision: Schema.Number,
   languages: SearchLanguages,
   /** The + sheet: what you can add from here. */
@@ -36,7 +36,6 @@ export const searchFieldId = 'ask-search'
 export const resultsId = 'ask-results'
 
 export const init = (): Model => ({
-  query: '',
   revision: 0,
   languages: SearchLanguages.PageOnly(),
   addSheet: Dialog.init({ id: 'ask-add-sheet', isAnimated: true }),
@@ -47,8 +46,8 @@ export const init = (): Model => ({
 
 export const Message = defineMessageUnion({
   UpdatedQuery: { value: Schema.String },
-  ElapsedQueryPause: { query: Schema.String, revision: Schema.Number },
-  CompletedWriteQuery: {},
+  ElapsedSearchPause: { query: Schema.String, revision: Schema.Number },
+  CompletedReplaceQuery: {},
   ClickedSuggestion: { query: Schema.String },
   ClickedClear: {},
   SubmittedSearch: {},
@@ -86,23 +85,23 @@ export const LoadSearchLanguages = Command.define('LoadSearchLanguages', {
   ),
 })
 
-/** Typing settles before the address follows, so the browser's history isn't written on every key. */
-export const WaitBeforeWritingQuery = Command.define('WaitBeforeWritingQuery', {
+/** Typing settles before people and boards are searched on the server; the wardrobe is searched here at once. */
+export const WaitBeforeSearching = Command.define('WaitBeforeSearching', {
   args: { query: Schema.String, revision: Schema.Number },
-  messages: [Message.ElapsedQueryPause],
+  messages: [Message.ElapsedSearchPause],
   execute: ({ query, revision }) =>
-    Effect.sleep(Duration.millis(300)).pipe(Effect.as(Message.ElapsedQueryPause({ query, revision }))),
+    Effect.sleep(Duration.millis(300)).pipe(Effect.as(Message.ElapsedSearchPause({ query, revision }))),
 })
 
-/** The search in the address (`/ask?q=…`), replacing the current entry rather than adding one.
- */
-export const WriteQuery = Command.define('WriteQuery', {
-  args: { query: Schema.String },
-  messages: [Message.CompletedWriteQuery],
-  execute: ({ query }) =>
-    replaceUrl(askRouter({ q: Option.liftPredicate(query.trim(), String.isNonEmpty) })).pipe(
+/** What is typed, as typed, in the address (`/ask?q=…`), replacing the current entry rather than adding one: the field
+ * reads it back from the route, so it is never trimmed here. A browser refusing a burst of replaces is ignored. */
+export const ReplaceQuery = Command.define('ReplaceQuery', {
+  args: { q: Schema.String },
+  messages: [Message.CompletedReplaceQuery],
+  execute: ({ q }) =>
+    replaceUrl(askRouter({ q: Option.liftPredicate(q, String.isNonEmpty) })).pipe(
       Effect.catchDefect(() => Effect.void),
-      Effect.as(Message.CompletedWriteQuery()),
+      Effect.as(Message.CompletedReplaceQuery()),
     ),
 })
 
@@ -126,7 +125,11 @@ export const SearchPublic = Command.define('SearchPublic', {
 })
 
 /** Words long enough to look for people and boards with. */
-const searchable = (query: string) => query.trim().length >= 2
+const searchable = (words: string) => words.length >= 2
+
+/** Whether the search stands for the words typed: their search, or none for words too short to search. */
+const isCurrent = (search: PublicSearch, words: string) =>
+  searchable(words) ? !PublicSearch.guards.Off(search) && search.query === words : PublicSearch.guards.Off(search)
 
 /** Focus to what was found, after Enter: the keyboard closes and a screen reader reads the count.
  */
@@ -148,22 +151,35 @@ const foldAddSheet = addSheet.update
 const openAddSheet = addSheet.open
 const closeAddSheet = addSheet.close
 
-/** Restore a URL search without writing another history entry. */
+/** What Ask is given with each Message: the words in the address, as typed. */
+export type Context = Readonly<{ query: string }>
+
+/** A new search for these words now: asked for when they are long enough, and none otherwise. */
+const searchNow = (model: Model, words: string): Update.Return<Model, Message, StyldClient> => {
+  const revision = model.revision + 1
+  return searchable(words)
+    ? {
+        model: modifyFields(model, {
+          revision: () => revision,
+          search: () => PublicSearch.Searching({ query: words }),
+        }),
+        commands: [SearchPublic({ query: words, revision })],
+      }
+    : { model: modifyFields(model, { revision: () => revision, search: () => PublicSearch.Off() }) }
+}
+
+/** Opening Ask at an address: the other language is loaded for the wardrobe search, and the words searched unless
+ * their search is already here. */
 export const enter =
   (maybeQuery: Option.Option<string>) =>
   (model: Model): Update.Return<Model, Message, StyldClient> => {
-    const query = Option.getOrElse(maybeQuery, () => '')
-    if (query === model.query && !PublicSearch.guards.Off(model.search)) return { model }
-    const revision = model.revision + 1
+    const words = searchWords(Option.getOrElse(maybeQuery, () => ''))
+    const searched = isCurrent(model.search, words) ? { model } : searchNow(model, words)
     return {
-      model: modifyFields(model, {
-        query: () => query,
-        revision: () => revision,
-        search: () => (searchable(query) ? PublicSearch.Searching({ query }) : PublicSearch.Off()),
-      }),
+      model: searched.model,
       commands: [
         ...(SearchLanguages.guards.Both(model.languages) ? [] : [LoadSearchLanguages()]),
-        ...(searchable(query) ? [SearchPublic({ query, revision })] : []),
+        ...(searched.commands ?? []),
       ],
     }
   }
@@ -172,43 +188,58 @@ export const enter =
 export const leave = (model: Model) =>
   closeAddSheet(modifyFields(model, { revision: (revision) => revision + 1, search: () => PublicSearch.Off() }))
 
-/** Our own normalized address update leaves the person's in-progress typing and search alone. Back/forward to
- * another query restores that search. */
-export const changedQuery = (maybeQuery: Option.Option<string>) => (model: Model) =>
-  Option.getOrElse(maybeQuery, () => '') === model.query.trim() ? { model } : enter(maybeQuery)(model)
+/** The address moved within Ask: our own replace changes nothing, since its search already stands for the words;
+ * Back or Forward to other words searches them. */
+export const informQuery = (maybeQuery: Option.Option<string>) => (model: Model) => {
+  const words = searchWords(Option.getOrElse(maybeQuery, () => ''))
+  return isCurrent(model.search, words) ? { model } : searchNow(model, words)
+}
 
-/** The words written to the address, and searched for people and boards once they are long enough. */
-const written = (model: Model, query: string): UpdateReturn =>
-  searchable(query)
+/** Typed: the address takes the words at once, and once they settle people and boards are searched for them. */
+const typed = (model: Model, value: string): UpdateReturn => {
+  const words = searchWords(value)
+  const replace = ReplaceQuery({ q: value })
+  if (isCurrent(model.search, words)) return { model, commands: [replace] }
+  const revision = model.revision + 1
+  return searchable(words)
     ? {
-        model: modifyFields(model, { search: () => PublicSearch.Searching({ query }) }),
-        commands: [WriteQuery({ query }), SearchPublic({ query, revision: model.revision })],
+        model: modifyFields(model, { revision: () => revision, search: () => PublicSearch.Waiting({ query: words }) }),
+        commands: [replace, WaitBeforeSearching({ query: words, revision })],
       }
-    : { model: modifyFields(model, { search: () => PublicSearch.Off() }), commands: [WriteQuery({ query })] }
+    : {
+        model: modifyFields(model, { revision: () => revision, search: () => PublicSearch.Off() }),
+        commands: [replace],
+      }
+}
 
-const searched = (model: Model, query: string): UpdateReturn =>
-  written(modifyFields(model, { query: () => query, revision: (revision) => revision + 1 }), query)
+/** Enter: what is waiting for its pause is searched at once, and focus goes to what was found. */
+const submitted = (model: Model, context: Context): UpdateReturn => {
+  const words = searchWords(context.query)
+  const searched = PublicSearch.guards.Waiting(model.search) ? searchNow(model, words) : { model }
+  return { model: searched.model, commands: [...(searched.commands ?? []), FocusResults()] }
+}
 
-export const update = (model: Model, message: Message): UpdateReturn =>
+export const update = (model: Model, message: Message, context: Context): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    UpdatedQuery: ({ value }) => ({
-      model: modifyFields(model, { query: () => value, revision: (revision) => revision + 1 }),
-      commands: [WaitBeforeWritingQuery({ query: value, revision: model.revision + 1 })],
-    }),
-    // Only the newest query is written: an older pause finds the query moved on.
-    ElapsedQueryPause: ({ query, revision }) =>
-      revision === model.revision && query === model.query ? written(model, query) : { model },
-    CompletedWriteQuery: () => ({ model }),
-    ClickedSuggestion: ({ query }) => searched(model, query),
+    UpdatedQuery: ({ value }) => typed(model, value),
+    // Only the newest pause searches: an older one finds the search moved on.
+    ElapsedSearchPause: ({ query, revision }) =>
+      revision === model.revision && PublicSearch.guards.Waiting(model.search) && model.search.query === query
+        ? {
+            model: modifyFields(model, { search: () => PublicSearch.Searching({ query }) }),
+            commands: [SearchPublic({ query, revision })],
+          }
+        : { model },
+    CompletedReplaceQuery: () => ({ model }),
+    ClickedSuggestion: ({ query }) => {
+      const searched = searchNow(model, searchWords(query))
+      return { model: searched.model, commands: [ReplaceQuery({ q: query }), ...(searched.commands ?? [])] }
+    },
     ClickedClear: () => ({
-      model: modifyFields(model, {
-        query: () => '',
-        revision: (revision) => revision + 1,
-        search: () => PublicSearch.Off(),
-      }),
-      commands: [WriteQuery({ query: '' }), FocusSearch()],
+      model: modifyFields(model, { revision: (revision) => revision + 1, search: () => PublicSearch.Off() }),
+      commands: [ReplaceQuery({ q: '' }), FocusSearch()],
     }),
-    SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
+    SubmittedSearch: () => submitted(model, context),
     CompletedFocus: () => ({ model }),
     ClickedAdd: () => openAddSheet(model),
     // Boards opens with its new-board sheet, where the template is chosen (F-26).

@@ -16,7 +16,6 @@ import {
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Boards } from '../boards/Boards.ts'
-import { capturePolicy } from '../capture/Policy.ts'
 import { Deployment } from '../Config.ts'
 import { ImportStore } from '../imports/Store.ts'
 import { Database, nowDate, query, StoreUnavailable } from '../kernel/Db.ts'
@@ -27,6 +26,7 @@ import { profileTranslationWrite } from '../social/ProfileStore.ts'
 import { Profiles } from '../social/Profiles.ts'
 import { profileSourceDigest } from '../social/Translated.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
+import { wholeEnough } from './Whole.ts'
 import { createdBoard, digestsOf, forgetSteps, planOf, stepOf, updatedBoard } from './Boarding.ts'
 import { seedPrefix, SeedStore } from './Store.ts'
 
@@ -61,7 +61,7 @@ const usable = (row: GarmentRow) =>
   row.status === 'ready' &&
   row.imageKey !== null &&
   row.imageKey !== row.originalKey &&
-  (row.describedWhole === null || row.describedWhole >= capturePolicy.garments.whole.drop) &&
+  wholeEnough(row.type, row.describedWhole) &&
   (row.describedType === null || groupOf(row.describedType) === groupOf(row.type))
 
 /** The account's house garments by manifest id. */

@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { cutoutGlow, style, vars } from '../../zyzz.config.ts'
+import { style, vars } from '../../zyzz.config.ts'
 
 // The board editor (Gallery 2: docs/design/gallery-2, the canvas spike in docs/design/canvas-spike).
 
@@ -74,6 +74,9 @@ export const toolLabel = style({
  * so a table only renders after its data loads in the browser. */
 export const paper = style({
   position: 'relative',
+  // A board's paper is a sheet of paper in either scheme (owner, 4 November 2026): its tints, its words and its
+  // pieces keep the light scheme, as every board the references show does.
+  colorScheme: 'light',
   // The table's own stacking: a piece's place in the pile never lifts it over the page's sheets.
   isolation: 'isolate',
   aspectRatio: '4 / 5',
@@ -195,8 +198,6 @@ export const cutout = style({
   objectFit: 'contain',
   pointerEvents: 'none',
   WebkitUserDrag: 'none',
-  // DESIGN.md › Dark: a dark garment keeps its edge on a dark table.
-  '@media (prefers-color-scheme: dark)': { filter: cutoutGlow },
 })
 export const picture = style({
   display: 'block',

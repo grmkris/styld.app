@@ -17,6 +17,7 @@ import { backToWardrobe } from '../PageBar.ts'
 import * as HeldCamera from '../HeldCamera.ts'
 import * as HeldCameraView from '../HeldCameraView.ts'
 import * as styles from './View.styles.ts'
+import { spentWords } from '../MoreCredits.ts'
 
 const fileProblemKey: { readonly [Problem in FileProblem]: MessageKey } = {
   notSupported: 'capture.notSupported',
@@ -226,7 +227,10 @@ const itemState = (item: Item, index: number, locale: Locale, h: HtmlBuilder<Mes
     Sent: () => h.span(styled(h, styles.queueDone()), [format(locale, 'capture.sent', {})]),
     Failed: ({ problem }) =>
       h.span(styled(h, styles.queueState()), [
-        h.span(styled(h, styles.queueFailed()), [failedText(item, problem, locale)]),
+        h.span(
+          styled(h, styles.queueFailed()),
+          spentWords(failedText(item, problem, locale), problem === 'dailyLimit', locale, h),
+        ),
         retryable.has(problem)
           ? Button.view(
               {

@@ -73,8 +73,18 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   before the provider could have taken it.
 - **The Wallet** (Alchemy Domain on a SQLite Durable Object per account, `packages/domain/src/Wallet/`) owns only the
   daily credit pool and its reservations: `dailyCredits` (100) per UTC day, unused credits do not carry over.
-  `WalletCommandIds.ts` is the only place Wallet command ids are derived. There are no subscription or purchased pools
-  (billing gets its own planning round).
+  `WalletCommandIds.ts` is the only place Wallet command ids are derived. A reservation brings the day's allowance (free
+  100, or premium 500); the Wallet keeps the allowance the day was granted and a larger one the same day adds the
+  difference, so premium bought mid-day counts at once. It never stores premium's end.
+- **Payments** (`server/src/billing/`, Styld Premium Week through Dodo Payments as merchant of record): the website
+  opens Dodo's hosted checkout (`POST /api/billing/checkout`, the account id in its metadata) and only Dodo's webhook
+  credits a week. `POST /api/billing/dodo/webhook` is a raw route (the signature covers the body as sent), verified the
+  Standard Webhooks way with WebCrypto; a payment counts only when its cart holds the stage's product. Each delivery is
+  one D1 batch whose statements check the purchase row themselves: `purchases` (keyed by Dodo's payment id, the
+  receipt and audit trail) and `premium` (the account's end, its one record) move together, once. A refund or a lost
+  dispute takes its week back once, never before now. `billing/Premium.ts` › `allowanceAt` is the one rule that turns
+  the end into the day's allowance, for holds, the tray and `GET /api/credits`. A stage without Dodo's key and secret
+  sells nothing; its mode and product are stage facts (`Resources.ts`).
 - **Work lifecycles are D1 rows driven by queues**, not Domain aggregates: captures, pieces' pictures and turns,
   gallery photos, generation jobs, Styld's turns, imports. `jobs/Jobs.ts`: every queue body is a tagged union consumed
   one way (done acks, failures retry until the last attempt, which gives the job up; an unknown body is dropped; one
@@ -121,7 +131,8 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   provider does which task are constants in their owning module; changing one is a commit. **No feature flags, no
   switches, no stand-ins in `src`:** tests swap layers (`test/NativeWorker.ts` passes `test/fakes/*`), never env.
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The
-  MCP SDK's older protocol era stays served for external assistant hosts.
+  MCP SDK's older protocol era stays served for external assistant hosts. An address's query parameters are read
+  leniently, as links anyone writes (Website, below), which is not a decoder for an older shape.
 - **The real photo is the source.** Generated pictures (clean pictures, turns, stickers) are presentation beside it
   and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld except a
   try-on's: the person's own My Gallery photo they said shows them (`generation/TryOnShared.ts` `sendable`).
@@ -191,6 +202,15 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Foldkit** owns Model/Message/update/view/Commands; views are pure, updates emit named Commands, request state uses
   explicit schemas. Rendering receives locale, version, time zone and a stable reference time. Styling is zyzz with the
   Gallery tokens (`DESIGN.md`).
+- **The address is the only copy of what a page shows from it** (Foldkit's query-sync, `repos/foldkit/examples/query-sync`):
+  the wardrobe's browse and filters, Ask's search and Styld's question live in the parsed route, never also in a
+  page's Model. Views read the route; a page's update is given it as a context argument
+  (`Wardrobe.update(model, message, { maybeBrowse })`, `Ask.update(model, message, { query })`); a change issues one
+  replace built from typed fields (`ReplaceBrowse`, `ReplaceQuery`), and `ChangedUrl` only sets the route. A filter
+  or a key replaces the address; a step to another level pushes. Each query parameter is read leniently
+  (`WardrobeBrowse.ts`): addresses are links anyone can write or keep, so a value that is not one of ours is left out
+  rather than turning the page into Not found, and the address is not rewritten. This is not compatibility code,
+  which stays banned for stored and sent shapes.
 - **en/sl catalogs** in `@styld/i18n` over cached `intl-messageformat`, reviewed in Git; the browser loads only the
   page's language. x18n owns key parity, missing translations, unused keys and hard-coded strings; `tools/i18n-check.ts`
   owns ICU syntax, arguments, plural forms and the generated modules. API errors use typed codes; presentation

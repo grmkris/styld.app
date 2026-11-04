@@ -1,8 +1,9 @@
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
-import { Profile } from '@styld/protocol'
+import { CreditBalance, Profile } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
+import { load } from 'foldkit/navigation'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -20,7 +21,24 @@ export { Deletion }
 /** Copying the assistants' server address. */
 export const Copy = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
 
+/** Today's credits as last read; a failed read keeps the ones shown. */
+export const CreditsData = AsyncData.Schema(CreditBalance, Schema.Literal('Unavailable'))
+export type CreditsData = typeof CreditsData.schema.Type
+
+/** Opening the premium week's checkout: the request, then the browser leaves for Dodo's page. */
+export const Checkout = defineTaggedUnion({ Idle: {}, Opening: {}, Failed: {} })
+
+/** Back from Dodo's checkout (`/account?premium=1`), the week comes from Dodo's webhook a moment later: the credits are
+ * read again a few times until premium shows. */
+export const Arrival = defineTaggedUnion({ Plain: {}, Paid: { readsLeft: Schema.Int } })
+
+/** How many times the credits are read again after a payment, three seconds apart. */
+export const paidReads = 8
+
 export const Model = Schema.Struct({
+  credits: CreditsData.schema,
+  checkout: Checkout,
+  arrival: Arrival,
   deletion: Deletion,
   copy: Copy,
   profile: ProfileData.schema,
@@ -32,6 +50,9 @@ export const Model = Schema.Struct({
 export type Model = typeof Model.Type
 
 export const init = (): Model => ({
+  credits: AsyncData.Loading(),
+  checkout: Checkout.Idle(),
+  arrival: Arrival.Plain(),
   deletion: Deletion.Idle(),
   copy: Copy.Idle(),
   profile: AsyncData.Loading(),
@@ -56,6 +77,12 @@ export const Message = defineMessageUnion({
   ClickedRetryProfile: {},
   GotShowMeMessage: { message: ShowMe.Message },
   GotTasteMessage: { message: Taste.Message },
+  SucceededReadCredits: { credits: CreditBalance },
+  FailedReadCredits: {},
+  ClickedRetryCredits: {},
+  ClickedPremiumWeek: {},
+  FailedOpenCheckout: {},
+  LeftForCheckout: {},
 })
 export type Message = typeof Message.Type
 
@@ -91,17 +118,65 @@ export const ReadProfile = Command.define('ReadProfile', {
   ),
 })
 
+const readCredits = Effect.gen(function* () {
+  const api = yield* (yield* StyldClient).api
+  return Message.SucceededReadCredits({ credits: yield* api.billing.credits() })
+}).pipe(Effect.orElseSucceed(() => Message.FailedReadCredits()))
+
+export const ReadCredits = Command.define('ReadCredits', {
+  messages: [Message.SucceededReadCredits, Message.FailedReadCredits],
+  execute: readCredits,
+})
+
+/** The credits again, a moment later: a payment's week arrives with Dodo's webhook, not with the person's return. */
+export const ReadCreditsSoon = Command.define('ReadCreditsSoon', {
+  messages: [Message.SucceededReadCredits, Message.FailedReadCredits],
+  execute: Effect.andThen(Effect.sleep('3 seconds'), readCredits),
+})
+
+/** Dodo's hosted checkout for a premium week: a top-level navigation, which the page's CSP allows (a form post to
+ * Dodo it would not). */
+export const OpenCheckout = Command.define('OpenCheckout', {
+  messages: [Message.LeftForCheckout, Message.FailedOpenCheckout],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const { url } = yield* api.billing.checkout({ payload: { operationId: yield* drawOperationId() } })
+    yield* load(url)
+    return Message.LeftForCheckout()
+  }).pipe(Effect.orElseSucceed(() => Message.FailedOpenCheckout())),
+})
+
 const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
 const tasteFold = Taste.heldBy<Model, Message>((message) => Message.GotTasteMessage({ message }))
 
-/** Opening the page: the profile, Show me and what Styld knows as they are now; what is already shown stays while it
- * is read again. */
-export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
-  Update.combine<Model, Message, StyldClient>(model, [
-    (current) => ({ model: current, commands: [ReadProfile()] }),
-    Update.foldChildStep({ update: ShowMe.enter, ...showMeFold }),
-    Update.foldChildStep({ update: Taste.enter, ...tasteFold }),
-  ])
+/** Opening the page: the profile, the credits, Show me and what Styld knows as they are now; what is already shown stays while it is
+ * read again. `paid`: back from Dodo's checkout. */
+export const enter =
+  (paid: boolean) =>
+  (model: Model): Update.Return<Model, Message, StyldClient> =>
+    Update.combine<Model, Message, StyldClient>(model, [
+      (current) => ({
+        model: modifyFields(current, {
+          arrival: () => (paid ? Arrival.Paid({ readsLeft: paidReads }) : Arrival.Plain()),
+        }),
+        commands: [ReadProfile(), ReadCredits()],
+      }),
+      Update.foldChildStep({ update: ShowMe.enter, ...showMeFold }),
+      Update.foldChildStep({ update: Taste.enter, ...tasteFold }),
+    ])
+
+/** Read credits: after a payment, read again until the week shows or the reads run out. */
+const readCreditsAgain = (model: Model, credits: CreditBalance): UpdateReturn =>
+  Arrival.match(model.arrival, {
+    Plain: () => ({ model }),
+    Paid: ({ readsLeft }) =>
+      credits.premiumUntil === null && readsLeft > 0
+        ? {
+            model: modifyFields(model, { arrival: () => Arrival.Paid({ readsLeft: readsLeft - 1 }) }),
+            commands: [ReadCreditsSoon()],
+          }
+        : { model },
+  })
 
 // UPDATE
 
@@ -148,4 +223,23 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     GotShowMeMessage: (got) => foldShowMe(model, got.message),
     GotTasteMessage: (got) => foldTaste(model, got.message),
+    SucceededReadCredits: ({ credits }) =>
+      readCreditsAgain(modifyFields(model, { credits: () => CreditsData.Success({ data: credits }) }), credits),
+    FailedReadCredits: () => ({
+      model: modifyFields(model, {
+        credits: (credits) => AsyncData.settle(credits, Result.fail('Unavailable' as const)),
+      }),
+    }),
+    ClickedRetryCredits: () =>
+      Option.match(AsyncData.revalidateOrLoad(model.credits), {
+        onNone: () => ({ model }),
+        onSome: (credits) => ({ model: modifyFields(model, { credits: () => credits }), commands: [ReadCredits()] }),
+      }),
+    ClickedPremiumWeek: () =>
+      Checkout.guards.Opening(model.checkout)
+        ? { model }
+        : { model: modifyFields(model, { checkout: () => Checkout.Opening() }), commands: [OpenCheckout()] },
+    // The browser is on its way to Dodo; the button stays busy until the page goes.
+    LeftForCheckout: () => ({ model }),
+    FailedOpenCheckout: () => ({ model: modifyFields(model, { checkout: () => Checkout.Failed() }) }),
   })

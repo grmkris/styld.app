@@ -27,7 +27,11 @@ const twoParts: VideoPlan = {
 
 describe('what adding costs', () => {
   test('the ways in say what a photo and a video cost, and how many credits are left once read', () => {
-    scene({ update, view }, given(addPage), expect(text('1 credit a photo · 5 for 30 s of video')).toExist())
+    scene(
+      { update, view },
+      given(addPage),
+      expect(text('A photo costs 1 credit, and 30 seconds of video 5.')).toExist(),
+    )
     scene(
       { update, view },
       given(
@@ -35,7 +39,7 @@ describe('what adding costs', () => {
           modifyFields(page, { maybeAllowance: () => Option.some({ remaining: 42, daily: 100 }) }),
         ),
       ),
-      expect(text('1 credit a photo · 5 for 30 s of video · 42 left today')).toExist(),
+      expect(text('A photo costs 1 credit, and 30 seconds of video 5. You have 42 left today.')).toExist(),
     )
   })
 })
@@ -63,7 +67,7 @@ describe('reading a video on the add page', () => {
           prepared: Option.none(),
         }),
       ),
-      expect(text("Today's free allowance covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
+      expect(text("Today's credits covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
     )
   })
 })

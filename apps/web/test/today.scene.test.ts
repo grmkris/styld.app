@@ -259,7 +259,7 @@ describe('Home before the first outfit', () => {
       expect(role('heading', { name: 'Add your first piece' })).toExist(),
       expect(text('Photograph a piece, or a few laid out, and Styld cuts each one out.')).toExist(),
       expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
-      expect(text('1 credit a photo · 97 of 100 left today')).toExist(),
+      expect(text('A photo costs 1 credit. You have 97 of 100 left today.')).toExist(),
     )
     // Before the tray says today's credits, only the price shows.
     scene(
@@ -269,7 +269,7 @@ describe('Home before the first outfit', () => {
           modifyFields(today, { pickUp: (pickUp) => modifyFields(pickUp, { tray: () => AsyncData.Loading() }) }),
         ),
       ),
-      expect(text('1 credit a photo')).toExist(),
+      expect(text('A photo costs 1 credit.')).toExist(),
     )
   })
 

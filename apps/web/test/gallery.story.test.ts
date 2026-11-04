@@ -371,7 +371,7 @@ describe('Ask', () => {
 
   test('a wardrobe that did not load asks again, through the one list of pieces every page shares', () => {
     story(
-      Ask.update,
+      (current: Ask.Model, next: Ask.Message) => Ask.update(current, next, { query: '' }),
       given(Ask.init()),
       message(Ask.Message.ClickedRetry()),
       expectOutMessage(Ask.OutMessage.RequestedPieces()),

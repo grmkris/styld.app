@@ -10,6 +10,7 @@ import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, type Redraw, RedrawSend } from './Piece.ts'
 import * as styles from './PieceView.styles.ts'
+import { spentWords } from './MoreCredits.ts'
 
 // A piece's clean picture on its page, below its pictures: why none came of it, and redrawing it.
 
@@ -33,7 +34,12 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
       RedrawSend.guards.Failed(redraw.send)
         ? h.p(
             [h.Role('alert'), ...styled(h, formError())],
-            [format(locale, `wardrobe.picture.problem.${redraw.send.problem}`, {})],
+            spentWords(
+              format(locale, `wardrobe.picture.problem.${redraw.send.problem}`, {}),
+              redraw.send.problem === 'dailyLimit',
+              locale,
+              h,
+            ),
           )
         : h.empty,
       h.div(styled(h, styles.actions()), [

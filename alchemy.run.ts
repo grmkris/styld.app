@@ -87,6 +87,8 @@ export default Alchemy.Stack(
       // public asset router. Serve the same build's files at the public edge.
       assets: { directory: 'apps/web/dist/client' },
       compatibility: { date: '2026-10-19' },
+      // Production serves styld.app; its workers.dev URL stays for operator readbacks.
+      ...('domain' in stage ? { domain: stage.domain } : {}),
       workersDev: true,
       observability: {
         enabled: true,

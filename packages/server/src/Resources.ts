@@ -18,6 +18,9 @@ interface StageFacts {
   /** Dodo Payments' API for its payments (test or live mode) and the Styld Premium Week product there
    * (`server/src/billing/`); payments run only where the stack is also given Dodo's key and webhook secret. */
   readonly billing: { readonly base: string; readonly product: string }
+  /** The public hostname the edge Worker serves as a Cloudflare custom domain, which becomes the auth origin; none
+   * means the workers.dev URL. The zone is in the stage's account, with no other record on the hostname. */
+  readonly domain?: string
 }
 
 /** Dodo's test mode: test cards, no money moves. */
@@ -58,6 +61,7 @@ export const stages = {
     aiCalls: 'styld_production_ai_calls',
     firstRateLimitNamespace: 2611001,
     billing: dodoLive,
+    domain: 'styld.app',
   },
 } as const satisfies Record<string, StageFacts>
 

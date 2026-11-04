@@ -26,6 +26,7 @@ import * as PickUp from './PickUp.ts'
 import * as ShowMe from './ShowMe.ts'
 import * as Tombola from './Tombola.ts'
 import * as WhatsNew from './WhatsNew.ts'
+import * as Challenges from './Challenges.ts'
 
 // MODEL
 
@@ -84,6 +85,8 @@ export const Model = Schema.Struct({
   /** What What's new starts with: asked once, above it. */
   showMe: ShowMe.Model,
   whatsNew: WhatsNew.Model,
+  /** The house boards Eva's challenges open, once seeded. */
+  challenges: Challenges.Model,
   /** What to wear today: the wheel that draws one piece. */
   tombola: Tombola.Model,
   /** The piece drawn and chosen to wear today: every outfit of the run is made around it, until the person goes back
@@ -103,6 +106,7 @@ export const init = (): Model => ({
   pickUp: PickUp.init(),
   showMe: ShowMe.init(),
   whatsNew: WhatsNew.init(),
+  challenges: Challenges.init(),
   tombola: Tombola.init(),
   maybeAnchor: Option.none(),
 })
@@ -116,6 +120,7 @@ export const Message = defineMessageUnion({
   GotPickUpMessage: { message: PickUp.Message },
   GotShowMeMessage: { message: ShowMe.Message },
   GotWhatsNewMessage: { message: WhatsNew.Message },
+  GotChallengesMessage: { message: Challenges.Message },
   GotTombolaMessage: { message: Tombola.Message },
   SucceededMakeOutfits: { batch: OutfitProposals },
   FailedMakeOutfits: {},
@@ -275,6 +280,13 @@ const whatsNewFold = {
   toParentMessage: (message: WhatsNew.Message) => Message.GotWhatsNewMessage({ message }),
 }
 const foldWhatsNew = Update.foldChild({ update: WhatsNew.update, ...whatsNewFold })
+const challengesFold = {
+  read: (model: Model) => Option.some(model.challenges),
+  write: (model: Model, challenges: Challenges.Model) => modifyFields(model, { challenges: () => challenges }),
+  toParentMessage: (message: Challenges.Message) => Message.GotChallengesMessage({ message }),
+}
+const foldChallenges = Update.foldChild({ update: Challenges.update, ...challengesFold })
+const enterChallenges = Update.foldChildStep({ update: Challenges.enter, ...challengesFold })
 const foldTombola = Update.foldChild({
   update: Tombola.update,
   read: (model: Model) => Option.some(model.tombola),
@@ -317,6 +329,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
     enterPickUp,
     enterShowMe,
     enterWhatsNew,
+    enterChallenges,
   ])
 
 /** The season a day's outfit is for, by its month where Styld's people live (the northern hemisphere): winter from
@@ -541,6 +554,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
     GotWhatsNewMessage: (got) => foldWhatsNew(model, got.message),
+    GotChallengesMessage: (got) => foldChallenges(model, got.message),
     GotTombolaMessage: (got) => foldTombola(model, got.message),
     GotPickUpMessage: (got) => foldPickUp(model, got.message),
     GotShowMeMessage: (got) => foldShowMe(model, got.message),

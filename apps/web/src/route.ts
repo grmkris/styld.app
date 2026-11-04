@@ -23,7 +23,8 @@ export const AppRoute = defineRouteUnion({
   Login: { next: Schema.Option(Schema.String), problem: Schema.Option(Schema.Literal('google')) },
   /** Sign-in for an assistant's connection: success returns to the OAuth authorization. */
   LoginForConnection: {},
-  Account: {},
+  /** `premium=1`: back from the premium week's checkout. */
+  Account: { premium: Schema.optionalKey(Schema.String) },
   /** The person's public profile, edited. */
   Profile: {},
   /** What the wardrobe shows: the address is its only copy (`WardrobeBrowse.ts`). */
@@ -54,6 +55,9 @@ export const AppRoute = defineRouteUnion({
   Person: { handle: Schema.String },
   /** A piece as others see it, from a public profile, board or look. */
   PublicPiece: { pieceId: Schema.String },
+  /** The privacy policy and the terms of use, readable signed out (Google's consent screen links them). */
+  Privacy: {},
+  Terms: {},
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -70,7 +74,11 @@ const loginRouter = pipe(
   mapTo(AppRoute.Login),
 )
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
-export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
+export const accountRouter = pipe(
+  literal('account'),
+  query(Schema.Struct({ premium: Schema.optionalKey(Schema.String) })),
+  mapTo(AppRoute.Account),
+)
 export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
 export const browseRouter = pipe(literal('wardrobe'), query(BrowseQuery), mapTo(AppRoute.Wardrobe))
 /** The wardrobe at a browse given in part: what is left out is the groups' and unfiltered. */
@@ -148,6 +156,8 @@ const atHandle = param<{ readonly handle: string }>(
 )
 export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
 export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
+export const privacyRouter = pipe(literal('privacy'), mapTo(AppRoute.Privacy))
+export const termsRouter = pipe(literal('terms'), mapTo(AppRoute.Terms))
 // Explore was a page until What's new on Home took its place (owner, 4 November): its old address opens Home.
 const formerExploreRouter = pipe(literal('explore'), mapTo(AppRoute.Home))
 
@@ -175,6 +185,8 @@ const parser = oneOf(
   boardRouter,
   boardsRouter,
   publicPieceRouter,
+  privacyRouter,
+  termsRouter,
   formerExploreRouter,
   personRouter,
   homeRouter,
@@ -286,8 +298,13 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   BoardCollage: () => meta('/boards/:board/collage', 'boards.title', { session: required, section: 'lab' }),
   Person: () => meta('/@:handle', 'profile.public.people'),
   PublicPiece: () => meta('/pieces/:piece', 'profile.public.pieces'),
+  Privacy: () => meta('/privacy', 'legal.privacyTitle'),
+  Terms: () => meta('/terms', 'legal.termsTitle'),
   NotFound: () => meta('other', 'common.notFoundTitle'),
 })
+
+/** The privacy policy and the terms, whose words the browser loads only for them (`loadCatalog`). */
+export const isLegal = (route: AppRoute) => AppRoute.guards.Privacy(route) || AppRoute.guards.Terms(route)
 
 /** The tab page a route shows, if it is one. */
 export const tabOf = (route: AppRoute): Option.Option<Tab> => routeMeta(route).tab
@@ -298,6 +315,9 @@ export const isSameTab = (left: AppRoute, right: AppRoute) =>
 
 /** The section of the account page about connecting an assistant, linked from Ask. */
 export const assistantsSection = 'assistants'
+
+/** The account's Credits section, which the day's refusals link to. */
+export const creditsSection = 'credits'
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */

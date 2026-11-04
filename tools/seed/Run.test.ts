@@ -56,6 +56,14 @@ describe('the test batch', () => {
     expect(prompts).toHaveLength(10)
   })
 
+  test('a batch of named garments takes them from the whole manifest, and refuses a name it lacks', () => {
+    expect(testBatchSpecs(fixture, ['w-bags-brown', 'm-coats-navy']).map(({ id }) => id)).toEqual([
+      'w-bags-brown',
+      'm-coats-navy',
+    ])
+    expect(() => testBatchSpecs(fixture, ['nowhere'])).toThrow('The manifest lacks specs: nowhere')
+  })
+
   test('stops cleanly at the cap, drawing nothing past it', async () => {
     const { work, prompts } = scriptedWork(new Map(), 0.05)
     const records = await generateAll(testBatchSpecs(fixture, []), work, [])

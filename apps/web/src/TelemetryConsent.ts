@@ -1,20 +1,44 @@
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, Effect, Layer, Option, Predicate, Schema } from 'effect'
+import { AsyncData } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
+import type { Model } from './App.ts'
 import { AppRoute } from './route.ts'
 
-/** The visitor's choice about browser diagnostics; `undecided` is asked once signed in (`asksAtStart`). */
+/** The visitor's choice about browser diagnostics; `undecided` is asked once a signed-in person has a piece (`asksOnceDressed`). */
 export const TelemetryConsent = Schema.Literals(['undecided', 'granted', 'denied'])
 export type TelemetryConsent = typeof TelemetryConsent.Type
 
-/** Whether a page opens with the prompt: for a signed-in person who has not decided, outside sign-in itself. A visitor
- * opens it from the footer's Diagnostics. The server renders from the same flags, so both agree on whether it shows. */
-export const asksAtStart = (
-  flags: { readonly telemetryConsent: TelemetryConsent; readonly hasSessionCookie?: boolean },
-  route: AppRoute,
-) =>
-  flags.telemetryConsent === 'undecided' &&
-  flags.hasSessionCookie === true &&
-  !AppRoute.guards.Login(route) &&
-  !AppRoute.guards.LoginForConnection(route)
+/** Whether the prompt asks: a signed-in person who has not decided, outside sign-in, once their wardrobe holds a
+ * piece. An empty wardrobe's first screen is the way to the first piece, and nothing covers it; so no page opens with
+ * the prompt, and the server never draws it. A visitor opens it from the footer's Diagnostics. */
+export const asksOnceDressed = (input: {
+  readonly consent: TelemetryConsent
+  readonly signedIn: boolean
+  readonly route: AppRoute
+  readonly pieceCount: number
+}) =>
+  input.consent === 'undecided' &&
+  input.signedIn &&
+  input.pieceCount > 0 &&
+  !AppRoute.guards.Login(input.route) &&
+  !AppRoute.guards.LoginForConnection(input.route)
+
+/** The diagnostics prompt opens once the person's pieces arrive and there is one (`asksOnceDressed`). */
+export const askOnceDressed = (model: Model): Model => {
+  const pieceCount = Option.match(AsyncData.getData(model.data.pieces), {
+    onNone: () => 0,
+    onSome: (list) => list.length,
+  })
+  const asks = asksOnceDressed({
+    consent: model.telemetry.consent,
+    signedIn: Predicate.isTagged(model.session, 'SignedIn') || model.context.hasSessionCookie === true,
+    route: model.route,
+    pieceCount,
+  })
+  return asks && !model.telemetry.prompting
+    ? modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => true }) })
+    : model
+}
 
 const cookieName = 'styld_diagnostics'
 

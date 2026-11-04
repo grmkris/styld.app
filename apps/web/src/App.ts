@@ -60,7 +60,7 @@ import {
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
 import type { PictureEncoder } from './Upload.ts'
-import { asksAtStart, TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
+import { askOnceDressed, TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 import { ReadTimeZone } from './TimeZone.ts'
 
 // MODEL
@@ -225,8 +225,8 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
       Update.foldChildStep({ update: Boards.revisit, ...foldBoards }),
     ]),
     // The account needs a session; signed out the page sends the visitor to sign in.
-    Match.tag('Account', () =>
-      signedIn ? [Update.foldChildStep({ update: Account.enter, ...at(lenses.account) })] : [],
+    Match.tag('Account', ({ premium }) =>
+      signedIn ? [Update.foldChildStep({ update: Account.enter(premium === '1'), ...at(lenses.account) })] : [],
     ),
     // The wardrobe shows the pieces, Styld's answers name them, a photo's garments are matched to them, and a garment
     // taken for one of them in the review tray shows that piece beside it.
@@ -251,7 +251,7 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
       you: You.Unknown(),
       data: ServerData.init(),
       page: page.model,
-      telemetry: { consent: context.telemetryConsent, prompting: asksAtStart(context, route) },
+      telemetry: { consent: context.telemetryConsent, prompting: false },
     },
     entering(route, signedIn),
   )
@@ -278,11 +278,8 @@ const changedUrl = (model: Model, url: Url): UpdateReturn => {
   if (Option.isSome(sameBoard)) return sameBoard.value
   if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
   const moved = NavigationState.restoreBrowsing(model, route, url.hash)
-  if (AppRoute.guards.Ask(route) && AppRoute.guards.Ask(model.route))
-    return Update.combine<Model, Message, Services>(moved, [
-      Update.foldChildStep({ update: Ask.changedQuery(route.q), ...at(lenses.ask) }),
-      (stepModel) => ({ model: stepModel, commands: Option.isSome(url.hash) ? arrive(url.hash) : [] }),
-    ])
+  const withinAsk = NavigationState.withinAsk(moved, model.route, route, url.hash)
+  if (Option.isSome(withinAsk)) return withinAsk.value
   if (isSameTab(model.route, route))
     return Option.isSome(url.hash) ? { model: moved, commands: arrive(url.hash) } : { model: moved }
   return Update.combine<Model, Message, Services>(moved, [
@@ -379,14 +376,15 @@ const foldProfile = Update.foldChild({
 
 const foldToday = Update.foldChild({ update: Today.update, ...at(lenses.today), foldOutMessage: foldTodayOut })
 
-const foldAsk = Update.foldChild({
-  update: Ask.update,
-  ...at(lenses.ask),
-  foldOutMessage: Ask.OutMessage.match<Step>({
-    RequestedPieces: () => revisitPieces,
-    RequestedNewBoard: () => (model) => Update.combine(model, [startOnEnter, toBoards]),
-  }),
-})
+const foldAsk = (context: Ask.Context) =>
+  Update.foldChild({
+    update: (child: Ask.Model, message: Ask.Message) => Ask.update(child, message, context),
+    ...at(lenses.ask),
+    foldOutMessage: Ask.OutMessage.match<Step>({
+      RequestedPieces: () => revisitPieces,
+      RequestedNewBoard: () => (model) => Update.combine(model, [startOnEnter, toBoards]),
+    }),
+  })
 
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
@@ -571,7 +569,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),
-    GotAskMessage: (got) => foldAsk(model, got.message),
+    GotAskMessage: (got) => foldAsk(NavigationState.askContext(model.route))(model, got.message),
     GotBoardsMessage: (got) => foldPages.boards(model, got.message),
     GotBoardMessage: (got) => foldPages.board(model, got.message),
     GotVisitMessage: (got) => foldPages.visit(model, got.message),
@@ -581,7 +579,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         (stepModel) => foldPages.data(stepModel, got.message),
         (stepModel) =>
           Predicate.isTagged(got.message, 'SucceededListPieces')
-            ? NavigationState.restoreWardrobePosition(stepModel)
+            ? NavigationState.restoreWardrobePosition(askOnceDressed(stepModel))
             : { model: stepModel },
       ]),
     ClickedRetryLanding: () => retryLanding(model),

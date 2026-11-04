@@ -400,6 +400,9 @@ const expectConsentReachable = async (browser: Browser, origin: string) => {
   try {
     const page = await phone.newPage()
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
+    // The prompt asks on its own only once the person has a piece; the footer opens it either way.
+    if (!(await page.getByRole('region', { name: 'Diagnostics' }).isVisible()))
+      await page.getByRole('contentinfo').getByRole('button', { name: 'Diagnostics', exact: true }).click()
     for (const name of ['Allow', 'No thanks']) {
       const answer = page.getByRole('button', { name, exact: true })
       const box = await answer.boundingBox()

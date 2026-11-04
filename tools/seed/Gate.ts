@@ -33,9 +33,16 @@ export interface Judge {
 }
 
 /** The brief's bar: one garment, the spec's type, its first colour among those seen, and nothing else in the picture. */
+/** Types that name a use rather than a shape: a judge reads sportswear joggers as trousers, and loungewear as a
+ * jumper or trousers, and is right to. */
+const uses: ReadonlySet<string> = new Set(['sportswear', 'loungewear'])
+
+/** Whether the judge read the garment as the spec's type: the same, or any shape for a type that names a use. */
+const typeFits = (read: string, spec: Spec) => read === spec.type || uses.has(spec.type)
+
 export const passes = (verdict: Verdict, spec: Spec) =>
   verdict.garments === 1 &&
-  verdict.type === spec.type &&
+  typeFits(verdict.type, spec) &&
   spec.colours[0] !== undefined &&
   verdict.colours.includes(spec.colours[0]) &&
   !verdict.person &&
@@ -47,7 +54,7 @@ export const passes = (verdict: Verdict, spec: Spec) =>
 export const failureOf = (verdict: Verdict, spec: Spec): string | undefined => {
   const faults = [
     verdict.garments === 1 ? undefined : 'The last attempt did not show exactly one garment. Show only this one.',
-    verdict.type === spec.type ? undefined : `The last attempt did not read as a ${spec.subcategory}.`,
+    typeFits(verdict.type, spec) ? undefined : `The last attempt did not read as a ${spec.subcategory}.`,
     spec.colours[0] !== undefined && verdict.colours.includes(spec.colours[0])
       ? undefined
       : `The last attempt's colour was wrong: it must be ${spec.look}.`,

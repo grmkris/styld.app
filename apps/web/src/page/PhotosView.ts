@@ -19,6 +19,7 @@ import { Adding, Message, type Model } from './Photos.ts'
 import * as styles from './PhotosView.styles.ts'
 import { labMain } from './SectionMain.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
+import { spentWords } from './MoreCredits.ts'
 
 interface Inputs {
   readonly locale: Locale
@@ -82,7 +83,12 @@ const addView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     Adding.guards.Failed(model.adding)
       ? h.p(
           [h.Role('alert'), ...styled(h, styles.note())],
-          [format(locale, model.adding.spent ? 'photos.spent' : 'photos.addFailed', {})],
+          spentWords(
+            format(locale, model.adding.spent ? 'photos.spent' : 'photos.addFailed', {}),
+            model.adding.spent,
+            locale,
+            h,
+          ),
         )
       : h.empty,
   ])

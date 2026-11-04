@@ -81,19 +81,22 @@ const photoCost = (model: Model, locale: Locale) =>
 
 /** An empty wardrobe: the way to the first piece, with what it costs. */
 const firstPieceView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.placeholder()), [
-    h.div(styled(h, styles.placeholderBody()), [
-      h.h2(styled(h, styles.placeholderTitle()), [format(locale, 'today.firstTitle', {})]),
-      h.p([], [format(locale, 'today.firstHint', {})]),
-      h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'today.addClothes', {})]),
-      h.p(styled(h, styles.note()), [photoCost(model, locale)]),
+  h.div(styled(h, cx(styles.placeholder(), styles.firstPiece())), [
+    h.div(styled(h, styles.firstPieceBody()), [
+      h.h2(styled(h, styles.firstPieceTitle()), [format(locale, 'today.firstTitle', {})]),
+      h.p(styled(h, styles.firstPieceHint()), [format(locale, 'today.firstHint', {})]),
+      h.a(
+        [h.Href(addPiecesRouter({})), ...styled(h, cx(primaryAction(), styles.firstPieceAction()))],
+        [format(locale, 'today.addClothes', {})],
+      ),
+      h.p(styled(h, cx(styles.note(), styles.cost())), [photoCost(model, locale)]),
     ]),
   ])
 
 /** Pieces kept, none cut out yet: they are on their way, and the tray is where to follow them. */
 const cuttingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.placeholder()), [
-    h.div(styled(h, styles.placeholderBody()), [
+  h.div(styled(h, cx(styles.placeholder(), styles.firstPiece())), [
+    h.div(styled(h, styles.firstPieceBody()), [
       h.p([h.Role('status')], [format(locale, 'today.cutting', {})]),
       h.a([h.Href(reviewRouter({})), ...styled(h, secondaryAction())], [format(locale, 'today.review', {})]),
     ]),
@@ -349,6 +352,9 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
+/** The pieces have loaded and there are none. */
+const isEmptyWardrobe = (pieces: PiecesData) => Option.exists(AsyncData.getData(pieces), Array.isReadonlyArrayEmpty)
+
 /** The season of the day, once the browser knows the day: the tombola draws pieces for it first. */
 const seasonOf = (model: Model) => Option.flatMap(model.maybeDay, (day) => Option.fromNullishOr(briefFor(day).season))
 
@@ -361,7 +367,7 @@ export const view = Submodel.defineView<
   HomeData & { readonly locale: Locale; readonly showMeAnswered: boolean }
 >((model, { locale, pieces, boards, showMeAnswered }, h) =>
   h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
+    [h.Id('main'), ...styled(h, isEmptyWardrobe(pieces) ? cx(styles.page(), styles.emptyPage()) : styles.page())],
     [
       h.div(styled(h, styles.head()), [headlineView(model.maybeDay, locale, h)]),
       h.div(styled(h, styles.pick()), [
@@ -373,6 +379,8 @@ export const view = Submodel.defineView<
           toParentMessage: (message) => Message.GotTombolaMessage({ message }),
         }),
       ]),
+      // An empty wardrobe has one thing to do first: the table that waits for its first piece comes before the rest.
+      isEmptyWardrobe(pieces) ? todayView(model, pieces, locale, h) : h.empty,
       h.div(styled(h, styles.news()), [
         h.submodel({
           slotId: 'show-me',
@@ -389,9 +397,9 @@ export const view = Submodel.defineView<
           toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
         }),
       ]),
-      todayView(model, pieces, locale, h),
+      isEmptyWardrobe(pieces) ? h.empty : todayView(model, pieces, locale, h),
       h.div(styled(h, styles.side()), [
-        challengesView(locale, h),
+        challengesView(model.challenges, locale, h),
         pickUpView(model.pickUp, { pieces, boards }, locale, h),
         h.submodel({
           slotId: 'whats-new-earlier',

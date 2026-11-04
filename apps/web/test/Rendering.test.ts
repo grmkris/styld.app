@@ -14,6 +14,8 @@ import {
 import { SessionHttp } from '@styld/auth/config'
 import { application, renderDocument, renderRequest } from '../src/entry.server.ts'
 import { urlOf } from './AppFixtures.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
+import * as ServerData from '../src/ServerData.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
 const request = (language: string) => new Request('https://styld.test/', { headers: { 'accept-language': language } })
@@ -139,25 +141,40 @@ const flags = (telemetryConsent: TelemetryConsent): Flags => ({
   telemetryConsent,
 })
 
-test('asks a signed-in person for diagnostics consent until they decide, and lets anyone reopen the choice', () => {
+const piecesArrive = (model: ReturnType<typeof init>['model'], count: number) =>
+  update(
+    model,
+    Message.GotServerDataMessage({
+      message: ServerData.Message.SucceededListPieces({
+        pieces: Array.from({ length: count }, (_, index) => pieceFixture(`p${index}`)),
+      }),
+    }),
+  ).model
+
+test('asks a signed-in person for diagnostics consent once they have a piece, until they decide, and lets anyone reopen the choice', () => {
   const signedIn = (telemetryConsent: TelemetryConsent): Flags => ({
     ...flags(telemetryConsent),
     hasSessionCookie: true,
   })
-  const asking = init(signedIn('undecided'), urlOf('/')).model
+  // No page opens with the prompt: an empty wardrobe's first screen is the way to the first piece.
+  const opening = init(signedIn('undecided'), urlOf('/')).model
+  expect(opening.telemetry).toEqual({ consent: 'undecided', prompting: false })
+  expect(piecesArrive(opening, 0).telemetry.prompting).toBe(false)
+  const asking = piecesArrive(opening, 1)
   expect(asking.telemetry).toEqual({ consent: 'undecided', prompting: true })
-  expect(init(signedIn('granted'), urlOf('/')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
+  expect(piecesArrive(init(signedIn('granted'), urlOf('/')).model, 1).telemetry.prompting).toBe(false)
   // A visitor who is not signed in, and sign-in itself, are not interrupted; the footer still opens the choice.
   const visitor = init(flags('undecided'), urlOf('/')).model
-  expect(visitor.telemetry).toEqual({ consent: 'undecided', prompting: false })
+  expect(piecesArrive(visitor, 1).telemetry.prompting).toBe(false)
   expect(update(visitor, Message.OpenedTelemetrySettings()).model.telemetry.prompting).toBe(true)
-  expect(init(signedIn('undecided'), urlOf('/login')).model.telemetry.prompting).toBe(false)
-  expect(init(signedIn('undecided'), urlOf('/login/connect')).model.telemetry.prompting).toBe(false)
+  expect(piecesArrive(init(signedIn('undecided'), urlOf('/login')).model, 1).telemetry.prompting).toBe(false)
+  expect(piecesArrive(init(signedIn('undecided'), urlOf('/login/connect')).model, 1).telemetry.prompting).toBe(false)
   const choosing = update(asking, Message.ChoseTelemetryConsent({ granted: false }))
   expect(choosing.model.telemetry.prompting).toBe(false)
   expect(choosing.commands?.[0]?.name).toBe('RecordTelemetryConsent')
   const declined = update(choosing.model, Message.RecordedTelemetryConsent({ granted: false })).model
   expect(declined.telemetry).toEqual({ consent: 'denied', prompting: false })
+  expect(piecesArrive(declined, 2).telemetry.prompting).toBe(false)
   const reopened = update(declined, Message.OpenedTelemetrySettings()).model
   expect(reopened.telemetry).toEqual({ consent: 'denied', prompting: true })
   expect(update(reopened, Message.RecordedTelemetryConsent({ granted: true })).model.telemetry.consent).toBe('granted')
@@ -195,13 +212,11 @@ const renderPage = async (path: string, cookie?: string) => {
 
 const sessionCookie = `${SessionHttp.cookieName}=test`
 
-test('server rendering shows the consent prompt only to signed-in people who have not decided', async () => {
+test('the server never draws the consent prompt: it opens once a signed-in person’s pieces arrive', async () => {
   const prompt = 'record anonymous error and speed data'
-  expect(await renderPage('/', sessionCookie)).toContain(prompt)
+  expect(await renderPage('/', sessionCookie)).not.toContain(prompt)
   expect(await renderPage('/')).not.toContain(prompt)
   expect(await renderPage('/login', sessionCookie)).not.toContain(prompt)
-  expect(await renderPage('/', `${sessionCookie}; styld_diagnostics=granted`)).not.toContain(prompt)
-  expect(await renderPage('/', `${sessionCookie}; styld_diagnostics=denied`)).not.toContain(prompt)
 })
 
 test('server rendering draws the table’s loader as an inline, hidden Phosphor icon', async () => {

@@ -23,6 +23,10 @@ export const page = style({
     columnGap: 'columns',
   },
 })
+/** An empty wardrobe on a desktop: the table waiting for its first piece stands at the top left, beside What's new. */
+export const emptyPage = style({
+  '@media (min-width: 900px)': { gridTemplateAreas: '"head pick" "outfit news" "outfit side"' },
+})
 export const head = style({ minInlineSize: '0', '@media (min-width: 900px)': { gridArea: 'head' } })
 /** What to wear today: under the day on a phone, at the end of the day's row on a desktop. */
 export const pick = style({
@@ -81,8 +85,15 @@ export const placeholder = style({
   textAlign: 'center',
   color: 'ink2',
 })
+/** The empty table as the first step: as tall as its words, read from the left, the way in under them. */
+export const firstPiece = style({ aspectRatio: 'auto', placeItems: 'stretch', padding: '28px', textAlign: 'start' })
+export const firstPieceBody = style({ display: 'grid', justifyItems: 'start', gap: 'related' })
+export const firstPieceTitle = style({ margin: '0', fontSize: 'heading', color: 'ink', textWrap: 'balance' })
+export const firstPieceHint = style({ margin: '0', textWrap: 'pretty' })
+export const firstPieceAction = style({ marginBlockStart: '8px', '@media (max-width: 899px)': { inlineSize: '100%' } })
+/** A cost and what is left: steady digits as the count changes. */
+export const cost = style({ fontVariantNumeric: 'tabular-nums' })
 export const placeholderBody = style({ display: 'grid', justifyItems: 'center', gap: 'related' })
-export const placeholderTitle = style({ margin: '0', fontSize: 'heading' })
 export const actions = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
 export const wear = style({ flexGrow: 1 })
 /** Wear this and Spin in outline while the pieces load: the same row, the same sizes. */

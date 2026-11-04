@@ -6,7 +6,12 @@ export const authForm = style({ display: 'grid', gap: 'actions', marginBlockStar
 export const lede = style({ fontSize: 'subheading', color: 'ink2' })
 export const emailShown = style({ color: 'ink', fontWeight: 600, overflowWrap: 'anywhere' })
 export const submit = style({ inlineSize: '100%', marginBlockStart: '16px' })
-export const notice = style({ marginBlockStart: '8px', fontSize: 'label', color: 'ink2' })
+export const notice = style({
+  marginBlockStart: '8px',
+  fontSize: 'label',
+  color: 'ink2',
+  fontVariantNumeric: 'tabular-nums',
+})
 export const loginActions = style({
   display: 'flex',
   flexWrap: 'wrap',
