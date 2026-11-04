@@ -60,6 +60,7 @@ export const toolNames = [
   'note_list',
   'note_delete',
   'occasions_set',
+  'feedback_send',
 ] as const
 
 /** The unit fakes' first piece and board (Mcp.test.ts). */
@@ -133,4 +134,5 @@ export const everyCall: Readonly<Record<(typeof toolNames)[number], Record<strin
   note_list: {},
   note_delete: { noteId: `sn_${'every'.padEnd(22, 'x')}`, operationId: opId('note_delete') },
   occasions_set: { operationId: opId('occasions'), occasions: ['smart', 'casual'] },
+  feedback_send: { kind: 'problem', message: 'piece_add did not answer', tool: 'piece_add' },
 }

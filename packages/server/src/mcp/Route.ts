@@ -9,6 +9,8 @@ import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
 import { ReaderLocale, readerLocaleOf } from '../social/Translated.ts'
 import { curationTools } from './CurationTools.ts'
+import type { Feedback } from './Feedback.ts'
+import { feedbackAdminTools } from './FeedbackTools.ts'
 import { type AssistantTools, instructions, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
@@ -32,6 +34,7 @@ export const mcpRoutes = (
   served: {
     readonly tools: AssistantTools
     readonly curation: Curation['Service']
+    readonly feedback: Pick<Feedback['Service'], 'list' | 'setStatus'>
     readonly accounts: ToolServices['accounts']
   },
   admins: ReadonlySet<string>,
@@ -42,7 +45,7 @@ export const mcpRoutes = (
         accounts: served.accounts,
         release,
         tools: served.tools,
-        adminTools: [...served.tools, ...curationTools(served.curation)],
+        adminTools: [...served.tools, ...curationTools(served.curation), ...feedbackAdminTools(served.feedback)],
         admins,
       }),
     ),
