@@ -2,7 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "68e35aff-b3d9-4072-9a89-2b698e6dc917",
-  "prevIds": ["78a37783-b339-4435-a264-91ef9672a134"],
+  "prevIds": ["92a83095-464d-404d-a29a-15cfe722886d"],
   "ddl": [
     {
       "name": "account_deletions",
@@ -8698,6 +8698,22 @@
       "table": "purchases",
       "name": "purchases_status",
       "value": "\"status\" IN ('succeeded', 'refunded', 'disputed')",
+      "entityType": "checks"
+    },
+    {
+      "table": "piece_pictures",
+      "name": "drawn_rotation",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "piece_pictures",
+      "name": "piece_pictures_drawn_rotation",
+      "value": "\"drawn_rotation\" IN (0, 90, 180, 270)",
       "entityType": "checks"
     }
   ],
