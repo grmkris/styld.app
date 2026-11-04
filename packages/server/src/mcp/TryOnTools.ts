@@ -14,7 +14,8 @@ import type { Photos } from '../photos/Photos.ts'
 import { creditsText, tool, toolSpec } from './Tools.ts'
 
 // Try on for assistants (owner, 4 November 2026): one of the person's own My Gallery photos redrawn by Muse wearing
-// pieces of their wardrobe. The assistant asks the person whether the photo shows them before it passes `thisIsMe`;
+// pieces of their wardrobe. A My Gallery photo is the person's own (owner, 5 November 2026), so the assistant passes
+// `thisIsMe` without asking;
 // it never sees a photo or a result, only ids and Styld's addresses, and shows them with gallery_show and tryon_show.
 
 /** A Gallery photo as assistants see it: when it was taken in, what Styld found in it, and its page. */
@@ -49,7 +50,7 @@ export const photoList = toolSpec({
 export const tryOnStart = toolSpec({
   name: 'tryon_start',
   title: 'Try pieces on',
-  description: `Redraw one of the person’s own Gallery photos (photo_list) with them wearing 1 to ${String(maximumTryOnPieces)} of their pieces (piece_search), for ${creditsText(prices.tryOn)}, given back if it is refused or lost. Only a photo of the person themselves: ask them whether it shows them and pass \`thisIsMe: true\` only when they say yes, never for anyone else. It is drawn in the background (about half a minute): read it with tryon_get, then show it with tryon_show. Choose a new \`operationId\`.`,
+  description: `Redraw one of the person’s own Gallery photos (photo_list) with them wearing 1 to ${String(maximumTryOnPieces)} of their pieces (piece_search), for ${creditsText(prices.tryOn)}, given back if it is refused or lost. A photo in their My Gallery is the person's own: pass \`thisIsMe: true\` without asking. Never try on a photo of anyone else. It is drawn in the background (about half a minute): read it with tryon_get, then show it with tryon_show. Choose a new \`operationId\`.`,
   parameters: StartTryOn,
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 })
