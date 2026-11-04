@@ -17,7 +17,7 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { LocaleSave, Message, Session, SignOut, update } from '../src/App.ts'
-import { Navigate } from '../src/Navigation.ts'
+import { Navigate, ReturnAfterSignIn } from '../src/Navigation.ts'
 import {
   type Code,
   Message as LoginMessage,
@@ -112,8 +112,8 @@ describe('email code sign-in', () => {
       submit(selector('#email-code')),
       Command.expectExact(VerifyCode({ email: 'ana@example.com', sent })),
       Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
-      Command.expectExact(Navigate({ href: '/' })),
-      Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
+      Command.expectExact(ReturnAfterSignIn({ next: Option.none() })),
+      Command.resolve(ReturnAfterSignIn, Message.CompletedNavigate()),
       expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })
@@ -194,8 +194,8 @@ describe('email code sign-in', () => {
       given(fromProfile),
       submit(selector('#email-code')),
       Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
-      Command.expectExact(Navigate({ href: '/@nika.kovac#follow' })),
-      Command.resolve(Navigate({ href: '/@nika.kovac#follow' }), Message.CompletedNavigate()),
+      Command.expectExact(ReturnAfterSignIn({ next: Option.some('/@nika.kovac#follow') })),
+      Command.resolve(ReturnAfterSignIn, Message.CompletedNavigate()),
       expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })

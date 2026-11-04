@@ -32,6 +32,10 @@ export const SignInToFollow = Command.define('SignInToFollow', {
  * What's new waits and Show me is asked (owner, 4 November 2026). */
 export const returnAfterSignIn = (next: Option.Option<string>) => ReturnAfterSignIn({ next })
 
+/** The page a sign-in asked to return to, if it is one of this site's, else Home. */
+export const signInDestination = (asked: Option.Option<string>) =>
+  Option.getOrElse(returnPath(asked), () => homeRouter({}))
+
 /** A sign-in with no `next` may be one that came back from Google, which noted it for this tab before leaving. */
 export const ReturnAfterSignIn = Command.define('ReturnAfterSignIn', {
   args: { next: Schema.Option(Schema.String) },
@@ -39,7 +43,7 @@ export const ReturnAfterSignIn = Command.define('ReturnAfterSignIn', {
   execute: ({ next }) =>
     Effect.gen(function* () {
       const asked = Option.isSome(next) ? next : Option.fromNullishOr(yield* tookNext)
-      yield* load(Option.getOrElse(returnPath(asked), () => homeRouter({})))
+      yield* load(signInDestination(asked))
       return Message.CompletedNavigate()
     }),
 })

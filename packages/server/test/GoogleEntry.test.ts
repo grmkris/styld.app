@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
-import { accountOfEmail, createEmailAccount, googleAdopter } from '@styld/auth'
+import { googleAdopter } from '@styld/auth/google'
+import { accountOfEmail, createEmailAccount } from '@styld/auth/provisioning'
 import { accounts } from '@styld/db'
 import { OAuth } from '@yielded/auth'
 import { drizzle } from 'drizzle-orm/d1'

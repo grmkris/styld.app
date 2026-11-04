@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
 import { ListBoards, ListPieces, Message as DataMessage } from '../src/ServerData.ts'
 import { ReadYou, You } from '../src/You.ts'
-import { Navigate } from '../src/Navigation.ts'
+import { Navigate, ReturnAfterSignIn, signInDestination } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as PickUp from '../src/page/PickUp.ts'
@@ -44,9 +44,10 @@ describe('the session decides where a visitor belongs', () => {
       given(page('/login')),
       message(Message.ReceivedSession({ claims })),
       model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
-      Command.expectExact(Navigate({ href: '/' })),
-      Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
+      Command.expectExact(ReturnAfterSignIn({ next: Option.none() })),
+      Command.resolve(ReturnAfterSignIn, Message.CompletedNavigate()),
     )
+    expect(signInDestination(Option.none())).toBe('/')
   })
 
   test('a signed-in visitor who signed in from a page goes back to it, and only to a page of this site', () => {
@@ -68,15 +69,17 @@ describe('the session decides where a visitor belongs', () => {
       ['/boards/bd_1?from=explore#pins', '/boards/bd_1?from=explore#pins'],
       ...elsewhere.map((next) => [next, '/']),
     ] as const
-    for (const [next, href] of cases)
+    for (const [next, href] of cases) {
       story(
         update,
         given(atLogin(next)),
         message(Message.ReceivedSession({ claims })),
         model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
-        Command.expectExact(Navigate({ href })),
-        Command.resolve(Navigate({ href }), Message.CompletedNavigate()),
+        Command.expectExact(ReturnAfterSignIn({ next: Option.some(next) })),
+        Command.resolve(ReturnAfterSignIn, Message.CompletedNavigate()),
       )
+      expect(signInDestination(Option.some(next))).toBe(href)
+    }
   })
 
   test('a signed-in visitor sent to sign in by an assistant resumes its authorization', () => {
