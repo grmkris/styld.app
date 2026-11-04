@@ -27,7 +27,7 @@ Auth's persistence and drizzle took about 310 ms, `Modules.ts` 185 ms, the API 4
 - Open: deploy to the preview, then `cold.ts` and Workers Logs (no "hung", no startup errors), then production. No gate
   yet keeps the entry's static graph small.
 
-## Photo imports no longer stall styld.app (4 November, on main, not deployed)
+## Photo imports no longer stall styld.app (4 November, `d6d6d239`, live on styld.app since about 21:59 UTC)
 
 Eva (4 November, about 21:20 UTC): the app hung and lagged while about 80 photos were processing.
 
@@ -48,11 +48,14 @@ Eva (4 November, about 21:20 UTC): the app hung and lagged while about 80 photos
   - `processMatch` compares one sighting a delivery and sends the queue on to the next.
   - The piece queue's batch size is 1.
 - **Evidence.** `Comparable.test.ts` (unchanged, overwritten, deleted, not a picture, least recently used) and
-  `Jobs.test.ts` (batch size); typecheck, lint, Knip, graph, patterns and unit. The native suite and the production
-  readback after the deploy are open.
+  `Jobs.test.ts` (batch size); typecheck, lint, Knip, graph, patterns and unit. Production read back from 22:00 to
+  22:24 UTC: no `exceededCpu`, but no import ran in that window, so the fix is unexercised until the next one.
 - **Open.**
   - Moving piece processing into its own Worker would keep image work out of the API's isolate altogether.
   - A thumbnail answering 304 still spends about 300 ms of CPU.
+  - Every deploy is felt as a hang. A fresh isolate's first requests wait about 6 s in Yielded Auth's session-store
+    setup (catalog reads at 0.25–1.4 s each, Google's openid-configuration). On a thumbnail the Images transform then
+    adds up to 7 s. About 60 thumbnails took 3–15 s at 22:22 UTC, right after `3f909345` went out.
   - MCP clients get 404 on `/api/auth/oauth2/token` and `/.well-known/openid-configuration`.
 
 ## Rotate turns the shop-style picture too (4 November, `0f29dcd4`, live on the preview and styld.app)
