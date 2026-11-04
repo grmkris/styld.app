@@ -75,3 +75,16 @@ export const localD1 = () => {
   // SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them
   return Object.assign<D1Database, { readonly sqlite: DatabaseSync }>(d1 as never, { sqlite: db })
 }
+
+/** A local D1 with one member, `ac_1`: a lifetime membership, so each day brings the members' allowance and the
+ * account's 3 free credits are on top. */
+export const memberD1 = () => {
+  const database = localD1()
+  database.sqlite.exec(
+    "INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0)",
+  )
+  database.sqlite.exec(
+    "INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES ('ac_1', 'lifetime', NULL, 'active', 0)",
+  )
+  return database
+}

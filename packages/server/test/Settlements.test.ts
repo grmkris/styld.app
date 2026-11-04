@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Exit, Layer } from 'effect'
 import { Database, nowDate } from '../src/kernel/Db.ts'
 import { holdId, Holds, settlementRows } from '../src/usage/Holds.ts'
-import { localD1 } from './LocalD1.ts'
+import { memberD1 } from './LocalD1.ts'
 
 /** A member's credits on a fresh day: the day's allowance and the free credits. */
 const allCredits = memberDailyCredits + freeCredits
@@ -18,14 +18,8 @@ const allCredits = memberDailyCredits + freeCredits
 const hourMillis = 60 * 60 * 1000
 
 const over = () => {
-  const database = localD1()
-  database.sqlite.exec(
-    "INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0)",
-  )
   // A member, so the day brings the members' allowance; the account's 3 free credits are on top.
-  database.sqlite.exec(
-    "INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES ('ac_1', 'lifetime', NULL, 'active', 0)",
-  )
+  const database = memberD1()
   const wallet = Styld.layer(Layer.empty).pipe(Layer.provide(Domain.InMemory))
   const layer = Holds.layer.pipe(Layer.provide(Layer.mergeAll(wallet, Database.layer(database))))
   const kept = () => database.sqlite.prepare('SELECT hold_id, ending FROM pending_settlements ORDER BY hold_id').all()
