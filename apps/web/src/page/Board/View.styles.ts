@@ -92,6 +92,23 @@ export const paper = style({
   '&[data-paper="clay"]': { backgroundColor: 'tintClay' },
   '&[data-dropping]': { boxShadow: 'dropTarget' },
 })
+/** The arrows from a template board's piece to its outfits: under every item, thin at any size of the table. */
+export const arrows = style({
+  position: 'absolute',
+  inset: '0',
+  inlineSize: '100%',
+  blockSize: '100%',
+  zIndex: 0,
+  pointerEvents: 'none',
+  fill: 'none !custom',
+  stroke: 'ink2',
+  strokeOpacity: 0.55,
+  strokeWidth: '1.5px',
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  // Not inherited: each line keeps its width however the table is scaled.
+  '& path': { vectorEffect: 'non-scaling-stroke' },
+})
 /** A table with no hands on it: a board's preview or Home's outfit. */
 export const still = style({ touchAction: 'auto', pointerEvents: 'none' })
 export const emptyHint = style({

@@ -10,12 +10,12 @@ import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 
 // A new board starts from a template (Eva's review, F-26; owner 4 November 2026): + on Boards, or Start a board in Ask's
-// sheet, opens this sheet instead of making a blank board. Blank makes one as before; "One piece, six outfits" (T-10)
+// sheet, opens this sheet instead of making a blank board. Blank makes one as before; "One piece, many outfits" (T-10)
 // asks for a piece of the person's own and, if they like, a season, then makes the board with its outfits.
 
 // MODEL
 
-/** Where the sheet is: its two templates, or the piece and season of "One piece, six outfits". */
+/** Where the sheet is: its two templates, or the piece and season of "One piece, many outfits". */
 export const Step = defineTaggedUnion({ Templates: {}, Anchor: {} })
 export type Step = typeof Step.Type
 
@@ -93,7 +93,7 @@ const failureOf = (error: unknown): { readonly problem: StartProblem; readonly m
   return { problem: Predicate.isTagged(error, 'SlowDown') ? 'slowDown' : 'failed', missing: [] }
 }
 
-/** Make a "One piece, six outfits" board around the piece, for the season when one is chosen. */
+/** Make a "One piece, many outfits" board around the piece, for the season when one is chosen. */
 export const CreateOutfitBoard = Command.define('CreateOutfitBoard', {
   args: {
     name: Schema.String,

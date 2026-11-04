@@ -1,6 +1,6 @@
 import { piecesById } from '../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
-import { type BoardItem, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
+import { type Arrow, type BoardItem, layoutArrows, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -149,6 +149,46 @@ const leavingView = (item: BoardItem, source: ImageSource, h: HtmlBuilder<Messag
     [itemContent(item, h, 'full', source)],
   )
 
+/** An arrow's line and its open head, in the table's units, rounded. */
+const arrowPath = ({ x1, y1, x2, y2 }: Arrow) => {
+  const angle = Math.atan2(y2 - y1, x2 - x1)
+  const head = 26
+  const spread = 0.5
+  const point = (turn: number) =>
+    `${(x2 - head * Math.cos(angle + turn)).toFixed(1)} ${(y2 - head * Math.sin(angle + turn)).toFixed(1)}`
+  const end = `${x2.toFixed(1)} ${y2.toFixed(1)}`
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)}L${end}M${point(-spread)}L${end}L${point(spread)}`
+}
+
+/** The thin arrows a "One piece, many outfits" board draws from its piece to each outfit (the layout's decoration,
+ * Eva's references): drawn from the table as it is, so an outfit moved out of its place loses its arrow. */
+const arrowsView = (model: Model, h: HtmlBuilder<Message>): Html =>
+  Option.match(model.outfits.maybeAround, {
+    onNone: () => h.empty,
+    onSome: ({ anchor, outfits, layout }) => {
+      const arrows =
+        anchor === null
+          ? []
+          : layoutArrows(
+              layout,
+              anchor.id,
+              outfits.map((outfit) => outfit.pieces.map(({ id }) => id)),
+              model.items,
+            )
+      return Array.isReadonlyArrayEmpty(arrows)
+        ? h.empty
+        : h.svg(
+            [
+              h.ViewBox('0 0 1000 1250'),
+              h.AriaHidden(true),
+              h.DataAttribute('arrows', ''),
+              ...styled(h, styles.arrows()),
+            ],
+            arrows.map((arrow) => h.path([h.D(arrowPath(arrow))])),
+          )
+    },
+  })
+
 const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const source = fromStyld(piecesById(piecesOf(pieces)))
   return h.section(
@@ -163,6 +203,7 @@ const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Local
       ),
     ],
     [
+      arrowsView(model, h),
       ...Array.map(model.items, (item) => itemView(model, pieces, source, item, locale, h)),
       ...Array.map(model.leaving, (item) => leavingView(item, source, h)),
       Array.isReadonlyArrayEmpty(model.items) && Array.isReadonlyArrayEmpty(model.leaving)

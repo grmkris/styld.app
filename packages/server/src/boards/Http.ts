@@ -20,6 +20,7 @@ export const boardHandlers = HttpApiBuilder.group(StyldApi, 'board', (handlers) 
       .handle('keepLook', ({ params, payload }) => boards.keepLook(params.boardId, payload))
       .handle('createOutfitBoard', ({ payload }) => boards.createOutfitBoard(payload))
       .handle('anotherOutfit', ({ params, payload }) => boards.anotherOutfit(params.boardId, params.outfitId, payload))
+      .handle('anotherLayout', ({ params, payload }) => boards.anotherLayout(params.boardId, payload))
       .handle('setBoardVisibility', ({ params, payload }) => boards.setBoardVisibility(params.boardId, payload))
       .handle('addBoardImage', ({ params, payload }) => boards.addBoardImage(params.boardId, payload))
   }),

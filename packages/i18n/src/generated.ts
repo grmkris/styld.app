@@ -367,12 +367,15 @@ export interface MessageArgumentsByKey<_T = string> {
   'nav.wardrobe': Readonly<Record<string, never>>
   'outfits.anchorGone': Readonly<Record<string, never>>
   'outfits.another': Readonly<Record<string, never>>
+  'outfits.anotherLayout': Readonly<Record<string, never>>
   'outfits.failed': Readonly<Record<string, never>>
   'outfits.fewer': { readonly count: number }
   'outfits.keep': Readonly<Record<string, never>>
   'outfits.keeping': Readonly<Record<string, never>>
   'outfits.kept': Readonly<Record<string, never>>
   'outfits.keptElsewhere': Readonly<Record<string, never>>
+  'outfits.layingOut': Readonly<Record<string, never>>
+  'outfits.layoutFailed': Readonly<Record<string, never>>
   'outfits.lookName': { readonly board: string | number; readonly place: string | number }
   'outfits.noMore': Readonly<Record<string, never>>
   'outfits.openLook': Readonly<Record<string, never>>
@@ -898,4 +901,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'e8a130be8dfb3a654c320b695ad027ab2a8641e77586fb4cc8f1e21e41e86e43'
+export const catalogVersion = 'b5b48742c48ddebacd83a7e51e5039e4d34d0da105e592adcc6adc100ffa99ae'

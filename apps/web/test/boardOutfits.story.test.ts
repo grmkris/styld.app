@@ -7,8 +7,10 @@ import {
   CardWork,
   init,
   KeepOutfit,
+  LayoutWork,
   Message,
   OutMessage,
+  RelayOut,
   ReplaceOutfit,
   withBoard,
   workOf,
@@ -28,7 +30,7 @@ const keyOf = (pieces: ReadonlyArray<{ readonly id: string }>) => outfitKeyOf(pi
 
 const board = Schema.decodeUnknownSync(Board)({
   id: `bd_${'jeans'.padEnd(22, 'x')}`,
-  name: 'Jeans: six outfits',
+  name: 'Jeans: outfits',
   paper: 'sand',
   version: 0,
   items: [],
@@ -38,12 +40,12 @@ const board = Schema.decodeUnknownSync(Board)({
   visibility: 'private',
   check: null,
   updatedAt: '2026-11-04T08:00:00.000Z',
-  outfitsAround: { anchor: jeans, outfits: [first, second] },
+  outfitsAround: { anchor: jeans, outfits: [first, second], layout: 'flanking' },
 })
 const open = withBoard(init(board.id), board)
 const operationId = Schema.decodeUnknownSync(OperationId)('kept-once-1234')
 
-describe('the outfits of a "One piece, six outfits" board (T-10)', () => {
+describe('the outfits of a "One piece, many outfits" board (T-10)', () => {
   test('the board’s outfits are the cards, every one of them shown; a blank board has none', () => {
     expect(Option.map(open.maybeAround, ({ outfits }) => outfits.length)).toEqual(Option.some(2))
     expect(open.shown).toEqual([keyOf(first.pieces), keyOf(second.pieces)])
@@ -54,17 +56,21 @@ describe('the outfits of a "One piece, six outfits" board (T-10)', () => {
   test('Keep keeps the card’s pieces as a look named after the board and its place, counted, and the board changes', () => {
     const kept = Schema.decodeUnknownSync(Board)({
       ...board,
-      outfitsAround: { anchor: jeans, outfits: [first, { ...second, lookId: `lk_${'look'.padEnd(22, 'x')}` }] },
+      outfitsAround: {
+        anchor: jeans,
+        outfits: [first, { ...second, lookId: `lk_${'look'.padEnd(22, 'x')}` }],
+        layout: 'flanking',
+      },
     })
     story(
       Outfits.update,
       given(open),
-      message(Message.ClickedKeep({ outfitId: second.id, name: 'Jeans: six outfits · 2' })),
+      message(Message.ClickedKeep({ outfitId: second.id, name: 'Jeans: outfits · 2' })),
       Command.expectExact(
         KeepOutfit({
           boardId: board.id,
           outfitId: second.id,
-          name: 'Jeans: six outfits · 2',
+          name: 'Jeans: outfits · 2',
           pieceIds: second.pieces.map(({ id }) => id),
           proposal: { session, mode: 'fast', position: 1, edited: false },
           operationId: Option.none(),
@@ -83,11 +89,11 @@ describe('the outfits of a "One piece, six outfits" board (T-10)', () => {
   })
 
   test('a card being kept takes no other ask until it is done', () => {
-    const keeping = Outfits.update(open, Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: six outfits · 1' }))
+    const keeping = Outfits.update(open, Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: outfits · 1' }))
     expect(Outfits.update(keeping.model, Message.ClickedAnother({ outfitId: first.id })).commands ?? []).toEqual([])
     expect(
-      Outfits.update(keeping.model, Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: six outfits · 1' }))
-        .commands ?? [],
+      Outfits.update(keeping.model, Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: outfits · 1' })).commands ??
+        [],
     ).toEqual([])
   })
 
@@ -96,12 +102,12 @@ describe('the outfits of a "One piece, six outfits" board (T-10)', () => {
       Outfits.update,
       given(open),
       message(Message.FailedKeep({ outfitId: first.id, problem: 'failed', operationId: Option.some(operationId) })),
-      message(Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: six outfits · 1' })),
+      message(Message.ClickedKeep({ outfitId: first.id, name: 'Jeans: outfits · 1' })),
       Command.expectExact(
         KeepOutfit({
           boardId: board.id,
           outfitId: first.id,
-          name: 'Jeans: six outfits · 1',
+          name: 'Jeans: outfits · 1',
           pieceIds: first.pieces.map(({ id }) => id),
           proposal: { session, mode: 'fast', position: 0, edited: false },
           operationId: Option.some(operationId),
@@ -136,6 +142,49 @@ describe('the outfits of a "One piece, six outfits" board (T-10)', () => {
           Option.some(CardWork.Failed({ asked: 'another', problem: 'noMore', operationId: Option.none() })),
         ),
       ),
+    )
+  })
+
+  test('Another layout lays the whole board out again: cards rest meanwhile, and its answer replaces their outfits', () => {
+    const third = { ...first, id: outfitId('third'), pieces: [shirt, jeans, trainers] }
+    const relaidOut = Schema.decodeUnknownSync(Board)({
+      ...board,
+      version: 1,
+      outfitsAround: { anchor: jeans, outfits: [first, second, third], layout: 'around' },
+    })
+    story(
+      Outfits.update,
+      given(open),
+      message(Message.ClickedAnotherLayout()),
+      Command.expectExact(RelayOut({ boardId: board.id, operationId: Option.none() })),
+      model((current) => {
+        expect(current.layout).toEqual(LayoutWork.Laying())
+        // While it lays out, no card asks anything and a second press does nothing.
+        expect(Outfits.update(current, Message.ClickedAnother({ outfitId: first.id })).commands ?? []).toEqual([])
+        expect(Outfits.update(current, Message.ClickedAnotherLayout()).commands ?? []).toEqual([])
+      }),
+      Command.resolve(RelayOut, Message.SucceededAnotherLayout({ board: relaidOut })),
+      expectOutMessage(OutMessage.ChangedBoard({ board: relaidOut })),
+      model((current) => {
+        expect(current.layout).toEqual(LayoutWork.Resting())
+        expect(Option.map(current.maybeAround, ({ layout, outfits }) => [layout, outfits.length])).toEqual(
+          Option.some(['around', 3]),
+        )
+        expect(current.shown).toContain(keyOf(third.pieces))
+      }),
+    )
+  })
+
+  test('a layout that may have reached Styld is asked again under its operation id', () => {
+    story(
+      Outfits.update,
+      given(open),
+      message(Message.FailedAnotherLayout({ operationId: Option.some(operationId) })),
+      model((current) => expect(current.layout).toEqual(LayoutWork.Failed({ operationId: Option.some(operationId) }))),
+      message(Message.ClickedAnotherLayout()),
+      Command.expectExact(RelayOut({ boardId: board.id, operationId: Option.some(operationId) })),
+      Command.resolve(RelayOut, Message.SucceededAnotherLayout({ board })),
+      expectOutMessage(OutMessage.ChangedBoard({ board })),
     )
   })
 })

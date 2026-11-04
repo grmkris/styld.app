@@ -27,7 +27,7 @@ export type Creating = typeof Creating.Type
 export const Model = Schema.Struct({
   creating: Creating,
   saved: SavedData.schema,
-  /** The new-board sheet: Blank, or "One piece, six outfits" (T-10). */
+  /** The new-board sheet: Blank, or "One piece, many outfits" (T-10). */
   start: BoardStart.Model,
   /** Ask's Start a board asked for the sheet: it opens once Boards is on screen, since a sheet shown before its page
    * is drawn closes again. */

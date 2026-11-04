@@ -109,6 +109,7 @@ const changes = Effect.map(Effect.context<BoardServices>(), (context) => ({
       searchText: searchText(input.name),
       template: null,
       anchorPieceId: null,
+      layout: null,
       createdAt: at,
       updatedAt: at,
     }
@@ -373,6 +374,7 @@ const make = Effect.gen(function* () {
     keepLook: checked(edits.keepLook),
     anotherOutfit: (boardId: BoardId, outfitId: BoardOutfitId, input: AnotherOutfit) =>
       checked((id: BoardId, change: AnotherOutfit) => edits.anotherOutfit(id, outfitId, change))(boardId, input),
+    anotherLayout: checked(edits.anotherLayout),
     addBoardImage: checked(edits.addBoardImage),
     /** A picture Styld generated for the board, marked Generated. */
     addGeneratedImage: checked((boardId: BoardId, input: AddBoardImage) =>

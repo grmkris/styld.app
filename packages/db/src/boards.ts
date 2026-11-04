@@ -1,4 +1,4 @@
-import { BoardTemplate, OutfitMode, Paper, Season, TextStyle, Visibility } from '@styld/protocol'
+import { BoardTemplate, OutfitLayout, OutfitMode, Paper, Season, TextStyle, Visibility } from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import {
   type AnySQLiteColumn,
@@ -45,6 +45,10 @@ export const boards = sqliteTable(
     template: text('template', { enum: BoardTemplate.literals }),
     /** The piece a template board was built around; it stays when the piece goes, without it. */
     anchorPieceId: text('anchor_piece_id').references(() => pieces.id, { onDelete: 'set null' }),
+    /** How a template board lays its outfits out (Eva, 4 November 2026); none on a blank board, and on a template board
+     * made before layouts, which reads as six flanking. Read through the protocol's schema, without a CHECK, as
+     * `template` is. */
+    layout: text('layout', { enum: OutfitLayout.literals }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },

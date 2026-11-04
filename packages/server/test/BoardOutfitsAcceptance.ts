@@ -3,11 +3,14 @@ import { Schema } from 'effect'
 import {
   Board,
   type BoardOutfit,
+  boardHeight,
+  boardWidth,
   KeptLook,
+  layoutFor,
   LookPin,
   Looks,
   outfitKeyOf,
-  Paper,
+  outfitsIn,
   PieceItem,
   PiecePin,
 } from '@styld/protocol'
@@ -91,7 +94,8 @@ interface Wardrobe {
   readonly accessories: ReadonlyArray<string>
 }
 
-/** An outfit around the jeans is complete: the jeans, one top, one pair of shoes and one to three accessories. */
+/** An outfit around the jeans is complete: the jeans, one top, one pair of shoes (always: Eva, 4 November 2026) and one
+ * to three accessories. */
 const expectComplete = (outfit: BoardOutfit, wardrobe: Wardrobe) => {
   const ids: ReadonlyArray<string> = outfit.pieces.map(({ id }) => id)
   expect(ids).toContain(wardrobe.jeans)
@@ -107,9 +111,19 @@ const outfitsOf = (board: Board) => board.outfitsAround?.outfits ?? []
 const anchorsOn = (board: Board, anchorId: string) =>
   board.items.filter((item) => Schema.is(PieceItem)(item) && item.pieceId === anchorId).length
 
-/** "One piece, six outfits" (T-10): with no bottom in the wardrobe a top makes no board and says what is missing; around
- * the jeans six complete outfits are laid out, once per operation id, the jeans in each cluster; another account's piece
- * is not found. */
+/** The table of a template board in its layout: the anchor large in the centre, the largest thing on it, then once in
+ * every outfit; every piece of every outfit on it. */
+const expectLaidOut = (board: Board, anchorId: string) => {
+  const outfits = outfitsOf(board)
+  expect(anchorsOn(board, anchorId)).toBe(outfits.length + 1)
+  expect(board.items).toHaveLength(outfits.reduce((sum, outfit) => sum + outfit.pieces.length, 0) + 1)
+  const largest = board.items.toSorted((a, b) => b.size - a.size)[0]
+  expect(largest).toMatchObject({ pieceId: anchorId, x: boardWidth / 2, y: boardHeight / 2 })
+}
+
+/** "One piece, many outfits" (T-10): with no bottom in the wardrobe a top makes no board and says what is missing;
+ * around the jeans as many complete outfits as the board's layout holds are laid out on sand paper, once per operation
+ * id, the jeans large in the centre and in each cluster; another account's piece is not found. */
 const verifyOutfitBoard = async (origin: string, { owner, other }: { readonly owner: Call; readonly other: Call }) => {
   const tee = await ready(origin, owner, 'native-ob-tee', 'shortSleeveTops')
   const trainers = await ready(origin, owner, 'native-ob-trainers', 'trainers')
@@ -130,15 +144,17 @@ const verifyOutfitBoard = async (origin: string, { owner, other }: { readonly ow
       await ready(origin, owner, 'native-ob-ring', 'jewellery'),
     ],
   }
-  const create = { operationId: 'native-ob-board', name: 'Jeans: six outfits', anchorPieceId: wardrobe.jeans }
+  const create = { operationId: 'native-ob-board', name: 'Jeans: outfits', anchorPieceId: wardrobe.jeans }
   const board = await boardOf(await send(owner, '/api/boards/outfits', 'POST', create))
   expect<string | undefined>(board.outfitsAround?.anchor?.id).toBe(wardrobe.jeans)
-  expect(outfitsOf(board)).toHaveLength(6)
+  // The layout is the operation's chance: six in a ring for this id.
+  expect(board.outfitsAround?.layout).toBe(layoutFor(create.operationId))
+  expect(board.outfitsAround?.layout).toBe('ring')
+  expect(outfitsOf(board)).toHaveLength(outfitsIn('ring'))
   for (const outfit of outfitsOf(board)) expectComplete(outfit, wardrobe)
-  expect(new Set(outfitsOf(board).map(keyOf)).size).toBe(6)
-  expect(Paper.literals).toContain(board.paper)
-  expect(anchorsOn(board, wardrobe.jeans)).toBe(6)
-  expect(board.items).toHaveLength(outfitsOf(board).reduce((sum, outfit) => sum + outfit.pieces.length, 0))
+  expect(new Set(outfitsOf(board).map(keyOf)).size).toBe(outfitsIn('ring'))
+  expect(board.paper).toBe('sand')
+  expectLaidOut(board, wardrobe.jeans)
   const pinned = new Set(board.pins.filter(Schema.is(PiecePin)).map((pin) => pin.piece.id))
   for (const outfit of outfitsOf(board)) for (const { id } of outfit.pieces) expect(pinned.has(id)).toBe(true)
   // A repeat answers the same board; another account's piece is not found.
@@ -165,7 +181,7 @@ const verifyOutfitCards = async (owner: Call, start: { readonly board: Board; re
   expectComplete(replaced, wardrobe)
   expect(shown).not.toContain(keyOf(replaced))
   expect(another.version).toBe(start.board.version + 1)
-  expect(anchorsOn(another, wardrobe.jeans)).toBe(6)
+  expectLaidOut(another, wardrobe.jeans)
 
   // A save of the table by hand keeps each item in its cluster: another outfit still replaces exactly one.
   const saved = await boardOf(
@@ -182,11 +198,11 @@ const verifyOutfitCards = async (owner: Call, start: { readonly board: Board; re
     }),
   )
   expect(again.version).toBe(saved.version + 1)
-  expect(anchorsOn(again, wardrobe.jeans)).toBe(6)
+  expectLaidOut(again, wardrobe.jeans)
 
   const keep = {
     operationId: 'native-ob-keep',
-    name: 'Jeans: six outfits · 1',
+    name: 'Jeans: outfits · 1',
     pieceIds: first.pieces.map(({ id }) => id),
     outfitId: first.id,
     proposal: { session: first.session, mode: first.mode, position: 0, edited: false },
@@ -196,6 +212,7 @@ const verifyOutfitCards = async (owner: Call, start: { readonly board: Board; re
   const keptAgain = await send(owner, `${path}/looks`, 'POST', { ...keep, operationId: 'native-ob-keep-2' })
   expect(keptAgain.status).toBe(422)
   expect(await keptAgain.json()).toMatchObject({ _tag: 'OutfitRefused', reason: 'kept' })
+  await verifyAnotherLayout(owner, path, { kept: first.id, wardrobe })
   const refused = await send(owner, `${path}/outfits/${first.id}/another`, 'POST', {
     operationId: 'native-ob-another-kept',
     seen: [],
@@ -221,7 +238,41 @@ const verifyOutfitCards = async (owner: Call, start: { readonly board: Board; re
   expect((await owner(path)).status).toBe(404)
 }
 
-/** Board outfits on the server: looks kept on a board, and "One piece, six outfits" boards. */
+/** Another layout: the ring of six becomes eight around, with two new complete outfits, and then six flanking, the last
+ * two not kept leaving; the kept outfit stays through both, once per operation id. */
+const verifyAnotherLayout = async (
+  owner: Call,
+  path: string,
+  { kept, wardrobe }: { readonly kept: string; readonly wardrobe: Wardrobe },
+) => {
+  const before = await boardOf(await owner(path))
+  const shown = outfitsOf(before).map(keyOf)
+  const ask = { operationId: 'native-ob-layout' }
+  const around = await boardOf(await send(owner, `${path}/layout`, 'POST', ask))
+  expect(around.outfitsAround?.layout).toBe('around')
+  expect(around.version).toBe(before.version + 1)
+  expect(outfitsOf(around)).toHaveLength(outfitsIn('around'))
+  expect(outfitsOf(around).slice(0, shown.length).map(keyOf)).toEqual(shown)
+  for (const outfit of outfitsOf(around).slice(shown.length)) {
+    expectComplete(outfit, wardrobe)
+    expect(shown).not.toContain(keyOf(outfit))
+  }
+  expect(outfitsOf(around).find(({ id }) => id === kept)?.lookId).not.toBeNull()
+  expectLaidOut(around, wardrobe.jeans)
+  // A repeat answers the board as it is, laid out once.
+  expect((await boardOf(await send(owner, `${path}/layout`, 'POST', ask))).version).toBe(around.version)
+  const flanking = await boardOf(await send(owner, `${path}/layout`, 'POST', { operationId: 'native-ob-layout-2' }))
+  expect(flanking.outfitsAround?.layout).toBe('flanking')
+  expect(outfitsOf(flanking).map(({ id }) => id)).toEqual(
+    outfitsOf(around)
+      .slice(0, outfitsIn('flanking'))
+      .map(({ id }) => id),
+  )
+  expect(outfitsOf(flanking).find(({ id }) => id === kept)?.lookId).not.toBeNull()
+  expectLaidOut(flanking, wardrobe.jeans)
+}
+
+/** Board outfits on the server: looks kept on a board, and "One piece, many outfits" boards. */
 export const verifyBoardOutfits = async (origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-keep', 'native-keep-other')
   const owner = client(origin, await signIn(origin, 'native-keep'))

@@ -10,8 +10,9 @@ export const maximumLookPieces = 12
 export const maximumWornPieces = 12
 /** A board's moods. */
 export const maximumMoods = 3
-/** The things one board's table holds. */
-export const maximumBoardItems = 60
+/** The things one board's table holds: eight complete outfits of up to eight pieces around their anchor fit (Eva's
+ * layouts, 4 November 2026; it was 60). */
+export const maximumBoardItems = 80
 /** The things pinned on one board, and the most one call pins or unpins. */
 export const maximumBoardPins = 500
 export const pinsAtOnce = 50

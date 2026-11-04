@@ -1,7 +1,7 @@
-import { Board, BoardOutfitId } from '@styld/protocol'
+import { Board, BoardItemId, BoardOutfitId, type OutfitLayout, outfitsLaidOut, PieceItem } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Dialog } from '@foldkit/ui'
-import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
+import { all, click, Command, expect, expectAll, given, Mount, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -14,7 +14,7 @@ import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
-import { KeepOutfit, Message as OutfitsMessage } from '../src/page/Board/Outfits.ts'
+import { KeepOutfit, Message as OutfitsMessage, RelayOut } from '../src/page/Board/Outfits.ts'
 import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
@@ -185,8 +185,26 @@ describe("a board's page", () => {
   })
 })
 
-describe('a "One piece, six outfits" board (T-10)', () => {
+describe('a "One piece, many outfits" board (T-10)', () => {
   const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Dark jeans' })
+  const shown = (seeds: ReadonlyArray<string>) => seeds.map((seed) => outfit(seed, null))
+  /** A template board's table as the server lays it out. */
+  const laidOut = (layout: OutfitLayout, outfits: ReturnType<typeof shown>) =>
+    outfitsLaidOut(
+      layout,
+      jeans.id,
+      outfits.map(({ pieces }) => pieces),
+    ).map(({ outfit: _, ...spot }, index) =>
+      PieceItem.make({ ...spot, id: BoardItemId.make(`bi_${String(index).padEnd(22, 'x')}`) }),
+    )
+  const templateBoard = (layout: OutfitLayout, outfits: ReturnType<typeof shown>) =>
+    Schema.decodeUnknownSync(Board)({
+      ...board,
+      name: 'Jeans: outfits',
+      version: 2,
+      items: laidOut(layout, outfits),
+      outfitsAround: { anchor: jeans, outfits, layout },
+    })
   const outfit = (seed: string, lookId: string | null) => ({
     id: `bo_${seed.padEnd(22, 'x')}`,
     pieces: [
@@ -202,10 +220,11 @@ describe('a "One piece, six outfits" board (T-10)', () => {
     withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
       fromBoard(boardInit(boardId, true), {
         ...board,
-        name: 'Jeans: six outfits',
+        name: 'Jeans: outfits',
         outfitsAround: Schema.decodeUnknownSync(Board.fields.outfitsAround)({
           anchor,
           outfits: [outfit('a', null), outfit('b', `lk_${'kept'.padEnd(22, 'x')}`)],
+          layout: 'flanking',
         }),
       }),
     )
@@ -215,7 +234,7 @@ describe('a "One piece, six outfits" board (T-10)', () => {
       { update, view },
       given(outfitBoard(jeans)),
       measured,
-      expect(role('heading', { name: 'Six outfits' })).toExist(),
+      expect(role('heading', { name: 'Outfits' })).toExist(),
       expect(text('Your wardrobe made 2 outfits around this piece. Add shoes and accessories for more.')).toExist(),
       expect(role('img', { name: 'Outfit 1' })).toExist(),
       expect(role('button', { name: 'Keep' })).toExist(),
@@ -244,6 +263,68 @@ describe('a "One piece, six outfits" board (T-10)', () => {
       measured,
       expect(text('The piece this board was built around was deleted. Its outfits stay.')).toExist(),
       expect(role('button', { name: 'Another' })).toHaveAttr('aria-disabled', 'true'),
+    )
+  })
+
+  test('draws thin arrows from the piece to each outfit in its place; eight around has none', () => {
+    const flanking = templateBoard('flanking', shown(['a', 'b', 'c']))
+    scene(
+      { update, view },
+      given(
+        withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+          fromBoard(boardInit(boardId, true), flanking),
+        ),
+      ),
+      measured,
+      expect(selector('[data-arrows]')).toHaveAttr('aria-hidden', 'true'),
+      expectAll(all.selector('[data-arrows] path')).toHaveCount(3),
+    )
+    const around = templateBoard('around', shown(['a', 'b', 'c']))
+    scene(
+      { update, view },
+      given(
+        withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+          fromBoard(boardInit(boardId, true), around),
+        ),
+      ),
+      measured,
+      expect(selector('[data-item]')).toExist(),
+      expect(selector('[data-arrows]')).not.toExist(),
+    )
+  })
+
+  test('Another layout lays the board out again; the cards follow, and a failure says so', () => {
+    const before = templateBoard('ring', shown(['a', 'b']))
+    const after = templateBoard('around', shown(['a', 'b', 'c']))
+    scene(
+      { update, view },
+      given(
+        withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+          fromBoard(boardInit(boardId, true), before),
+        ),
+      ),
+      measured,
+      expect(role('img', { name: 'Outfit 3' })).not.toExist(),
+      click(role('button', { name: 'Another layout' })),
+      Command.expectExact(RelayOut({ boardId, operationId: Option.none() })),
+      expect(role('button', { name: 'Laying them out…' })).toHaveAttr('aria-disabled', 'true'),
+      expect(role('button', { name: 'Keep' })).toHaveAttr('aria-disabled', 'true'),
+      Command.resolve(RelayOut, OutfitsMessage.SucceededAnotherLayout({ board: after })),
+      expect(role('img', { name: 'Outfit 3' })).toExist(),
+      expect(selector('[data-arrows]')).not.toExist(),
+      expect(role('button', { name: 'Another layout' })).not.toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: 'Another layout' })),
+      Command.resolve(RelayOut, OutfitsMessage.FailedAnotherLayout({ operationId: Option.none() })),
+      expect(role('alert')).toHaveText('The outfits weren’t laid out again. Try again.'),
+    )
+  })
+
+  test('offers no other layout once its piece is deleted', () => {
+    scene(
+      { update, view },
+      given(outfitBoard(null)),
+      measured,
+      expect(role('button', { name: 'Another layout' })).not.toExist(),
     )
   })
 })

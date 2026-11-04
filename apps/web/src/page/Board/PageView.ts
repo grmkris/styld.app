@@ -374,7 +374,7 @@ const makeSlot = (
     toParentMessage: (message) => Message.GotMakeMessage({ message }),
   })
 
-/** A "One piece, six outfits" board's outfits as cards under its table (T-10); nothing on a blank board. */
+/** A "One piece, many outfits" board's outfits as cards under its table (T-10); nothing on a blank board. */
 const outfitsSlot = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'board-outfits',

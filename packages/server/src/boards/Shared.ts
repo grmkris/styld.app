@@ -196,6 +196,8 @@ const outfitsAroundOf = (rows: ReadonlyArray<BoardRow>) =>
             outfitsAround: {
               anchor: row.anchorPieceId === null ? null : (shownAnchors.get(row.anchorPieceId) ?? null),
               outfits: shownOutfits.filter(({ boardId }) => boardId === row.id).map(({ outfit }) => outfit),
+              // A board made before layouts reads as six flanking; its table keeps its old places, so no arrows show.
+              layout: row.layout ?? 'flanking',
             },
           }
         : {}

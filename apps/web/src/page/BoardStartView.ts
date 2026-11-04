@@ -136,7 +136,7 @@ const seasonsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     ],
   )
 
-/** Make six outfits, named after the chosen piece, while one is chosen and nothing is being made. */
+/** Make the outfits, named after the chosen piece, while one is chosen and nothing is being made. */
 const makeButton = (model: Model, anchor: Option.Option<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const sending = Making.guards.Sending(model.making)
   return actionButton(
@@ -189,7 +189,7 @@ const anchorView = (
   ]
 }
 
-/** The new-board sheet: Blank or "One piece, six outfits", then the piece, the season and Make six outfits. Drawn only
+/** The new-board sheet: Blank or "One piece, many outfits", then the piece, the season and Make the outfits. Drawn only
  * while open. */
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, pieces }, h) =>
   sheetShown(model.sheet)

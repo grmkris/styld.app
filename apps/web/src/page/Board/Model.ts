@@ -205,7 +205,7 @@ export const Model = Schema.Struct({
   drop: FileDrop.Model,
   /** Make with Styld: a mood board or one picture from the person's words, and how it is going. */
   make: Make.Model,
-  /** A "One piece, six outfits" board's outfits as cards (T-10), none on a blank board. */
+  /** A "One piece, many outfits" board's outfits as cards (T-10), none on a blank board. */
   outfits: Outfits.Model,
   /** A session came with the page; signed out the board can only be someone's public one. */
   signedIn: Schema.Boolean,

@@ -37,6 +37,11 @@ export type Paper = typeof Paper.Type
 export const BoardTemplate = Schema.Literals(['outfitsAround'])
 export type BoardTemplate = typeof BoardTemplate.Type
 
+/** How a "One piece, many outfits" board lays its outfits around the piece (Eva's references, 4 November 2026): six
+ * flanking it in two columns, eight around it on a three-by-three grid, or six in a ring. */
+export const OutfitLayout = Schema.Literals(['flanking', 'around', 'ring'])
+export type OutfitLayout = typeof OutfitLayout.Type
+
 /** A text label's face: a plain label, or the headline in the logo's condensed voice. */
 export const TextStyle = Schema.Literals(['label', 'headline'])
 export type TextStyle = typeof TextStyle.Type
@@ -94,7 +99,7 @@ export type LookPin = typeof LookPin.Type
 export const Pin = Schema.Union([PiecePin, PicturePin, LookPin])
 export type Pin = typeof Pin.Type
 
-/** One outfit of a "One piece, six outfits" board (T-10): its pieces still in the wardrobe, in wearing order; the look
+/** One outfit of a "One piece, many outfits" board (T-10): its pieces still in the wardrobe, in wearing order; the look
  * it became once kept; and the run and way that made it, which a keep names so it is counted. */
 export const BoardOutfit = Schema.Struct({
   id: BoardOutfitId,
@@ -105,9 +110,13 @@ export const BoardOutfit = Schema.Struct({
 })
 export type BoardOutfit = typeof BoardOutfit.Type
 
-/** What a board started from "One piece, six outfits" holds besides its table: the piece it was built around (none
- * once that piece is deleted) and its outfits, in their places. */
-export const OutfitsAround = Schema.Struct({ anchor: Schema.NullOr(Piece), outfits: Schema.Array(BoardOutfit) })
+/** What a board started from "One piece, many outfits" holds besides its table: the piece it was built around (none
+ * once that piece is deleted), its outfits in their places, and the layout they are laid out in. */
+export const OutfitsAround = Schema.Struct({
+  anchor: Schema.NullOr(Piece),
+  outfits: Schema.Array(BoardOutfit),
+  layout: OutfitLayout,
+})
 export type OutfitsAround = typeof OutfitsAround.Type
 
 /** A board: its pins, newest first, and its table, which places some of them. */
@@ -128,7 +137,7 @@ export const Board = Schema.Struct({
   /** The model's check, once the board has been public; others see it only while the check lets them. */
   check: Schema.NullOr(CheckStatus),
   updatedAt: Schema.String,
-  /** Only on a board started from "One piece, six outfits". */
+  /** Only on a board started from "One piece, many outfits". */
   outfitsAround: Schema.optionalKey(OutfitsAround),
 })
 export type Board = typeof Board.Type
@@ -193,7 +202,7 @@ export const KeepLook = Schema.Struct({
   name: Name,
   pieceIds: Schema.Array(PieceId).check(Schema.isMinLength(1), Schema.isMaxLength(maximumLookPieces)),
   proposal: Schema.optionalKey(ProposalRef),
-  /** The outfit of a "One piece, six outfits" board kept, which then shows it as kept. */
+  /** The outfit of a "One piece, many outfits" board kept, which then shows it as kept. */
   outfitId: Schema.optionalKey(BoardOutfitId),
 })
 export type KeepLook = typeof KeepLook.Type
@@ -202,7 +211,7 @@ export type KeepLook = typeof KeepLook.Type
 export const KeptLook = Schema.Struct({ look: Look, board: Board })
 export type KeptLook = typeof KeptLook.Type
 
-/** Start a "One piece, six outfits" board (T-10): complete outfits around one of the person's pieces, for a season if
+/** Start a "One piece, many outfits" board (T-10): complete outfits around one of the person's pieces, for a season if
  * one is given, laid out on its table. Free, at the account's outfit pace. */
 export const CreateOutfitBoard = Schema.Struct({
   operationId: OperationId,
@@ -218,6 +227,11 @@ export const AnotherOutfit = Schema.Struct({
   seen: Schema.Array(OutfitKey).check(Schema.isMaxLength(mostSeen)),
 })
 export type AnotherOutfit = typeof AnotherOutfit.Type
+
+/** Lay a template board's outfits out in another layout, with as many outfits as it holds: more are made, and the last
+ * ones not kept leave when it holds fewer. */
+export const AnotherLayout = Schema.Struct({ operationId: OperationId })
+export type AnotherLayout = typeof AnotherLayout.Type
 
 /** Something to lay on a board's table without an id of its own: the server gives it one. */
 export const TablePiece = Schema.TaggedStruct('TablePiece', { pieceId: PieceId })

@@ -9,14 +9,13 @@ import {
   ImageItem,
   maximumItemSize,
   minimumItemSize,
-  type Paper,
   PieceItem,
   type TableLayout,
   type TableThing,
   TextItem,
 } from './Board.ts'
 import { type PieceType, type Slot, slotOf } from './Garment.ts'
-import type { Colour, PieceId } from './Wardrobe.ts'
+import type { PieceId } from './Wardrobe.ts'
 
 const normalizeTurn = (degrees: number): number => ((((degrees + 180) % 360) + 360) % 360) - 180
 
@@ -196,99 +195,3 @@ export const flatLay = (
       flipped: false,
     })
   })
-
-/** A piece of an outfit on a template board: what the layout needs to place it. */
-export interface OutfitPiece {
-  readonly id: PieceId
-  readonly type: PieceType
-}
-
-/** Where a piece of an outfit lies on a template board, and which outfit it belongs to (by its place in the list). */
-export interface PlacedOutfitPiece {
-  readonly outfit: number
-  readonly pieceId: PieceId
-  readonly x: number
-  readonly y: number
-  readonly size: number
-  readonly turn: number
-  readonly z: number
-  readonly flipped: false
-}
-
-/** Where a cluster's accessories go, in three arrangements taken in turn, so neighbouring outfits are not laid out
- * alike (Eva's review, F-33): beside the top, by the shoes, high on the other side. In a flat-lay's own units. */
-const accessoryArrangements: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
-  [
-    [760, 600],
-    [820, 170],
-    [130, 1080],
-  ],
-  [
-    [150, 620],
-    [840, 700],
-    [740, 120],
-  ],
-  [
-    [830, 420],
-    [140, 1090],
-    [520, 110],
-  ],
-]
-
-/** How much larger than its cell a cluster's pieces are drawn, so they overlap a little, as on a collage. */
-const clusterGrowth = 1.25
-
-/** The outfits of a "One piece, six outfits" board (T-10) laid out as clusters on a grid two across: each a flat-lay of
- * its outfit, every other one mirrored, its accessories in one of three arrangements by `shift` and its place. The
- * anchor keeps one size and one turn in every cluster, so it reads as the same piece in each (Eva's review). */
-export const outfitsAround = (
-  anchorId: PieceId,
-  outfits: ReadonlyArray<ReadonlyArray<OutfitPiece>>,
-  shift = 0,
-): ReadonlyArray<PlacedOutfitPiece> => {
-  const columns = Math.min(2, Math.max(1, outfits.length))
-  const rows = Math.max(1, Math.ceil(outfits.length / columns))
-  const width = boardWidth / columns
-  const height = boardHeight / rows
-  const scale = Math.min(width / boardWidth, height / boardHeight) * clusterGrowth
-  return outfits.flatMap((outfit, index) => {
-    const mirrored = index % 2 === 1
-    const arrangement = accessoryArrangements[(index + shift) % accessoryArrangements.length] ?? []
-    const left = (index % columns) * width
-    const top = Math.floor(index / columns) * height
-    return outfit.map((piece, at): PlacedOutfitPiece => {
-      const slot = slotOf(piece.type)
-      const earlier = outfit.slice(0, at).filter((other) => slotOf(other.type) === slot).length
-      const spot = flatLaySpots[slot]
-      const [x, y] =
-        slot === 'accessory'
-          ? (arrangement[earlier] ?? [spot.x, spot.y])
-          : [spot.x + earlier * 70, spot.y + earlier * 70]
-      const isAnchor = piece.id === anchorId
-      return {
-        outfit: index,
-        pieceId: piece.id,
-        x: Number.clamp(left + ((mirrored ? boardWidth - x : x) / boardWidth) * width, {
-          minimum: 0,
-          maximum: boardWidth,
-        }),
-        y: Number.clamp(top + (y / boardHeight) * height, { minimum: 0, maximum: boardHeight }),
-        size: Number.clamp(spot.size * scale, { minimum: minimumItemSize, maximum: maximumItemSize }),
-        turn: isAnchor || !mirrored ? spot.turn : -spot.turn,
-        z: index * 16 + at + 1,
-        flipped: false,
-      }
-    })
-  })
-}
-
-/** The paper a template board is laid on, from its anchor's main colour (Eva's review, F-33): denim and earth tones on
- * sand, black, white and grey on slate's light blue, green on sage, warm colours on clay. */
-export const paperFor = (colours: ReadonlyArray<Colour>): Paper =>
-  Match.value(colours[0]).pipe(
-    Match.when(undefined, () => 'paper' as const),
-    Match.whenOr('black', 'white', 'grey', () => 'slate' as const),
-    Match.when('green', () => 'sage' as const),
-    Match.whenOr('red', 'pink', 'orange', 'purple', () => 'clay' as const),
-    Match.orElse(() => 'sand' as const),
-  )

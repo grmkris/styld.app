@@ -9,7 +9,7 @@ import {
   piecePictures,
   pieces,
 } from '@styld/db'
-import { and, asc, count, desc, eq, inArray, isNull, lte, or, type SQL, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lte, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
@@ -67,6 +67,25 @@ export interface OutfitReplacement {
   readonly version: number
   readonly outfit: Pick<BoardOutfitRow, 'id' | 'session' | 'mode'>
   readonly pieceIds: ReadonlyArray<string>
+  readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId'>>
+  readonly pins: ReadonlyArray<BoardPinRow>
+  readonly receipt: ReceiptRow
+  readonly at: Date
+}
+
+/** A template board laid out again (Eva's layouts, 4 November 2026): the outfits that stay in their new places, those
+ * that leave, new ones with their pieces, the anchor's and the clusters' items in the new layout, the pins they need
+ * and the receipt; from the board's version, which it moves on. */
+export interface Relayout {
+  readonly accountId: string
+  readonly boardId: string
+  readonly version: number
+  readonly layout: NonNullable<BoardRow['layout']>
+  readonly anchorPieceId: string
+  /** Every outfit that stays, in its new place, the lowest first. */
+  readonly staying: ReadonlyArray<{ readonly id: string; readonly position: number }>
+  readonly leaving: ReadonlyArray<string>
+  readonly added: ReadonlyArray<{ readonly row: BoardOutfitRow; readonly pieceIds: ReadonlyArray<string> }>
   readonly items: ReadonlyArray<Omit<BoardItemRow, 'boardId'>>
   readonly pins: ReadonlyArray<BoardPinRow>
   readonly receipt: ReceiptRow
@@ -168,6 +187,56 @@ const outfitWrites = (db: Database) => ({
         db
           .update(boards)
           .set({ version: change.version + 1, updatedAt: change.at })
+          .where(loaded),
+      ]),
+    ).pipe(Effect.asVoid)
+  },
+})
+
+const relayoutWrites = (db: Database) => ({
+  /** The board in another layout, as one atomic batch, only while it is still at the version read: the outfits that
+   * leave go (their pieces with them), those that stay move to their new places in order (each to a place at or before
+   * its own, so no two meet), new ones join, and the anchor's and every cluster's items are laid out again; what the
+   * person added stays where it is. A relayout that lost the race writes a null board id, which fails the batch. */
+  relayOut: (change: Relayout) => {
+    const loaded = and(
+      eq(boards.id, change.boardId),
+      eq(boards.accountId, change.accountId),
+      eq(boards.version, change.version),
+    )
+    const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
+    return query(() =>
+      db.batch([
+        db.insert(operationReceipts).values(change.receipt),
+        db
+          .delete(boardItems)
+          .where(
+            and(
+              eq(boardItems.boardId, change.boardId),
+              or(
+                isNotNull(boardItems.outfitId),
+                and(isNull(boardItems.outfitId), eq(boardItems.pieceId, change.anchorPieceId)),
+              ),
+            ),
+          ),
+        ...change.leaving.map((id) =>
+          db.delete(boardOutfits).where(and(eq(boardOutfits.id, id), eq(boardOutfits.boardId, change.boardId))),
+        ),
+        ...change.staying.map(({ id, position }) =>
+          db
+            .update(boardOutfits)
+            .set({ position })
+            .where(and(eq(boardOutfits.id, id), eq(boardOutfits.boardId, change.boardId))),
+        ),
+        ...change.added.flatMap(({ row, pieceIds }) => [
+          db.insert(boardOutfits).values({ ...row, boardId: boardAtVersion }),
+          ...outfitPieceRows(db, row.id, pieceIds),
+        ]),
+        ...change.items.map((item) => db.insert(boardItems).values({ ...item, boardId: boardAtVersion })),
+        ...change.pins.map((pin) => db.insert(boardPins).values(pin).onConflictDoNothing()),
+        db
+          .update(boards)
+          .set({ layout: change.layout, version: change.version + 1, updatedAt: change.at })
           .where(loaded),
       ]),
     ).pipe(Effect.asVoid)
@@ -456,6 +525,7 @@ export const boardStore = (db: Database) => ({
   ...boardRows(db),
   ...outfitRows(db),
   ...outfitWrites(db),
+  ...relayoutWrites(db),
   ...itemRows(db),
   ...pinReads(db),
   ...pinWrites(db),

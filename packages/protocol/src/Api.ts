@@ -43,6 +43,7 @@ import {
   BoardItemRefused,
   BoardVersionConflict,
   Boards,
+  AnotherLayout,
   AnotherOutfit,
   CreateBoard,
   CreateOutfitBoard,
@@ -246,6 +247,14 @@ class BoardApi extends HttpApiGroup.make('board')
     HttpApiEndpoint.post('anotherOutfit', '/boards/:boardId/outfits/:outfitId/another', {
       params: { boardId: BoardId, outfitId: BoardOutfitId },
       payload: AnotherOutfit,
+      success: Board,
+      error: [NotFound, SlowDown, OutfitRefused, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('anotherLayout', '/boards/:boardId/layout', {
+      params: { boardId: BoardId },
+      payload: AnotherLayout,
       success: Board,
       error: [NotFound, SlowDown, OutfitRefused, OperationConflict, Unavailable],
     }),

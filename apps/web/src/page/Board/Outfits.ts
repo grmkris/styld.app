@@ -19,9 +19,10 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../../StyldClient.ts'
 
-// The outfits of a "One piece, six outfits" board (T-10), as cards under its table: Keep makes one a look pinned on the
-// board (T-16), Another puts a new outfit in its place. Each card's work is its own; a lost answer is asked again under
-// the same operation id, so an outfit is never kept twice.
+// The outfits of a "One piece, many outfits" board (T-10), as cards under its table: Keep makes one a look pinned on the
+// board (T-16), Another puts a new outfit in its place, and Another layout lays them all out again in another of the
+// layouts (Eva, 4 November 2026). Each card's work is its own; a lost answer is asked again under the same operation
+// id, so an outfit is never kept twice.
 
 // MODEL
 
@@ -45,6 +46,14 @@ export type CardWork = typeof CardWork.Type
 export const Card = Schema.Struct({ outfitId: BoardOutfitId, work: CardWork })
 export type Card = typeof Card.Type
 
+/** What Another layout is doing. A failed ask keeps the operation id it used when it may have reached Styld. */
+export const LayoutWork = defineTaggedUnion({
+  Resting: {},
+  Laying: {},
+  Failed: { operationId: Schema.Option(OperationId) },
+})
+export type LayoutWork = typeof LayoutWork.Type
+
 export const Model = Schema.Struct({
   boardId: Schema.String,
   /** The board's outfits as last read, none on a blank board. */
@@ -53,10 +62,17 @@ export const Model = Schema.Struct({
   cards: Schema.Array(Card),
   /** Every combination shown on this visit, so Another never brings one back. */
   shown: Schema.Array(OutfitKey),
+  layout: LayoutWork,
 })
 export type Model = typeof Model.Type
 
-export const init = (boardId: string): Model => ({ boardId, maybeAround: Option.none(), cards: [], shown: [] })
+export const init = (boardId: string): Model => ({
+  boardId,
+  maybeAround: Option.none(),
+  cards: [],
+  shown: [],
+  layout: LayoutWork.Resting(),
+})
 
 /** The board as last read: its outfits, every one of them now shown. */
 export const withBoard = (model: Model, board: Board): Model =>
@@ -85,10 +101,13 @@ export const Message = defineMessageUnion({
   ClickedAnother: { outfitId: BoardOutfitId },
   SucceededAnother: { outfitId: BoardOutfitId, board: Board },
   FailedAnother: { outfitId: BoardOutfitId, problem: CardProblem, operationId: Schema.Option(OperationId) },
+  ClickedAnotherLayout: {},
+  SucceededAnotherLayout: { board: Board },
+  FailedAnotherLayout: { operationId: Schema.Option(OperationId) },
 })
 export type Message = typeof Message.Type
 
-/** The board changed: a look is pinned on it, or an outfit and its cluster are new. */
+/** The board changed: a look is pinned on it, an outfit and its cluster are new, or its layout is. */
 export const OutMessage = defineMessageUnion({ ChangedBoard: { board: Board } })
 export type OutMessage = typeof OutMessage.Type
 
@@ -170,6 +189,22 @@ export const ReplaceOutfit = Command.define('ReplaceOutfit', {
     ),
 })
 
+/** Lay the board's outfits out in another layout, with as many outfits as it holds. */
+export const RelayOut = Command.define('RelayOut', {
+  args: { boardId: Schema.String, operationId: Schema.Option(OperationId) },
+  messages: [Message.SucceededAnotherLayout, Message.FailedAnotherLayout],
+  execute: ({ boardId, operationId: retry }) =>
+    cardAsk(
+      retry,
+      (api, operationId) =>
+        Effect.flatMap(boardIdOf(boardId), (id) =>
+          api.board.anotherLayout({ params: { boardId: id }, payload: { operationId } }),
+        ),
+      (board) => Message.SucceededAnotherLayout({ board }),
+      (_problem, operationId) => Message.FailedAnotherLayout({ operationId }),
+    ),
+})
+
 // UPDATE
 
 type Services = StyldClient | SecureRandom.SecureRandom
@@ -200,7 +235,9 @@ const outfitOf = (model: Model, outfitId: string): Option.Option<readonly [Board
     ),
   )
 
+/** Whether the card is being asked, or the whole board laid out again. */
 const busy = (model: Model, outfitId: string) =>
+  LayoutWork.guards.Laying(model.layout) ||
   Option.exists(workOf(model, outfitId), (work) => !CardWork.guards.Failed(work))
 
 const keepClicked = (model: Model, outfitId: BoardOutfitId, name: string): UpdateReturn =>
@@ -239,6 +276,23 @@ const anotherClicked = (model: Model, outfitId: BoardOutfitId): UpdateReturn =>
         ],
       }
 
+/** Whether anything on the board is being asked: a card's keep or another, or another layout. */
+export const isBusy = (model: Model) =>
+  LayoutWork.guards.Laying(model.layout) || model.cards.some(({ work }) => !CardWork.guards.Failed(work))
+
+const anotherLayoutClicked = (model: Model): UpdateReturn =>
+  isBusy(model) || !Option.exists(model.maybeAround, ({ anchor }) => anchor !== null)
+    ? { model }
+    : {
+        model: modifyFields(model, { layout: () => LayoutWork.Laying() }),
+        commands: [
+          RelayOut({
+            boardId: model.boardId,
+            operationId: LayoutWork.guards.Failed(model.layout) ? model.layout.operationId : Option.none(),
+          }),
+        ],
+      }
+
 const changed = (model: Model, outfitId: BoardOutfitId, board: Board): UpdateReturn => ({
   model: withBoard(withWork(model, outfitId, Option.none()), board),
   outMessage: OutMessage.ChangedBoard({ board }),
@@ -255,5 +309,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededAnother: ({ outfitId, board }) => changed(model, outfitId, board),
     FailedAnother: ({ outfitId, problem, operationId }) => ({
       model: withWork(model, outfitId, Option.some(CardWork.Failed({ asked: 'another', problem, operationId }))),
+    }),
+    ClickedAnotherLayout: () => anotherLayoutClicked(model),
+    // The board's outfits may have changed: the cards start again from rest.
+    SucceededAnotherLayout: ({ board }) => ({
+      model: withBoard(modifyFields(model, { layout: () => LayoutWork.Resting(), cards: () => [] }), board),
+      outMessage: OutMessage.ChangedBoard({ board }),
+    }),
+    FailedAnotherLayout: ({ operationId }) => ({
+      model: modifyFields(model, { layout: () => LayoutWork.Failed({ operationId }) }),
     }),
   })

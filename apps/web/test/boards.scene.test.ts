@@ -100,7 +100,7 @@ describe('the boards list', () => {
       click(role('button', { name: 'New board' })),
       ...sheetOpening,
       expect(role('dialog', { name: 'New board' })).toExist(),
-      expect(role('button', { name: /^One piece, six outfits/ })).toExist(),
+      expect(role('button', { name: /^One piece, many outfits/ })).toExist(),
       click(role('button', { name: /^Blank board/ })),
       ...sheetClosing,
       Command.resolve(
@@ -129,23 +129,23 @@ describe('the boards list', () => {
     )
   })
 
-  test('One piece, six outfits: a piece and a season make the board, and a wardrobe with no outfit says what to add', () => {
+  test('One piece, many outfits: a piece and a season make the board, and a wardrobe with no outfit says what to add', () => {
     const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Dark jeans' })
     scene(
       { update, view },
       given(withPieces(boardsPage([]), [jeans])),
       click(role('button', { name: 'New board' })),
       ...sheetOpening,
-      click(role('button', { name: /^One piece, six outfits/ })),
+      click(role('button', { name: /^One piece, many outfits/ })),
       Command.resolve(ListPieces, DataMessage.SucceededListPieces({ pieces: [jeans] })),
       expect(text('Pick the piece to build outfits around.')).toExist(),
-      expect(role('button', { name: 'Make six outfits' })).toHaveAttr('aria-disabled', 'true'),
+      expect(role('button', { name: 'Make the outfits' })).toHaveAttr('aria-disabled', 'true'),
       click(role('button', { name: /Dark jeans/ })),
       click(role('button', { name: 'Summer' })),
-      click(role('button', { name: 'Make six outfits' })),
+      click(role('button', { name: 'Make the outfits' })),
       Command.resolve(
         CreateOutfitBoard({
-          name: 'Dark jeans: six outfits',
+          name: 'Dark jeans: outfits',
           anchorPieceId: jeans.id,
           maybeSeason: Option.some('summer'),
           maybeOperationId: Option.none(),
@@ -159,7 +159,7 @@ describe('the boards list', () => {
       expect(role('alert')).toHaveText(
         'Your wardrobe has no complete outfit around this piece yet. Add a top. Add shoes.',
       ),
-      click(role('button', { name: 'Make six outfits' })),
+      click(role('button', { name: 'Make the outfits' })),
       Command.resolve(CreateOutfitBoard, StartMessage.SucceededCreateOutfitBoard({ board: created })),
       ...sheetClosing,
       Command.resolve(Navigate({ href: `/boards/${created.id}` }), AppMessage.CompletedNavigate()),
