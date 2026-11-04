@@ -129,11 +129,19 @@ Sports tops, Sports leggings & shorts and Tracksuits & ski wear in place of the 
 - **Re-sort** `tools/retype-sport.ts` (rule in `tools/Sport.ts`, tested): asks Clef which kind of sportswear each
   stored sport top is, from its cut-out with the photo it was cut from beside it (when that photo is at most 4 MB),
   and moves it to sports bras, sport bottoms or tracksuits on an answer of at least 0.7; "not sport" is reported, never
-  written. Dry by default; `--apply` writes only while the piece is still a sport top. Not run against any database.
+  written. Dry by default; `--apply` writes only while the piece is still a sport top.
+- **Run on Eva's production account** (5 November, after production ran the migration): 40 sport tops read, each with
+  its photo; the dry run's 25 moves (7 sports bras, 17 sport bottoms, 1 ski trousers to tracksuits) were checked by eye
+  against the cut-outs, all right, and applied (the applied run gave the same answers). Of the 6 Clef was unsure of, 5
+  were set by hand with the same guard: three zip-off hiking trousers and black seamless shorts to sport bottoms, a
+  white pleated tennis skirt to skirts; a striped crop cami stays a sport top. Her Sport now holds 7 bras, 10 tops, 21
+  bottoms, 1 tracksuit and 3 pairs of shoes. Reports and the picture sheets are private
+  (`~/private/styld-research/sport-retype-2026-11-05/`).
 - **v1 importer**: names like "sports bra", "leggings", "cycling shorts", "running tee" and "ski pants" pick the Sport
   types.
-- **Open:** deploy, then `retype-sport` dry run on the preview and production, a sample checked by eye, then `--apply`;
-  Eva's check on her phone; the Tops and Bottoms group navigation she asked for in the same message.
+- **Open:** Eva's check on her phone; leggings and sport pieces already stored under other types (trousers, shorts,
+  tops, swimwear) are not re-read; `retype-sport` on the preview's copy; the Tops and Bottoms group navigation she asked
+  for in the same message.
 
 > > > > > > > worktree-agent-ad62803b3f2949ede
 
