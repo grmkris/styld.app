@@ -568,7 +568,7 @@ boards:
     moods: [weekend]
     note: "Pinterest Fall 2026 'Secondhand Sidequest' (pleated skirts, crochet). Mark which pieces are thrifted in their names"
     pieces:
-      [skirts:grey, knitwear:green, jackets:blue, blazers:brown, jeans:blue, boots:brown, bags:red, scarves:yellow]
+      [skirts:grey, knitwear:green, shirts:white, jackets:blue, blazers:brown, jeans:blue, boots:brown, bags:red, scarves:yellow]
     translations:
       sl: { name: 'Iz druge roke', label: 'Vsak videz ima en kos iz druge roke.', review: pending }
   - id: w-one-base-4
