@@ -1021,7 +1021,10 @@
     "showCutout": "Cut-out",
     "pictures": "Photo or cut-out",
     "cutOutSlowDown": "Many cut-outs at once. Try again in a minute.",
-    "cutoutOf": "Outfit cut out of the photo from {date}"
+    "cutoutOf": "Outfit cut out of the photo from {date}",
+    "addFromWardrobe": "Add from my wardrobe",
+    "nothingFound": "Styld didn’t find any clothes in this photo. Add what you’re wearing from your wardrobe.",
+    "remove": "Remove from this photo"
   },
   "lab": {
     "title": "Laboratory"

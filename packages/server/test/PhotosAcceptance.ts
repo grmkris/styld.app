@@ -20,7 +20,8 @@ const Photo = Schema.Struct({
       id: Schema.String,
       match: Schema.String,
       pieceId: Schema.NullOr(Schema.String),
-      image: Schema.String,
+      // A piece added by hand has no picture of the photo.
+      image: Schema.optionalKey(Schema.String),
     }),
   ),
 })
@@ -67,6 +68,37 @@ const verifyAdding = async (origin: string, owner: Call) => {
   return ready
 }
 
+/** A piece Styld did not find, added to the photo by hand (Eva, 4 November): confirmed after the garments found, with
+ * no picture of the photo, once per operation and once per piece; it counts as in the photo, and comes off again. */
+const verifyAddingByHand = async (origin: string, owner: Call, other: Call, photoId: string) => {
+  const pieceId = await idOf(
+    await send(owner, '/api/pieces', 'POST', {
+      operationId: 'native-photo-piece-hand',
+      uploadId: await receivedPhoto(origin, owner),
+      type: 'jackets',
+    }),
+  )
+  expect(await waitUntilReady(owner, pieceId)).toBe('ready')
+  const path = `/api/photos/${photoId}/pieces`
+  const add = { operationId: 'native-photo-hand-1', pieceId }
+  const added = await photoOf(await send(owner, path, 'POST', add))
+  const before = added.garments.length - 1
+  const hand = added.garments[before]
+  expect(hand).toMatchObject({ match: 'confirmed', pieceId })
+  expect(hand?.image).toBeUndefined()
+  expect((await photoOf(await send(owner, path, 'POST', add))).garments).toHaveLength(before + 1)
+  const again = { operationId: 'native-photo-hand-2', pieceId }
+  expect((await photoOf(await send(owner, path, 'POST', again))).garments).toHaveLength(before + 1)
+  const stranger = { operationId: 'native-photo-hand-3', pieceId: `pc_${'s'.repeat(22)}` }
+  expect((await send(owner, path, 'POST', stranger)).status).toBe(404)
+  expect((await send(other, path, 'POST', { operationId: 'native-photo-hand-4', pieceId })).status).toBe(404)
+  const inPiece = Schema.decodeUnknownSync(Photos)(await (await owner(`/api/pieces/${pieceId}/photos`)).json())
+  expect(inPiece.photos.map(({ id }) => id)).toEqual([photoId])
+  const remove = { operationId: 'native-photo-hand-remove', pieceId: null }
+  const removed = await photoOf(await send(owner, `/api/photos/${photoId}/garments/${hand?.id ?? ''}`, 'PUT', remove))
+  expect(removed.garments).toHaveLength(before)
+}
+
 /** Matching, favourites, the piece's photos and deletion; another account sees none of it. */
 const verifyMatching = async (origin: string, owner: Call, other: Call, photo: Photo) => {
   const [garment] = photo.garments
@@ -86,11 +118,12 @@ const verifyMatching = async (origin: string, owner: Call, other: Call, photo: P
   expect((await send(owner, path, 'PUT', { pieceId: strangerPiece })).status).toBe(404)
   const inPiece = Schema.decodeUnknownSync(Photos)(await (await owner(`/api/pieces/${pieceId}/photos`)).json())
   expect(inPiece.photos.map(({ id }) => id)).toEqual([photo.id])
+  await verifyAddingByHand(origin, owner, other, photo.id)
   expect((await photoOf(await send(owner, `/api/photos/${photo.id}`, 'PATCH', { favourite: true }))).favourite).toBe(
     true,
   )
   await verifySignedImage(origin, photo.images.thumb)
-  await verifySignedImage(origin, garment.image)
+  await verifySignedImage(origin, garment.image ?? '')
   expect((await other(`/api/photos/${photo.id}`)).status).toBe(404)
   expect((await send(other, `/api/photos/${photo.id}`, 'DELETE')).status).toBe(404)
   expect((await fetch(`${origin}/cdn/photos/${photo.id}/thumb`)).status).toBe(404)

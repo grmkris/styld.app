@@ -5,6 +5,7 @@ import {
   CurrentAccount,
   ImageType,
   LookId,
+  type AddPhotoPiece,
   type MatchGarment,
   type UpdatePhoto,
   maximumLookPieces,
@@ -61,8 +62,11 @@ const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyAr
           contentType: 'image/png',
           version: row.cutoutKey,
         })
+  // A piece added by hand whose piece was deleted is nothing of the photo any more, so it is not shown.
   const shownGarments = yield* Effect.forEach(
-    garments.filter(({ photoId }) => photoId === row.id),
+    garments.filter(
+      ({ photoId, cutoutKey, pieceId }) => photoId === row.id && (cutoutKey !== null || pieceId !== null),
+    ),
     (garment) =>
       Effect.gen(function* () {
         // A garment added by hand has no cut-out yet, so no picture.
@@ -346,35 +350,6 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
       }),
     )
   }, Effect.provide(context)),
-  matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {
-    const { accountId } = yield* CurrentAccount
-    const change = Effect.gen(function* () {
-      yield* ownPhoto(accountId, photoId)
-      if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
-      const store = yield* PhotoStore
-      if (yield* storedAs(store.matchGarment(accountId, photoId, garmentId, input.pieceId))) return
-      // A garment waiting in the review tray stays there: the photo is answered as it is.
-      const garment = (yield* storedAs(store.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
-      if (garment?.state !== 'offered') return yield* NotFound.make({})
-    })
-    const operation = {
-      operationId: input.operationId,
-      command: 'matchGarment',
-      input: [photoId, garmentId, input.pieceId],
-    }
-    return yield* changedOnce(operation, photoId, change)
-  }, Effect.provide(context)),
-  /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
-  offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string, operationId: string) {
-    const { accountId } = yield* CurrentAccount
-    const change = Effect.gen(function* () {
-      const photo = yield* ownPhoto(accountId, photoId)
-      const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
-      if (garment === undefined) return yield* NotFound.make({})
-      if (garment.state !== 'offered') yield* offered(photo, garment)
-    })
-    return yield* changedOnce({ operationId, command: 'offerGarment', input: [photoId, garmentId] }, photoId, change)
-  }, Effect.provide(context)),
   /** "Wear it again": the photo's confirmed pieces as a look, remembered on the photo. Repeating the operation answers
    * the same look. */
   wearAgain: Effect.fn('Styld.Photos.wearAgain')(function* (photoId: string, input: WearAgain) {
@@ -488,6 +463,71 @@ const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   }, Effect.provide(context)),
 }))
 
+/** Matching a photo's garments: confirmed, offered to the review tray, or added and taken off by hand. */
+const matching = Effect.map(Effect.context<PhotoServices>(), (context) => ({
+  /** Confirm a garment as a piece, or say it is none of them. A garment waiting in the review tray stays there (its
+   * card keeping it is what confirms it), and a piece added by hand that is none of them is taken off the photo. */
+  matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {
+    const { accountId } = yield* CurrentAccount
+    const change = Effect.gen(function* () {
+      yield* ownPhoto(accountId, photoId)
+      const store = yield* PhotoStore
+      const garment = (yield* storedAs(store.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      if (garment === undefined) return yield* NotFound.make({})
+      if (garment.state === 'offered') return
+      if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
+      if (garment.cutoutKey === null && input.pieceId === null)
+        return yield* storedAs(store.removeAddedGarment(accountId, photoId, garmentId))
+      yield* storedAs(store.matchGarment(accountId, photoId, garmentId, input.pieceId))
+    })
+    const operation = {
+      operationId: input.operationId,
+      command: 'matchGarment',
+      input: [photoId, garmentId, input.pieceId],
+    }
+    return yield* changedOnce(operation, photoId, change)
+  }, Effect.provide(context)),
+  /** Add one of the person's pieces to a ready photo by hand, as a confirmed garment after the ones found; a piece
+   * already confirmed in it is left as it is. A photo still being found is refused for now: its garments are about to
+   * be written. */
+  addPiece: Effect.fn('Styld.Photos.addPiece')(function* (photoId: string, input: AddPhotoPiece) {
+    const { accountId } = yield* CurrentAccount
+    const change = Effect.gen(function* () {
+      const photo = yield* ownPhoto(accountId, photoId)
+      const piece = yield* ownPiece(accountId, input.pieceId)
+      if (photo.status !== 'ready') return yield* unavailable()
+      const store = yield* PhotoStore
+      const garments = yield* storedAs(store.garmentsOf([photoId]))
+      if (garments.some(({ state, pieceId }) => state === 'confirmed' && pieceId === piece.id)) return
+      const garment: GarmentRow = {
+        id: yield* newId('pg'),
+        photoId,
+        accountId,
+        position: Math.max(-1, ...garments.map(({ position }) => position)) + 1,
+        cutoutKey: null,
+        type: piece.type,
+        colours: [],
+        pieceId: piece.id,
+        state: 'confirmed',
+      }
+      if (!(yield* storedAs(store.addGarment(garment)))) return yield* unavailable()
+    })
+    const operation = { operationId: input.operationId, command: 'addPhotoPiece', input: [photoId, input.pieceId] }
+    return yield* changedOnce(operation, photoId, change)
+  }, Effect.provide(context)),
+  /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
+  offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string, operationId: string) {
+    const { accountId } = yield* CurrentAccount
+    const change = Effect.gen(function* () {
+      const photo = yield* ownPhoto(accountId, photoId)
+      const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      if (garment === undefined) return yield* NotFound.make({})
+      if (garment.state !== 'offered') yield* offered(photo, garment)
+    })
+    return yield* changedOnce({ operationId, command: 'offerGarment', input: [photoId, garmentId] }, photoId, change)
+  }, Effect.provide(context)),
+}))
+
 /** My Gallery over the services its operations yield (`PhotoServices`): its own store, capture's stores and garment
  * pipeline, media, the piece queue, credits, and the looks, boards and uploads it leans on. Callers provide only
  * `CurrentAccount`. */
@@ -496,6 +536,7 @@ const make = Effect.gen(function* () {
     ...(yield* finding),
     ...(yield* reading),
     ...(yield* changing),
+    ...(yield* matching),
     ...(yield* showing),
     ...(yield* boarding),
   }

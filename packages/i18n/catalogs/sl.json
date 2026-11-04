@@ -1021,7 +1021,10 @@
     "showCutout": "Izrez",
     "pictures": "Fotografija ali izrez",
     "cutOutSlowDown": "Naenkrat je bilo preveč izrezov. Poskusi znova čez minuto.",
-    "cutoutOf": "Oprava, izrezana iz fotografije z dne {date}"
+    "cutoutOf": "Oprava, izrezana iz fotografije z dne {date}",
+    "addFromWardrobe": "Dodaj iz garderobe",
+    "nothingFound": "Styld na tej fotografiji ni našel oblačil. Dodaj, kar nosiš, iz svoje garderobe.",
+    "remove": "Odstrani s fotografije"
   },
   "lab": {
     "title": "Laboratorij"

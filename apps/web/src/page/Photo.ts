@@ -48,13 +48,21 @@ export type Work = typeof Work.Type
 
 export { Deletion }
 
+/** What the wardrobe's sheet is open for: a garment Styld found, matched to a piece, or a piece Styld did not find,
+ * added to the photo by hand (Eva, 4 November: "add from my wardrobe"). */
+export const Choosing = defineTaggedUnion({
+  ForGarment: { garmentId: PhotoGarmentId },
+  NewPiece: {},
+})
+export type Choosing = typeof Choosing.Type
+
 export const Model = Schema.Struct({
   photoId: Schema.String,
   photo: PhotoData.schema,
   work: Work,
   deletion: Deletion,
-  /** The garment the wardrobe's sheet chooses a piece for, while it is open. */
-  choosing: Schema.Option(PhotoGarmentId),
+  /** What the wardrobe's sheet chooses a piece for, while it is open. */
+  choosing: Schema.Option(Choosing),
   picker: PiecePicker,
   saveToBoard: SaveToBoard.Model,
   misses: Misses,
@@ -94,6 +102,9 @@ export const Message = defineMessageUnion({
   ClickedMatch: { garmentId: PhotoGarmentId, pieceId: Schema.NullOr(PieceId) },
   /** The wardrobe's sheet opened for a garment, on the kind Styld read it as. */
   ClickedChoose: { garmentId: PhotoGarmentId },
+  /** The wardrobe's sheet opened to add a piece Styld did not find, on every piece. */
+  ClickedAddFromWardrobe: {},
+  ClickedAddPiece: { pieceId: PieceId },
   GotPiecePickerMessage: { message: Dialog.Message },
   SelectedPickerGroup: { group: Schema.Option(GarmentGroup) },
   SelectedPickerType: { type: Schema.Option(PieceType) },
@@ -165,6 +176,20 @@ export const MatchGarment = Command.define('MatchGarment', {
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.matchGarment({
         params: { photoId: yield* photoIdOf(photoId), garmentId },
+        payload: { operationId: yield* drawOperationId(), pieceId },
+      })
+      return Message.SucceededChange({ photo })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
+})
+
+export const AddPiece = Command.define('AddPiece', {
+  args: { photoId: Schema.String, pieceId: PieceId },
+  messages: [Message.SucceededChange, Message.FailedChange],
+  execute: ({ photoId, pieceId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const photo = yield* api.photo.addPiece({
+        params: { photoId: yield* photoIdOf(photoId) },
         payload: { operationId: yield* drawOperationId(), pieceId },
       })
       return Message.SucceededChange({ photo })
@@ -308,13 +333,22 @@ const openedFor = (model: Model, garmentId: PhotoGarmentId): UpdateReturn => {
     Option.fromNullishOr(photo.garments.find(({ id }) => id === garmentId)),
   )
   const read = Option.flatMap(garment, ({ type }) => Option.fromNullishOr(type))
-  return picker.openAt(startingAt(read))(modifyFields(model, { choosing: () => Option.some(garmentId) }))
+  return picker.openAt(startingAt(read))(
+    modifyFields(model, { choosing: () => Option.some(Choosing.ForGarment({ garmentId })) }),
+  )
 }
 
+/** The sheet opens on every piece, for one Styld did not find. */
+const openedToAdd = (model: Model): UpdateReturn =>
+  picker.openAt(startingAt(Option.none()))(modifyFields(model, { choosing: () => Option.some(Choosing.NewPiece()) }))
+
 /** A piece chosen in the sheet, or none of them: the sheet closes and the match is sent. */
-const matched = (model: Model, garmentId: PhotoGarmentId, pieceId: PieceId | null): UpdateReturn => {
+const sentFromSheet = (
+  model: Model,
+  command: Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom>,
+): UpdateReturn => {
   const closed = picker.close(model)
-  const sent = sending(closed.model, MatchGarment({ photoId: model.photoId, garmentId, pieceId }))
+  const sent = sending(closed.model, command)
   return { ...sent, commands: [...(closed.commands ?? []), ...(sent.commands ?? [])] }
 }
 
@@ -355,8 +389,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedRetry: () => photoCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
     TickedFindingRefresh: () => photoCache(AsyncData.revalidate)(model),
     ClickedFavourite: ({ favourite }) => sending(model, SetFavourite({ photoId: model.photoId, favourite })),
-    ClickedMatch: ({ garmentId, pieceId }) => matched(model, garmentId, pieceId),
+    ClickedMatch: ({ garmentId, pieceId }) =>
+      sentFromSheet(model, MatchGarment({ photoId: model.photoId, garmentId, pieceId })),
     ClickedChoose: ({ garmentId }) => openedFor(model, garmentId),
+    ClickedAddFromWardrobe: () => openedToAdd(model),
+    ClickedAddPiece: ({ pieceId }) => sentFromSheet(model, AddPiece({ photoId: model.photoId, pieceId })),
     GotPiecePickerMessage: (got) => picker.update(model, got.message),
     SelectedPickerGroup: ({ group }) => picker.selectedGroup(model, group),
     SelectedPickerType: ({ type }) => picker.selectedType(model, type),

@@ -1,5 +1,5 @@
 import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
-import { and, asc, desc, eq, inArray, exists, ne } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, exists, isNull, ne } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { OfferedRows } from '../capture/Rows.ts'
@@ -92,17 +92,6 @@ const writes = (db: Db) => ({
   /** The garments found, and the photo ready, in one batch; only while it is still being found. */
   finishFinding: (photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) =>
     finishFinding(db, photoId, garments, at),
-  /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
-  offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
-    query(() =>
-      db.batch([
-        ...OfferedRows.insert(db, capture, detection),
-        db
-          .update(photoGarments)
-          .set({ state: 'offered', pieceId: null })
-          .where(and(eq(photoGarments.id, garmentId), eq(photoGarments.accountId, capture.accountId))),
-      ]),
-    ).pipe(Effect.asVoid),
   /** The photo's finding given up: whether this call ended it. */
   failFinding: (photoId: string, at: Date) =>
     query(() =>
@@ -126,6 +115,29 @@ const writes = (db: Db) => ({
     query(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
       Effect.asVoid,
     ),
+  /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. */
+  deletePhoto: (accountId: string, photoId: string, receipt: ReceiptRow) =>
+    query(() =>
+      db.batch([
+        db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning(),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.map(([deleted]) => first(deleted))),
+})
+
+/** Changing a photo's garments: matched, offered to the review tray, or added and taken off by hand. */
+const garmentWrites = (db: Db) => ({
+  /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
+  offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
+    query(() =>
+      db.batch([
+        ...OfferedRows.insert(db, capture, detection),
+        db
+          .update(photoGarments)
+          .set({ state: 'offered', pieceId: null })
+          .where(and(eq(photoGarments.id, garmentId), eq(photoGarments.accountId, capture.accountId))),
+      ]),
+    ).pipe(Effect.asVoid),
   /** A garment confirmed as a piece, or found in none: only the account's own, on its own photo, and never one offered
    * to the review tray, whose card keeping it is what confirms it (`Rows.ts`). */
   matchGarment: (accountId: string, photoId: string, garmentId: string, pieceId: string | null) =>
@@ -143,18 +155,40 @@ const writes = (db: Db) => ({
         )
         .returning({ id: photoGarments.id }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. */
-  deletePhoto: (accountId: string, photoId: string, receipt: ReceiptRow) =>
+  /** A piece the person added to the photo by hand: only while the photo is theirs and ready (`finishFinding` writes
+   * the garments of a photo still being found); whether it was added. */
+  addGarment: (garment: GarmentRow) =>
     query(() =>
-      db.batch([
-        db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning(),
-        db.insert(operationReceipts).values(receipt),
-      ]),
-    ).pipe(Effect.map(([deleted]) => first(deleted))),
+      insertWhen(
+        db,
+        photoGarments,
+        garment,
+        exists(
+          db
+            .select({ id: outfitPhotos.id })
+            .from(outfitPhotos)
+            .where(and(ofAccount(garment.accountId, garment.photoId), eq(outfitPhotos.status, 'ready'))),
+        ),
+      ),
+    ).pipe(Effect.map(({ meta }) => meta.changes > 0)),
+  /** A piece added by hand taken off the photo again: it was never found in it, so nothing is left behind. */
+  removeAddedGarment: (accountId: string, photoId: string, garmentId: string) =>
+    query(() =>
+      db
+        .delete(photoGarments)
+        .where(
+          and(
+            eq(photoGarments.id, garmentId),
+            eq(photoGarments.photoId, photoId),
+            eq(photoGarments.accountId, accountId),
+            isNull(photoGarments.cutoutKey),
+          ),
+        ),
+    ).pipe(Effect.asVoid),
 })
 
 /** My Gallery's rows over D1: photos, their garments, and the receipt that makes adding one idempotent. */
-export const makePhotoStore = (db: Db) => ({ ...reads(db), ...writes(db) })
+export const makePhotoStore = (db: Db) => ({ ...reads(db), ...writes(db), ...garmentWrites(db) })
 
 /** My Gallery's rows over the application's one database. */
 export class PhotoStore extends Context.Service<PhotoStore, ReturnType<typeof makePhotoStore>>()(

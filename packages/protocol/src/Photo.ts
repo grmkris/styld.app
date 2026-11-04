@@ -26,7 +26,9 @@ export type PhotoStatus = typeof PhotoStatus.Type
 export const GarmentMatch = Schema.Literals(['suggested', 'confirmed', 'unmatched', 'offered'])
 export type GarmentMatch = typeof GarmentMatch.Type
 
-/** A garment found in a photo: what Styld took it for, and the piece it is when there is one. */
+/** A garment found in a photo: what Styld took it for, and the piece it is when there is one. A piece the person added
+ * to the photo by hand (Styld did not find it) is a confirmed garment with no `image`: there is nothing of the photo
+ * to show for it, so its piece's own picture stands in. */
 export const PhotoGarment = Schema.Struct({
   id: PhotoGarmentId,
   type: Schema.NullOr(PieceType),
@@ -65,6 +67,11 @@ export const UpdatePhoto = Schema.Struct({ operationId: OperationId, favourite: 
  * `PUT /api/photos/:photoId/garments/:garmentId`. */
 export const MatchGarment = Schema.Struct({ operationId: OperationId, pieceId: Schema.NullOr(PieceId) })
 export type MatchGarment = typeof MatchGarment.Type
+
+/** Add one of the person's pieces to a photo by hand, as a confirmed garment, when Styld did not find it:
+ * `POST /api/photos/:photoId/pieces`. A piece already confirmed in the photo is left as it is. */
+export const AddPhotoPiece = Schema.Struct({ operationId: OperationId, pieceId: PieceId })
+export type AddPhotoPiece = typeof AddPhotoPiece.Type
 
 /** "Wear it again": the photo's confirmed pieces saved as a look, under the name the person's language gives it:
  * `POST /api/photos/:photoId/look`. */
@@ -139,6 +146,14 @@ export class PhotoApi extends HttpApiGroup.make('photo')
     HttpApiEndpoint.put('matchGarment', '/photos/:photoId/garments/:garmentId', {
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: MatchGarment,
+      success: Photo,
+      error: [NotFound, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('addPiece', '/photos/:photoId/pieces', {
+      params: photoPath,
+      payload: AddPhotoPiece,
       success: Photo,
       error: [NotFound, OperationConflict, Unavailable],
     }),

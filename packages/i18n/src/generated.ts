@@ -386,6 +386,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'people.savedFromOthers': Readonly<Record<string, never>>
   'people.signInToFollow': Readonly<Record<string, never>>
   'people.signInToSave': Readonly<Record<string, never>>
+  'photo.addFromWardrobe': Readonly<Record<string, never>>
   'photo.addToWardrobe': Readonly<Record<string, never>>
   'photo.change': Readonly<Record<string, never>>
   'photo.cutOut': Readonly<Record<string, never>>
@@ -403,10 +404,12 @@ export interface MessageArgumentsByKey<_T = string> {
   'photo.notFound': Readonly<Record<string, never>>
   'photo.notInWardrobe': Readonly<Record<string, never>>
   'photo.notThis': Readonly<Record<string, never>>
+  'photo.nothingFound': Readonly<Record<string, never>>
   'photo.offered': Readonly<Record<string, never>>
   'photo.openLook': Readonly<Record<string, never>>
   'photo.pick': Readonly<Record<string, never>>
   'photo.pictures': Readonly<Record<string, never>>
+  'photo.remove': Readonly<Record<string, never>>
   'photo.showCutout': Readonly<Record<string, never>>
   'photo.showPhoto': Readonly<Record<string, never>>
   'photo.toReview': Readonly<Record<string, never>>
@@ -895,4 +898,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '9837c62cfab73a404959ba94a59c5757f69af86b3854777684e4672e0d0cad30'
+export const catalogVersion = 'e8a130be8dfb3a654c320b695ad027ab2a8641e77586fb4cc8f1e21e41e86e43'

@@ -15,6 +15,7 @@ export const photoHandlers = HttpApiBuilder.group(StyldApi, 'photo', (handlers) 
       .handle('updatePhoto', ({ params, payload }) => photos.updatePhoto(params.photoId, payload))
       .handle('deletePhoto', ({ params, payload }) => photos.deletePhoto(params.photoId, payload.operationId))
       .handle('matchGarment', ({ params, payload }) => photos.matchGarment(params.photoId, params.garmentId, payload))
+      .handle('addPiece', ({ params, payload }) => photos.addPiece(params.photoId, payload))
       .handle('offerGarment', ({ params, payload }) =>
         photos.offerGarment(params.photoId, params.garmentId, payload.operationId),
       )

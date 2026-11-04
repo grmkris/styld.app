@@ -43,17 +43,18 @@ const withGarment = (garmentId: string, fields: object) =>
     garments: photo.garments.map((found) => (found.id === garmentId ? { ...found, ...fields } : found)),
   })
 
-/** The photo's page with the wardrobe read. */
-const onPhoto = () =>
+/** A photo's page with the wardrobe read. */
+const onPhotoOf = (shown: PhotoContract) =>
   withPage(
-    withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans, cardigan]),
+    withPieces(at(`/gallery/${shown.id}`, { signedIn: true }), [tee, shirt, jeans, cardigan]),
     lenses.photo,
     () =>
-      modifyFields(Photo.init(photo.id), {
-        photo: () => Photo.PhotoData.Success({ data: photo }),
+      modifyFields(Photo.init(shown.id), {
+        photo: () => Photo.PhotoData.Success({ data: shown }),
         choosing: () => Option.none(),
       }),
   )
+const onPhoto = () => onPhotoOf(photo)
 
 /** The wardrobe's sheet opened from a garment's button, as a scene's steps. */
 const choosingFor = (button: string) => [
@@ -165,6 +166,44 @@ describe('an outfit photo’s page', () => {
         }),
       ),
       inside(role('region', { name: 'What you’re wearing' }), expect(text('Grey cardigan')).toExist()),
+    )
+  })
+
+  test('a photo where Styld found nothing says so, and a piece is added to it by hand from the wardrobe', () => {
+    const empty = Schema.decodeUnknownSync(PhotoContract)({ ...photo, garments: [] })
+    // Added by hand, the garment has no picture of the photo: the piece's own stands in, and it comes off again.
+    const added = Schema.decodeUnknownSync(PhotoContract)({
+      ...photo,
+      garments: [garment('added', { type: 'jackets', match: 'confirmed', pieceId: cardigan.id })],
+    })
+    scene(
+      { update, view },
+      given(onPhotoOf(empty)),
+      expect(
+        text('Styld didn’t find any clothes in this photo. Add what you’re wearing from your wardrobe.'),
+      ).toExist(),
+      ...choosingFor('Add from my wardrobe'),
+      inside(
+        role('dialog', { name: 'Add from my wardrobe' }),
+        expect(role('button', { name: 'Grey cardigan' })).toExist(),
+        expect(role('button', { name: 'Blue jeans' })).toExist(),
+        expect(role('button', { name: 'None of my pieces' })).not.toExist(),
+      ),
+      click(role('button', { name: 'Grey cardigan' })),
+      ...sceneSheetMoved(2),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Mount.expectEnded(Dialog.AcquireResources),
+      Command.resolve(
+        Photo.AddPiece({ photoId: photo.id, pieceId: cardigan.id }),
+        Photo.Message.SucceededChange({ photo: added }),
+      ),
+      inside(
+        role('region', { name: 'What you’re wearing' }),
+        expect(text('Grey cardigan')).toExist(),
+        expect(role('button', { name: 'Remove from this photo' })).toExist(),
+        expect(role('button', { name: 'Change' })).not.toExist(),
+      ),
+      expect(role('button', { name: 'Wear it again' })).toExist(),
     )
   })
 

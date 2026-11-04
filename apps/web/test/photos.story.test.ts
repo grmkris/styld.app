@@ -173,7 +173,7 @@ describe('an outfit photo', () => {
 
   test('the wardrobe’s sheet opens for a garment on the kind Styld read, fresh each time, and a new group frees the type', () => {
     const sheet = Photo.update(loaded, Photo.Message.ClickedChoose({ garmentId })).model
-    expect(sheet.choosing).toEqual(Option.some(garmentId))
+    expect(sheet.choosing).toEqual(Option.some(Photo.Choosing.ForGarment({ garmentId })))
     expect(sheet.picker).toMatchObject({
       group: Option.some('clothing'),
       type: Option.some('shortSleeveTops'),
@@ -187,6 +187,23 @@ describe('an outfit photo', () => {
       type: Option.some('shortSleeveTops'),
       query: '',
     })
+  })
+
+  test('a piece Styld did not find is added from the whole wardrobe, and the sheet closes as it is sent', () => {
+    const adding = Photo.update(loaded, Photo.Message.ClickedAddFromWardrobe()).model
+    expect(adding.choosing).toEqual(Option.some(Photo.Choosing.NewPiece()))
+    expect(adding.picker).toMatchObject({ group: Option.none(), type: Option.none(), query: '' })
+    story(
+      Photo.update,
+      given(loaded),
+      message(Photo.Message.ClickedAddPiece({ pieceId })),
+      Command.expectExact(Photo.AddPiece({ photoId: ready.id, pieceId })),
+      Command.resolve(Photo.AddPiece, Photo.Message.SucceededChange({ photo: ready })),
+      model(({ work, choosing }) => {
+        expect(work).toEqual(Photo.Work.Idle())
+        expect(choosing).toEqual(Option.none())
+      }),
+    )
   })
 
   test('Cut out the outfit asks once, and says so when Styld found no one in the photo', () => {
