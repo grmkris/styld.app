@@ -107,7 +107,7 @@ export class LimitReached extends Schema.TaggedError<LimitReached>()(
       dailyCredits: {
         code: 'daily_limit',
         message: 'Today’s credits are used up.',
-        recovery: 'Try again after {resetsAt}.',
+        recovery: 'Try again after {resetsAt}, or the person can take a Premium week on their Styld account page.',
         retryable: false,
       },
       thinking: {

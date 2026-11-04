@@ -11,6 +11,8 @@ import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGene
 import { gatewayBase, makeVeoGenerator, veoPollSeconds } from './Veo.ts'
 import type { Deployment } from '../Config.ts'
 import type { Fetch } from './Http.ts'
+import { Checkouts } from '../billing/Checkouts.ts'
+import { makeDodoCheckouts } from './Dodo.ts'
 import { PicturePainter } from '../generation/Painter.ts'
 import { MoodPlanner } from '../generation/Planner.ts'
 import { OutfitJudge } from '../outfits/Judge.ts'
@@ -37,6 +39,7 @@ export type ProviderServices =
   | OutfitJudge
   | Thinking
   | TextCompletions
+  | Checkouts
 
 /** What providers are built over: the Worker's own bindings, its call counter and its deployment's secrets.
  * @internal Exported for its tests. */
@@ -104,6 +107,7 @@ export const providersOver = (
     Layer.succeed(ImageGenerator, makeMuseGenerator(meta)),
     Layer.succeed(VideoGenerator, makeVeoGenerator(veo)),
     Layer.succeed(PicturePainter, makeMusePainter(meta)),
+    Layer.succeed(Checkouts, makeDodoCheckouts(deployment.billing, http.fetch)),
     models,
   )
 }

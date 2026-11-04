@@ -27,6 +27,10 @@ const takesOperationId = (endpoint: HttpApiEndpoint.Top) =>
 /** Writes that do not keep their operation id, each with why. Every other write answers a repeat from its receipt. */
 const unkept = new Map([
   ['capture.check', 'reads a camera frame and stores nothing, so a repeat is the same reading'],
+  [
+    'billing.checkout',
+    'opens a payment page and stores nothing, so a repeat opens another; only a payment Dodo confirms counts, once',
+  ],
   ['account.deleteMe', 'ends the session it is asked in, so a repeat is signed out; deleting again changes nothing'],
   [
     'pictureBackfill.backfillPictures',

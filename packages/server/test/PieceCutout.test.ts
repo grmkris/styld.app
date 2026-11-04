@@ -77,6 +77,7 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
         reserve: (charge) => Effect.sync(() => void held.push(`reserve ${charge.hold}`)),
         settle: (_accountId, hold, ending) => Effect.sync(() => void held.push(`${ending} ${hold}`)),
         remaining: () => Effect.succeed(10),
+        balance: () => Effect.succeed({ remaining: 10, daily: 10, premiumUntil: Option.none() }),
         sweep: Effect.succeed(0),
       }),
     ),

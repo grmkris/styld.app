@@ -1,6 +1,7 @@
 import { Environment } from '@styld/observability'
 import type { StylistThreadsApi } from './stylist/Agent.ts'
-import { Config, ConfigProvider, Context, Effect, Option, Predicate, Redacted, Schema } from 'effect'
+import { Config, ConfigProvider, Context, Data, Effect, Option, Predicate, Redacted, Schema } from 'effect'
+import { webhookKeyOf } from './billing/Signature.ts'
 import { operatorDigestOf } from './Operator.ts'
 import {
   decodeAuthSecret,
@@ -42,7 +43,32 @@ const deploymentConfig = Config.all({
   oauthKeys: Config.String('AUTH_OAUTH_KEYS').pipe(Config.option),
   /** The operator's token (`Operator.ts`); none switches the operator's routes off. */
   operatorToken: Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option),
+  /** Dodo Payments (`billing/`): its API's address and the premium week's product, from the stage's facts, and the
+   * API key and webhook secret; payments are on only when all four are set. */
+  dodoBase: Config.String('STYLD_DODO_BASE').pipe(Config.option),
+  dodoProduct: Config.String('STYLD_DODO_PRODUCT').pipe(Config.option),
+  dodoKey: Config.Redacted('STYLD_DODO_API_KEY').pipe(Config.option),
+  dodoWebhookSecret: Config.Redacted('STYLD_DODO_WEBHOOK_SECRET').pipe(Config.option),
 })
+
+/** `STYLD_DODO_WEBHOOK_SECRET` is not a `whsec_<base64>` secret: a broken stage, so the Worker does not start. */
+class WebhookSecretMalformed extends Data.TaggedError('WebhookSecretMalformed') {}
+
+/** Payments, when the stage has all of Dodo's settings: the API's address, the product, the key and the webhook's
+ * HMAC key. */
+const billingOf = (raw: Config.Success<typeof deploymentConfig>) =>
+  Option.match(
+    Option.all({ base: raw.dodoBase, product: raw.dodoProduct, key: raw.dodoKey, secret: raw.dodoWebhookSecret }),
+    {
+      onNone: () => Effect.succeed(Option.none()),
+      onSome: ({ base, product, key, secret }) =>
+        Option.match(webhookKeyOf(Redacted.value(secret)), {
+          onNone: () => Effect.die(new WebhookSecretMalformed()),
+          onSome: (webhookKey) =>
+            Effect.succeed(Option.some({ base: base.replace(/\/$/u, ''), product, key, webhookKey })),
+        }),
+    },
+  )
 
 /** The deployment, from the Worker's bindings. */
 export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env: Readonly<Record<string, unknown>>) {
@@ -74,6 +100,7 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
       ? Option.none<Uint8Array>()
       : Option.some(yield* operatorDigestOf(Redacted.value(raw.operatorToken.value)).pipe(Effect.orDie)),
     secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey, textKey: raw.textKey },
+    billing: yield* billingOf(raw),
   }
 })
 

@@ -5,7 +5,6 @@ import {
   type CreateCapture,
   type CreateVideoCapture,
   CurrentAccount,
-  dailyCredits,
   type HeldCheckAnswer,
   NotFound,
   type OperationId,
@@ -285,7 +284,7 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
   tray: Effect.fn('Styld.Capture.tray')(function* () {
     const { accountId } = yield* CurrentAccount
     const open = yield* storedAs((yield* CaptureStore).tray(accountId))
-    const remaining = yield* (yield* Holds).remaining(accountId)
+    const { remaining, daily } = yield* (yield* Holds).balance(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
     const captures = yield* Effect.forEach(trayCards(open), ({ capture, detections }) =>
       Effect.gen(function* () {
@@ -301,7 +300,7 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
     )
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures,
-      allowance: { remaining, daily: dailyCredits },
+      allowance: { remaining, daily },
     }).pipe(Effect.orDie)
   }, Effect.provide(context)),
   /** Show each other sighting of a garment on its own card again: the import took different garments for one. */

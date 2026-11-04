@@ -91,6 +91,9 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   seededBoards: ['seed/'],
   tasteAnswers: ['taste/'],
   styleNotes: ['taste/'],
+  // Only the payment webhook writes them, in one batch per delivery (`billing/Store.ts`).
+  purchases: ['billing/'],
+  premium: ['billing/'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

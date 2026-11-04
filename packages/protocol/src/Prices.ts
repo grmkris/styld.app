@@ -4,6 +4,10 @@
 /** The credits every account has each UTC day; unused ones do not carry over. Changing it is a commit. */
 export const dailyCredits = 100
 
+/** Styld Premium Week (owner, 4 November 2026): this many credits a day instead, for `days` days from the purchase,
+ * for one payment of `price` (US dollars, shown as Dodo charges it). Buying again extends from the current end. */
+export const premiumWeek = { dailyCredits: 500, days: 7, price: '$4.99' } as const
+
 export const prices = {
   /** A photo's garments found and cut out (owner, 30 October). A piece's back is free (owner, 4 November): the camera
    * asks for it after each front, and a back is what Styld's carousel turns the piece to. */

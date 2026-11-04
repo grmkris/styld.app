@@ -156,13 +156,14 @@ it.effect('holds an account to its daily allowance, and a retry after midnight t
   )
 })
 
+const reserve = (name: string, amount: number, day: string, dailyAllowance: number) =>
+  new ReserveCredits({ operationId: OperationId.make(name), amount, day, dailyAllowance })
+const reserved = (name: string, amount: number, day: string, dailyAfter: number, dailyAllowance: number) =>
+  new CreditsReserved({ operationId: OperationId.make(name), day, amount, dailyAfter, dailyAllowance })
+
 describe('premium', () => {
   const free = 100
   const premium = 500
-  const reserve = (name: string, amount: number, day: string, dailyAllowance: number) =>
-    new ReserveCredits({ operationId: OperationId.make(name), amount, day, dailyAllowance })
-  const reserved = (name: string, amount: number, day: string, dailyAfter: number, dailyAllowance: number) =>
-    new CreditsReserved({ operationId: OperationId.make(name), day, amount, dailyAfter, dailyAllowance })
 
   it.effect('premium bought mid-day tops today up by the difference', () =>
     story(

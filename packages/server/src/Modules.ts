@@ -1,4 +1,5 @@
 import { account } from './Account.ts'
+import { billing } from './billing/Module.ts'
 import { capture } from './capture/Module.ts'
 import { generation } from './generation/Module.ts'
 import { imports } from './imports/Module.ts'
@@ -28,4 +29,5 @@ export const modules = [
   mcp,
   imports,
   seed,
+  billing,
 ] as const

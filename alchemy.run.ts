@@ -26,6 +26,22 @@ const googleEnv = Effect.gen(function* () {
     : {}
 })
 
+/** Styld Premium Week through Dodo Payments (`server/src/billing/`): the stage's mode and product (`Resources.ts`
+ * `stages`), the API key and the webhook endpoint's secret. Payments run only when both secrets are set. */
+const billingEnv = Effect.gen(function* () {
+  const key = yield* Config.Redacted('STYLD_DODO_API_KEY').pipe(Config.option)
+  const secret = yield* Config.Redacted('STYLD_DODO_WEBHOOK_SECRET').pipe(Config.option)
+  const { billing } = yield* currentStage
+  return Option.isSome(key) && Option.isSome(secret)
+    ? {
+        STYLD_DODO_BASE: billing.base,
+        STYLD_DODO_PRODUCT: billing.product,
+        STYLD_DODO_API_KEY: key.value,
+        STYLD_DODO_WEBHOOK_SECRET: secret.value,
+      }
+    : {}
+})
+
 export default Alchemy.Stack(
   'StyldAppV2',
   { providers: Cloudflare.providers(), state: Cloudflare.state() },
@@ -112,6 +128,9 @@ export default Alchemy.Stack(
           onNone: () => ({}),
           onSome: (token) => ({ STYLD_OPERATOR_TOKEN: token }),
         }),
+        // Styld Premium Week through Dodo Payments (`server/src/billing/`): the stage's mode and product, with the
+        // API key and webhook secret; without both secrets the stage sells nothing (no button, its routes answer 404).
+        ...(yield* billingEnv),
       },
     })
     return { url: edge.url.as<string>(), mediaBucket: media.bucketName.as<string>() }

@@ -20,6 +20,7 @@ const modules = [
   'imports',
   'seed',
   'taste',
+  'billing',
 ]
 
 export default defineConfig({

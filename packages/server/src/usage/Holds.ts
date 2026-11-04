@@ -1,6 +1,8 @@
 import { isOutcomeUnknown, ProviderError } from '../providers/Errors.ts'
 import { accounts, pendingSettlements } from '@styld/db'
-import { dailyCredits, LimitReached, Unavailable } from '@styld/protocol'
+import { LimitReached, Unavailable } from '@styld/protocol'
+import { spendableOn } from '@styld/domain/Wallet/Allowance'
+import type { WalletState } from '@styld/domain/Wallet/WalletState'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
@@ -9,6 +11,7 @@ import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCo
 import { and, asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { Cause, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schedule, Schema } from 'effect'
 import { Database, first, nowDate, query } from '../kernel/Db.ts'
+import { allowanceAt, premiumUntilOf } from '../billing/Premium.ts'
 
 // Every paid action holds its credits in the account's Wallet before the work runs and settles them once after it
 // ends, by one policy: work that succeeded consumes them; work that failed, or whose provider answer was lost after it
@@ -120,6 +123,33 @@ export const settlementRows = (db: Database['Service']) => ({
     ),
 })
 
+/** An account's credits today. */
+export interface Balance {
+  readonly remaining: number
+  readonly daily: number
+  readonly premiumUntil: Option.Option<Date>
+}
+
+/** Today's allowance (premium's while it lasts, `billing/Premium.ts`, the free one otherwise) and what is left of it:
+ * the one reading the holds reserve under and the credits the person is shown. */
+const balances = (
+  walletOf: (accountId: string) => Effect.Effect<WalletState, Unavailable>,
+  db: Database['Service'],
+) => {
+  const allowanceOf = (accountId: string, now: DateTime.Utc) =>
+    premiumUntilOf(db, accountId).pipe(
+      Effect.map((until) => ({ until, daily: allowanceAt(until, DateTime.toDateUtc(now)) })),
+      Effect.mapError(unavailable),
+    )
+  const balance = Effect.fn('Styld.Holds.balance')(function* (accountId: string) {
+    const now = yield* DateTime.now
+    const { until, daily } = yield* allowanceOf(accountId, now)
+    const state = yield* walletOf(accountId)
+    return { remaining: spendableOn(state.daily, dayOf(now), daily).available, daily, premiumUntil: until }
+  })
+  return { allowanceOf, balance }
+}
+
 /** Credit holds through the Wallet (Domain owns usage reservations), each kept in D1 until it is settled. */
 export class Holds extends Context.Service<
   Holds,
@@ -132,6 +162,8 @@ export class Holds extends Context.Service<
     readonly settle: (accountId: string, hold: HoldId, ending: Ending) => Effect.Effect<void, Unavailable>
     /** The credits the account has left today. */
     readonly remaining: (accountId: string) => Effect.Effect<number, Unavailable>
+    /** The credits left today, today's allowance (free or premium) and until when premium lasts. */
+    readonly balance: (accountId: string) => Effect.Effect<Balance, Unavailable>
     /** Settle the holds still kept, a batch at a time; how many it tried. */
     readonly sweep: Effect.Effect<number, Unavailable>
   }
@@ -140,7 +172,12 @@ export class Holds extends Context.Service<
     this,
     Effect.gen(function* () {
       const wallets = yield* Wallet
-      const ledger = settlementRows(yield* Database)
+      const db = yield* Database
+      const ledger = settlementRows(db)
+      const { allowanceOf, balance } = balances(
+        (accountId) => wallets.state(UserId.make(accountId)).pipe(Effect.mapError(unavailable)),
+        db,
+      )
       /** The Wallet's settlement, then the row forgotten (one that cannot be forgotten now is settled again later). A
        * hold the Wallet does not hold (never reserved, or settled before) is settled. */
       const settled = (accountId: string, hold: HoldId, ending: Ending) => {
@@ -161,11 +198,12 @@ export class Holds extends Context.Service<
           if (!(yield* ledger.enabled(charge.accountId).pipe(Effect.mapError(unavailable)))) return yield* unavailable()
           // No hold without its row: the row is what settles it if everything after this is lost.
           yield* ledger.open(charge.accountId, charge.hold, DateTime.toDateUtc(now)).pipe(Effect.mapError(unavailable))
+          const { daily } = yield* allowanceOf(charge.accountId, now)
           const command = new ReserveCredits({
             operationId: OperationId.make(charge.hold),
             amount: charge.credits,
             day: dayOf(now),
-            dailyAllowance: dailyCredits,
+            dailyAllowance: daily,
           })
           const refusedToday = () => LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) })
           yield* wallets.send(UserId.make(charge.accountId), command, { commandId: reserveCommandId(command) }).pipe(
@@ -199,11 +237,8 @@ export class Holds extends Context.Service<
             ? now.pipe(Effect.ignore({ log: true, message: 'Styld.Holds left a settlement to the sweep' }))
             : now
         }),
-        remaining: Effect.fn('Styld.Holds.remaining')(function* (accountId: string) {
-          const today = dayOf(yield* DateTime.now)
-          const state = yield* wallets.state(UserId.make(accountId)).pipe(Effect.mapError(unavailable))
-          return state.daily.day === today ? state.daily.remaining : dailyCredits
-        }),
+        remaining: (accountId: string) => Effect.map(balance(accountId), ({ remaining }) => remaining),
+        balance,
         sweep: Effect.gen(function* () {
           const abandoned = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, abandonedAfter))
           const open = yield* ledger.unsettled(abandoned, settleBatch).pipe(Effect.mapError(unavailable))

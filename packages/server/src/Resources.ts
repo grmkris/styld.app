@@ -15,7 +15,15 @@ interface StageFacts {
   /** The first of its RateLimit namespace ids, each pace's offset from it (`kernel/Pacing.ts`); unique within the
    * Cloudflare account. */
   readonly firstRateLimitNamespace: number
+  /** Dodo Payments' API for its payments (test or live mode) and the Styld Premium Week product there
+   * (`server/src/billing/`); payments run only where the stack is also given Dodo's key and webhook secret. */
+  readonly billing: { readonly base: string; readonly product: string }
 }
+
+/** Dodo's test mode: test cards, no money moves. */
+const dodoTest = { base: 'https://test.dodopayments.com', product: 'pdt_0NrETRIgUh3xrUyRjyEj0' } as const
+/** Dodo's live mode, for styld.app only. */
+const dodoLive = { base: 'https://live.dodopayments.com', product: 'pdt_0NrETRRmmoZUYS2pDknTg' } as const
 
 /**
  * Every stage the stack is deployed or run as (docs/DEPLOYMENT.md). `preview` is the isolated workers.dev preview;
@@ -23,24 +31,33 @@ interface StageFacts {
  * native suite) run in workerd on this machine. Any other stage name stops the plan.
  */
 export const stages = {
-  local: { environment: 'local', robots: 'noindex', aiCalls: 'styld_local_ai_calls', firstRateLimitNamespace: 2619001 },
+  local: {
+    environment: 'local',
+    robots: 'noindex',
+    aiCalls: 'styld_local_ai_calls',
+    firstRateLimitNamespace: 2619001,
+    billing: dodoTest,
+  },
   'local-native': {
     environment: 'local',
     robots: 'noindex',
     aiCalls: 'styld_local_ai_calls',
     firstRateLimitNamespace: 2619101,
+    billing: dodoTest,
   },
   preview: {
     environment: 'preview',
     robots: 'noindex',
     aiCalls: 'styld_preview_ai_calls',
     firstRateLimitNamespace: 2610281,
+    billing: dodoTest,
   },
   production: {
     environment: 'production',
     robots: 'index',
     aiCalls: 'styld_production_ai_calls',
     firstRateLimitNamespace: 2611001,
+    billing: dodoLive,
   },
 } as const satisfies Record<string, StageFacts>
 
