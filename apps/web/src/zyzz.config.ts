@@ -213,3 +213,11 @@ export const cutoutGlow = 'drop-shadow(0 0 8px oklch(0.9 0.03 70 / 0.16))'
 /** A press and a hover on one element (`transform` then a colour or `translate`): a duration token holds one time, so
  * the pair of the press and hover tokens is written here, where every other motion value lives. */
 export const pressThenHover = '140ms, 180ms !custom'
+
+/** The landing film's veil (DESIGN.md › Motion, the landing film): paper over the film where the words sit, so they read
+ * on any frame in either scheme. On a phone held upright the words are at the top and the actions at the bottom; on a
+ * wider screen the words are on the left. Gradients take no token, so the paper's colours repeat here. */
+export const landingVeilTall =
+  'linear-gradient(to bottom, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.7), oklch(0.18 0.01 50 / 0.66)) 30%, transparent 52%, transparent 64%, light-dark(oklch(0.951 0.009 85 / 0.9), oklch(0.18 0.01 50 / 0.88)) 100%)'
+export const landingVeilWide =
+  'linear-gradient(to right, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.8), oklch(0.18 0.01 50 / 0.76)) 34%, transparent 62%)'

@@ -36,7 +36,7 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
     'If you connect Styld to an assistant such as ChatGPT or Claude, you sign in to Styld and allow the connection; your sign-in stays with Styld. The assistant sends Styld the requests you make and receives the results, such as your pieces and boards, and keeps them under its own privacy policy. Deleting your Styld account ends every connection.',
   'legal.privacy.cookiesHeading': 'Cookies and diagnostics',
   'legal.privacy.cookies':
-    'Styld uses only the cookies it needs: one keeps you signed in, one remembers your language, one your diagnostics choice, and one that you told Home what to show you first. We use no advertising or tracking cookies.',
+    'Styld uses only the cookies it needs: one keeps you signed in, one remembers your language, one your diagnostics choice, one that you told Home what to show you first, and one which of three opening films the home page showed you, so you see the same one again and sign-ins are counted by film without anyone knowing who you are. We use no advertising or tracking cookies.',
   'legal.privacy.telemetry':
     'Diagnostics stay off until you allow them. If you do, your browser sends us timings and errors from the pages you use, with no email address, photos or anything you typed, and they go to our logs at Cloudflare. You can change your choice under Diagnostics at the bottom of every page.',
   'legal.privacy.rightsHeading': 'Your rights',

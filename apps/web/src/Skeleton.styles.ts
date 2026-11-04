@@ -15,5 +15,3 @@ export const line = style({
   borderRadius: 'pill',
   backgroundColor: 'paper2',
 })
-/** An h2 (22px at line height 1.2) over a `line`: a bar of 0.6em centred in its 1.2em line. */
-export const headingLine = style({ fontSize: 'heading', blockSize: '0.6em', marginBlock: '0.3em', inlineSize: '40%' })

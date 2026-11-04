@@ -19,7 +19,7 @@ import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
-import * as LandingBoards from './page/LandingBoards.ts'
+import * as Landing from './page/Landing.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 // My Gallery's pages.
@@ -67,11 +67,9 @@ export const Message = defineMessageUnion({
   GotBoardsMessage: { message: Boards.Message },
   GotBoardMessage: { message: BoardMessage.Message },
   GotVisitMessage: { message: Visit.Message },
-  /** The public boards on the landing a signed-out Home shows. */
-  GotLandingMessage: { message: LandingBoards.Message },
+  /** The landing a signed-out Home shows: its film and its shop's chips. */
+  GotLandingMessage: { message: Landing.Message },
   GotServerDataMessage: { message: ServerData.Message },
-  /** The landing's Try again, after its boards did not load. */
-  ClickedRetryLanding: {},
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},

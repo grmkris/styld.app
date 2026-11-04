@@ -158,3 +158,48 @@ describe('public edge routing', () => {
     ])
   })
 })
+
+/** A page the website served, naming what the edge should count. */
+const page = (count: string) =>
+  new Response('<html></html>', { headers: { 'content-type': 'text/html', 'x-styld-count': count } })
+
+/** A deployment whose dataset keeps what it is given. */
+const deployment = (points: Array<unknown>) => ({
+  API: {
+    fetch: async () => new Response(null, { status: 404, headers: { 'x-styld-count': 'landing.shown.coat' } }),
+  },
+  WEBSITE: { fetch: async () => page('landing.shown.coat') },
+  METRICS: { writeDataPoint: (point: unknown) => void points.push(point) },
+  STYLD_ENV: 'preview',
+  STYLD_RELEASE: 'r1',
+})
+
+describe('the landing count', () => {
+  test('a landing the website served is counted by its hero, and the header never reaches the browser', async () => {
+    const points: Array<unknown> = []
+    const response = await edge.fetch(new Request('https://styld.test/'), deployment(points))
+    expect(response.headers.get('x-styld-count')).toBeNull()
+    expect(points).toEqual([
+      { indexes: ['landing.shown.coat'], blobs: ['preview', 'r1', 'landing.shown', 'coat'], doubles: [1] },
+    ])
+  })
+
+  test('the API cannot ask for a count, and a name outside the list is dropped', async () => {
+    const points: Array<unknown> = []
+    const fromApi = await edge.fetch(new Request('https://styld.test/cdn/landing/x'), deployment(points))
+    expect(fromApi.headers.get('x-styld-count')).toBeNull()
+    const odd = await edge.fetch(new Request('https://styld.test/'), {
+      ...deployment(points),
+      WEBSITE: { fetch: async () => page('signup.person@example.com') },
+    })
+    expect(odd.headers.get('x-styld-count')).toBeNull()
+    expect(points).toEqual([])
+  })
+
+  test('a deployment without the dataset serves the page and counts nothing', async () => {
+    const { METRICS: _, ...bare } = deployment([])
+    const response = await edge.fetch(new Request('https://styld.test/'), bare)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-styld-count')).toBeNull()
+  })
+})

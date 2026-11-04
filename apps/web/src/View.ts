@@ -63,6 +63,7 @@ import { avatar as avatarStyle } from './Avatar.styles.ts'
 import { pageView } from './PageViews.ts'
 import { lenses } from './Page.ts'
 import { ownBoard } from './page/Board/Model.ts'
+import { site as landingSite } from './page/LandingView.styles.ts'
 
 /** The languages the menu offers, each in its own words: the reviewed ones only (`parseLocale`). */
 const languages: ReadonlyArray<Readonly<{ locale: Language; label: string }>> = [
@@ -265,11 +266,13 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale } = model.context
   const initial = navigationInitial(model)
   const shell = siteStyle(initial !== undefined, Option.isSome(tabOf(model.route)), AppRoute.guards.Review(model.route))
+  // The signed-out Home's film runs edge to edge, under the bar.
+  const onLanding = AppRoute.guards.Home(model.route) && !hasSession(model)
   return {
     title: `${pageTitle(model)} | Styld`,
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
-    body: h.div(styled(h, shell), [
+    body: h.div(styled(h, onLanding ? cx(site(), landingSite()) : shell), [
       // With the rail on a wide screen the top bar gives way to the wordmark above the rail and you under it.
       h.header(styled(h, initial === undefined ? masthead() : cx(masthead(), mastheadBesideRail())), [
         wordmark(brand(), h),

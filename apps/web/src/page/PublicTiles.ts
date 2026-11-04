@@ -123,24 +123,6 @@ const card = <Message>(board: PublicBoardSummary, credit: Html, locale: Locale, 
 export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   card(board, h.empty, locale, h)
 
-/** A public board among other people's, as Explore shows it: the card, with whose it is under its meta. The card is
- * itself the link, so the credit is text; the board's page links to their profile. */
-export const creditedBoardCard = <Message>(
-  board: PublicBoardSummary,
-  author: Author,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): Html =>
-  card(
-    board,
-    h.span(styled(h, styles.credit()), [
-      avatar(author.name, author.tone, 'small', h),
-      format(locale, 'share.byline', { name: author.name }),
-    ]),
-    locale,
-    h,
-  )
-
 /** A person: their initials, name and handle, linking to their profile. */
 export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
   h.keyed('li')(

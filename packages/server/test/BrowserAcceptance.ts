@@ -35,7 +35,8 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     const page = await context.newPage()
     const errors = recordProblems(page)
     const telemetry = recordTelemetry(page)
-    const documentResponse = await page.goto(origin, { waitUntil: 'networkidle' })
+    // The landing's hero is forced, so its words are known (a first visit otherwise gets one at random).
+    const documentResponse = await page.goto(new URL('/?hero=coat', origin).toString(), { waitUntil: 'networkidle' })
     expect(documentResponse?.status()).toBe(200)
     expect(documentResponse?.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
     expect(documentResponse?.headers()['x-frame-options']).toBe('DENY')
@@ -54,7 +55,7 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_diagnostics')?.value).toBe('granted')
     // The telemetry SDK downloads only for a visitor who allowed it, so diagnostics start with the next page load.
     await page.reload({ waitUntil: 'networkidle' })
-    expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
+    expect(await page.locator('h1').textContent()).toBe('One coat, six outfits.')
     // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Gallery paper (#f1eee7),
     // and the self-hosted font is in use.
     expect(await page.locator('header').evaluate((element) => getComputedStyle(element).display)).toBe('flex')
@@ -64,7 +65,7 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect(await page.evaluate(() => document.fonts.check('600 16px "Hanken Grotesk Variable"'))).toBe(true)
     await page.selectOption('#language', 'sl')
     await page.waitForFunction(() => document.documentElement.lang === 'sl')
-    expect(await page.locator('h1').textContent()).toBe('Garderoba po tvojem okusu.')
+    expect(await page.locator('h1').textContent()).toBe('En plašč, šest videzov.')
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_locale')).toMatchObject({
       value: 'sl',
       httpOnly: true,
@@ -95,6 +96,52 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect(await page.locator('h1').textContent()).toBe('Sign in to Styld')
     expect(await page.getByLabel('Email').getAttribute('autocomplete')).toBe('email')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    expect(errors).toEqual([])
+  } finally {
+    await context.close()
+  }
+  await verifyLanding(browser, origin)
+}
+
+/** The signed-out Home (owner, 4 November 2026): a first visit gets a hero and the cookie that keeps it, a second the
+ * same one; under reduced motion no film is asked for; the words and Start free fit the first screen of a small phone
+ * in Slovenian, and nothing overflows sideways at a phone's, a tablet's or a desktop's width. */
+const verifyLanding = async (browser: Browser, origin: string): Promise<void> => {
+  const context = await browser.newContext({
+    locale: 'sl-SI',
+    viewport: { width: 360, height: 740 },
+    reducedMotion: 'reduce',
+  })
+  try {
+    const page = await context.newPage()
+    const errors = recordProblems(page)
+    const films: Array<string> = []
+    page.on('request', (request) => {
+      if (/\/cdn\/landing\/.*\.mp4$/.test(new URL(request.url()).pathname)) films.push(request.url())
+    })
+    await page.goto(origin, { waitUntil: 'networkidle' })
+    const hero = (await context.cookies()).find((cookie) => cookie.name === 'styld_hero')
+    expect(hero).toMatchObject({ httpOnly: true, sameSite: 'Lax' })
+    expect(['mirror', 'coat', 'wardrobe']).toContain(hero?.value ?? '')
+    const headline = await page.locator('h1').textContent()
+    await page.reload({ waitUntil: 'networkidle' })
+    expect(await page.locator('h1').textContent()).toBe(headline)
+    // Reduced motion: the poster stays, no film is requested and there is nothing to pause.
+    expect(await page.locator('#landing-film').count()).toBe(0)
+    expect(await page.getByRole('button', { name: 'Ustavi film' }).count()).toBe(0)
+    expect(films).toEqual([])
+    const start = page.getByRole('link', { name: 'Začni brezplačno' }).first()
+    const box = await start.boundingBox()
+    expect(box !== null && box.y + box.height <= 740).toBe(true)
+    for (const [width, height] of [
+      [360, 740],
+      [390, 844],
+      [768, 1024],
+      [1440, 900],
+    ] as const) {
+      await page.setViewportSize({ width, height })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    }
     expect(errors).toEqual([])
   } finally {
     await context.close()

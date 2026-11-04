@@ -36,7 +36,7 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
     'Če Styld povežeš z asistentom, kot sta ChatGPT ali Claude, se prijaviš v Styld in povezavo dovoliš; tvoja prijava ostane pri Styldu. Asistent Styldu pošilja tvoje zahteve in prejema rezultate, na primer tvoje kose in table, ter jih hrani po svojem pravilniku o zasebnosti. Izbris računa Styld prekine vse povezave.',
   'legal.privacy.cookiesHeading': 'Piškotki in diagnostika',
   'legal.privacy.cookies':
-    'Styld uporablja le piškotke, ki jih potrebuje: eden ohranja tvojo prijavo, eden si zapomni jezik, eden tvojo izbiro glede diagnostike in eden tvoj odgovor na domači strani, kaj naj ti pokažemo najprej. Oglaševalskih ali sledilnih piškotkov ne uporabljamo.',
+    'Styld uporablja le piškotke, ki jih potrebuje: eden ohranja tvojo prijavo, eden si zapomni jezik, eden tvojo izbiro glede diagnostike, eden tvoj odgovor na domači strani, kaj naj ti pokažemo najprej, in eden, katerega od treh uvodnih filmov ti je pokazala domača stran, da spet vidiš istega in se prijave štejejo po filmu, ne da bi kdor koli vedel, kdo si. Oglaševalskih ali sledilnih piškotkov ne uporabljamo.',
   'legal.privacy.telemetry':
     'Diagnostika je izklopljena, dokler je ne dovoliš. Če jo, nam brskalnik pošilja čase nalaganja in napake s strani, ki jih uporabljaš, brez e-poštnega naslova, fotografij ali besedila, ki ga vneseš, in to gre v naše dnevnike pri Cloudflaru. Izbiro lahko spremeniš pod Diagnostika na dnu vsake strani.',
   'legal.privacy.rightsHeading': 'Tvoje pravice',

@@ -363,18 +363,86 @@
     "categoryEditFailed": "That didn’t go through. Try again."
   },
   "landing": {
-    "feedDescription": "Public boards from Styld and the people using it.",
-    "feedEmpty": "No public boards yet.",
-    "retry": "Try again",
     "title": "A wardrobe shaped by you.",
-    "description": "Photograph your clothes and Styld cuts out every piece, lays out what to wear today and keeps boards of what you love.",
     "start": "Start free",
-    "browse": "Browse boards",
     "signIn": "Sign in",
     "contact": "Contact",
-    "feedFailed": "The boards didn't load.",
-    "edits": "Edits from Styld",
-    "newest": "Newest boards"
+    "hero": {
+      "mirror": {
+        "title": "Try it on before you get dressed.",
+        "lede": "See outfits from your own wardrobe on you, in the mirror, before a single piece leaves its hanger.",
+        "film": "A woman in a robe stands with her back to the camera before a tall mirror; her reflection, below the shoulders, wears one outfit after another."
+      },
+      "coat": {
+        "title": "One coat, six outfits.",
+        "lede": "Pick one piece. Styld lays out what you already own around it, outfit after outfit.",
+        "film": "A camel coat lies in the middle of a paper board; around it, the other pieces swap through six outfits."
+      },
+      "wardrobe": {
+        "title": "Every outfit starts in your wardrobe.",
+        "lede": "Photograph or film your clothes. Styld cuts out every piece, and you lay out outfits and boards, here or in ChatGPT and Claude.",
+        "film": "Clothes float out of an open wardrobe and land flat on a paper board as an outfit, switch to another outfit, then float back."
+      }
+    },
+    "film": {
+      "pause": "Pause the film",
+      "play": "Play the film"
+    },
+    "add": {
+      "title": "Add it once",
+      "text": "Photograph or film your clothes. Styld cuts out every piece, and you check what it found before it joins your wardrobe."
+    },
+    "shop": {
+      "title": "Your wardrobe, as a shop",
+      "text": "Browse by category, like any shop. The price is always the same.",
+      "filter": "Category",
+      "all": "All",
+      "top": "Tops",
+      "bottom": "Bottoms",
+      "dress": "Dresses",
+      "outerwear": "Outerwear",
+      "shoes": "Shoes",
+      "accessory": "Accessories",
+      "price": "Already yours",
+      "pieces": {
+        "sweaterCream": "Cream cable knit",
+        "shirtWhite": "White shirt",
+        "topStripe": "Striped top",
+        "turtleneckBlack": "Black turtleneck",
+        "jeansLight": "Light straight jeans",
+        "trousersBrown": "Brown wide trousers",
+        "skirtIvory": "Ivory pleated skirt",
+        "dressSage": "Sage slip dress",
+        "coatCamel": "Camel wool coat",
+        "sneakersWhite": "White leather sneakers",
+        "bootsBlack": "Black ankle boots",
+        "loafersTan": "Tan loafers",
+        "bagCognac": "Cognac shoulder bag"
+      }
+    },
+    "outfits": {
+      "title": "One piece, many outfits",
+      "text": "Pick one piece. Styld lays out what you already own around it, outfit after outfit."
+    },
+    "price": {
+      "title": "What it costs",
+      "free": "Free",
+      "freeText": "{credits, plural, one {# credit} other {# credits}} every day, no card. Adding a photo uses one.",
+      "premium": "Premium week",
+      "premiumText": "{price} once: {credits, plural, one {# credit} other {# credits}} a day for {days, plural, one {# day} other {# days}}."
+    },
+    "faq": {
+      "title": "Questions",
+      "who": "Who can see my wardrobe?",
+      "whoAnswer": "Only you. Everything stays private until you choose to share a board, a look or a piece.",
+      "app": "Do I need to install an app?",
+      "appAnswer": "No. Styld runs in the browser on any phone or computer, and in ChatGPT and Claude.",
+      "cost": "What does it cost?",
+      "costAnswer": "Nothing to start: {credits, plural, one {# credit} other {# credits}} every day, and adding a photo uses one. A premium week is {price} once, for more credits a day for seven days.",
+      "delete": "Can I delete everything?",
+      "deleteAnswer": "Yes. Deleting your account in Account removes every piece, photo, board and look with it."
+    },
+    "final": "Start with one photo."
   },
   "studio": {
     "add": "Add",
@@ -1139,7 +1207,7 @@
       "assistantsHeading": "Styld in ChatGPT or Claude",
       "assistants": "If you connect Styld to an assistant such as ChatGPT or Claude, you sign in to Styld and allow the connection; your sign-in stays with Styld. The assistant sends Styld the requests you make and receives the results, such as your pieces and boards, and keeps them under its own privacy policy. Deleting your Styld account ends every connection.",
       "cookiesHeading": "Cookies and diagnostics",
-      "cookies": "Styld uses only the cookies it needs: one keeps you signed in, one remembers your language, one your diagnostics choice, and one that you told Home what to show you first. We use no advertising or tracking cookies.",
+      "cookies": "Styld uses only the cookies it needs: one keeps you signed in, one remembers your language, one your diagnostics choice, one that you told Home what to show you first, and one which of three opening films the home page showed you, so you see the same one again and sign-ins are counted by film without anyone knowing who you are. We use no advertising or tracking cookies.",
       "telemetry": "Diagnostics stay off until you allow them. If you do, your browser sends us timings and errors from the pages you use, with no email address, photos or anything you typed, and they go to our logs at Cloudflare. You can change your choice under Diagnostics at the bottom of every page.",
       "rightsHeading": "Your rights",
       "rights": "You can ask for a copy of your data, have it corrected or deleted, object to how we use it, and withdraw a consent you gave. Write to privacy@styld.app. You can also complain to your data protection authority.",
