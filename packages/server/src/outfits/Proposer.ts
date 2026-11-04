@@ -85,6 +85,16 @@ export const sentFrom = (wardrobe: ReadonlyArray<Wearable>, most: number): Reado
   return wardrobe.filter((piece) => chosen.has(piece))
 }
 
+/** What the person wears most and asked Styld to remember, as Thinking is told it: likes to lean on, notes to keep. */
+const tasteLines = (taste: Brief['taste']) => [
+  taste === undefined || taste.likes.length === 0
+    ? null
+    : `They wear these most: ${taste.likes.join(', ')}. Lean on them when they suit.`,
+  taste === undefined || taste.remember.length === 0
+    ? null
+    : `They asked to keep in mind: ${taste.remember.map((note) => `“${note}”`).join('; ')}. Never propose what these rule out.`,
+]
+
 /** The request's messages, and the refs they gave the pieces.
  * @internal Exported for its tests. */
 export const proposalMessages = (request: Brief, count: number) => {
@@ -115,6 +125,7 @@ export const proposalMessages = (request: Brief, count: number) => {
       content: [
         `Season: ${season ?? 'any'}. Occasion: ${occasion ?? 'any'}.`,
         words === undefined ? null : `In the person’s words: “${words}”.`,
+        ...tasteLines(request.taste),
         `Fixed: ${request.fixed.map(({ id }) => refOf.get(id)).join(', ') || 'none'}.`,
         'Pieces:',
         ...pieces.map((piece) => line(refOf.get(piece.id) ?? '', piece)),

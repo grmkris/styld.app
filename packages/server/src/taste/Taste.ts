@@ -107,6 +107,16 @@ const signalsOf = Effect.fnUntraced(function* (db: Database['Service'], accountI
   }
 })
 
+/** The occasion a day's outfits are for, from the occasions the person dresses for: on a weekday smart when they dress
+ * smart, else casual when they dress casual; at the weekend casual when they do. Formal, sport and lounge never set a
+ * whole day: those are asked for. A day is the person's own (`2026-11-04`). */
+export const occasionOfDay = (day: string, occasions: ReadonlyArray<Occasion>): Occasion | undefined => {
+  const weekday = new Date(`${day}T00:00:00Z`).getUTCDay()
+  const weekend = weekday === 0 || weekday === 6
+  if (!weekend && occasions.includes('smart')) return 'smart'
+  return occasions.includes('casual') ? 'casual' : undefined
+}
+
 /** The person's taste: told and learned. Nothing stored is nothing told yet. */
 const tasteOf = Effect.fn('Styld.Taste.read')(function* (db: Database['Service'], accountId: string) {
   const since = DateTime.formatIsoDateUtc(DateTime.subtract(yield* DateTime.now, { days: wornDays }))
@@ -130,6 +140,20 @@ const tasteOf = Effect.fn('Styld.Taste.read')(function* (db: Database['Service']
     learned: learnedFrom(signals),
   } satisfies Taste
 })
+
+/** The occasions the person dresses for, alone; none stored is none chosen. */
+const occasionsRead = (db: Database['Service'], accountId: string) =>
+  read(() =>
+    db
+      .select({ occasions: tasteAnswers.occasions })
+      .from(tasteAnswers)
+      .where(eq(tasteAnswers.accountId, accountId))
+      .limit(1),
+  ).pipe(
+    Effect.map((rows) =>
+      Option.match(first(rows), { onNone: () => [], onSome: (row) => row.occasions.filter(isOccasion) }),
+    ),
+  )
 
 /** The statements that keep a new note, while fewer than the most notes are kept. */
 const noteWrite = Effect.fnUntraced(function* (db: Database['Service'], accountId: string, text: string, at: Date) {
@@ -157,6 +181,8 @@ const make = Effect.gen(function* () {
       const { accountId } = yield* CurrentAccount
       return yield* tasteOf(db, accountId)
     }),
+    /** Only the occasions the person dresses for, for the outfit engine: one small read. */
+    occasionsOf: Effect.fn('Styld.Taste.occasions')((accountId: string) => occasionsRead(db, accountId)),
     /** The occasions the person dresses for, as they are now chosen. */
     setOccasions: Effect.fn('Styld.Taste.setOccasions')(function* (input: SetOccasions) {
       const { accountId } = yield* CurrentAccount

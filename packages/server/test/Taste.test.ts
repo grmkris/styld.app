@@ -4,7 +4,7 @@ import { Effect, Layer } from 'effect'
 import { TestClock } from 'effect/testing'
 import { Database } from '../src/kernel/Db.ts'
 import { learnedFrom } from '../src/taste/Learned.ts'
-import { Tastes } from '../src/taste/Taste.ts'
+import { occasionOfDay, Tastes } from '../src/taste/Taste.ts'
 import { localD1 } from './LocalD1.ts'
 
 // What Styld knows about how a person dresses (owner, 4 November 2026): what they told it, kept until they change or
@@ -51,6 +51,21 @@ describe('what Styld learns from the signals', () => {
     })
     expect(learned.colours).toHaveLength(4)
     expect(learned.aesthetics).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('the occasion of a person’s day', () => {
+  it('is smart on weekdays for someone who dresses smart, casual at weekends, and nothing they never chose', () => {
+    const days = ['2026-11-02', '2026-11-06', '2026-11-07', '2026-11-08'] // Monday, Friday, Saturday, Sunday
+    expect(days.map((day) => occasionOfDay(day, ['smart', 'casual']))).toEqual(['smart', 'smart', 'casual', 'casual'])
+    expect(days.map((day) => occasionOfDay(day, ['smart']))).toEqual(['smart', 'smart', undefined, undefined])
+    expect(days.map((day) => occasionOfDay(day, ['casual']))).toEqual(['casual', 'casual', 'casual', 'casual'])
+    expect(days.map((day) => occasionOfDay(day, ['formal', 'sport', 'lounge']))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ])
   })
 })
 

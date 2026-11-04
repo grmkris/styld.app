@@ -23,6 +23,7 @@ import { WardrobeStore } from '../wardrobe/Store.ts'
 import { type Judged, judgingPicture, OutfitJudge } from './Judge.ts'
 import { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
+import { occasionOfDay, Tastes } from '../taste/Taste.ts'
 import { OutfitStore } from './Store.ts'
 import { type Owned, WearableRow, wearablesOf } from './Wearables.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
@@ -71,6 +72,7 @@ type OutfitServices =
   | OutfitStore
   | WardrobeStore
   | PaidAttempts
+  | Tastes
 
 /** Clef's score for each outfit (none when it could not look, or had not by `judgingBudget`) and what the calls cost,
  * all judged at once; each piece's picture read once. */
@@ -150,6 +152,31 @@ export const distinct = (
 }
 
 /** Fast's candidates, or Thinking's, and whether the rules have nothing new beyond them. */
+/** The brief as asked; a day's outfits asked for no occasion take the occasion of the person's day, from the occasions
+ * they dress for (`occasionOfDay`). Unreadable just now is the brief as asked. */
+const briefOf = (accountId: string, input: MakeOutfit) => {
+  const { day } = input
+  if (day === undefined || input.brief.occasion !== undefined) return Effect.succeed(input.brief)
+  return Effect.flatMap(Tastes, (tastes) => tastes.occasionsOf(accountId)).pipe(
+    Effect.map((occasions) => {
+      const occasion = occasionOfDay(day, occasions)
+      return occasion === undefined ? input.brief : { ...input.brief, occasion }
+    }),
+    Effect.orElseSucceed(() => input.brief),
+  )
+}
+
+/** What Styld knows about the person, for Thinking: what they wear most and their notes. Left out when it cannot be
+ * read just now: outfits never wait on it. */
+const tasteFor = (accountId: string) =>
+  Effect.flatMap(Tastes, (tastes) => tastes.getTaste()).pipe(
+    Effect.provideService(CurrentAccount, { accountId, via: 'assistant' as const }),
+    Effect.map(({ notes, learned }) => ({
+      taste: { likes: [...learned.colours, ...learned.wornTypes], remember: notes.map(({ text }) => text) },
+    })),
+    Effect.orElseSucceed(() => ({})),
+  )
+
 const candidatesFor = (input: MakeOutfit, request: Brief, session: string, accountId: string) =>
   Effect.gen(function* () {
     if (input.mode === 'fast') {
@@ -172,7 +199,7 @@ const candidatesFor = (input: MakeOutfit, request: Brief, session: string, accou
           provider: 'litellm',
           result: proposedResult,
         },
-        (yield* Thinking).propose(request, input.count + 2),
+        (yield* Thinking).propose({ ...request, ...(yield* tasteFor(accountId)) }, input.count + 2),
       )
       .pipe(Effect.mapError(unanswered))
     return { ...thought, exhausted: false }
@@ -210,7 +237,7 @@ const batchFor = Effect.fnUntraced(function* (accountId: string, input: MakeOutf
   const request: Brief = {
     wardrobe: [...owned.values()].map(({ wearable }) => wearable),
     fixed,
-    brief: input.brief,
+    brief: yield* briefOf(accountId, input),
     seen: new Set(input.seen),
     complete: input.complete === true,
   }
@@ -286,7 +313,7 @@ export class Outfits extends Context.Service<Outfits, Effect.Success<typeof make
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => Outfits.of(service)),
-  ).pipe(Layer.provide(OutfitStore.layer))
+  ).pipe(Layer.provide([OutfitStore.layer, Tastes.layer]))
 }
 
 /** Count a proposal the person kept: worn today, or kept on a board. */

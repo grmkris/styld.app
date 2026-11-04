@@ -35,7 +35,9 @@ export const MakeOutfit = Schema.Struct({
   mode: OutfitMode,
   brief: OutfitBrief,
   session: Schema.optionalKey(OutfitSession),
-  /** The person's day: Fast's first outfits for it are the same each time they are asked for. */
+  /** The person's day: Fast's first outfits for it are the same each time they are asked for, and with no occasion in
+   * the brief they are for the day's occasion, from the occasions the person dresses for (smart on a weekday when they
+   * dress smart, else casual when they do). */
   day: Schema.optionalKey(Day),
   anchorPieceId: Schema.optionalKey(PieceId),
   /** Pieces every proposal keeps, besides the anchor. */

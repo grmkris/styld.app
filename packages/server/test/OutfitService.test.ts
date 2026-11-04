@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { CurrentAccount, type MakeOutfit, OperationId } from '@styld/protocol'
+import { CurrentAccount, Day, type MakeOutfit, OperationId } from '@styld/protocol'
 import { Effect, Layer, Option, Predicate } from 'effect'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { Database } from '../src/kernel/Db.ts'
@@ -8,7 +8,7 @@ import { OutfitJudge } from '../src/outfits/Judge.ts'
 import { Outfits } from '../src/outfits/Outfits.ts'
 import { WardrobeStore } from '../src/wardrobe/Store.ts'
 import { Thinking } from '../src/outfits/Proposer.ts'
-import { proposed } from '../src/outfits/Rules.ts'
+import { type Brief, proposed } from '../src/outfits/Rules.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { localD1 } from './LocalD1.ts'
 import { freeAttempts, photoPiece as piece } from './fakes/Outfits.ts'
@@ -29,7 +29,7 @@ const seeded = () => {
 }
 
 /** The engine over the database; Clef never looks, Thinking proposes the rules' outfits and counts its asks. */
-const engine = (database: ReturnType<typeof localD1>, thought: Array<number>) =>
+const engine = (database: ReturnType<typeof localD1>, thought: Array<number>, briefs: Array<Brief> = []) =>
   Outfits.layer.pipe(
     Layer.provide(WardrobeStore.layer),
     Layer.provide(
@@ -44,6 +44,7 @@ const engine = (database: ReturnType<typeof localD1>, thought: Array<number>) =>
             propose: (request, count) =>
               Effect.sync(() => {
                 thought.push(count)
+                briefs.push(request)
                 return { outfits: proposed(request, 'thinking', count).outfits, costMicroUsd: 0 }
               }),
           }),
@@ -112,4 +113,31 @@ describe('a wardrobe of more than three hundred pieces', () => {
       Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' }),
     )
   })
+})
+
+describe('what the engine knows about the person (owner, 4 November 2026)', () => {
+  it.effect(
+    'a day asked for no occasion is the person’s own; Thinking hears their notes; an asked occasion stands',
+    () => {
+      const database = seeded()
+      database.sqlite.exec(`
+      INSERT INTO taste_answers (account_id, occasions, updated_at) VALUES ('ac_1', '["smart","casual"]', 0);
+      INSERT INTO style_notes (id, account_id, text, created_at) VALUES ('sn_nnnnnnnnnnnnnnnnnnnnnn', 'ac_1', 'Never heels', 0);
+    `)
+      const briefs: Array<Brief> = []
+      return Effect.gen(function* () {
+        const outfits = yield* Outfits
+        // Wednesday 4 November 2026, then Saturday 7 November, then a sport day the person asked for.
+        yield* outfits.make({ ...ask('op_taste_weekday'), day: Day.make('2026-11-04') })
+        yield* outfits.make({ ...ask('op_taste_weekend'), day: Day.make('2026-11-07') })
+        yield* outfits.make({ ...ask('op_taste_sport'), day: Day.make('2026-11-04'), brief: { occasion: 'sport' } })
+        yield* outfits.make(ask('op_taste_no_day'))
+        expect(briefs.map(({ brief }) => brief.occasion)).toEqual(['smart', 'casual', 'sport', undefined])
+        expect(briefs[0]?.taste?.remember).toEqual(['Never heels'])
+      }).pipe(
+        Effect.provide(engine(database, [], briefs)),
+        Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' }),
+      )
+    },
+  )
 })

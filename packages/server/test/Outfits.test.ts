@@ -266,6 +266,18 @@ describe('Thinking’s proposals', () => {
     expect(pieceOf.get('p1')).toBe(jeans)
   })
 
+  test('hears what the person wears most and asked to keep in mind, and nothing when nothing is known', () => {
+    const told = proposalMessages({ ...request, taste: { likes: ['navy', 'jeans'], remember: ['Never heels'] } }, 3)
+    const text = told.messages.map(({ content }) => content).join('\n')
+    expect(text).toContain('They wear these most: navy, jeans. Lean on them when they suit.')
+    expect(text).toContain('They asked to keep in mind: “Never heels”. Never propose what these rule out.')
+    const plain = proposalMessages(request, 3)
+      .messages.map(({ content }) => content)
+      .join('\n')
+    expect(plain).not.toContain('They wear these most')
+    expect(plain).not.toContain('keep in mind')
+  })
+
   test('keeps only whole, new outfits of the person’s pieces, once each', () => {
     const { pieceOf } = proposalMessages(request, 3)
     const answer = {

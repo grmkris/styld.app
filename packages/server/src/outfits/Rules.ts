@@ -45,6 +45,9 @@ export interface Brief {
   /** A complete outfit (T-10): one to three accessories of different kinds besides everything else, whenever the
    * wardrobe has accessories that suit. */
   readonly complete?: boolean
+  /** What Styld knows about the person, for Thinking only (owner, 4 November 2026): what they wear most, and the notes
+   * they asked Styld to remember. Fast never reads it. */
+  readonly taste?: { readonly likes: ReadonlyArray<string>; readonly remember: ReadonlyArray<string> }
 }
 
 /** The order an outfit is worn and listed in. */
