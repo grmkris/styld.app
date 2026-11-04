@@ -22,6 +22,7 @@ export interface ProviderCall {
     | 'turn'
     | 'plan'
     | 'paint'
+    | 'tryOn'
     | 'outfit'
     | 'propose'
   readonly outcome: 'ok' | 'failed' | 'unknown'

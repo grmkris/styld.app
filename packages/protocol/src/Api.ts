@@ -17,6 +17,7 @@ import {
   UpdateProfile,
 } from './Profile.ts'
 import { GenerationApi } from './Generation.ts'
+import { TryOnApi } from './TryOn.ts'
 import { LinkApi } from './Link.ts'
 import { BillingApi } from './Billing.ts'
 import { GalleryOperatorApi } from './GalleryOperator.ts'
@@ -518,4 +519,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(TryBoardApi)
   .add(TasteApi)
   .add(BillingApi)
+  .add(TryOnApi)
   .prefix('/api') {}

@@ -25,4 +25,6 @@ export const prices = {
   moodBoard: 1,
   /** A photo added to My Gallery, for finding the clothes in it. */
   galleryPhoto: 1,
+  /** One of the person's own photos redrawn with them wearing pieces of their wardrobe (owner, 4 November). */
+  tryOn: 2,
 } as const

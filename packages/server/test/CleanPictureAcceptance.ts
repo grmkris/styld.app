@@ -11,7 +11,7 @@ import { type Call, client, send, signIn } from './Accounts.ts'
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 
 /** Muse's recorded drawing of the red tee on green, as PNG bytes. */
-const museTee = () => {
+export const museTee = () => {
   const recorded = Schema.decodeUnknownSync(
     Schema.fromJsonString(Schema.Struct({ data: Schema.Tuple([Schema.Struct({ b64_json: Schema.String })]) })),
   )(fixture('muse-edit-red-tee.json').toString('utf8'))

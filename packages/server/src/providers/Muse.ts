@@ -8,6 +8,8 @@ import { cleanPrompt } from '../capture/CleanPrompt.ts'
 import { profilePrompt } from '../capture/TurnPrompt.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { PaintRequest } from '../generation/Painter.ts'
+import { tryOnPrompt } from '../generation/TryOnPrompt.ts'
+import type { TryOnRequest } from '../generation/TryOnPainter.ts'
 import { type DrawRequest, type Picture } from '../capture/Providers.ts'
 
 /** What the Muse adapter needs: Meta's API and the key Styld already uses for SAM, `fetch`, and the call counter. */
@@ -73,7 +75,7 @@ const pictureOf = (http: HttpProvider, response: Response) =>
 const edit = (
   settings: MuseSettings,
   request: object,
-  kind: 'draw' | 'profile' | 'paint',
+  kind: 'draw' | 'profile' | 'paint' | 'tryOn',
   endpoint: 'edits' | 'generations' = 'edits',
 ) => {
   const http = httpProvider({ ...settings, provider: 'meta-muse' })
@@ -109,5 +111,23 @@ export type PaintSize = '1024x1024' | '1024x1536'
 export const makeMusePainter = (settings: MuseSettings) => ({
   paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest, size: PaintSize = '1024x1024') {
     return yield* edit(settings, body(request.prompt, [], size), 'paint', 'generations')
+  }),
+})
+
+/** A try-on's request: the person's photo first, then each piece's picture, named in that order (`TryOnPrompt.ts`).
+ * Muse takes at most ten pictures, which `maximumTryOnPieces` keeps to.
+ * @internal Exported for its tests. */
+export const tryOnBody = (request: TryOnRequest) =>
+  body(
+    tryOnPrompt(request.pieces.map(({ words }) => words)),
+    [request.photo, ...request.pieces.map(({ picture }) => picture)],
+    request.size,
+  )
+
+/** Meta Muse Image as the painter of try-ons: the only call that sends one of the person's own photos out, and only
+ * one they said shows them (`generation/TryOn.ts`). */
+export const makeMuseTryOn = (settings: MuseSettings) => ({
+  tryOn: Effect.fn('Styld.TryOn.draw')(function* (request: TryOnRequest) {
+    return yield* edit(settings, tryOnBody(request), 'tryOn')
   }),
 })

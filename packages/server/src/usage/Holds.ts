@@ -20,7 +20,7 @@ import { allowanceAt, premiumUntilOf } from '../billing/Premium.ts'
 // Every hold is kept in D1 (`pending_settlements`) from before it is reserved until the Wallet confirms it settled.
 
 /** What a hold pays for. A back held a photo's credit until 4 November; `back` names those holds until they settle. */
-export type HoldKind = 'capture' | 'piece' | 'back' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist'
+export type HoldKind = 'capture' | 'piece' | 'back' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist' | 'tryOn'
 
 export const HoldId = Schema.String.pipe(Schema.brand('Styld/HoldId'))
 export type HoldId = typeof HoldId.Type

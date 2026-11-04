@@ -2,6 +2,7 @@ import { busy } from './Errors.ts'
 import { costs } from './Costs.ts'
 import { deadlines, providerCall } from './Call.ts'
 import { Effect } from 'effect'
+import type { PieceRotation } from '@styld/protocol'
 import type { ImagesBinding } from '../kernel/Media.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import { type WorkingCopies } from '../capture/Providers.ts'
@@ -77,11 +78,15 @@ export const makePictureWork = (images: ImagesBinding, metrics: CaptureMetrics['
     jpeg: Effect.fn('Styld.Capture.jpeg')(function* (image: Uint8Array) {
       return yield* transform(image, 'normalise', sized, { format: 'image/jpeg', quality: 92 })
     }),
-    thumbnail: Effect.fn('Styld.Capture.thumbnail')(function* (image: Uint8Array, width: number) {
+    thumbnail: Effect.fn('Styld.Capture.thumbnail')(function* (
+      image: Uint8Array,
+      width: number,
+      rotate: PieceRotation = 0,
+    ) {
       return yield* transform(
         image,
         'normalise',
-        { width, height: width, fit: 'scale-down' },
+        { width, height: width, fit: 'scale-down', rotate },
         { format: 'image/webp', quality: 75 },
       )
     }),

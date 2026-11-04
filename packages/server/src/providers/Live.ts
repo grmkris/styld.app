@@ -5,7 +5,7 @@ import { makePictureWork } from './CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './Meta.ts'
 import type { Bucket, ImagesBinding } from '../kernel/Media.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
-import { makeMuseGenerator, makeMusePainter } from './Muse.ts'
+import { makeMuseGenerator, makeMusePainter, makeMuseTryOn } from './Muse.ts'
 import { Garments } from '../capture/Garments.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from '../capture/Providers.ts'
 import { gatewayBase, makeVeoGenerator, veoPollSeconds } from './Veo.ts'
@@ -14,6 +14,7 @@ import type { Fetch } from './Http.ts'
 import { Checkouts } from '../billing/Checkouts.ts'
 import { makeDodoCheckouts } from './Dodo.ts'
 import { PicturePainter } from '../generation/Painter.ts'
+import { TryOnPainter } from '../generation/TryOnPainter.ts'
 import { MoodPlanner } from '../generation/Planner.ts'
 import { OutfitJudge } from '../outfits/Judge.ts'
 import { Thinking } from '../outfits/Proposer.ts'
@@ -34,6 +35,7 @@ export type ProviderServices =
   | ImageGenerator
   | VideoGenerator
   | PicturePainter
+  | TryOnPainter
   | MoodPlanner
   | ContentJudge
   | OutfitJudge
@@ -108,6 +110,7 @@ export const providersOver = (
     Layer.succeed(VideoGenerator, makeVeoGenerator(veo)),
     Layer.succeed(PicturePainter, makeMusePainter(meta)),
     Layer.succeed(Checkouts, makeDodoCheckouts(deployment.billing, http.fetch)),
+    Layer.succeed(TryOnPainter, makeMuseTryOn(meta)),
     models,
   )
 }

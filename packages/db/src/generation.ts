@@ -1,7 +1,9 @@
-import { GenerationKind, GenerationReason, GenerationStatus } from '@styld/protocol'
+import { GenerationKind, GenerationReason, GenerationStatus, TryOnStatus } from '@styld/protocol'
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { boardImages, boardOwned } from './boards.ts'
 import { jsonArray, oneOf } from './checks.ts'
+import { accounts } from './identity.ts'
+import { outfitPhotos } from './photos.ts'
 import { pieces } from './wardrobe.ts'
 
 // What Styld makes for a board: a sticker drawn from words, or a mood board of the person's own pieces (owner,
@@ -74,4 +76,53 @@ export const generationPictures = sqliteTable(
     index('generation_pictures_image').on(table.imageId),
     oneOf('generation_pictures_status', table.status, stickerStatuses),
   ],
+)
+
+// Try on (owner, 4 November 2026): one of the person's own My Gallery photos redrawn with them wearing pieces of their
+// wardrobe. D1 owns the lifecycle, as for stickers; the Wallet holds its credits from the start and they settle once,
+// by its status. A try-on goes with its photo: the rows cascade and its result is stored under the photo's prefix.
+
+/** One try-on: the photo it starts from, when its owner said the photo shows them, how far it got, and its result. A
+ * drawing claimed (`startedAt`) whose answer was lost is never drawn again on its own. */
+export const tryOns = sqliteTable(
+  'try_ons',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => outfitPhotos.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: TryOnStatus.literals }).notNull(),
+    /** "This is me": the person's word, at the try-on's start, that the photo shows them. */
+    confirmedAt: integer('confirmed_at', { mode: 'timestamp_ms' }).notNull(),
+    /** When a delivery claimed the drawing; none until then. */
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }),
+    /** The drawn picture, once there is one. */
+    resultKey: text('result_key'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('try_ons_account_created').on(table.accountId, table.createdAt),
+    index('try_ons_photo').on(table.photoId),
+    index('try_ons_status_updated').on(table.status, table.updatedAt),
+    oneOf('try_ons_status', table.status, TryOnStatus.literals),
+  ],
+)
+
+/** The pieces a try-on wears, in the order chosen. A piece deleted later drops out of the list. */
+export const tryOnPieces = sqliteTable(
+  'try_on_pieces',
+  {
+    tryOnId: text('try_on_id')
+      .notNull()
+      .references(() => tryOns.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    pieceId: text('piece_id')
+      .notNull()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.tryOnId, table.position] }), index('try_on_pieces_piece').on(table.pieceId)],
 )

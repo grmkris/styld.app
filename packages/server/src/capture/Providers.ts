@@ -1,5 +1,5 @@
 import type { ProviderError } from '../providers/Errors.ts'
-import type { Colour, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
+import type { Colour, Occasion, Pattern, PieceRotation, PieceType, Season } from '@styld/protocol'
 import { Context, type Effect, type Option } from 'effect'
 import type { Found } from '../providers/SamStream.ts'
 
@@ -103,8 +103,13 @@ export class PictureWork extends Context.Service<
     readonly workingCopies: (original: Uint8Array) => Effect.Effect<WorkingCopies, ProviderError>
     /** The working copy with everything but the foreground transparent, as a PNG of the same size. */
     readonly foreground: (original: Uint8Array) => Effect.Effect<Uint8Array, ProviderError>
-    /** A small WebP of a stored image, for assistant views. */
-    readonly thumbnail: (image: Uint8Array, width: number) => Effect.Effect<Uint8Array, ProviderError>
+    /** A WebP of a stored image at most `width` wide and tall, turned clockwise by `rotate` degrees: for assistant
+     * views, and a try-on's pieces. */
+    readonly thumbnail: (
+      image: Uint8Array,
+      width: number,
+      rotate?: PieceRotation,
+    ) => Effect.Effect<Uint8Array, ProviderError>
     /** An opaque picture as a JPEG, for a provider that takes only small requests (the video model's frames). */
     readonly jpeg: (image: Uint8Array) => Effect.Effect<Uint8Array, ProviderError>
   }

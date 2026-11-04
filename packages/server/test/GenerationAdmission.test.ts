@@ -18,6 +18,7 @@ import { Holds } from '../src/usage/Holds.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { localD1 } from './LocalD1.ts'
 import { unusedBoards } from './fakes/Boards.ts'
+import { unusedWardrobe } from './fakes/Wardrobe.ts'
 
 const over = () => {
   const database = localD1()
@@ -64,27 +65,8 @@ const inserted = Effect.gen(function* () {
 })
 
 const passing = Layer.succeed(ContentJudge, { judge: () => Effect.succeed(passed) })
-const notUsed = () => Effect.die('not used by this test')
 const boards = Boards.of(unusedBoards)
-const wardrobe = Wardrobe.of({
-  listPieces: () => Effect.succeed([]),
-  getPiece: notUsed,
-  newUpload: notUsed,
-  createUpload: notUsed,
-  once: notUsed,
-  receiveUpload: notUsed,
-  receiveVideoUpload: notUsed,
-  choosePicture: notUsed,
-  addPiece: notUsed,
-  updatePiece: notUsed,
-  deletePiece: notUsed,
-  deletePieces: notUsed,
-  processPiece: notUsed,
-  setBack: notUsed,
-  removeBack: notUsed,
-  failPiece: notUsed,
-  sweepUploads: notUsed,
-})
+const wardrobe = Wardrobe.of(unusedWardrobe)
 const planner = MoodPlanner.of({ plan: () => Effect.succeed(Option.none()) })
 
 describe('generation admission', () => {

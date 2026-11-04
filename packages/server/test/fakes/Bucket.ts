@@ -9,7 +9,10 @@ export const mediaOver = (stored: Map<string, Uint8Array>) => {
       return bytes === undefined ? null : { arrayBuffer: async () => bytes.slice().buffer }
     },
     put: async (key: string, bytes: Uint8Array) => void stored.set(key, bytes),
-    delete: async (key: string) => void stored.delete(key),
+    // R2 deletes one key or a batch of them (`deleteKeys`).
+    delete: async (keys: string | ReadonlyArray<string>) => {
+      for (const key of typeof keys === 'string' ? [keys] : keys) stored.delete(key)
+    },
   }
   // SAFETY: the fake implements the bucket get, put and delete that cut-outs and drawings call -- the rest of R2 and Images is never called by them
   return Layer.succeed(Media, Media.of({ bucket, images: {} } as never))

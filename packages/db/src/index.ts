@@ -36,7 +36,7 @@ export {
 export { blocks, follows, profiles, profileTranslations, reports, saves, viewerPreferences } from './social.ts'
 export { contentChecks } from './safety.ts'
 export { wornPieces } from './worn.ts'
-export { generationJobs, generationPictures, generationPicks } from './generation.ts'
+export { generationJobs, generationPictures, generationPicks, tryOnPieces, tryOns } from './generation.ts'
 export { thinkingDays } from './outfits.ts'
 export { stylistChats } from './stylist.ts'
 export { paidAttempts, pendingSettlements } from './usage.ts'

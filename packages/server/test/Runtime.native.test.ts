@@ -25,6 +25,7 @@ import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
 import { verifyPhotos } from './PhotosAcceptance.ts'
+import { verifyTryOn } from './TryOnAcceptance.ts'
 import { verifyImports } from './ImportAcceptance.ts'
 import { verifySeed } from './SeedAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
@@ -159,6 +160,11 @@ test(
   'keeps the person’s outfit photos private: finding garments for a credit, matching, favourites and deletion',
   overHttp(verifyPhotos),
   { timeout: 60000 },
+)
+test(
+  'tries the person’s own photo on with their pieces, once, for two credits, private until they put it on a board',
+  overHttp(verifyTryOn),
+  { timeout: 90000 },
 )
 test(
   'imports a v1 wardrobe for an admin, into the account its email signs in to or one made for it, once',
