@@ -4,7 +4,7 @@ import { back, load, pushUrl, replaceUrl, UrlRequest } from 'foldkit/navigation'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
 import { AppRoute, homeRouter, isSameTab, parentReturn, returnPath, routeFromUrl, tabOf } from './route.ts'
-import { noteReturn } from './SignInReturn.ts'
+import { noteReturn, tookNext } from './SignInReturn.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
 // tab pages switch inside the page, keeping the navigation and what the app already has; every other page loads
@@ -30,8 +30,19 @@ export const SignInToFollow = Command.define('SignInToFollow', {
 
 /** Where sign-in hands over to: the page it was asked from (a Follow or a Save on a public page), else Home, where
  * What's new waits and Show me is asked (owner, 4 November 2026). */
-export const returnAfterSignIn = (next: Option.Option<string>) =>
-  Navigate({ href: Option.getOrElse(returnPath(next), () => homeRouter({})) })
+export const returnAfterSignIn = (next: Option.Option<string>) => ReturnAfterSignIn({ next })
+
+/** A sign-in with no `next` may be one that came back from Google, which noted it for this tab before leaving. */
+export const ReturnAfterSignIn = Command.define('ReturnAfterSignIn', {
+  args: { next: Schema.Option(Schema.String) },
+  messages: [Message.CompletedNavigate],
+  execute: ({ next }) =>
+    Effect.gen(function* () {
+      const asked = Option.isSome(next) ? next : Option.fromNullishOr(yield* tookNext)
+      yield* load(Option.getOrElse(returnPath(asked), () => homeRouter({})))
+      return Message.CompletedNavigate()
+    }),
+})
 
 /** Another tab page in the same document: the address changes and `ChangedUrl` opens it.
  */

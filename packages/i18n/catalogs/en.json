@@ -36,9 +36,12 @@
       "expired": "This code has expired. Ask for a new one.",
       "tooManyAttempts": "Too many wrong codes. Ask for a new one.",
       "tooManyRequests": "You asked for several codes in a row. Wait a minute, then try again.",
-      "unavailable": "Styld can't send or check codes right now. Try again in a moment."
+      "unavailable": "Styld can't send or check codes right now. Try again in a moment.",
+      "google": "Google sign-in didn't finish. Try again, or sign in with a code."
     },
-    "resendSoon": "You can ask for a new code 30 seconds after the last one."
+    "resendSoon": "You can ask for a new code 30 seconds after the last one.",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google"
   },
   "nav": {
     "home": "Home",

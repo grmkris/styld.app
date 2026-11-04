@@ -23,7 +23,7 @@ const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
 
 /** Sign-in opened from a page, asked to return to `next` once signed in. */
 const atLogin = (next: string) =>
-  modifyFields(page('/login'), { route: () => AppRoute.Login({ next: Option.some(next) }) })
+  modifyFields(page('/login'), { route: () => AppRoute.Login({ next: Option.some(next), problem: Option.none() }) })
 
 describe('the session decides where a visitor belongs', () => {
   test('a visitor without a session is sent from their account or wardrobe to sign in', () => {

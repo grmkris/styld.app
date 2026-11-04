@@ -103,7 +103,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // and their words add 808: HEAD measured 387,150 in a clean worktree at d377d399 and 387,958 with them.
 // Raised to 388,200 the same day so Show me's card never moves Home: the browser's cookie that it saw an answer, read
 // into the page's flags, and the Account page's choices standing from the first paint add 203 over 42da42aa's 387,958.
-if (initialGzip > 388200) throw new Error(`Initial browser assets exceed the 388,200-byte gzip budget: ${initialGzip}`)
+// Raised to 391,400 the same day for Sign in with Google: the auth contract's two OAuth actions (Yielded's sign-in input,
+// authorization and completion schemas reach the browser client), Continue with Google with its mark, the start and
+// the noted return, and their words add 3,154 over 42da42aa (387,958 to 391,112).
+if (initialGzip > 391400) throw new Error(`Initial browser assets exceed the 391,400-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

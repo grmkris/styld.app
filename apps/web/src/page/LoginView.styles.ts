@@ -30,3 +30,15 @@ export const linkButton = style({
   cursor: 'pointer',
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })
+
+/** "or" between the code and Google, ruled on both sides (Gallery `.or`). */
+export const orRule = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'related',
+  marginBlockStart: '8px',
+  fontSize: 'label',
+  color: 'ink2',
+  '&::before': { content: "''", flexGrow: 1, blockSize: '1px', backgroundColor: 'rule' },
+  '&::after': { content: "''", flexGrow: 1, blockSize: '1px', backgroundColor: 'rule' },
+})

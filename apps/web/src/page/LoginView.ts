@@ -5,11 +5,21 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { loader } from '../Icon.ts'
+import { googleIcon, loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { type Code, codeFormId, Message as LoginMessage, type Model, type Problem, Step } from './Login.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
-import { authForm, authPage, emailShown, lede, linkButton, loginActions, notice, submit } from './LoginView.styles.ts'
+import {
+  authForm,
+  authPage,
+  emailShown,
+  lede,
+  linkButton,
+  loginActions,
+  notice,
+  orRule,
+  submit,
+} from './LoginView.styles.ts'
 
 const problemKey: { readonly [Key in Problem]: MessageKey } = {
   invalidEmail: 'auth.problem.invalidEmail',
@@ -18,7 +28,12 @@ const problemKey: { readonly [Key in Problem]: MessageKey } = {
   tooManyAttempts: 'auth.problem.tooManyAttempts',
   tooManyRequests: 'auth.problem.tooManyRequests',
   unavailable: 'auth.problem.unavailable',
+  google: 'auth.problem.google',
 }
+
+/** What the page was told: by itself, else by the address Google's refusal came back to. */
+const problemOf = (model: Model, googleRefused: boolean): Option.Option<Problem> =>
+  Option.orElse(model.problem, () => (googleRefused ? Option.some<Problem>('google') : Option.none()))
 
 const problemView = (model: Model, locale: Locale, h: HtmlBuilder<LoginMessage>): Html =>
   Option.match(model.problem, {
@@ -30,7 +45,42 @@ const problemView = (model: Model, locale: Locale, h: HtmlBuilder<LoginMessage>)
       ),
   })
 
-const emailStep = (model: Model, sending: boolean, locale: Locale, h: HtmlBuilder<LoginMessage>): Html =>
+interface EmailInputs {
+  readonly sending: boolean
+  readonly forConnection: boolean
+  readonly locale: Locale
+}
+
+const emailStep = (model: Model, { sending, forConnection, locale }: EmailInputs, h: HtmlBuilder<LoginMessage>): Html =>
+  h.div(styled(h, authForm()), [
+    emailForm(model, sending, locale, h),
+    googleEntry(model, sending, forConnection, locale, h),
+  ])
+
+/** Continue with Google, under the code (Gallery `login.html`): the page leaves for Google's sign-in and comes back
+ * signed in. */
+const googleEntry = (
+  model: Model,
+  sending: boolean,
+  forConnection: boolean,
+  locale: Locale,
+  h: HtmlBuilder<LoginMessage>,
+): Html =>
+  h.div(styled(h, authForm()), [
+    h.p([...styled(h, orRule()), h.AriaHidden(true)], [format(locale, 'auth.or', {})]),
+    actionButton(
+      {
+        label: format(locale, 'auth.continueWithGoogle', {}),
+        style: secondaryAction(),
+        onClick: LoginMessage.ClickedContinueWithGoogle({ forConnection }),
+        isDisabled: sending || model.goingToGoogle,
+        leading: model.goingToGoogle ? loader(h) : googleIcon(h),
+      },
+      h,
+    ),
+  ])
+
+const emailForm = (model: Model, sending: boolean, locale: Locale, h: HtmlBuilder<LoginMessage>): Html =>
   h.form(
     [
       ...styled(h, authForm()),
@@ -150,9 +200,10 @@ const codeStep = (model: Model, step: Step, code: Code, locale: Locale, h: HtmlB
 export const view = Submodel.defineView<
   Model,
   LoginMessage,
-  { readonly forConnection: boolean; readonly locale: Locale }
->((model, { forConnection, locale }, h) =>
-  h.main(
+  { readonly forConnection: boolean; readonly googleRefused: boolean; readonly locale: Locale }
+>((stored, { forConnection, googleRefused, locale }, h) => {
+  const model = { ...stored, problem: problemOf(stored, googleRefused) }
+  return h.main(
     [h.Id('main'), ...styled(h, authPage())],
     [
       forConnection ? h.p(styled(h, lede()), [format(locale, 'auth.connectAssistant', {})]) : h.empty,
@@ -169,12 +220,12 @@ export const view = Submodel.defineView<
         ],
       ),
       Step.match(model.step, {
-        EnterEmail: () => emailStep(model, false, locale, h),
-        SendingCode: () => emailStep(model, true, locale, h),
+        EnterEmail: () => emailStep(model, { sending: false, forConnection, locale }, h),
+        SendingCode: () => emailStep(model, { sending: true, forConnection, locale }, h),
         EnterCode: (step) => codeStep(model, step, step.code, locale, h),
         VerifyingCode: (step) => codeStep(model, step, step.code, locale, h),
         ResendingCode: (step) => codeStep(model, step, step.code, locale, h),
       }),
     ],
-  ),
-)
+  )
+})

@@ -156,7 +156,7 @@ describe('email code sign-in', () => {
 
   test('signing in from Follow on a profile comes back to the profile', () => {
     const fromProfile = modifyFields(awaitingCode('/login'), {
-      route: () => AppRoute.Login({ next: Option.some('/@nika.kovac#follow') }),
+      route: () => AppRoute.Login({ next: Option.some('/@nika.kovac#follow'), problem: Option.none() }),
     })
     scene(
       { update, view },

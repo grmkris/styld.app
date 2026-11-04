@@ -15,6 +15,7 @@ export const Problem = Schema.Literals([
   'tooManyAttempts',
   'tooManyRequests',
   'unavailable',
+  'google',
 ])
 export type Problem = typeof Problem.Type
 
@@ -64,10 +65,18 @@ export const Model = Schema.Struct({
   flowId: Schema.Option(Schema.String),
   step: Step,
   problem: Schema.Option(Problem),
+  /** The page is on its way to Google's sign-in. */
+  goingToGoogle: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ email: '', flowId: Option.none(), step: Step.EnterEmail(), problem: Option.none() })
+export const init = (): Model => ({
+  email: '',
+  flowId: Option.none(),
+  step: Step.EnterEmail(),
+  problem: Option.none(),
+  goingToGoogle: false,
+})
 
 // MESSAGE
 
@@ -85,6 +94,8 @@ export const Message = defineMessageUnion({
   ElapsedResendPause: { requestId: Schema.String },
   ElapsedCodeLifetime: { requestId: Schema.String },
   ClickedUseDifferentEmail: {},
+  ClickedContinueWithGoogle: { forConnection: Schema.Boolean },
+  FailedStartGoogle: { problem: Problem },
 })
 export type Message = typeof Message.Type
 
@@ -106,6 +117,9 @@ export class EmailSignIn extends Context.Service<
     /** Send a code in the page's language, in the given flow or a new one. */
     readonly requestCode: (email: string, flowId: Option.Option<string>) => Effect.Effect<CodeSent, SignInRefused>
     readonly verifyCode: (email: string, sent: CodeSent) => Effect.Effect<AccountClaims, SignInRefused>
+    /** Leave for Google's sign-in, which comes back to the login page signed in (or with a problem). It only returns
+     * if Google could not be started. */
+    readonly startGoogle: (forConnection: boolean) => Effect.Effect<void, SignInRefused>
   }
 >()('@styld/web/EmailSignIn') {}
 
@@ -139,6 +153,17 @@ export const VerifyCode = Command.define('VerifyCode', {
       const claims = yield* (yield* EmailSignIn).verifyCode(email, sent)
       return Message.SucceededVerifyCode({ claims })
     }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedVerifyCode({ problem })))),
+})
+
+export const StartGoogle = Command.define('StartGoogle', {
+  args: { forConnection: Schema.Boolean },
+  messages: [Message.FailedStartGoogle],
+  execute: ({ forConnection }) =>
+    Effect.gen(function* () {
+      yield* (yield* EmailSignIn).startGoogle(forConnection)
+      // The page is leaving; nothing more is said unless the browser stays.
+      return yield* Effect.never
+    }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedStartGoogle({ problem })))),
 })
 
 export const WaitToResend = Command.define('WaitToResend', {
@@ -297,6 +322,16 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededVerifyCode: ({ claims }) => ({ model: init(), outMessage: OutMessage.SignedIn({ claims }) }),
     FailedVerifyCode: ({ problem }) => failedVerifyCode(model, problem),
     ClickedResendCode: () => clickedResendCode(model),
+    ClickedContinueWithGoogle: ({ forConnection }) =>
+      model.goingToGoogle || !Step.guards.EnterEmail(model.step)
+        ? { model }
+        : {
+            model: modifyFields(model, { goingToGoogle: () => true, problem: () => Option.none() }),
+            commands: [StartGoogle({ forConnection })],
+          },
+    FailedStartGoogle: ({ problem }) => ({
+      model: modifyFields(model, { goingToGoogle: () => false, problem: () => Option.some(problem) }),
+    }),
     SucceededResendCode: ({ sent }) =>
       Step.guards.ResendingCode(model.step) ? codeArrived(model, sent, true) : { model },
     FailedResendCode: ({ problem }) => failedResendCode(model, problem),

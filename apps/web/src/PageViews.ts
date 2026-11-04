@@ -108,7 +108,11 @@ const loginPage = (model: Model, forConnection: boolean, h: HtmlBuilder<Message>
       h.submodel({
         ...slot(lenses.login, login),
         view: LoginView.view,
-        viewInputs: { forConnection, locale: model.context.locale },
+        viewInputs: {
+          forConnection,
+          googleRefused: AppRoute.guards.Login(model.route) && Option.isSome(model.route.problem),
+          locale: model.context.locale,
+        },
       }),
     h,
   )

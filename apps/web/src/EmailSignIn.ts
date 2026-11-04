@@ -2,9 +2,14 @@ import { BrowserAuth } from '@styld/auth/client'
 import { Effect, Layer, Option, Predicate, Redacted } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { codeFormId, EmailSignIn, type Problem, SignInRefused } from './page/Login.ts'
+import { noteNext } from './SignInReturn.ts'
 
 /** Sign-in always returns to the website; the page then decides where the person belongs. */
 const returnTarget = '/'
+
+/** Google returns to the login page, which carries on to the assistant's authorization or to `next`, noted for this
+ * tab because Google's return address cannot carry it (Navigation.ts › returnAfterSignIn). */
+const googleReturn = (forConnection: boolean) => (forConnection ? '/login/connect' : '/login')
 
 /** The words for a refusal. The server answers a wrong, expired or spent code the same way, so
  * the page tells those apart itself (`page/Login.ts`). */
@@ -74,6 +79,15 @@ export const emailSignInLayer = (document: Document) =>
               return yield* SignInRefused.make({ problem: 'unavailable' })
             return completion.session.claims
           }),
+        startGoogle: (forConnection) =>
+          Effect.gen(function* () {
+            yield* noteNext(new URLSearchParams(window.location.search).get('next'))
+            const { authorizationUrl } = yield* auth.googleSignIn({
+              provider: 'google',
+              returnTarget: googleReturn(forConnection),
+            })
+            yield* Effect.sync(() => window.location.assign(Redacted.value(authorizationUrl)))
+          }).pipe(Effect.mapError(refused)),
       }
     }),
   )

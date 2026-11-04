@@ -42,11 +42,14 @@ export interface MessageArgumentsByKey<_T = string> {
   'auth.checkYourEmail': Readonly<Record<string, never>>
   'auth.codeSentToEmail': Readonly<Record<string, never>>
   'auth.connectAssistant': Readonly<Record<string, never>>
+  'auth.continueWithGoogle': Readonly<Record<string, never>>
   'auth.email': Readonly<Record<string, never>>
   'auth.enterVerificationCode': Readonly<Record<string, never>>
   'auth.language': Readonly<Record<string, never>>
   'auth.newCodeSent': Readonly<Record<string, never>>
+  'auth.or': Readonly<Record<string, never>>
   'auth.problem.expired': Readonly<Record<string, never>>
+  'auth.problem.google': Readonly<Record<string, never>>
   'auth.problem.invalidEmail': Readonly<Record<string, never>>
   'auth.problem.tooManyAttempts': Readonly<Record<string, never>>
   'auth.problem.tooManyRequests': Readonly<Record<string, never>>
@@ -932,4 +935,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'd2781d00dfead0f166712786bf5a92f315b5ceea5abd3271254947033b1c2ec7'
+export const catalogVersion = '51d7ca3185e15f96d2d25196db288413da86df6321d86c2fa74bc5966029d15f'

@@ -21,3 +21,19 @@ export const tookReturn = Effect.try(() => {
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`)
   return noted !== null && new URL(noted, window.location.origin).href === here
 }).pipe(Effect.orElseSucceed(() => false))
+
+const nextKey = 'styld.signInNext'
+
+/** Notes for this tab where sign-in was to return to (`/login?next=…`), as the page leaves for Google, whose return
+ * address cannot carry it; none clears an older note. */
+export const noteNext = (next: string | null) =>
+  Effect.try(() =>
+    next === null ? window.sessionStorage.removeItem(nextKey) : window.sessionStorage.setItem(nextKey, next),
+  ).pipe(Effect.ignore)
+
+/** The return this tab noted before Google, spent as it is read. */
+export const tookNext = Effect.try(() => {
+  const noted = window.sessionStorage.getItem(nextKey)
+  window.sessionStorage.removeItem(nextKey)
+  return noted
+}).pipe(Effect.orElseSucceed(() => null))

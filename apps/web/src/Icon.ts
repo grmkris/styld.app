@@ -15,6 +15,7 @@ import {
   CopyRegular,
   DotsThreeRegular,
   ExportRegular,
+  GoogleLogoRegular,
   SparkleLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
@@ -107,6 +108,8 @@ export const saveIcon = control(BookmarkSimpleRegular)
 /** A favourite: the outline while it is not one, filled once it is (DESIGN.md › Icons). */
 export const favouriteIcon = control(HeartRegular)
 export const favouriteOnIcon = control(HeartFill)
+/** Google's mark, on Continue with Google. */
+export const googleIcon = control(GoogleLogoRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)

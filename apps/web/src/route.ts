@@ -19,7 +19,8 @@ import {
 export const AppRoute = defineRouteUnion({
   Home: {},
   /** Sign-in; `next` is the page of this site to return to once signed in (`returnPath` checks it). */
-  Login: { next: Schema.Option(Schema.String) },
+  /** `problem=google`: Google's sign-in came back refused (EdgeWorker.ts). */
+  Login: { next: Schema.Option(Schema.String), problem: Schema.Option(Schema.Literal('google')) },
   /** Sign-in for an assistant's connection: success returns to the OAuth authorization. */
   LoginForConnection: {},
   Account: {},
@@ -57,7 +58,12 @@ export type AppRoute = typeof AppRoute.Type
 export const homeRouter = pipe(root, mapTo(AppRoute.Home))
 const loginRouter = pipe(
   literal('login'),
-  query(Schema.Struct({ next: Schema.OptionFromOptional(Schema.String) })),
+  query(
+    Schema.Struct({
+      next: Schema.OptionFromOptional(Schema.String),
+      problem: Schema.OptionFromOptional(Schema.Literal('google')),
+    }),
+  ),
   mapTo(AppRoute.Login),
 )
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
@@ -180,10 +186,10 @@ export const routeFromPathname = (pathname: string): AppRoute =>
   })
 
 /** Sign-in, with nowhere in particular to return to. */
-export const signInHref = loginRouter({ next: Option.none() })
+export const signInHref = loginRouter({ next: Option.none(), problem: Option.none() })
 
 /** Sign-in that returns to a page of this site, such as the profile where a visitor pressed Follow. */
-export const signInReturningTo = (path: string) => loginRouter({ next: Option.some(path) })
+export const signInReturningTo = (path: string) => loginRouter({ next: Option.some(path), problem: Option.none() })
 
 const returnBase = 'https://styld.invalid'
 const parseReturn = Option.liftThrowable((path: string) => new URL(path, returnBase))

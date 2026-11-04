@@ -36,9 +36,12 @@
       "expired": "Ta koda je potekla. Zahtevaj novo.",
       "tooManyAttempts": "Preveč napačnih kod. Zahtevaj novo.",
       "tooManyRequests": "Zapored je bilo zahtevanih preveč kod. Počakaj minuto in poskusi znova.",
-      "unavailable": "Styld trenutno ne more poslati ali preveriti kod. Poskusi znova čez trenutek."
+      "unavailable": "Styld trenutno ne more poslati ali preveriti kod. Poskusi znova čez trenutek.",
+      "google": "Prijava z Googlom se ni končala. Poskusi znova ali se prijavi s kodo."
     },
-    "resendSoon": "Novo kodo lahko zahtevaš 30 sekund po zadnji."
+    "resendSoon": "Novo kodo lahko zahtevaš 30 sekund po zadnji.",
+    "or": "ali",
+    "continueWithGoogle": "Nadaljuj z Googlom"
   },
   "nav": {
     "home": "Domov",
