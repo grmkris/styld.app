@@ -1,7 +1,7 @@
 import { busy, refused, broken } from './Errors.ts'
 import { costs } from './Costs.ts'
 import { deadlines, providerCall } from './Call.ts'
-import { Colour, groupOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
+import { Colour, familyOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -446,7 +446,7 @@ const suggestionOf = (answer: ClefAnswer): Suggestion => {
     onNone: () => 0,
     onSome: ([{ probabilities }, chosen]) =>
       Object.entries(probabilities)
-        .filter(([name]) => Option.exists(decodeType(name), (other) => groupOf(other) === groupOf(chosen)))
+        .filter(([name]) => Option.exists(decodeType(name), (other) => familyOf(other) === familyOf(chosen)))
         .reduce((sum, [, probability]) => sum + probability, 0),
   })
   const alternative = Option.flatMap(Option.all([typed, type]), ([{ probabilities }, chosen]) =>

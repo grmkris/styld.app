@@ -15,7 +15,7 @@ import { withViewThumbnails } from '../kernel/SignedMedia.ts'
 import type { Boards } from '../boards/Boards.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { mediaViewTools, type MediaServices } from './MediaViewTools.ts'
+import { groupsIn, mediaViewTools, type MediaServices } from './MediaViewTools.ts'
 import { showsView } from './Resources.ts'
 import { thumbnails } from './Thumbnails.ts'
 import { tool, ViewResult } from './Tools.ts'
@@ -30,12 +30,7 @@ const labelsIn = (locale: Locale): ViewLabels => ({
   wardrobeTitle: format(locale, 'wardrobe.title', {}),
   empty: format(locale, 'wardrobe.closetEmptyTitle', {}),
   openInStyld: format(locale, 'assistantView.openInStyld', {}),
-  groups: {
-    clothing: format(locale, 'wardrobe.groups.clothing', {}),
-    sport: format(locale, 'wardrobe.groups.sport', {}),
-    shoes: format(locale, 'wardrobe.groups.shoes', {}),
-    accessories: format(locale, 'wardrobe.groups.accessories', {}),
-  },
+  groups: groupsIn(locale),
 })
 
 /** A board's view words in one language, from the reviewed catalogs. */

@@ -174,7 +174,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // today and the wheel's tinted wedges add 328 (418,001 to 418,329).
 // Raised to 418,800 on 5 November for "ask instead of guess": the review card's one-tap other type (its chip, the
 // Message and its en/sl words) adds 398 (418,329 to 418,727).
-if (initialGzip > 418800) throw new Error(`Initial browser assets exceed the 418,800-byte gzip budget: ${initialGzip}`)
+// Raised to 418,500 on 5 November for the wardrobe's shop sections (Eva: Tops and Bottoms first): five group names in
+// en and sl in place of Clothing, and the picker's chips for groups that hold pieces, add 85 (418,329 to 418,414).
+// Raised to 418,900 with both merged: the build measures 418,811.
+if (initialGzip > 418900) throw new Error(`Initial browser assets exceed the 418,900-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

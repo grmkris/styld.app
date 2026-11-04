@@ -221,7 +221,8 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
 }))
 
 /** What the review offers for a found piece: the decision model's suggestion, with the type it was torn with when
- * that differs from the first. */
+ * that differs from the first.
+ * @internal Exported for its tests. */
 export const suggestionOfRow = (row: DetectionRow) => ({
   type: row.suggestedType,
   ...(row.suggestedAlternative === null || row.suggestedAlternative === row.suggestedType

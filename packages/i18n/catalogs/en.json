@@ -317,7 +317,11 @@
       "hairAccessories": "hair clip, headband, hairband, scrunchie"
     },
     "groups": {
-      "clothing": "Clothing",
+      "tops": "Tops",
+      "bottoms": "Bottoms",
+      "dresses": "Dresses & jumpsuits",
+      "outerwear": "Outerwear",
+      "swimLounge": "Swim & lounge",
       "shoes": "Shoes",
       "accessories": "Accessories",
       "sport": "Sport"

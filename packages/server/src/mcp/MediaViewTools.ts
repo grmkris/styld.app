@@ -15,6 +15,7 @@ import {
   TryOnId,
   TryOnView,
   type TryOnViewLabels,
+  type ViewLabels,
   type ViewPiece,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
@@ -34,10 +35,14 @@ import { tool, ViewResult } from './Tools.ts'
 // their Gallery to choose a photo from, any of their pieces or the outfits Styld made, and one piece with all its
 // pictures. Each reads through the same services the website does, and shows only what that read authorized.
 
-/** The garment groups' names, for a piece the person did not name. */
-const groupsIn = (locale: Locale) => ({
-  clothing: format(locale, 'wardrobe.groups.clothing', {}),
+/** The garment groups' names, for a piece the person did not name (the wardrobe view's too). */
+export const groupsIn = (locale: Locale): ViewLabels['groups'] => ({
+  tops: format(locale, 'wardrobe.groups.tops', {}),
+  bottoms: format(locale, 'wardrobe.groups.bottoms', {}),
+  dresses: format(locale, 'wardrobe.groups.dresses', {}),
+  outerwear: format(locale, 'wardrobe.groups.outerwear', {}),
   sport: format(locale, 'wardrobe.groups.sport', {}),
+  swimLounge: format(locale, 'wardrobe.groups.swimLounge', {}),
   shoes: format(locale, 'wardrobe.groups.shoes', {}),
   accessories: format(locale, 'wardrobe.groups.accessories', {}),
 })

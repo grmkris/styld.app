@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { groupOf, OperationId, type SeedPiece } from '@styld/protocol'
+import { familyOf, OperationId, type SeedPiece } from '@styld/protocol'
 import { wholeEnough } from './Whole.ts'
 import { operatorStage, required } from '../OperatorStage.ts'
 import { r2Bucket } from '../R2Rest.ts'
@@ -24,7 +24,7 @@ const needsALook = (piece: SeedPiece) =>
   piece.status !== 'ready' ||
   !piece.cutOut ||
   !wholeEnough(piece.type, piece.describedWhole) ||
-  (piece.describedType !== null && groupOf(piece.describedType) !== groupOf(piece.type))
+  (piece.describedType !== null && familyOf(piece.describedType) !== familyOf(piece.type))
 
 /** The stage the operator's env file names, as the seed reaches it. */
 export const stageDeps = (work: GarmentWork, pieces: string): SeedDeps => {

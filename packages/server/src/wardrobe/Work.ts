@@ -1,4 +1,4 @@
-import { groupOf } from '@styld/protocol'
+import { familyOf } from '@styld/protocol'
 import { DateTime, Duration, Effect, Option } from 'effect'
 import { nowDate } from '../kernel/Db.ts'
 import { deleteKeys, Media } from '../kernel/Media.ts'
@@ -30,7 +30,7 @@ export const importedDetails = (
 ) => ({
   ...(!generated &&
   found.type !== undefined &&
-  (found.confidence >= typeConfidence || groupOf(found.type) === groupOf(row.type))
+  (found.confidence >= typeConfidence || familyOf(found.type) === familyOf(row.type))
     ? { type: found.type }
     : {}),
   ...(row.colours.length === 0 && found.colours.length > 0 ? { colours: found.colours } : {}),

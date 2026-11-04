@@ -430,7 +430,7 @@ const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
   try {
     const page = await narrow.newPage()
     // Filters belong to a type's own grid, the wardrobe's last step down (T-07).
-    await page.goto(`${origin}/wardrobe?group=clothing&type=shortSleeveTops`, { waitUntil: 'networkidle' })
+    await page.goto(`${origin}/wardrobe?group=tops&type=shortSleeveTops`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Filters' }).waitFor({ state: 'visible' })
     await expectNoSidewaysScroll(page)
     await page.setViewportSize({ width: 667, height: 375 })

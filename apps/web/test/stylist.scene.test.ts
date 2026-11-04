@@ -120,7 +120,7 @@ describe('Styld, the stylist in the app', () => {
               analysis: {
                 pieces: 14,
                 groups: [
-                  { group: 'clothing', count: 12 },
+                  { group: 'tops', count: 12 },
                   { group: 'shoes', count: 2 },
                 ],
                 types: [{ type: 'shortSleeveTops', count: 9 }],
@@ -140,7 +140,7 @@ describe('Styld, the stylist in the app', () => {
       given(stylistWith(opened({ open: Option.some(analysed) }))),
       expect(role('region', { name: 'Your wardrobe in numbers' })).toExist(),
       expect(text('14 pieces')).toExist(),
-      expect(text('Clothing 12')).toExist(),
+      expect(text('Tops 12')).toExist(),
       expect(text('White 6')).toExist(),
       expect(text('Worn in the last 60 days: 5 of 14 · 9 pieces not worn')).toExist(),
       expect(role('list', { name: 'Worn most' })).toExist(),
