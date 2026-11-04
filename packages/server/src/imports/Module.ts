@@ -1,5 +1,6 @@
 import { Effect, Layer } from 'effect'
 import { account } from '../Account.ts'
+import { Captures } from '../capture/Service.ts'
 import { consumer } from '../jobs/Jobs.ts'
 import { module } from '../kernel/Module.ts'
 import { wardrobe } from '../wardrobe/Module.ts'
@@ -15,5 +16,5 @@ export const imports = module({
   layer: Imports.layer.pipe(Layer.provide([ImportStore.layer, wardrobe.layer, account.layer])),
   api: Layer.mergeAll(importHandlers, pictureBackfillHandlers),
   sweeps: [importCopySweep],
-  consumers: [consumer(importJobQueue, Effect.map(Imports, importJobs))],
+  consumers: [consumer(importJobQueue, Effect.map(Effect.all({ imports: Imports, captures: Captures }), importJobs))],
 })

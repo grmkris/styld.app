@@ -6,6 +6,7 @@ import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { redrawing } from './Redraw.ts'
 import { backfilling } from './Backfill.ts'
+import { importing } from './ImportedPicture.ts'
 import { askingTurns, turning } from './Turns.ts'
 import { reviewing } from './Review.ts'
 
@@ -23,6 +24,7 @@ const make = Effect.gen(function* () {
     ...(yield* picturing),
     ...(yield* redrawing),
     ...(yield* backfilling),
+    ...(yield* importing),
     ...(yield* turning),
     ...(yield* askingTurns),
   }

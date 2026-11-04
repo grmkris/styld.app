@@ -237,10 +237,12 @@ const make = Effect.gen(function* () {
       if (Option.isNone(found)) return yield* NotFound.make({})
       return found.value.accountId
     }, Effect.provide(context)),
-    /** Import one piece and process it: cut out and described, paid by Styld. */
+    /** Import one piece and process it: cut out and described, paid by Styld. The piece it became, whose clean
+     * picture the import queue asks for next (`Queue.ts`). */
     importPiece: Effect.fn('Styld.Imports.piece')(function* (message: ImportMessage) {
       const pieceId = yield* pieceOf(message)
       yield* (yield* Wardrobe).processPiece(pieceId)
+      return pieceId
     }, Effect.provide(context)),
     /** The queue gave up on a piece: one that was made shows as failed rather than processing forever. */
     giveUpPiece: Effect.fn('Styld.Imports.giveUp')(function* (message: ImportMessage) {

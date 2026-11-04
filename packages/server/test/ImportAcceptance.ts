@@ -1,6 +1,6 @@
 import { expect } from 'bun:test'
 import { encodePng } from '@styld/imaging'
-import { ImportStarted, ImportStatus } from '@styld/protocol'
+import { ImportStarted, ImportStatus, Piece } from '@styld/protocol'
 import { Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
@@ -8,8 +8,9 @@ import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 // Test-only acceptance: a v1 wardrobe imported through the public edge, as the operator's importer runs it. The
 // operator starts it with the stage's operator token; the pieces land in the account the bundle's email signs in to,
-// or in one made for it with a verified email and no password; starting it again imports nothing twice; to a signed-in
-// person, a wrong token or no token at all the import is not there.
+// or in one made for it with a verified email and no password; each imported piece gets a clean picture as a piece
+// kept from the tray does; starting it again imports nothing twice; to a signed-in person, a wrong token or no token at
+// all the import is not there.
 
 /** A picture of the bundle: a small PNG whose pixels vary. */
 const picture = (shade: number) => {
@@ -69,6 +70,17 @@ const settled = async (operator: Call, importId: string) => {
   throw new Error(`import ${importId} never settled`)
 }
 
+/** An imported piece's clean picture once the job has carried it as far as it goes: drawn, kept as the photo, sent
+ * for a retake or failed, whichever the native providers make of the bundle's picture; none if it was never queued. */
+const pictureOf = async (owner: Call, pieceId: string) => {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const piece = Schema.decodeUnknownSync(Piece)(await (await owner(`/api/pieces/${pieceId}`)).json())
+    if (piece.picture?.state !== 'drawing') return piece.picture
+    await Bun.sleep(250)
+  }
+  throw new Error(`the picture of ${pieceId} is still being drawn`)
+}
+
 const accountRows = async (testUrl: string, email: string) =>
   Schema.decodeUnknownSync(
     Schema.Struct({
@@ -116,8 +128,14 @@ export const verifyImports = async (origin: string, testUrl: string) => {
     { name: null, type: 'boots' },
     { name: 'Wool jumper', type: 'knitwear' },
   ])
-  // Again, and from another bundle carrying the same v1 pieces: one receipt per v1 piece, nothing imported twice.
   const pieceIds = done.pieces.map(({ pieceId }) => pieceId)
+  // Each imported piece got its first clean picture queued, at Styld's cost, and the job carried it to an end.
+  for (const pieceId of pieceIds) {
+    expect(pieceId).not.toBeNull()
+    const clean = await pictureOf(owner, pieceId ?? '')
+    expect(['ready', 'retake', 'kept', 'failed']).toContain(clean?.state ?? 'none')
+  }
+  // Again, and from another bundle carrying the same v1 pieces: one receipt per v1 piece, nothing imported twice.
   expect((await start(operator, 'native-import-owner-1')).pieces.map(({ pieceId }) => pieceId)).toEqual(pieceIds)
   await bundle(testUrl, 'native-import-owner-2', 'native-import-owner@example.invalid', 'native-import-owner-1')
   expect((await start(operator, 'native-import-owner-2')).pieces.map(({ pieceId }) => pieceId)).toEqual(pieceIds)

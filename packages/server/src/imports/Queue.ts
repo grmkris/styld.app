@@ -1,6 +1,7 @@
 import { ImportPiece } from '@styld/protocol'
-import { Context, Layer, Option, Schema } from 'effect'
+import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { defineQueue, type JobsOf } from '../jobs/Jobs.ts'
+import type { Captures } from '../capture/Service.ts'
 import type { Imports } from './Imports.ts'
 
 /** Queue message: import one v1 piece into the account, from the import's bundle. */
@@ -30,11 +31,14 @@ export const importJobQueue = defineQueue({
   jobOf: ({ piece }) => Option.some(piece.v1Id),
 })
 
-export const importJobs = (
-  imports: Pick<Imports['Service'], 'importPiece' | 'giveUpPiece'>,
-): JobsOf<ImportMessage> => ({
+/** An imported piece, then its first clean picture once it is ready as a cut-out, as a piece kept from the tray gets
+ * one (owner, 4 November 2026); a redelivery queues no picture twice. */
+export const importJobs = (services: {
+  readonly imports: Pick<Imports['Service'], 'importPiece' | 'giveUpPiece'>
+  readonly captures: Pick<Captures['Service'], 'drawImported'>
+}): JobsOf<ImportMessage> => ({
   ImportPiece: {
-    run: (message) => imports.importPiece(message),
-    giveUp: (message) => imports.giveUpPiece(message),
+    run: (message) => Effect.flatMap(services.imports.importPiece(message), services.captures.drawImported),
+    giveUp: (message) => services.imports.giveUpPiece(message),
   },
 })
