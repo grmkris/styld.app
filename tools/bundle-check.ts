@@ -106,7 +106,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 391,400 the same day for Sign in with Google: the auth contract's two OAuth actions (Yielded's sign-in input,
 // authorization and completion schemas reach the browser client), Continue with Google with its mark, the start and
 // the noted return, and their words add 3,154 over 42da42aa (387,958 to 391,112).
-if (initialGzip > 391400) throw new Error(`Initial browser assets exceed the 391,400-byte gzip budget: ${initialGzip}`)
+// Raised to 392,300 on 4 November for the first-run polish (Track W): a whole code sending itself and the resend
+// countdown (its Subscription and seconds), the diagnostics prompt waiting for sign-in, Home's first piece, cutting and
+// how-many-more lines with the tray's allowance, the add page's cost line with its allowance read, and their words
+// add 887: main measured 391,351 in a clean worktree at 9b5e923a and 392,238 with them.
+if (initialGzip > 392300) throw new Error(`Initial browser assets exceed the 392,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
