@@ -24,6 +24,7 @@ import { PublicStore } from './PublicStore.ts'
 import { SocialStore } from './SocialStore.ts'
 import { heldBack, type PieceWithPicture, publicImage, visibleAt } from './Visibility.ts'
 import { digestOf } from '../kernel/Ids.ts'
+import { boardTranslationsIn, profileTranslationIn, ReaderLocale, translatedItems } from './Translated.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
 // owner made it public, and Styld's check of it passed or was unsure (unsure stays on its own links; discovery,
@@ -104,11 +105,18 @@ type PublicServices = Database | PublicStore | BoardStore | LookStore | SocialSt
 /** Who is reading, when signed in: a block either way hides the other's things from them. */
 type Viewer = Option.Option<string>
 
+/** A profile as others see it: its row, its byline and bio in the reader's language where translated. */
+interface ShownProfile {
+  readonly row: ProfileRow
+  readonly author: Author
+  readonly bio: string | null
+}
+
 /** The owner's profile and byline, while others may see the profile. */
 const shownProfile = (viewer: Viewer, row: ProfileRow) =>
   Effect.gen(function* () {
     const author = authorOf(row)
-    if (Option.isNone(author)) return Option.none<{ readonly row: ProfileRow; readonly author: Author }>()
+    if (Option.isNone(author)) return Option.none<ShownProfile>()
     const check = (yield* (yield* Checks).statuses('profile', [row.accountId])).get(row.accountId)
     if (!visibleAt('link', check)) return Option.none()
     const reader = Option.getOrNull(viewer)
@@ -116,7 +124,13 @@ const shownProfile = (viewer: Viewer, row: ProfileRow) =>
       reader !== null &&
       reader !== row.accountId &&
       (yield* stored((yield* SocialStore).blockedBetween(reader, row.accountId)))
-    return blocked ? Option.none() : Option.some({ row, author: author.value })
+    if (blocked) return Option.none()
+    const translated = yield* stored(profileTranslationIn(yield* Database, yield* ReaderLocale, row))
+    return Option.some<ShownProfile>({
+      row,
+      author: translated === undefined ? author.value : { ...author.value, name: translated.name },
+      bio: translated?.bio ?? row.bio,
+    })
   })
 const ownerOf = (viewer: Viewer, accountId: string) =>
   Effect.flatMap(stored(Effect.flatMap(Database, (db) => profileOf(db, accountId))), (row) =>
@@ -200,6 +214,17 @@ const shownBoard = (viewer: Viewer, boardId: string) =>
     return { row, owner }
   })
 
+/** The boards' translations into the reader's language that still translate their names and labels. */
+const translationsOf = (rows: ReadonlyArray<BoardRow>, items: ReadonlyArray<BoardItemRow>) =>
+  Effect.gen(function* () {
+    const words = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      labels: items.flatMap(({ boardId, id, text }) => (boardId === row.id && text !== null ? [{ id, text }] : [])),
+    }))
+    return yield* stored(boardTranslationsIn(yield* Database, yield* ReaderLocale, words))
+  })
+
 const summaries = (accountId: string, rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const statuses = yield* (yield* Checks).statuses(
@@ -212,19 +237,24 @@ const summaries = (accountId: string, rows: ReadonlyArray<BoardRow>) =>
     // Every pin, so a board's count and cover are what others see of it, not what it holds.
     const pins = yield* stored((yield* BoardStore).pinsOf(ids))
     const seen = yield* seenOn(accountId, pins, items)
+    const translations = yield* translationsOf(kept, items)
     return yield* Effect.forEach(kept, (row) => {
       const shown = publicPins(
         seen,
         pins.filter(({ pin }) => pin.boardId === row.id),
       )
+      const translated = translations.get(row.id)
       return decoded(PublicBoardSummary, {
         id: row.id,
-        name: row.name,
+        name: translated?.name ?? row.name,
         paper: row.paper,
-        items: publicItems(
-          seen,
-          items.filter(({ boardId }) => boardId === row.id),
-          heldBackImages(pins.filter(({ pin }) => pin.boardId === row.id)),
+        items: translatedItems(
+          publicItems(
+            seen,
+            items.filter(({ boardId }) => boardId === row.id),
+            heldBackImages(pins.filter(({ pin }) => pin.boardId === row.id)),
+          ),
+          translated?.labels,
         ),
         cover: shown.slice(0, 4),
         pinCount: shown.length,
@@ -284,13 +314,13 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
   profile: Effect.fn('Styld.Public.profile')(function* (handle: string, viewer: Option.Option<string> = Option.none()) {
     const store = yield* PublicStore
     const row = yield* Effect.flatMap(stored(store.publishedProfile(handle)), orNotFound)
-    const { author } = yield* Effect.flatMap(shownProfile(viewer, row), orNotFound)
+    const { author, bio } = yield* Effect.flatMap(shownProfile(viewer, row), orNotFound)
     const boards = yield* summaries(row.accountId, yield* stored(store.publicBoards(row.accountId)))
     const looks = yield* shownLooks(row.accountId, yield* stored(store.sharedLooks(row.accountId)))
     return {
       ...author,
       city: row.city,
-      bio: row.bio,
+      bio,
       boards,
       looks,
       yours: Option.contains(viewer, row.accountId),
@@ -301,11 +331,12 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
     const items = yield* stored((yield* BoardStore).itemsOf([row.id]))
     const pins = yield* stored((yield* BoardStore).pinsOf([row.id]))
     const seen = yield* seenOn(row.accountId, pins, items)
+    const translated = (yield* translationsOf([row], items)).get(row.id)
     return yield* decoded(PublicBoard, {
       id: row.id,
-      name: row.name,
+      name: translated?.name ?? row.name,
       paper: row.paper,
-      items: publicItems(seen, items, heldBackImages(pins)),
+      items: translatedItems(publicItems(seen, items, heldBackImages(pins)), translated?.labels),
       pins: publicPins(seen, pins),
       by: owner.author,
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),

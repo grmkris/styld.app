@@ -7,6 +7,7 @@ import { McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
+import { ReaderLocale, readerLocaleOf } from '../social/Translated.ts'
 import { curationTools } from './CurationTools.ts'
 import { type AssistantTools, instructions, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
@@ -73,7 +74,10 @@ const answerFor = Effect.fnUntraced(function* (
         read: readResource,
         call: (name, args) =>
           Effect.runPromiseWith(services)(
-            callTool(tools, name, args).pipe(Effect.provideService(CurrentAccount, account)),
+            callTool(tools, name, args).pipe(
+              Effect.provideService(CurrentAccount, account),
+              Effect.provideService(ReaderLocale, readerLocaleOf(request.headers)),
+            ),
           ),
       },
       body,

@@ -1,4 +1,3 @@
-import type { Locale } from '@styld/i18n'
 import { BoardImageId, PieceId, SlowDown, StyldApi } from '@styld/protocol'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
@@ -12,18 +11,13 @@ import { networkOf, Pacing } from '../kernel/Pacing.ts'
 import { Discovery } from './Discovery.ts'
 import { PublicPages } from './Public.ts'
 import { pageMeta } from './PublicMeta.ts'
+import { asReader, ReaderLocale } from './Translated.ts'
 
 /** Whether the reader's network is within its `publicRead` pace. */
 const readable = Effect.gen(function* () {
   const pacing = yield* Pacing
   return Effect.flatMap(HttpServerRequest, (request) => pacing.allows('publicRead', networkOf(request.headers)))
 })
-
-/** A link preview's language: Slovenian when the reader asks for it first, English otherwise (crawlers mostly
- * ask for nothing). */
-const readerLocale = Effect.map(HttpServerRequest, (request): Locale =>
-  (request.headers['accept-language'] ?? '').trim().toLowerCase().startsWith('sl') ? 'sl' : 'en',
-)
 
 /** A read past the network's pace is refused before it reaches D1. */
 const limited =
@@ -44,7 +38,7 @@ export const publicHandlers = (auth: AuthHttp) =>
       const within = limited(yield* readable)
       const reader = yield* sessionCookieAccount(auth)
       const read = <A, E, R>(page: (viewer: Option.Option<string>) => Effect.Effect<A, E, R>) =>
-        within(Effect.flatMap(reader, page))
+        within(asReader(Effect.flatMap(reader, page)))
       return (
         handlers
           .handle('profile', ({ params }) => read((viewer) => pages.profile(params.handle, viewer)))
@@ -57,7 +51,7 @@ export const publicHandlers = (auth: AuthHttp) =>
           .handle('search', ({ query }) => read((viewer) => discovery.search(query.q, viewer)))
           // The preview is read as the page is: a block hides its title and pictures too (the edge forwards the cookie).
           .handle('meta', ({ query }) =>
-            read((viewer) => Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale, viewer))),
+            read((viewer) => Effect.flatMap(ReaderLocale, (locale) => pageMeta(pages, query.path, locale, viewer))),
           )
       )
     }),

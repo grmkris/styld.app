@@ -7,6 +7,7 @@ import { collect } from '../Streams.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import { reachedThrough } from '../social/PublicStore.ts'
 import { profileOf } from '../social/ProfileStore.ts'
+import { boardTranslationsIn, profileTranslationIn } from '../social/Translated.ts'
 import { type Database as Db, Database, inChunks, nowDate, query } from '../kernel/Db.ts'
 import { Media } from '../kernel/Media.ts'
 import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
@@ -49,16 +50,26 @@ interface Shown {
 
 const nothing = (texts: ReadonlyArray<string | null>) => texts.filter((text): text is string => text !== null)
 
+/** A profile shows its name, handle, city and bio, and the translation of its name and bio that is shown with it. */
 const profileShows = (db: Drizzle, accountId: string) =>
-  Effect.map(
-    profileOf(db, accountId).pipe(Effect.mapError(unavailable)),
-    Option.map((row): Shown => ({
+  Effect.gen(function* () {
+    const row = yield* profileOf(db, accountId).pipe(Effect.mapError(unavailable))
+    if (Option.isNone(row)) return Option.none<Shown>()
+    const translated = yield* profileTranslationIn(db, 'sl', row.value).pipe(Effect.mapError(unavailable))
+    return Option.some<Shown>({
       accountId,
-      texts: nothing([row.name, row.handle, row.city, row.bio]),
+      texts: nothing([
+        row.value.name,
+        row.value.handle,
+        row.value.city,
+        row.value.bio,
+        translated?.name ?? null,
+        translated?.bio ?? null,
+      ]),
       pictures: [],
-      public: row.published,
-    })),
-  )
+      public: row.value.published,
+    })
+  })
 
 const boardShows = (db: Drizzle, boardId: string) =>
   Effect.gen(function* () {
@@ -70,10 +81,15 @@ const boardShows = (db: Drizzle, boardId: string) =>
       return Option.some<Shown>({ accountId: row.value.accountId, texts: [], pictures: [], public: false })
     const labels = yield* read(() =>
       db
-        .select({ text: boardItems.text })
+        .select({ id: boardItems.id, text: boardItems.text })
         .from(boardItems)
         .where(and(eq(boardItems.boardId, boardId), isNotNull(boardItems.text))),
     )
+    // Its translation is shown too, while it translates these words, so it is judged with them.
+    const words = labels.flatMap(({ id, text }) => (text === null ? [] : [{ id, text }]))
+    const translated = (yield* boardTranslationsIn(db, 'sl', [
+      { id: boardId, name: row.value.name, labels: words },
+    ]).pipe(Effect.mapError(unavailable))).get(boardId)
     const pictures = yield* read(() =>
       db
         .select({ key: boardImages.objectKey, contentType: boardImages.contentType })
@@ -83,7 +99,12 @@ const boardShows = (db: Drizzle, boardId: string) =>
     )
     return Option.some<Shown>({
       accountId: row.value.accountId,
-      texts: nothing([row.value.name, ...labels.map(({ text }) => text)]),
+      texts: nothing([
+        row.value.name,
+        ...labels.map(({ text }) => text),
+        translated?.name ?? null,
+        ...Object.values(translated?.labels ?? {}),
+      ]),
       pictures,
       public: true,
     })

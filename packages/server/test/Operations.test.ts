@@ -5,12 +5,11 @@ import { BoardStore } from '../src/boards/Store.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { recorded } from '../src/kernel/Receipts.ts'
-import { CheckQueue, Checks } from '../src/safety/Checks.ts'
-import { ContentJudge, passed } from '../src/safety/Judge.ts'
 import { Profiles } from '../src/social/Profiles.ts'
 import { PublicPages } from '../src/social/Public.ts'
 import { Social } from '../src/social/Social.ts'
 import { localD1 } from './LocalD1.ts'
+import { passingChecks } from './PassingChecks.ts'
 
 // A write that takes an operation id keeps its promise: the first request writes, a repeat writes nothing and answers
 // as the first did, and the same id with other input is OperationConflict. A repeat that wrote again would undo
@@ -32,14 +31,7 @@ const operation = (id: string) => OperationId.make(`op-${id}-0001`)
 
 /** Profiles and Social over the database, acting for Ana, with a judge that passes everything. */
 const services = (database: ReturnType<typeof localD1>) => {
-  const checks = Checks.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(
-        Layer.succeed(ContentJudge, ContentJudge.of({ judge: () => Effect.succeed(passed) })),
-        CheckQueue.layer({ sendBatch: async () => undefined }),
-      ),
-    ),
-  )
+  const checks = passingChecks
   const pages = PublicPages.layer.pipe(Layer.provide(BoardStore.layer))
   return Layer.mergeAll(Profiles.layer, Social.layer).pipe(
     Layer.provide(pages),

@@ -6,6 +6,7 @@ import { Media } from '../src/kernel/Media.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { CheckQueue, Checks } from '../src/safety/Checks.ts'
 import { type Content, ContentJudge, contentJudge, passed } from '../src/safety/Judge.ts'
+import { boardSourceDigest, profileSourceDigest } from '../src/social/Translated.ts'
 import { localD1 } from './LocalD1.ts'
 
 // The checks judge only what others would see of a thing: a piece's cut-out or clean drawing, never the photo it came
@@ -160,6 +161,44 @@ describe('the checks', () => {
       const checks = yield* Checks
       yield* checks.sweep()
       expect(database.sqlite.prepare('SELECT target_id FROM content_checks').all()).toEqual([{ target_id: 'pc_1' }])
+    }).pipe(Effect.provide(checksOver(database, seen)))
+  })
+
+  it.effect('judge a board’s Slovenian with it while it translates its words, and again when it changes', () => {
+    const seen = witness()
+    const database = seeded('ac_1/cutout.png')
+    return Effect.gen(function* () {
+      const fresh = yield* boardSourceDigest('Autumn', [])
+      database.sqlite.exec(`
+        INSERT INTO board_translations (board_id, locale, name, labels, source_digest, updated_at)
+          VALUES ('bd_1', 'sl', 'Jesen', '{}', '${fresh}', 0)
+      `)
+      const checks = yield* Checks
+      yield* checks.checkNow({ kind: 'board', id: 'bd_1' })
+      database.sqlite.exec("UPDATE board_translations SET name = 'Jesen v mestu' WHERE board_id = 'bd_1'")
+      yield* checks.checkNow({ kind: 'board', id: 'bd_1' })
+      // Renamed by its owner: the translation no longer translates it, so it is neither shown nor judged.
+      database.sqlite.exec("UPDATE boards SET name = 'Fall' WHERE id = 'bd_1'")
+      yield* checks.checkNow({ kind: 'board', id: 'bd_1' })
+      expect(seen.judged.map(({ texts }) => texts)).toEqual([
+        ['Autumn', 'Jesen'],
+        ['Autumn', 'Jesen v mestu'],
+        ['Fall'],
+      ])
+    }).pipe(Effect.provide(checksOver(database, seen)))
+  })
+
+  it.effect('judge a profile’s Slovenian name and bio with it', () => {
+    const seen = witness()
+    const database = seeded('ac_1/cutout.png')
+    return Effect.gen(function* () {
+      const fresh = yield* profileSourceDigest('Ana', null)
+      database.sqlite.exec(`
+        INSERT INTO profile_translations (account_id, locale, name, bio, source_digest, updated_at)
+          VALUES ('ac_1', 'sl', 'Ana', 'Jesenske plasti.', '${fresh}', 0)
+      `)
+      yield* (yield* Checks).checkNow({ kind: 'profile', id: 'ac_1' })
+      expect(seen.judged.map(({ texts }) => texts)).toEqual([['Ana', 'ana', 'Ana', 'Jesenske plasti.']])
     }).pipe(Effect.provide(checksOver(database, seen)))
   })
 })
