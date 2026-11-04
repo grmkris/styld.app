@@ -7,6 +7,31 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Pre-demo fixes from Eva's bug report #1 (4 November, on main, not deployed)
+
+Eva's screen recording of 4 November (`~/code/styldappv2-feedback/eva-bugs-1/`). Only what shows in the feature videos
+went in before the demo.
+
+- **The outfits sheet** (`6d68aa86`): on Boards › + › One piece, many outfits, the season and Make the outfits stay in
+  view under the pieces instead of below the whole wardrobe.
+- **What to wear today** (`b6d96e7b`, `ce0c6fd8`): a sparkle instead of the dice (owner's choice). The wheel turns in
+  wedges of the four board paper tints; the spin is unchanged. Bundle budget 418,400.
+- **Outfit boards centred** (`f5a5e245`): each outfit's cluster is centred in its place, so a lean outfit no longer
+  leaves holes. This applies to new boards, Another layout and the house boards' grid.
+- **Boards already made** (`e38e01fd`): `POST /api/operator/boards/relayout` and `tools/relayout-boards.ts <email>…`
+  lay out each account's outfit boards again in their own layout. Outfits, looks and pins are kept, once per board.
+  Outfit pieces moved by hand go back to their places (owner: accepted).
+- **Evidence:** unit `OutfitLayout.test` (a lean outfit centred in every layout), `Api.test`; the native board-outfits
+  journey (relayout, repeat, operator only) passed in a clean worktree. The full gate and the browser walk were not run.
+- **Open:**
+  - Deploy to production, then run the relayout for Eva and the other accounts. Walk the three screens on a phone.
+  - Check the blank beige tiles under Home › What's new in her recording.
+- **After the demo (from the same report):**
+  - Clothing › Tops / Bottoms / … before the subcategories (#6).
+  - A simpler Home (#5): Eva to name the sections.
+  - The bad cut-out and the T-shirt typed as a bodysuit; automatic rotation (#7).
+  - The crash after a mass upload (#8).
+
 ## Shop-style pictures on a gentle ghost mannequin, and free redraws that correct them (4 November, on main, not deployed)
 
 Eva's pieces added on styld.app after 19:01 UTC came back "just stretched": 813559ff's "keep the garment's own shape
