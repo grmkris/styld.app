@@ -938,8 +938,11 @@
       "spinning": "Vrtim …",
       "drawn": "Današnja izbira: {piece}",
       "again": "Zavrti znova",
-      "openPiece": "Odpri kos"
-    }
+      "openPiece": "Odpri kos",
+      "wearIt": "Oblečem danes"
+    },
+    "around": "Oprave okoli kosa: {piece}",
+    "usualOutfits": "Nazaj na današnje oprave"
   },
   "stylist": {
     "title": "Vprašaj Stylda",

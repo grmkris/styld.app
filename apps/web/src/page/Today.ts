@@ -83,6 +83,9 @@ export const Model = Schema.Struct({
   whatsNew: WhatsNew.Model,
   /** What to wear today: the wheel that draws one piece. */
   tombola: Tombola.Model,
+  /** The piece drawn and chosen to wear today: every outfit of the run is made around it, until the person goes back
+   * to the usual outfits or the day changes. */
+  maybeAnchor: Schema.Option(PieceId),
 })
 export type Model = typeof Model.Type
 
@@ -97,6 +100,7 @@ export const init = (): Model => ({
   pickUp: PickUp.init(),
   whatsNew: WhatsNew.init(),
   tombola: Tombola.init(),
+  maybeAnchor: Option.none(),
 })
 
 // MESSAGE
@@ -122,6 +126,7 @@ export const Message = defineMessageUnion({
   ClickedRetry: {},
   ClickedRetryOutfits: {},
   ClickedRetryWorn: {},
+  ClickedUsualOutfits: {},
 })
 export type Message = typeof Message.Type
 
@@ -155,6 +160,10 @@ export const ReadWorn = Command.define('ReadWorn', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedReadWorn())),
 })
 
+/** The piece every outfit is made around, when one was chosen. */
+const anchored = (anchor: Option.Option<PieceId>) =>
+  Option.match(anchor, { onNone: () => ({}), onSome: (anchorPieceId) => ({ anchorPieceId }) })
+
 /** How many outfits one request asks for, and how few left on the table ask for more. */
 const batchSize = 6
 const refillAt = 2
@@ -170,14 +179,21 @@ const fastOutfits = (request: Omit<MakeOutfit, 'operationId' | 'mode'>) =>
 /** Today's outfits, made by the engine's Fast way, as a new run or more of one.
  */
 export const MakeOutfits = Command.define('MakeOutfits', {
-  args: { day: Day, brief: OutfitBrief, session: Schema.Option(OutfitSession), seen: Schema.Array(OutfitKey) },
+  args: {
+    day: Day,
+    brief: OutfitBrief,
+    session: Schema.Option(OutfitSession),
+    seen: Schema.Array(OutfitKey),
+    anchor: Schema.Option(PieceId),
+  },
   messages: [Message.SucceededMakeOutfits, Message.FailedMakeOutfits],
-  execute: ({ day, brief, session, seen }) =>
+  execute: ({ day, brief, session, seen, anchor }) =>
     Effect.gen(function* () {
       const batch = yield* fastOutfits({
         day,
         brief,
         ...Option.match(session, { onNone: () => ({}), onSome: (value) => ({ session: value }) }),
+        ...anchored(anchor),
         lockedPieceIds: [],
         seen,
         count: batchSize,
@@ -200,11 +216,20 @@ export const SwapPiece = Command.define('SwapPiece', {
     seen: Schema.Array(OutfitKey),
     pieceId: PieceId,
     from: OutfitKey,
+    anchor: Schema.Option(PieceId),
   },
   messages: [Message.SucceededSwapPiece, Message.FailedSwapPiece],
-  execute: ({ day, brief, session, lockedPieceIds, seen, pieceId, from }) =>
+  execute: ({ day, brief, session, lockedPieceIds, seen, pieceId, from, anchor }) =>
     Effect.gen(function* () {
-      const batch = yield* fastOutfits({ day, brief, session, lockedPieceIds, seen, count: swapCount })
+      const batch = yield* fastOutfits({
+        day,
+        brief,
+        session,
+        lockedPieceIds,
+        seen,
+        count: swapCount,
+        ...anchored(anchor),
+      })
       return Message.SucceededSwapPiece({ pieceId, from, proposals: batch.proposals })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSwapPiece({ pieceId, from }))),
 })
@@ -250,6 +275,20 @@ const foldTombola = Update.foldChild({
   read: (model: Model) => Option.some(model.tombola),
   write: (model: Model, tombola: Tombola.Model) => modifyFields(model, { tombola: () => tombola }),
   toParentMessage: (message: Tombola.Message) => Message.GotTombolaMessage({ message }),
+  foldOutMessage: Tombola.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+  >({
+    ChoseWearIt:
+      ({ pieceId }) =>
+      (stepModel) =>
+        startRun(
+          modifyFields(stepModel, {
+            maybeAnchor: () => Option.some(pieceId),
+            showsWorn: () => false,
+            motion: () => TableMotion.Spun(),
+          }),
+        ),
+  }),
 })
 const enterWhatsNew = Update.foldChildStep({ update: WhatsNew.enter, ...whatsNewFold })
 
@@ -303,7 +342,10 @@ export const showsWornOutfit = (model: Model) => Worn.guards.Worn(model.worn) &&
 /** Whether the outfit on the table offers to swap one of its pieces: it is a proposal, not what was worn, and every
  * other piece fits the engine's locks. */
 export const canSwap = (model: Model, outfit: ReadonlyArray<Piece>) =>
-  AsyncData.isSuccess(model.outfits) && !showsWornOutfit(model) && outfit.length >= 2 && outfit.length - 1 <= mostLocked
+  AsyncData.isSuccess(model.outfits) &&
+  !showsWornOutfit(model) &&
+  outfit.length >= 2 &&
+  outfit.filter((piece) => !Option.contains(model.maybeAnchor, piece.id)).length - 1 <= mostLocked
 
 /** The run as it is after a batch came: the first batch starts it, a later one adds to it. */
 const withBatch = (outfits: OutfitsData, batch: OutfitProposals): Outfits =>
@@ -328,7 +370,9 @@ const startRun = (model: Model): UpdateReturn =>
         maybeSwapped: () => Option.none(),
         swap: () => Swap.Idle(),
       }),
-      commands: [MakeOutfits({ day, brief: briefFor(day), session: Option.none(), seen: [] })],
+      commands: [
+        MakeOutfits({ day, brief: briefFor(day), session: Option.none(), seen: [], anchor: model.maybeAnchor }),
+      ],
     }),
   })
 
@@ -356,6 +400,7 @@ const spin = (model: Model): UpdateReturn => {
             brief: briefFor(model.maybeDay.value),
             session: Option.some(session),
             seen: proposals.map(({ key }) => key),
+            anchor: model.maybeAnchor,
           }),
         ]
       : [],
@@ -366,7 +411,8 @@ const spin = (model: Model): UpdateReturn => {
  */
 const swapPiece = (model: Model, pieceId: PieceId, pieceIds: ReadonlyArray<PieceId>): UpdateReturn => {
   const run = AsyncData.getData(model.outfits)
-  const lockedPieceIds = pieceIds.filter((id) => id !== pieceId)
+  // The anchor stays as the engine's anchor, not a lock, and is never swapped out.
+  const lockedPieceIds = pieceIds.filter((id) => id !== pieceId && !Option.contains(model.maybeAnchor, id))
   if (
     Option.isNone(run) ||
     Option.isNone(model.maybeDay) ||
@@ -374,7 +420,8 @@ const swapPiece = (model: Model, pieceId: PieceId, pieceIds: ReadonlyArray<Piece
     Worn.guards.Saving(model.worn) ||
     Swap.guards.Swapping(model.swap) ||
     !pieceIds.includes(pieceId) ||
-    Array.isReadonlyArrayEmpty(lockedPieceIds) ||
+    Option.contains(model.maybeAnchor, pieceId) ||
+    (Array.isReadonlyArrayEmpty(lockedPieceIds) && Option.isNone(model.maybeAnchor)) ||
     lockedPieceIds.length > mostLocked
   ) {
     return { model }
@@ -392,6 +439,7 @@ const swapPiece = (model: Model, pieceId: PieceId, pieceIds: ReadonlyArray<Piece
         seen,
         pieceId,
         from,
+        anchor: model.maybeAnchor,
       }),
     ],
   }
@@ -461,7 +509,9 @@ const wear = (model: Model, pieceIds: ReadonlyArray<PieceId>): UpdateReturn => {
 /** A new day, or a run that never came, starts a run; otherwise the run on the table stays. */
 const dayDetermined = (model: Model, day: Day): UpdateReturn => {
   const sameDay = Option.contains(model.maybeDay, day)
-  const next = sameDay ? model : modifyFields(model, { maybeDay: () => Option.some(day) })
+  const next = sameDay
+    ? model
+    : modifyFields(model, { maybeDay: () => Option.some(day), maybeAnchor: () => Option.none() })
   const keep = sameDay && (AsyncData.isSuccess(model.outfits) || AsyncData.isLoading(model.outfits))
   const started = keep ? { model: next } : startRun(next)
   return { ...started, commands: [...(started.commands ?? []), ReadWorn({ day })] }
@@ -509,6 +559,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedWear: () => ({ model: modifyFields(model, { worn: () => Worn.Failed() }) }),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     ClickedRetryOutfits: () => startRun(model),
+    ClickedUsualOutfits: () =>
+      startRun(modifyFields(model, { maybeAnchor: () => Option.none(), motion: () => TableMotion.Spun() })),
     ClickedRetryWorn: () =>
       Option.match(model.maybeDay, {
         onNone: () => ({ model }),

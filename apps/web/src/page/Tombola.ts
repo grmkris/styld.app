@@ -85,11 +85,16 @@ export const Message = defineMessageUnion({
   CompletedDrawPiece: { round: Schema.Int, slots: Schema.Array(PieceId), landing: Schema.Int },
   CompletedTurnWheel: { round: Schema.Int },
   ClickedSpinAgain: {},
+  ClickedWearIt: {},
   ClickedClose: {},
   CompletedFocusResult: {},
   CompletedFocusOpener: {},
 })
 export type Message = typeof Message.Type
+
+/** The drawn piece chosen to wear today: Home makes today's outfits around it. */
+export const OutMessage = defineMessageUnion({ ChoseWearIt: { pieceId: PieceId } })
+export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
@@ -151,7 +156,7 @@ export const TurnWheel = Mount.define('TurnWheel', {
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, SecureRandom.SecureRandom>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, SecureRandom.SecureRandom>
 
 const roundOf = (stage: Stage) =>
   Stage.match(stage, {
@@ -197,6 +202,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model },
     CompletedTurnWheel: ({ round }) => landed(model, round),
     ClickedSpinAgain: () => (Stage.guards.Landed(model.stage) ? spin(model) : { model }),
+    ClickedWearIt: () =>
+      Option.match(landedPiece(model.stage), {
+        onNone: () => ({ model }),
+        onSome: (pieceId) => ({ model: shut(model), outMessage: OutMessage.ChoseWearIt({ pieceId }) }),
+      }),
     ClickedClose: () =>
       Option.isNone(roundOf(model.stage)) ? { model } : { model: shut(model), commands: [FocusOpener()] },
     CompletedFocusResult: () => ({ model }),

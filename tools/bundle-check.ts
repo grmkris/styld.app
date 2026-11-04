@@ -84,7 +84,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 383,200 the same day for Eva's Home (docs/PLAN-home-2026-11-04.md): taking Explore's page out saved 4,495
 // (379,609 to 375,114 at 555ed8c); What's new, Challenges and the Home layout brought it to 379,531 (M5); the tombola
 // (its submodel, the wheel, the screen and its Mounts, the dice and their words) adds 3,627, for 383,158.
-if (initialGzip > 383200) throw new Error(`Initial browser assets exceed the 383,200-byte gzip budget: ${initialGzip}`)
+// Raised to 383,700 the same day for Wear it today (M7): the anchor through Today's outfit run, the swap around it,
+// the "Outfits around" line with its way back, and their words add 545, for 383,691.
+if (initialGzip > 383700) throw new Error(`Initial browser assets exceed the 383,700-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -1,11 +1,22 @@
-import { Day } from '@styld/protocol'
+import { Day, OutfitProposals, outfitKeyOf } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { click, Command, expect, given, inside, Mount, role, scene } from 'foldkit/scene'
+import { click, Command, expect, given, inside, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
-import { DrawPiece, FocusOpener, FocusResult, HoldTombola, Message, TurnWheel, wheelOf } from '../src/page/Tombola.ts'
+import {
+  DrawPiece,
+  FocusOpener,
+  FocusResult,
+  HoldTombola,
+  init,
+  Message,
+  Stage,
+  TurnWheel,
+  wheelOf,
+} from '../src/page/Tombola.ts'
+import { MakeOutfits, Message as TodayMessage } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { settled } from './HomeFixtures.ts'
@@ -53,6 +64,43 @@ describe('What to wear today', () => {
       Command.resolve(FocusOpener, Message.CompletedFocusOpener()),
       Mount.expectEnded(HoldTombola),
       expect(role('dialog')).not.toExist(),
+    )
+  })
+
+  test('Wear it today makes today’s outfits around the drawn piece, without a swap for it, with a way back', () => {
+    const boots = pieceFixture('boots', { type: 'boots', name: 'Black boots' })
+    const drawn = withPage(home([skirt, tee, boots]), lenses.today, (today) =>
+      modifyFields(today, {
+        tombola: () => ({
+          ...init(),
+          round: 1,
+          stage: Stage.Landed({ round: 1, slots: wheelOf([skirt.id, tee.id], 0), landing: 0 }),
+        }),
+      }),
+    )
+    const run = Schema.decodeUnknownSync(OutfitProposals)({
+      session: `os_${'c'.repeat(22)}`,
+      mode: 'fast',
+      proposals: [
+        { key: outfitKeyOf([skirt.id, tee.id, boots.id]), pieceIds: [skirt.id, tee.id, boots.id], score: 0.9 },
+      ],
+      missing: [],
+      exhausted: true,
+    })
+    scene(
+      { update, view },
+      given(drawn),
+      Mount.resolve(HoldTombola, Message.CompletedHoldTombola()),
+      click(role('button', { name: 'Wear it today' })),
+      Mount.expectEnded(HoldTombola),
+      Command.resolve(MakeOutfits, TodayMessage.SucceededMakeOutfits({ batch: run })),
+      expect(role('dialog')).not.toExist(),
+      expect(text('Outfits around Black skirt')).toExist(),
+      expect(role('button', { name: /^Swap .*skirt/i })).not.toExist(),
+      expect(role('button', { name: /^Swap / })).toExist(),
+      click(role('button', { name: 'Back to today’s outfits' })),
+      Command.resolve(MakeOutfits, TodayMessage.FailedMakeOutfits()),
+      expect(text('Outfits around Black skirt')).not.toExist(),
     )
   })
 })

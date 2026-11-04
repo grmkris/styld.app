@@ -938,8 +938,11 @@
       "spinning": "Spinning…",
       "drawn": "Today’s pick: {piece}",
       "again": "Spin again",
-      "openPiece": "Open the piece"
-    }
+      "openPiece": "Open the piece",
+      "wearIt": "Wear it today"
+    },
+    "around": "Outfits around {piece}",
+    "usualOutfits": "Back to today’s outfits"
   },
   "stylist": {
     "title": "Ask Styld",

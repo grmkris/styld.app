@@ -5,7 +5,7 @@ import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
-import { secondaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { closeIcon, diceIcon } from '../Icon.ts'
 import { pieceRouter } from '../route.ts'
 import type { PiecesData } from '../ServerData.ts'
@@ -99,6 +99,10 @@ const resultView = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
       [format(locale, 'today.tombola.drawn', { piece: pieceLabel(piece, locale) })],
     ),
     h.div(styled(h, styles.actions()), [
+      h.button(
+        [h.Type('button'), h.OnClick(Message.ClickedWearIt()), ...styled(h, primaryAction())],
+        [format(locale, 'today.tombola.wearIt', {})],
+      ),
       h.a(
         [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, secondaryAction())],
         [format(locale, 'today.tombola.openPiece', {})],

@@ -126,6 +126,15 @@ const verifyHome = async (page: Page, origin: string) => {
   await shoot(page, 'phone-tombola')
   await page.keyboard.press('Escape')
   await page.getByRole('dialog').waitFor({ state: 'detached' })
+  // Wear it today: today's outfit is made around the drawn piece, and the way back is offered.
+  await page.getByRole('button', { name: 'What to wear today' }).click()
+  const pick = page.getByRole('heading', { name: /^Today’s pick: / })
+  await pick.waitFor({ state: 'visible', timeout: 10_000 })
+  const drawn = ((await pick.textContent()) ?? '').replace('Today’s pick: ', '')
+  await page.getByRole('button', { name: 'Wear it today' }).click()
+  await page.getByText(`Outfits around ${drawn}`).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'Back to today’s outfits' }).click()
+  await page.getByText(`Outfits around ${drawn}`).waitFor({ state: 'detached' })
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-home')
   // Spin until the outfit changes; with two tops some spins repeat the same one.

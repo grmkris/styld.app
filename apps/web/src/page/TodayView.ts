@@ -4,7 +4,7 @@ import { flatLay, type Piece, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { Button } from '@foldkit/ui'
 import { AsyncData, Submodel } from 'foldkit'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
@@ -120,28 +120,30 @@ const swapView = (outfit: ReadonlyArray<Piece>, model: Model, locale: Locale, h:
   const waiting = Swap.guards.Swapping(model.swap) || Worn.guards.Saving(model.worn)
   return h.div(
     [h.Role('group'), h.AriaLabel(format(locale, 'today.swapPieces', {})), ...styled(h, styles.swaps())],
-    outfit.map((piece) => {
-      const name = pieceLabel(piece, locale)
-      const turning = Swap.guards.Swapping(model.swap) && model.swap.pieceId === piece.id
-      return h.keyed('span')(piece.id, styled(h, styles.swapItem()), [
-        Button.view(
-          {
-            onClick: Message.ClickedSwapPiece({ pieceId: piece.id, pieceIds }),
-            isDisabled: waiting,
-            toView: (attributes) =>
-              h.button(
-                [
-                  ...attributes.button,
-                  h.AriaLabel(format(locale, 'today.swap', { name: pieceDescription(piece, locale) })),
-                  ...styled(h, cx(chip(), styles.swapChip())),
-                ],
-                [turning ? loader(h) : retryIcon(h), h.span(styled(h, styles.swapName()), [name])],
-              ),
-          },
-          h,
-        ),
-      ])
-    }),
+    outfit
+      .filter((piece) => !Option.contains(model.maybeAnchor, piece.id))
+      .map((piece) => {
+        const name = pieceLabel(piece, locale)
+        const turning = Swap.guards.Swapping(model.swap) && model.swap.pieceId === piece.id
+        return h.keyed('span')(piece.id, styled(h, styles.swapItem()), [
+          Button.view(
+            {
+              onClick: Message.ClickedSwapPiece({ pieceId: piece.id, pieceIds }),
+              isDisabled: waiting,
+              toView: (attributes) =>
+                h.button(
+                  [
+                    ...attributes.button,
+                    h.AriaLabel(format(locale, 'today.swap', { name: pieceDescription(piece, locale) })),
+                    ...styled(h, cx(chip(), styles.swapChip())),
+                  ],
+                  [turning ? loader(h) : retryIcon(h), h.span(styled(h, styles.swapName()), [name])],
+                ),
+            },
+            h,
+          ),
+        ])
+      }),
   )
 }
 
@@ -203,16 +205,39 @@ const noteView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h:
 
 /** Today's log did not load: said where the note stands, with Try again; Wear this still logs the outfit. */
 const unreadView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  noteWithAction(
+    format(locale, 'today.wornUnread', {}),
+    { label: format(locale, 'today.retry', {}), onClick: Message.ClickedRetryWorn() },
+    [h.Role('status'), h.DataAttribute('tone', 'error')],
+    h,
+  )
+
+/** A line under the table and the one action it offers, as a link-styled button after it. */
+const noteWithAction = (
+  text: string,
+  action: { readonly label: string; readonly onClick: Message },
+  attributes: ReadonlyArray<Attribute<Message>>,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.p(
-    [h.Role('status'), h.DataAttribute('tone', 'error'), ...styled(h, styles.note())],
-    [
-      format(locale, 'today.wornUnread', {}),
-      ' ',
-      actionButton(
-        { label: format(locale, 'today.retry', {}), style: linkAction(), onClick: Message.ClickedRetryWorn() },
-        h,
-      ),
-    ],
+    [...attributes, ...styled(h, styles.note())],
+    [text, ' ', actionButton({ label: action.label, style: linkAction(), onClick: action.onClick }, h)],
+  )
+
+/** Today's outfits are made around the piece the tombola drew, with the way back to the usual ones. */
+const aroundView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.match(
+    Option.flatMap(model.maybeAnchor, (pieceId) => Array.findFirst(pieces, (piece) => piece.id === pieceId)),
+    {
+      onNone: () => h.empty,
+      onSome: (piece) =>
+        noteWithAction(
+          format(locale, 'today.around', { piece: pieceLabel(piece, locale) }),
+          { label: format(locale, 'today.usualOutfits', {}), onClick: Message.ClickedUsualOutfits() },
+          [],
+          h,
+        ),
+    },
   )
 
 /** The day in the logo's voice. Before the browser knows it, the line keeps its height and says "Today". */
@@ -286,6 +311,7 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
     [
       tableArea(model, pieces, locale, h),
       actionsView(model, pieces, loaded, locale, h),
+      aroundView(model, loaded, locale, h),
       swapView(tableOutfit(model, loaded), model, locale, h),
       noteView(model, loaded, locale, h),
       loaded.some((piece) => piece.status === 'ready') ? missingView(model, locale, h) : h.empty,
