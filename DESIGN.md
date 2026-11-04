@@ -55,6 +55,9 @@ forced its own dark on Styld and sank the cut-outs into muddy tiles (Eva, 3 Nove
 - **Cutouts are not blended in dark.** In light a picture's pale backdrop gives way to the paper through `darken`; in
   dark that would sink a dark garment into the paper, so the blend is `normal`: a cutout lies on the dark paper as it
   is, with a faint warm glow along its edge (`cutoutGlow`), and an uncut photo shows its own backdrop.
+- **A board's paper, always light.** A table (the editor, a board's page and every board card) keeps the light
+  scheme (`colorScheme: 'light'` on its paper): its tints, labels and cutouts look as a sheet of paper does in either
+  scheme, as every board the owner's references show (4 November 2026). Its cutouts need no dark-scheme glow.
 - **Over a photo, always light.** The camera keeps the light scheme's ink, on-ink and scrims (`colorScheme: 'light'`),
   since it sits over the picture, not the paper. Catalog swatches are the colours themselves in both schemes.
 - **Palette.** A warm umber night, never black: paper `#17120f`, stock `#211b17` and paper-2 `#2a231d` a step above
