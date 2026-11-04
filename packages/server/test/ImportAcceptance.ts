@@ -129,11 +129,11 @@ export const verifyImports = async (origin: string, testUrl: string) => {
     { name: 'Wool jumper', type: 'knitwear' },
   ])
   const pieceIds = done.pieces.map(({ pieceId }) => pieceId)
-  // Each imported piece got its first clean picture queued, at Styld's cost, and the job carried it to an end.
+  // The native cut-out keeps the bundle's small pictures as their photos, and a piece kept as its photo is never drawn
+  // (ImportedPicture.test.ts proves an imported cut-out gets its first drawing queued, at Styld's cost).
   for (const pieceId of pieceIds) {
     expect(pieceId).not.toBeNull()
-    const clean = await pictureOf(owner, pieceId ?? '')
-    expect(['ready', 'retake', 'kept', 'failed']).toContain(clean?.state ?? 'none')
+    expect(await pictureOf(owner, pieceId ?? '')).toBeUndefined()
   }
   // Again, and from another bundle carrying the same v1 pieces: one receipt per v1 piece, nothing imported twice.
   expect((await start(operator, 'native-import-owner-1')).pieces.map(({ pieceId }) => pieceId)).toEqual(pieceIds)
