@@ -51,7 +51,7 @@ const jsonOf = (body: HttpBody.HttpBody | undefined): unknown =>
     ? JSON.parse(new TextDecoder().decode(body.body))
     : undefined
 
-const sendPhoto = (sent: Array<Sent>) =>
+const sendPhoto = (sent: Array<Sent>, encoded: Blob = drawn) =>
   SendPhoto({
     index: 0,
     photo: picked,
@@ -65,7 +65,7 @@ const sendPhoto = (sent: Array<Sent>) =>
     Effect.provide(
       Layer.mergeAll(
         styldClientLayer(origin).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, server(sent)))),
-        Layer.succeed(PictureEncoder, { encode: () => Effect.succeed(drawn) }),
+        Layer.succeed(PictureEncoder, { encode: () => Effect.succeed(encoded) }),
         // @effect-diagnostics-next-line unstableApiUsage:off -- the browser Web Crypto layer draws operation ids, as entry.ts does
         BrowserCrypto.layerSecureRandom,
       ),
@@ -85,5 +85,20 @@ describe('adding pieces from photos', () => {
     const [upload, bytes] = sent
     expect(jsonOf(upload?.body)).toMatchObject({ contentType: 'image/webp', bytes: drawn.size })
     expect(bytes?.body).toMatchObject({ _tag: 'Raw', body: drawn })
+  })
+
+  test('a browser that cannot write WebP sends the JPEG it drew, declared as JPEG, so the server takes it', async () => {
+    const sent: Array<Sent> = []
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], { type: 'image/jpeg' })
+    const message = await Effect.runPromise(sendPhoto(sent, jpeg))
+    expect(message).toEqual(Message.SucceededSend({ index: 0, captureId: Schema.decodeSync(CaptureId)(captureId) }))
+    expect(jsonOf(sent[0]?.body)).toMatchObject({ contentType: 'image/jpeg', bytes: jpeg.size })
+  })
+
+  test('a drawing of no type Styld takes is refused on the device, before anything is sent', async () => {
+    const sent: Array<Sent> = []
+    const message = await Effect.runPromise(sendPhoto(sent, new Blob([new Uint8Array([1])], { type: 'image/bmp' })))
+    expect(message).toMatchObject({ _tag: 'FailedSend', problem: 'refused' })
+    expect(sent).toEqual([])
   })
 })

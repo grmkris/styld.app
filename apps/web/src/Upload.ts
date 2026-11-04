@@ -1,4 +1,4 @@
-import { UploadId } from '@styld/protocol'
+import { ImageType, UploadId } from '@styld/protocol'
 import { Context, Data, Effect, Layer, Option, Schema } from 'effect'
 import { File } from 'foldkit'
 import { drawOperationId } from './OperationIds.ts'
@@ -20,8 +20,9 @@ export class PictureEncoder extends Context.Service<
 /** A picture is shrunk to at most this many pixels on its longer side before it is sent. */
 const longestSide = 2048
 
-/** The browser's encoder: the picture drawn on a canvas at most 2048px across and saved as WebP. Drawing it afresh
- * keeps only its pixels. */
+/** The browser's encoder: the picture drawn on a canvas at most 2048px across and saved as WebP, or as JPEG where the
+ * browser cannot write WebP (Safari answers a WebP request with a PNG, 5 November 2026). Drawing it afresh keeps only
+ * its pixels. */
 export const pictureEncoderLayer = Layer.succeed(PictureEncoder, {
   encode: (file) =>
     Effect.tryPromise({
@@ -31,7 +32,8 @@ export const pictureEncoderLayer = Layer.succeed(PictureEncoder, {
         const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
         canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
         bitmap.close()
-        return canvas.convertToBlob({ type: 'image/webp', quality: 0.86 })
+        const webp = await canvas.convertToBlob({ type: 'image/webp', quality: 0.86 })
+        return webp.type === 'image/webp' ? webp : canvas.convertToBlob({ type: 'image/jpeg', quality: 0.86 })
       },
       catch: () => new NotAPicture(),
     }),
@@ -49,9 +51,13 @@ export const isPicture = (file: File.File) => File.mimeType(file).startsWith('im
 export const uploadPicture = Effect.fn('Styld.Web.uploadPicture')(function* (file: File.File) {
   if (!isPicture(file)) return yield* new NotAPicture()
   const picture = yield* (yield* PictureEncoder).encode(file)
+  // The type the encoder really wrote: the server reads the bytes' signature and refuses a declared type they are not.
+  const contentType = yield* Schema.decodeUnknownEffect(ImageType)(picture.type).pipe(
+    Effect.mapError(() => new NotAPicture()),
+  )
   const { api: loadApi, sendFile } = yield* StyldClient
   const created = yield* (yield* loadApi).wardrobe.createUpload({
-    payload: { operationId: yield* drawOperationId(), contentType: 'image/webp', bytes: picture.size },
+    payload: { operationId: yield* drawOperationId(), contentType, bytes: picture.size },
   })
   yield* sendFile(created.path, picture)
   return created.uploadId

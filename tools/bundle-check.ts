@@ -181,7 +181,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 421,800 the same night: the landing's screens declare their grid columns (the rail's row had widened the
 // phone's column past the screen) and the chat's rise ends visible, 179 more (421,478 to 421,657).
 // Raised to 422,300 with the landing, the review card's chip and the shop sections merged: the build measures 422,223.
-if (initialGzip > 422300) throw new Error(`Initial browser assets exceed the 422,300-byte gzip budget: ${initialGzip}`)
+// Raised to 422,400 on 5 November: a picture goes up as JPEG where Safari cannot write WebP (every iPhone upload was
+// refused as a PNG declared WebP), 88 more (422,223 to 422,311).
+if (initialGzip > 422400) throw new Error(`Initial browser assets exceed the 422,400-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
