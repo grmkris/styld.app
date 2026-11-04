@@ -389,7 +389,6 @@
   "people": {
     "signInToFollow": "Prijavi se, da slediš",
     "actionFailed": "Ni uspelo. Poskusi znova.",
-    "fromFollowing": "Od ljudi, ki jim slediš",
     "savedFromOthers": "Shranjeno od drugih",
     "signInToSave": "Prijavi se, da shraniš",
     "openYours": "Odpri v garderobi",
@@ -922,7 +921,19 @@
     "waiting": "{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}",
     "review": "Dodaj jih",
     "keepGoing": "Dodaj še",
-    "wornUnread": "Današnji zapis se ni naložil."
+    "wornUnread": "Današnji zapis se ni naložil.",
+    "whatsNew": "Novosti",
+    "whatsNewEarlier": "Starejše novosti",
+    "whatsNewEmpty": "Novosti še ni. Tu se pokažejo zbirke in videzi, ki jih ljudje delijo na Styldu.",
+    "whatsNewFailed": "Novosti se niso naložile.",
+    "showMore": "Pokaži več",
+    "loadingMore": "Nalagam še …",
+    "moreFailed": "Ostalo se ni naložilo.",
+    "challenges": "Izzivi",
+    "comingSoon": "Kmalu",
+    "challengeRed": "30 dni v rdečem",
+    "challengeWitch": "Čarovniški oktober",
+    "challengeOnePiece": "En kos ves teden"
   },
   "stylist": {
     "title": "Vprašaj Stylda",

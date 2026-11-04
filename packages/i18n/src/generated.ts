@@ -369,7 +369,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'outfits.replacing': Readonly<Record<string, never>>
   'outfits.title': Readonly<Record<string, never>>
   'people.actionFailed': Readonly<Record<string, never>>
-  'people.fromFollowing': Readonly<Record<string, never>>
   'people.openYours': Readonly<Record<string, never>>
   'people.pieceYours': Readonly<Record<string, never>>
   'people.savedFromOthers': Readonly<Record<string, never>>
@@ -614,16 +613,24 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.addClothes': Readonly<Record<string, never>>
   'today.addShoes': Readonly<Record<string, never>>
   'today.addTop': Readonly<Record<string, never>>
+  'today.challengeOnePiece': Readonly<Record<string, never>>
+  'today.challengeRed': Readonly<Record<string, never>>
+  'today.challengeWitch': Readonly<Record<string, never>>
+  'today.challenges': Readonly<Record<string, never>>
+  'today.comingSoon': Readonly<Record<string, never>>
   'today.empty': Readonly<Record<string, never>>
   'today.failed': Readonly<Record<string, never>>
   'today.keepGoing': Readonly<Record<string, never>>
   'today.loading': Readonly<Record<string, never>>
+  'today.loadingMore': Readonly<Record<string, never>>
   'today.lovedOutfit': Readonly<Record<string, never>>
+  'today.moreFailed': Readonly<Record<string, never>>
   'today.outfit': { readonly names: string | number }
   'today.outfitFailed': Readonly<Record<string, never>>
   'today.pickUp': Readonly<Record<string, never>>
   'today.retry': Readonly<Record<string, never>>
   'today.review': Readonly<Record<string, never>>
+  'today.showMore': Readonly<Record<string, never>>
   'today.spin': Readonly<Record<string, never>>
   'today.swap': { readonly name: string | number }
   'today.swapFailed': Readonly<Record<string, never>>
@@ -634,6 +641,10 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.wear': Readonly<Record<string, never>>
   'today.wearFailed': Readonly<Record<string, never>>
   'today.wearing': Readonly<Record<string, never>>
+  'today.whatsNew': Readonly<Record<string, never>>
+  'today.whatsNewEarlier': Readonly<Record<string, never>>
+  'today.whatsNewEmpty': Readonly<Record<string, never>>
+  'today.whatsNewFailed': Readonly<Record<string, never>>
   'today.worn': Readonly<Record<string, never>>
   'today.wornNote': Readonly<Record<string, never>>
   'today.wornUnread': Readonly<Record<string, never>>
@@ -894,4 +905,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '2b12f91c0558970e8c3d2c21df51bc862e41d6ee6e0d3ed6eeba6a23c8fa07ab'
+export const catalogVersion = '730895e2c9ea4764e1cfd3c5e479c55a95fb393f6c3df6d2e75750b876d84427'

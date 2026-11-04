@@ -11,6 +11,7 @@ import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as PickUp from '../src/page/PickUp.ts'
 import * as Today from '../src/page/Today.ts'
+import * as WhatsNew from '../src/page/WhatsNew.ts'
 import { AppRoute } from '../src/route.ts'
 import { lenses } from '../src/Page.ts'
 import { at, claims, flags, pageOf, urlOf } from './AppFixtures.ts'
@@ -108,7 +109,7 @@ describe('the session decides where a visitor belongs', () => {
         Today.DetermineDay,
         PickUp.ReadFavourite,
         PickUp.ReadTray,
-        Today.ReadFeed,
+        WhatsNew.ReadFeed,
         ListPieces,
         ListBoards,
         ReadYou,
@@ -118,7 +119,7 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(ListBoards, DataMessage.FailedListBoards()),
       Command.resolve(PickUp.ReadFavourite, PickUp.Message.FailedReadFavourite()),
       Command.resolve(PickUp.ReadTray, PickUp.Message.FailedReadTray()),
-      Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),
+      Command.resolve(WhatsNew.ReadFeed, WhatsNew.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
       // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.
       Command.resolve(Today.MakeOutfits, Today.Message.FailedMakeOutfits()),

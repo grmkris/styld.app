@@ -117,6 +117,9 @@ const verifyHome = async (page: Page, origin: string) => {
   const table = page.getByRole('img', { name: /^Today’s outfit:/ })
   await table.waitFor({ state: 'visible' })
   expect(await page.locator('#today-headline').textContent()).toMatch(/^[A-Z]{3} \d{1,2}$/)
+  // Eva's Home (4 November): What's new along a strip (its cards or its empty line), and Challenges, coming soon.
+  await page.getByRole('region', { name: 'What’s new' }).locator('a, p').first().waitFor({ state: 'visible' })
+  await page.getByRole('region', { name: 'Challenges' }).getByText('Coming soon').waitFor({ state: 'visible' })
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-home')
   // Spin until the outfit changes; with two tops some spins repeat the same one.

@@ -389,7 +389,6 @@
   "people": {
     "signInToFollow": "Sign in to follow",
     "actionFailed": "That didn't go through. Try again.",
-    "fromFollowing": "From people you follow",
     "savedFromOthers": "Saved from others",
     "signInToSave": "Sign in to save",
     "openYours": "Open in your wardrobe",
@@ -922,7 +921,19 @@
     "waiting": "{count, plural, one {# piece from your scan to check} other {# pieces from your scan to check}}",
     "review": "Finish adding",
     "keepGoing": "Keep pinning",
-    "wornUnread": "Today’s log didn’t load."
+    "wornUnread": "Today’s log didn’t load.",
+    "whatsNew": "What’s new",
+    "whatsNewEarlier": "What’s new, earlier",
+    "whatsNewEmpty": "Nothing new yet. Boards and looks people share on Styld show up here.",
+    "whatsNewFailed": "What’s new didn’t load.",
+    "showMore": "Show more",
+    "loadingMore": "Loading more…",
+    "moreFailed": "The rest didn’t load.",
+    "challenges": "Challenges",
+    "comingSoon": "Coming soon",
+    "challengeRed": "30 days of red",
+    "challengeWitch": "Witch October",
+    "challengeOnePiece": "One piece for a whole week"
   },
   "stylist": {
     "title": "Ask Styld",

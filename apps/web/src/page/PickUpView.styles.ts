@@ -2,11 +2,7 @@ import { cutoutGlow, style } from '../zyzz.config.ts'
 
 // Home's Pick up where you left off (Gallery 2: docs/design/gallery-2/site/v2/home.html, `.rc`).
 
-export const pickUp = style({
-  display: 'grid',
-  gap: 'related',
-  '@media (min-width: 900px)': { paddingBlockStart: '96px' },
-})
+export const pickUp = style({ display: 'grid', gap: 'related' })
 /** Two ways to pick up side by side, as tall as each other, each with its action at its foot. */
 export const cards = style({
   display: 'grid',

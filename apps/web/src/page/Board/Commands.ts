@@ -1,9 +1,10 @@
 import { drawOperationId } from '../../OperationIds.ts'
 import { BoardId, BoardItem, BoardItemId, boardWidth, Paper, PieceId } from '@styld/protocol'
-import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } from 'effect'
+import { Array, Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { Command, File, Mount } from 'foldkit'
+import { observed } from '../../Observe.ts'
 import { uploadPicture } from '../../Upload.ts'
 import { StyldClient } from '../../StyldClient.ts'
 import { Message } from './Message.ts'
@@ -206,20 +207,15 @@ export const SaveLook = Command.define('SaveLook', {
 export const MeasurePaper = Mount.defineStream('MeasurePaper', {
   messages: [Message.MeasuredPaper],
   execute: ({ element }) =>
-    Stream.callback<typeof Message.MeasuredPaper.Type>((queue) =>
-      Effect.acquireRelease(
-        Effect.sync(() => {
-          const observer = new ResizeObserver((entries) => {
-            const width = Option.fromNullishOr(entries[0]?.contentRect.width)
-            if (Option.isSome(width) && width.value > 0) {
-              Queue.offerUnsafe(queue, Message.MeasuredPaper({ width: width.value }))
-            }
-          })
-          observer.observe(element)
-          return observer
+    observed<typeof Message.MeasuredPaper.Type>(
+      element,
+      (offer) =>
+        new ResizeObserver((entries) => {
+          const width = Option.fromNullishOr(entries[0]?.contentRect.width)
+          if (Option.isSome(width) && width.value > 0) {
+            offer(Message.MeasuredPaper({ width: width.value }))
+          }
         }),
-        (observer) => Effect.sync(() => observer.disconnect()),
-      ).pipe(Effect.flatMap(() => Effect.never)),
     ),
 })
 

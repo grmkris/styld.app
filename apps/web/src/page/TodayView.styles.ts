@@ -13,18 +13,33 @@ const dropIn = keyframes(
  * headline (about 280px), up to 560px; a short window still gets a 320px table. */
 export const page = style({
   display: 'grid',
-  gap: 'wide',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: 'section',
   paddingBlock: '0 40px',
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, clamp(320px, (100svh - 280px) * 0.8, 560px)) minmax(0, 1fr)',
+    gridTemplateAreas: '"head head" "news news" "outfit side"',
     alignItems: 'start',
     columnGap: 'columns',
   },
 })
+export const head = style({ minInlineSize: '0', '@media (min-width: 900px)': { gridArea: 'head' } })
+export const news = style({ minInlineSize: '0', '@media (min-width: 900px)': { gridArea: 'news' } })
 export const today = style({
   display: 'grid',
   gap: 'related',
-  '@media (min-width: 900px)': { maxInlineSize: 'clamp(320px, (100svh - 280px) * 0.8, 560px)' },
+  '@media (min-width: 900px)': {
+    gridArea: 'outfit',
+    maxInlineSize: 'clamp(320px, (100svh - 280px) * 0.8, 560px)',
+  },
+})
+/** Challenges, Pick up and the rest of What's new: under the outfit on a phone, beside it on a desktop. */
+export const side = style({
+  display: 'grid',
+  gap: 'wide',
+  alignContent: 'start',
+  minInlineSize: '0',
+  '@media (min-width: 900px)': { gridArea: 'side' },
 })
 /** The table's headline: the day in the logo's condensed voice, its one use on a page. */
 export const headline = style({

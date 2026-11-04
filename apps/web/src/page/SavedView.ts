@@ -5,7 +5,7 @@ import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { styled } from '../Styled.ts'
 import type { SavedData } from './Boards.ts'
-import * as styles from './FeedView.styles.ts'
+import * as styles from './SavedView.styles.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
 import { retryView } from './Retry.ts'
 
@@ -36,7 +36,7 @@ export const savedView = <Message>(saved: SavedData, locale: Locale, onRetry: Me
       things.length === 0
         ? h.empty
         : h.section(
-            [h.AriaLabelledBy('saved-from-others'), ...styled(h, styles.feed())],
+            [h.AriaLabelledBy('saved-from-others'), ...styled(h, styles.saved())],
             [
               h.h2([h.Id('saved-from-others')], [format(locale, 'people.savedFromOthers', {})]),
               tileGrid(

@@ -22,8 +22,9 @@ import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
 import { pieceDescription, pieceLabel } from './WardrobeWords.ts'
-import { feedView } from './FeedView.ts'
+import { challengesView } from './ChallengesView.ts'
 import { type HomeData, pickUpView } from './PickUpView.ts'
+import { earlierView, stripView } from './WhatsNewView.ts'
 
 const dateOf = (day: string) => {
   const [year = 2026, month = 1, date = 1] = day.split('-').map(Number)
@@ -272,7 +273,6 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   return h.section(
     [h.AriaLabelledBy('today-headline'), ...styled(h, styles.today())],
     [
-      headlineView(model.maybeDay, locale, h),
       tableArea(model, pieces, locale, h),
       actionsView(model, pieces, loaded, locale, h),
       swapView(tableOutfit(model, loaded), model, locale, h),
@@ -282,14 +282,36 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
+/** Home (Eva's sketch, 4 November): the day, What's new along a strip, today's outfit, then Challenges, Pick up and
+ * the rest of What's new. On a desktop the day heads the page, the strip runs across it, and the outfit stands beside
+ * the rest. */
 export const view = Submodel.defineView<Model, Message, HomeData & { readonly locale: Locale }>(
   (model, { locale, pieces, boards }, h) =>
     h.main(
       [h.Id('main'), ...styled(h, styles.page())],
       [
+        h.div(styled(h, styles.head()), [headlineView(model.maybeDay, locale, h)]),
+        h.div(styled(h, styles.news()), [
+          h.submodel({
+            slotId: 'whats-new-strip',
+            model: model.whatsNew,
+            view: stripView,
+            viewInputs: { locale },
+            toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
+          }),
+        ]),
         todayView(model, pieces, locale, h),
-        pickUpView(model.pickUp, { pieces, boards }, locale, h),
-        feedView(model.feed, locale, h),
+        h.div(styled(h, styles.side()), [
+          challengesView(locale, h),
+          pickUpView(model.pickUp, { pieces, boards }, locale, h),
+          h.submodel({
+            slotId: 'whats-new-earlier',
+            model: model.whatsNew,
+            view: earlierView,
+            viewInputs: { locale },
+            toParentMessage: (message) => Message.GotWhatsNewMessage({ message }),
+          }),
+        ]),
       ],
     ),
 )

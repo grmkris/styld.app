@@ -2,7 +2,6 @@ import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import {
   Day,
-  Feed,
   mostLocked,
   mostSeen,
   OutfitBrief,
@@ -24,6 +23,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import * as PickUp from './PickUp.ts'
+import * as WhatsNew from './WhatsNew.ts'
 
 // MODEL
 
@@ -50,10 +50,6 @@ export type Swap = typeof Swap.Type
 
 /** Whether the table was just spun: only then do its pieces drop in. Opening Home shows the table as it lies. */
 export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
-
-/** What people the person follows made public lately. */
-export const FeedData = AsyncData.Schema(Feed, Schema.Literal('Unavailable'))
-export type FeedData = typeof FeedData.schema.Type
 
 /** Today's outfits from the engine (Fast): every proposal of the run so far, best first within each batch, which one
  * is on the table, what the wardrobe lacks, and whether the rules have more and more are on their way. */
@@ -83,7 +79,7 @@ export const Model = Schema.Struct({
   swap: Swap,
   worn: Worn,
   pickUp: PickUp.Model,
-  feed: FeedData.schema,
+  whatsNew: WhatsNew.Model,
 })
 export type Model = typeof Model.Type
 
@@ -96,7 +92,7 @@ export const init = (): Model => ({
   swap: Swap.Idle(),
   worn: Worn.NotYet(),
   pickUp: PickUp.init(),
-  feed: AsyncData.Idle(),
+  whatsNew: WhatsNew.init(),
 })
 
 // MESSAGE
@@ -106,8 +102,7 @@ export const Message = defineMessageUnion({
   SucceededReadWorn: { pieceIds: Schema.Array(PieceId) },
   FailedReadWorn: {},
   GotPickUpMessage: { message: PickUp.Message },
-  SucceededReadFeed: { feed: Feed },
-  FailedReadFeed: {},
+  GotWhatsNewMessage: { message: WhatsNew.Message },
   SucceededMakeOutfits: { batch: OutfitProposals },
   FailedMakeOutfits: {},
   ClickedSpin: {},
@@ -153,14 +148,6 @@ export const ReadWorn = Command.define('ReadWorn', {
       const { days } = yield* (yield* (yield* StyldClient).api).worn.listWorn({ query: { from: day, to: day } })
       return Message.SucceededReadWorn({ pieceIds: days[0]?.pieceIds ?? [] })
     }).pipe(Effect.orElseSucceed(() => Message.FailedReadWorn())),
-})
-
-export const ReadFeed = Command.define('ReadFeed', {
-  messages: [Message.SucceededReadFeed, Message.FailedReadFeed],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    return Message.SucceededReadFeed({ feed: yield* api.social.feed({ query: {} }) })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedReadFeed())),
 })
 
 /** How many outfits one request asks for, and how few left on the table ask for more. */
@@ -247,6 +234,13 @@ const pickUpFold = {
 }
 const foldPickUp = Update.foldChild({ update: PickUp.update, ...pickUpFold })
 const enterPickUp = Update.foldChildStep({ update: PickUp.enter, ...pickUpFold })
+const whatsNewFold = {
+  read: (model: Model) => Option.some(model.whatsNew),
+  write: (model: Model, whatsNew: WhatsNew.Model) => modifyFields(model, { whatsNew: () => whatsNew }),
+  toParentMessage: (message: WhatsNew.Message) => Message.GotWhatsNewMessage({ message }),
+}
+const foldWhatsNew = Update.foldChild({ update: WhatsNew.update, ...whatsNewFold })
+const enterWhatsNew = Update.foldChildStep({ update: WhatsNew.enter, ...whatsNewFold })
 
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
@@ -256,12 +250,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       commands: [DetermineDay()],
     }),
     enterPickUp,
-    Update.refresh<Model, Message, Feed, 'Unavailable', StyldClient>({
-      read: (current: Model) => Option.some(current.feed),
-      revalidate: AsyncData.revalidateOrLoad,
-      write: (current: Model, feed: FeedData) => modifyFields(current, { feed: () => feed }),
-      load: ReadFeed(),
-    }),
+    enterWhatsNew,
   ])
 
 /** The season a day's outfit is for, by its month where Styld's people live (the northern hemisphere): winter from
@@ -474,8 +463,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { worn: () => (pieceIds.length > 0 ? Worn.Worn({ pieceIds }) : Worn.NotYet()) }),
     }),
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
-    SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
-    FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
+    GotWhatsNewMessage: (got) => foldWhatsNew(model, got.message),
     GotPickUpMessage: (got) => foldPickUp(model, got.message),
     SucceededMakeOutfits: ({ batch }) => ({
       model: modifyFields(model, { outfits: (outfits) => OutfitsData.Success({ data: withBatch(outfits, batch) }) }),

@@ -6,6 +6,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { FavouriteData, TrayData } from '../src/page/PickUp.ts'
+import { FeedData, More } from '../src/page/WhatsNew.ts'
 import { Message, OutfitsData, ReadWorn, SwapPiece, Wear, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
@@ -47,6 +48,7 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
           tray: TrayData.Success({ data: { waiting, pictures } }),
           favourite: FavouriteData.Success({ data: Option.none() }),
         }),
+        whatsNew: () => ({ feed: FeedData.Success({ data: { items: [], cursor: null } }), more: More.Idle() }),
       }),
   )
 
