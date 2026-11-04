@@ -246,6 +246,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.camera.unavailable': Readonly<Record<string, never>>
   'capture.chooseHint': Readonly<Record<string, never>>
   'capture.chooseTitle': Readonly<Record<string, never>>
+  'capture.cost': { readonly photo: number; readonly video: string | number }
+  'capture.costLeft': { readonly photo: number; readonly video: string | number; readonly remaining: string | number }
   'capture.done': Readonly<Record<string, never>>
   'capture.empty': { readonly source: string | number }
   'capture.emptyVideo': Readonly<Record<string, never>>
@@ -944,4 +946,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3b834470b8e2c47bda97a042681f880a0530187933b1483eb95c8180721428ef'
+export const catalogVersion = '4eff996d5982672743c0fdf5bd43881e3ac7c36d0bdfc1151c27a9b8eff6ec7c'

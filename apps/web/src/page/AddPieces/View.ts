@@ -1,5 +1,5 @@
 import { Button, FileDrop } from '@foldkit/ui'
-import { VideoType } from '@styld/protocol'
+import { prices, VideoType } from '@styld/protocol'
 import { pictureAccept } from '../../Upload.ts'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Option } from 'effect'
@@ -163,6 +163,18 @@ const heldCamera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
     toParentMessage: (message) => Message.GotHeldCameraMessage({ message }),
   })
 
+/** What adding costs, and today's free credits once read. */
+const costLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const costs = { photo: prices.photo, video: prices.videoHalfMinute }
+  return h.p(
+    styled(h, styles.cost()),
+    Option.match(model.maybeAllowance, {
+      onNone: () => [format(locale, 'capture.cost', costs)],
+      onSome: ({ remaining }) => [format(locale, 'capture.costLeft', { ...costs, remaining })],
+    }),
+  )
+}
+
 /** The ways in, or the open camera in their place. */
 const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   HeldCamera.isOpen(model.held)
@@ -182,6 +194,7 @@ const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonl
           ),
           library(model, locale, h),
         ]),
+        costLine(model, locale, h),
         linkSource(model, locale, h),
       ]
 

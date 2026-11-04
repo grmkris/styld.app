@@ -504,6 +504,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.addTitle': 'Add clothes',
   'capture.addHint':
     'Photos, or a video up to 15 minutes filmed slowly from about a metre away. Every piece is cut out for you to keep or drop.',
+  'capture.cost': '{photo, plural, one {# credit} other {# credits}} a photo · {video} for 30 s of video',
+  'capture.costLeft':
+    '{photo, plural, one {# credit} other {# credits}} a photo · {video} for 30 s of video · {remaining} left today',
   'capture.chooseTitle': 'Upload from library',
   'capture.chooseHint': 'Photos or a video',
   'capture.notSupported': "{name} isn't a photo or video Styld can use",

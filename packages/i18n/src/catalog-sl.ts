@@ -513,6 +513,10 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.addTitle': 'Dodaj oblačila',
   'capture.addHint':
     'Fotografije ali video do 15 minut, posnet počasi z razdalje približno enega metra. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
+  'capture.cost':
+    '{photo, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · {video} za 30 s videa',
+  'capture.costLeft':
+    '{photo, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · {video} za 30 s videa · danes še {remaining}',
   'capture.chooseTitle': 'Naloži iz galerije',
   'capture.chooseHint': 'Fotografije ali video',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',

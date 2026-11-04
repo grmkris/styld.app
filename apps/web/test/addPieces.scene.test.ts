@@ -3,7 +3,9 @@ import { Option } from 'effect'
 import { Command, changeFiles, click, expect, given, role, scene, selector, submit, text, type } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { at } from './AppFixtures.ts'
+import { at, withPage } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { modifyFields } from 'foldkit/struct'
 import { Message as AppMessage } from '../src/Message.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { InspectVideo, SendLink, SendPhoto, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
@@ -22,6 +24,21 @@ const twoParts: VideoPlan = {
     { index: 1, startMs: 30_000, endMs: 60_000 },
   ],
 }
+
+describe('what adding costs', () => {
+  test('the ways in say what a photo and a video cost, and how many credits are left once read', () => {
+    scene({ update, view }, given(addPage), expect(text('1 credit a photo · 5 for 30 s of video')).toExist())
+    scene(
+      { update, view },
+      given(
+        withPage(addPage, lenses.addPieces, (page) =>
+          modifyFields(page, { maybeAllowance: () => Option.some({ remaining: 42, daily: 100 }) }),
+        ),
+      ),
+      expect(text('1 credit a photo · 5 for 30 s of video · 42 left today')).toExist(),
+    )
+  })
+})
 
 describe('reading a video on the add page', () => {
   test("says which part is on its way, and how many went once the day's allowance stops it", () => {

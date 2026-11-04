@@ -80,6 +80,7 @@ export const linkForm = style({
   scrollMarginBlockStart: '72px',
 })
 export const linkHint = style({ fontSize: 'small', color: 'ink2' })
+export const cost = style({ margin: '0', fontSize: 'small', color: 'ink2' })
 export const linkRow = style({ display: 'flex', gap: 'actions', alignItems: 'center' })
 export const problems = style({
   display: 'grid',

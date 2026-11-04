@@ -6,6 +6,7 @@ import { Message } from './Message.ts'
 import * as Account from './page/Account.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPieces from './page/AddPieces/Model.ts'
+import { ReadAllowance } from './page/AddPieces/Commands.ts'
 import * as Ask from './page/Ask.ts'
 import * as BoardMessage from './page/Board/Message.ts'
 import * as BoardModel from './page/Board/Model.ts'
@@ -279,7 +280,7 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
     })),
     Match.tag('Login', 'LoginForConnection', () => opened(lenses.login, Login.init(), [])),
     Match.tag('Profile', () => opened(lenses.profile, ProfileEditor.init(), ProfileEditor.load())),
-    Match.tag('AddPieces', () => opened(lenses.addPieces, AddPieces.init(), [])),
+    Match.tag('AddPieces', () => opened(lenses.addPieces, AddPieces.init(), [ReadAllowance()])),
     Match.tag('Review', () => opened(lenses.review, Review.init(), Review.load())),
     Match.tag('Piece', ({ pieceId }) => {
       const piece = Piece.init(pieceId)

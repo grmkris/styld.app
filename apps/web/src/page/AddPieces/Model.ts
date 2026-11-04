@@ -1,6 +1,6 @@
 import { FileDrop } from '@foldkit/ui'
-import { CaptureId, CaptureSource, CreateVideoCapture, Side, OperationId } from '@styld/protocol'
-import { Schema } from 'effect'
+import { CaptureId, CaptureSource, CreateVideoCapture, Side, OperationId, Tray } from '@styld/protocol'
+import { Option, Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
 import * as HeldCamera from '../HeldCamera.ts'
@@ -80,6 +80,8 @@ export const Model = Schema.Struct({
   /** The product page address being typed. */
   link: Schema.String,
   links: Schema.Array(LinkItem),
+  /** Today's free credits, read as the page opens; the cost line quotes them once known. */
+  maybeAllowance: Schema.Option(Tray.fields.allowance),
 })
 export type Model = typeof Model.Type
 
@@ -90,4 +92,5 @@ export const init = (): Model => ({
   rejected: [],
   link: '',
   links: [],
+  maybeAllowance: Option.none(),
 })

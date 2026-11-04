@@ -17,6 +17,15 @@ import { uploadPictureOnce } from '../../Upload.ts'
 import type { SampledStill } from '../../capture/Frames.ts'
 import { type LinkProblem, Message, type SendProblem, VideoPart } from './Message.ts'
 
+/** Today's free credits, from the review tray, for the page's cost line. */
+export const ReadAllowance = Command.define('ReadAllowance', {
+  messages: [Message.SucceededReadAllowance, Message.FailedReadAllowance],
+  execute: Effect.gen(function* () {
+    const { allowance } = yield* (yield* (yield* StyldClient).api).capture.tray()
+    return Message.SucceededReadAllowance({ allowance })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedReadAllowance())),
+})
+
 /** What a failed send means for the person, from the error the API or the sampler answered.
  * @internal Exported for its tests. */
 export const problemOf = (error: unknown): SendProblem => {

@@ -359,4 +359,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedRetryLink: ({ index }) => retriedLink(model, index),
     // The page offers this only once nothing is waiting or on its way, so no upload is cut short.
     ClickedReview: () => (anyPending(model) ? { model } : { model, outMessage: OutMessage.FinishedSending() }),
+    SucceededReadAllowance: ({ allowance }) => ({
+      model: modifyFields(model, { maybeAllowance: () => Option.some(allowance) }),
+    }),
+    // The cost line keeps to the prices.
+    FailedReadAllowance: () => ({ model }),
   })
