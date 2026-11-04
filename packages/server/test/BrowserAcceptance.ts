@@ -64,7 +64,7 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect(await page.evaluate(() => document.fonts.check('600 16px "Hanken Grotesk Variable"'))).toBe(true)
     await page.selectOption('#language', 'sl')
     await page.waitForFunction(() => document.documentElement.lang === 'sl')
-    expect(await page.locator('h1').textContent()).toBe('En plašč, šest videzov.')
+    expect(await page.locator('h1').textContent()).toBe('Vsak videz se začne v tvoji garderobi.')
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_locale')).toMatchObject({
       value: 'sl',
       httpOnly: true,
