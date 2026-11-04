@@ -29,6 +29,43 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
   these bumps (A/B builds differ by bytes). mediabunny's phone-side video cutting and the stylist on beta.192 still
   need preview acceptance once deployed.
 
+## Boards after Eva's 4 November feedback: shoes in every outfit, the piece big in the middle (B1–B3, not deployed)
+
+From `docs/PLAN-eva-feedback-2026-11-04.md` (B1–B3; her words: "every outfit needs shoes", "the piece I pick should
+appear big in the middle", "it has to lay them out together better"). Not deployed; the deploy applies the migration
+`20261104111400_boards_layout_b2` (one ADD COLUMN, `boards.layout`; no rebuild).
+
+- **Shoes in every outfit (B1, `ba45e969`):** when no shoes suit the brief's season and occasion, the rules fall back to every
+  everyday pair and only then to sport shoes, so an outfit is never barefoot while the wardrobe holds shoes and wears
+  running shoes outside sport only when they are the only pair. (The main cause, the 300-piece cap that hid all of
+  Eva's shoes, was fixed in `4b356234`.)
+- **Layouts (B2, `dd453277`):** `outfitsAround` is replaced by `packages/protocol/src/OutfitLayout.ts`: the anchor large in the
+  centre (the largest thing on the table), each outfit one flat-lay in its own box (bottom on the right, the top at its
+  waist, the outer layer over the top, shoes at the foot, accessories tucked against it, the anchor repeated smaller
+  at one size and turn), all inside the board and never overlapping another cluster. Three layouts after her
+  references: six flanking (three a side, arrows), eight around a three-by-three grid (fig17, no arrows) and six in a
+  ring (fig15, arrows). A board picks one by chance (by its operation id, so a repeat is the same); the number of
+  outfits follows the layout. Boards start on `sand`; `paperFor` is gone. The arrows are drawn by the board's face from
+  the layout, under the items, and only while the anchor is in the centre and every piece of that outfit in its box.
+  The template is "One piece, many outfits" / "En kos, več outfitov". A table now holds 80 things (was 60): eight
+  complete outfits of up to eight pieces and the anchor.
+- **Another layout (B2/B3):** `POST /api/boards/:boardId/layout` lays the board out again in another layout that holds
+  every kept outfit, in one batch at the board's version: when it holds more, Fast makes the rest (none it can make
+  leaves the room empty); when fewer, the last outfits not kept leave; the person's own labels and pictures stay. The
+  cards' heading carries an **Another layout** control; cards wait while it lays out. Another on a card replaces its
+  cluster in place in the current layout. A board made before layouts reads as six flanking: its old table shows no
+  arrows, and Another layout re-lays it.
+- **Evidence:** unit — the shoe fallback; every layout (pieces inside the board, the anchor largest and alone, clusters
+  apart, accessories within their cluster's box, the coat over the top, arrows present and leaving with a moved outfit,
+  a replaced cluster where the whole layout puts it, the chance choice); story and scene tests for Another layout and
+  the arrows. Native workerd (`BoardOutfitsAcceptance`) and Chromium (`BoardOutfitsBrowserAcceptance`) updated for the
+  layouts, sand, shoes and Another layout, **not run** in this track (owner, 4 November: the coordinator runs the full
+  gate on the merged result and takes the phone screenshots after the deploy). On `dd453277`: format, typecheck (0
+  findings), lint, Knip, assistant views (regenerated, 374,583 bytes), unit 913 of 913 in 131 files, build. The
+  initial bundle is 373,989 gzip bytes: main measured 371,985 at `4b35623` (15 over its budget already), this adds
+  2,004; the budget is raised to 374,000. `translations:check` reports one error, the hard-coded operator-token message
+  in `packages/server/src/Operator.ts`, which is on main and not this work's.
+
 ## Tops by sleeve (P4 of `docs/PLAN-eva-feedback-2026-11-04.md`), 4 November (worktree, not merged or deployed)
 
 - Tops & T-shirts is now three Clothing types, in the wardrobe's order: T-shirts & short-sleeve tops
