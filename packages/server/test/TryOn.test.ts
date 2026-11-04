@@ -131,7 +131,7 @@ describe('a try-on', () => {
         const [request, ...again] = yield* Ref.get(asked)
         expect(again).toEqual([])
         expect(request?.photo.bytes).toEqual(new Uint8Array([1, 1, 1]))
-        expect(request?.pieces.map(({ words }) => words)).toEqual(['white short-sleeve top', 'navy jeans'])
+        expect(request?.pieces.map(({ words }) => words)).toEqual(['white t-shirt', 'navy jeans'])
         expect(request?.size).toBe('1152x1536')
 
         const done = yield* tryOns.get(started.id)

@@ -14,13 +14,13 @@ describe('a try-on request', () => {
   it('names each piece by its colours and type only, never by the words a person gave it', () => {
     expect(tryOnWords({ type: 'shirts', colours: ['navy', 'white', 'red'] })).toBe('navy and white shirt')
     expect(tryOnWords({ type: 'trainers', colours: [] })).toBe('trainers')
-    expect(tryOnWords({ type: 'knitwear', colours: ['grey'] })).toBe('grey knit jumper')
+    expect(tryOnWords({ type: 'knitwear', colours: ['grey'] })).toBe('grey knitted top')
   })
 
   it('numbers the pieces from image 2, after the photo, and asks to keep the person and the scene', () => {
-    const prompt = tryOnPrompt(['navy blazer', 'white short-sleeve top'])
+    const prompt = tryOnPrompt(['navy blazer', 'white t-shirt'])
     expect(prompt).toContain('Image 1 is a photo of me')
-    expect(prompt).toContain('- Image 2: navy blazer\n- Image 3: white short-sleeve top')
+    expect(prompt).toContain('- Image 2: navy blazer\n- Image 3: white t-shirt')
     expect(prompt).toContain('my face and identity')
     expect(prompt).not.toContain('Image 4')
   })

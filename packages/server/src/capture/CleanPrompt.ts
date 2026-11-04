@@ -28,8 +28,9 @@ const keyColours = { green: 'green #00ff00', magenta: 'magenta #ff00ff' } as con
  * profile is their likeness, and bags, whose shape is their own (owner, 4 November). */
 const keepsAngle = (type: PieceType) => slotOf(type) === 'shoes' || type === 'bags'
 
-/** A garment type in the prompt's words: what the photo's garment is called when the cut-out alone was refused. */
-const garmentWords: { readonly [Type in PieceType]: string } = {
+/** A garment type in the prompt's words: what the photo's garment is called when the cut-out alone was refused, and what a
+ * try-on calls each piece it wears. */
+export const garmentWords: { readonly [Type in PieceType]: string } = {
   shortSleeveTops: 't-shirt',
   longSleeveTops: 'long-sleeved top',
   sleevelessTops: 'sleeveless top',
