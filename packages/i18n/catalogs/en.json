@@ -368,25 +368,9 @@
     "signIn": "Sign in",
     "contact": "Contact",
     "hero": {
-      "mirror": {
-        "title": "Know the outfit before you open the wardrobe.",
-        "lede": "Styld lays out outfits from what you already own, so you choose in a minute.",
-        "film": "A woman in a robe stands with her back to the camera before a tall mirror; her reflection, below the shoulders, wears one outfit after another."
-      },
-      "coat": {
-        "title": "One coat, six outfits.",
-        "lede": "Pick one piece. Styld lays out what you already own around it, outfit after outfit.",
-        "film": "A camel coat lies in the middle of a paper board; around it, the other pieces swap through six outfits."
-      },
-      "wardrobe": {
-        "title": "Every outfit starts in your wardrobe.",
-        "lede": "Photograph or film your clothes. Styld cuts out every piece, and you lay out outfits and boards, here or in ChatGPT and Claude.",
-        "film": "Clothes float out of an open wardrobe and land flat on a paper board as an outfit, switch to another outfit, then float back."
-      }
-    },
-    "film": {
-      "pause": "Pause the film",
-      "play": "Play the film"
+      "title": "Every outfit starts in your wardrobe.",
+      "lede": "Photograph or film your clothes. Styld cuts out every piece, and you lay out outfits and boards, here or in ChatGPT and Claude.",
+      "film": "Clothes float out of an open wardrobe and land flat on a paper board as an outfit, switch to another outfit, then float back."
     },
     "add": {
       "title": "Add it once",

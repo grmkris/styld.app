@@ -97,28 +97,6 @@ export const actions = style({
 /** Sign in, quiet: on the veil, so it reads on any frame. */
 export const quietAction = style({ backgroundColor: 'stock' })
 
-/** The film's one control: a 44px round on the scrim at the hero's bottom end. */
-export const filmControl = style({
-  position: 'absolute',
-  zIndex: 3,
-  insetInlineEnd: 'max(20px, env(safe-area-inset-right))',
-  insetBlockEnd: 'calc(max(24px, env(safe-area-inset-bottom)) + 2px)',
-  display: 'grid',
-  placeItems: 'center',
-  inlineSize: '44px',
-  blockSize: '44px',
-  padding: '0',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'scrim',
-  color: 'swatchWhite',
-  cursor: 'pointer',
-  transitionProperty: 'transform',
-  transitionDuration: 'press',
-  transitionTimingFunction: 'standard',
-  ':active': { transform: 'scale(0.96)' },
-})
-
 /** The page below the film: one column of blocks up to 1200px, with fluid gutters. */
 export const page = style({
   display: 'grid',

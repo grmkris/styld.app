@@ -93,7 +93,7 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html => {
           h.submodel({
             ...slot(lenses.landing, landing),
             view: LandingView.view,
-            viewInputs: { locale, hero: model.context.landingHero ?? 'wardrobe' },
+            viewInputs: { locale },
           }),
         h,
       )

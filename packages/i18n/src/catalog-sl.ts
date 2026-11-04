@@ -340,20 +340,11 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.start': 'Začni brezplačno',
   'landing.signIn': 'Prijava',
   'landing.contact': 'Kontakt',
-  'landing.hero.mirror.title': 'Poznaj videz, še preden odpreš omaro.',
-  'landing.hero.mirror.lede': 'Styld sestavi videze iz tega, kar že imaš, da izbereš v minuti.',
-  'landing.hero.mirror.film':
-    'Ženska v kopalnem plašču stoji s hrbtom proti kameri pred visokim ogledalom; njen odsev pod rameni nosi videz za videzom.',
-  'landing.hero.coat.title': 'En plašč, šest videzov.',
-  'landing.hero.coat.lede': 'Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom.',
-  'landing.hero.coat.film': 'Kamelji plašč leži sredi papirne table; okoli njega se drugi kosi menjajo v šest videzov.',
-  'landing.hero.wardrobe.title': 'Vsak videz se začne v tvoji garderobi.',
-  'landing.hero.wardrobe.lede':
+  'landing.hero.title': 'Vsak videz se začne v tvoji garderobi.',
+  'landing.hero.lede':
     'Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa sestavljaš videze in zbirke, tukaj ali v ChatGPT in Claudu.',
-  'landing.hero.wardrobe.film':
+  'landing.hero.film':
     'Oblačila odplavajo iz odprte omare in pristanejo na papirni tabli kot videz, se zamenjajo za drugega, nato odplavajo nazaj.',
-  'landing.film.pause': 'Ustavi film',
-  'landing.film.play': 'Predvajaj film',
   'landing.add.title': 'Dodaj enkrat',
   'landing.add.text':
     'Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa pregledaš, kaj je našel, preden se pridruži tvoji garderobi.',

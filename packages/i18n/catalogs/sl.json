@@ -368,25 +368,9 @@
     "signIn": "Prijava",
     "contact": "Kontakt",
     "hero": {
-      "mirror": {
-        "title": "Poznaj videz, še preden odpreš omaro.",
-        "lede": "Styld sestavi videze iz tega, kar že imaš, da izbereš v minuti.",
-        "film": "Ženska v kopalnem plašču stoji s hrbtom proti kameri pred visokim ogledalom; njen odsev pod rameni nosi videz za videzom."
-      },
-      "coat": {
-        "title": "En plašč, šest videzov.",
-        "lede": "Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom.",
-        "film": "Kamelji plašč leži sredi papirne table; okoli njega se drugi kosi menjajo v šest videzov."
-      },
-      "wardrobe": {
-        "title": "Vsak videz se začne v tvoji garderobi.",
-        "lede": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa sestavljaš videze in zbirke, tukaj ali v ChatGPT in Claudu.",
-        "film": "Oblačila odplavajo iz odprte omare in pristanejo na papirni tabli kot videz, se zamenjajo za drugega, nato odplavajo nazaj."
-      }
-    },
-    "film": {
-      "pause": "Ustavi film",
-      "play": "Predvajaj film"
+      "title": "Vsak videz se začne v tvoji garderobi.",
+      "lede": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa sestavljaš videze in zbirke, tukaj ali v ChatGPT in Claudu.",
+      "film": "Oblačila odplavajo iz odprte omare in pristanejo na papirni tabli kot videz, se zamenjajo za drugega, nato odplavajo nazaj."
     },
     "add": {
       "title": "Dodaj enkrat",

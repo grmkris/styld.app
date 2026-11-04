@@ -9,9 +9,7 @@
  * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
  * `_sample_interval`; indexes are `call.<provider>.<kind>`, `review.<decision>` (plain `call` and
  * `review` before 2026-10-29 16:00), `picture.<state>`, where each clean picture ended (from 2026-10-30), and
- * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31), and
- * `landing.shown.<hero>` and `signin.started.<hero>`, the signed-out Home's three heroes, which the edge counts
- * (from 2026-11-04).
+ * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31).
  */
 import { isStageName, stages } from '@styld/server/Resources'
 import { Schema } from 'effect'
@@ -136,22 +134,3 @@ console.log('Outfits kept: worn today or kept on a board; avg_position is how fa
 console.table(outfitKeeps)
 console.log('Fast against Thinking: runs, runs with a keep, keep rate and estimated cost per kept outfit')
 console.table(keepRates)
-
-const landing = await query(`
-  SELECT blob4 AS hero,
-         SUM(if(blob3 = 'landing.shown', _sample_interval, 0)) AS shown,
-         SUM(if(blob3 = 'signin.started', _sample_interval, 0)) AS sign_ins_begun
-  FROM ${dataset}
-  WHERE (index1 LIKE 'landing.shown.%' OR index1 LIKE 'signin.started.%') AND ${within}
-  GROUP BY hero
-  ORDER BY hero
-  FORMAT JSON`)
-
-console.log('Landing heroes: signed-out Homes shown, and sign-ins begun by browsers that were shown each one')
-console.table(
-  landing.map((row) => {
-    const shown = Number(row['shown'] ?? 0)
-    const begun = Number(row['sign_ins_begun'] ?? 0)
-    return { hero: row['hero'], shown, signInsBegun: begun, rate: shown === 0 ? null : begun / shown }
-  }),
-)

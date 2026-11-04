@@ -1,21 +1,6 @@
-import { Schema } from 'effect'
-
-// The signed-out Home's films and pictures (owner, 4 November 2026): three heroes, one per visitor, and the shared page
-// below them. The files are never bundled or committed; the operator uploads each to the media bucket as
+// The signed-out Home's films and pictures (owner, 4 November 2026): the wardrobe's film for every visitor, and the page
+// below it. The files are never bundled or committed; the operator uploads each to the media bucket as
 // `landing/<name>` and the API Worker serves exactly these names at `/cdn/landing/<name>` (`LandingMedia.ts`).
-
-/** The three heroes a visitor may get: the mirror, the one coat and the wardrobe to page. */
-export const LandingHero = Schema.Literals(['mirror', 'coat', 'wardrobe'])
-export type LandingHero = typeof LandingHero.Type
-
-export const landingHeroes: ReadonlyArray<LandingHero> = LandingHero.literals
-
-/** The first-party cookie that keeps a visitor's hero, so a second visit shows the same film and a sign-up is counted
- * against it. Its value is a hero's name and nothing else. */
-export const landingHeroCookie = 'styld_hero'
-
-/** How long the hero is kept: half a year. */
-export const landingHeroCookieSeconds = 60 * 60 * 24 * 182
 
 /** The cut-outs the shop grid shows, by the category the grid sorts them under. */
 export const landingShopPieces = [
@@ -37,16 +22,24 @@ export const landingShopPieces = [
 
 export type LandingShopPiece = (typeof landingShopPieces)[number]['piece']
 
-/** A hero's four files: a tall (9:16) and a wide (16:9) loop, each with its first frame as a poster. */
-const heroFiles = ['loop-tall.mp4', 'loop-wide.mp4', 'poster-tall.webp', 'poster-wide.webp'] as const
+/** The hero's four files, the wardrobe's film (owner, 4 November 2026: one hero for everyone): a tall (9:16) and a wide
+ * (16:9) loop, each with its first frame as a poster. */
+const heroFiles = [
+  'wardrobe-loop-tall.mp4',
+  'wardrobe-loop-wide.mp4',
+  'wardrobe-poster-tall.webp',
+  'wardrobe-poster-wide.webp',
+] as const
 export type HeroFile = (typeof heroFiles)[number]
 
-/** The feature screens' tall clips (scan: adding a piece; outfits: the coat's six outfits), each with a poster. */
-const clipFiles = ['scan-tall.mp4', 'scan-tall.webp', 'outfits-tall.mp4', 'outfits-tall.webp'] as const
+/** The feature screens' clips, each with a poster: adding a piece (tall), and the coat's six outfits, whose wide film
+ * the page crops to its one board (the tall cut showed the boards beside it, which read as a mirror). */
+const clipFiles = ['scan-tall.mp4', 'scan-tall.webp', 'coat-loop-wide.mp4', 'coat-poster-wide.webp'] as const
+export type ClipFile = (typeof clipFiles)[number]
 
 /** Every name the landing reads, and the only names `/cdn/landing/:name` serves. */
 export const landingMediaNames: ReadonlyArray<string> = [
-  ...landingHeroes.flatMap((hero) => heroFiles.map((file) => `${hero}-${file}`)),
+  ...heroFiles,
   ...clipFiles,
   ...landingShopPieces.map(({ piece }) => `shop-${piece}.webp`),
 ]

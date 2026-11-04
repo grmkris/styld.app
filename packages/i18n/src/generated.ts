@@ -368,18 +368,10 @@ export interface MessageArgumentsByKey<_T = string> {
   'landing.faq.title': Readonly<Record<string, never>>
   'landing.faq.who': Readonly<Record<string, never>>
   'landing.faq.whoAnswer': Readonly<Record<string, never>>
-  'landing.film.pause': Readonly<Record<string, never>>
-  'landing.film.play': Readonly<Record<string, never>>
   'landing.final': Readonly<Record<string, never>>
-  'landing.hero.coat.film': Readonly<Record<string, never>>
-  'landing.hero.coat.lede': Readonly<Record<string, never>>
-  'landing.hero.coat.title': Readonly<Record<string, never>>
-  'landing.hero.mirror.film': Readonly<Record<string, never>>
-  'landing.hero.mirror.lede': Readonly<Record<string, never>>
-  'landing.hero.mirror.title': Readonly<Record<string, never>>
-  'landing.hero.wardrobe.film': Readonly<Record<string, never>>
-  'landing.hero.wardrobe.lede': Readonly<Record<string, never>>
-  'landing.hero.wardrobe.title': Readonly<Record<string, never>>
+  'landing.hero.film': Readonly<Record<string, never>>
+  'landing.hero.lede': Readonly<Record<string, never>>
+  'landing.hero.title': Readonly<Record<string, never>>
   'landing.outfits.text': Readonly<Record<string, never>>
   'landing.outfits.title': Readonly<Record<string, never>>
   'landing.price.free': Readonly<Record<string, never>>
@@ -1143,4 +1135,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5f48bf9f1bf1d066a296ca0ac5279aef8e3728947de9d4608701728466763574'
+export const catalogVersion = '583eea07c0ae08371d80c19d4a5553d433c8940e671fb6b07660a60f215b0eb4'

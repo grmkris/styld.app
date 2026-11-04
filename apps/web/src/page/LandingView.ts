@@ -1,16 +1,14 @@
 import { format, type Locale } from '@styld/i18n'
-import { dailyCredits, type LandingHero, landingShopPieces, type LandingShopPiece, premiumWeek } from '@styld/protocol'
+import { type ClipFile, dailyCredits, landingShopPieces, type LandingShopPiece, premiumWeek } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { chip, chosen } from '../Controls.styles.ts'
-import { pauseIcon, playIcon } from '../Icon.ts'
 import { signInHref } from '../route.ts'
 import { styled } from '../Styled.ts'
 import {
   Film,
-  filmId,
   Message,
   type Model,
   PlayWhileSeen,
@@ -22,22 +20,22 @@ import {
 import { landingMedia } from './LandingMedia.ts'
 import * as styles from './LandingView.styles.ts'
 
-// The signed-out Home (Landing.ts): the hero's film and words, then the shared page below it.
+// The signed-out Home (Landing.ts): the wardrobe's film and the words over it, then the page below it.
 
-type Inputs = { readonly locale: Locale; readonly hero: LandingHero }
+type Inputs = { readonly locale: Locale }
 
 /** The poster first, as a picture in the shape of the screen; the film over it while motion is allowed. Its words are
  * the film's description; the media themselves say nothing to assistive technology. */
-const film = (model: Model, { locale, hero }: Inputs, h: HtmlBuilder<Message>): Html =>
+const film = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.figure(
-    [h.Role('img'), h.AriaLabel(format(locale, `landing.hero.${hero}.film`, {})), ...styled(h, styles.film())],
+    [h.Role('img'), h.AriaLabel(format(locale, 'landing.hero.film', {})), ...styled(h, styles.film())],
     [
       h.picture(
         [h.AriaHidden(true)],
         [
-          h.source([h.Attribute('media', tallQuery), h.Srcset(landingMedia.hero(hero, 'poster-tall.webp'))]),
+          h.source([h.Attribute('media', tallQuery), h.Srcset(landingMedia.hero('wardrobe-poster-tall.webp'))]),
           h.img([
-            h.Src(landingMedia.hero(hero, 'poster-wide.webp')),
+            h.Src(landingMedia.hero('wardrobe-poster-wide.webp')),
             h.Alt(''),
             h.Fetchpriority('high'),
             h.Decoding('async'),
@@ -47,8 +45,7 @@ const film = (model: Model, { locale, hero }: Inputs, h: HtmlBuilder<Message>): 
       ),
       Film.guards.Still(model.film)
         ? h.empty
-        : h.keyed('video')(hero, [
-            h.Id(filmId),
+        : h.video([
             h.Muted(true),
             h.Loop(true),
             h.Playsinline(true),
@@ -56,53 +53,26 @@ const film = (model: Model, { locale, hero }: Inputs, h: HtmlBuilder<Message>): 
             h.AriaHidden(true),
             h.OnMount(
               StartFilm({
-                tall: landingMedia.hero(hero, 'loop-tall.mp4'),
-                wide: landingMedia.hero(hero, 'loop-wide.mp4'),
+                tall: landingMedia.hero('wardrobe-loop-tall.mp4'),
+                wide: landingMedia.hero('wardrobe-loop-wide.mp4'),
               }),
             ),
-            h.OnPlay(Message.PlayedFilm()),
-            h.OnPause(Message.PausedFilm()),
             ...styled(h, styles.filmMedia()),
           ]),
     ],
   )
 
-/** Pause, or Play once paused or refused; none while motion is unchecked or not allowed. */
-const filmControl = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Film.match(model.film, {
-    Waiting: () => h.empty,
-    Still: () => h.empty,
-    Playing: () => control(format(locale, 'landing.film.pause', {}), pauseIcon(h), h),
-    Paused: () => control(format(locale, 'landing.film.play', {}), playIcon(h), h),
-  })
-
-const control = (label: string, icon: Html, h: HtmlBuilder<Message>): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.AriaLabel(label),
-      h.Title(label),
-      h.OnClick(Message.ClickedFilmControl()),
-      ...styled(h, styles.filmControl()),
-    ],
-    [icon],
-  )
-
 const startFree = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a([h.Href(signInHref), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})])
 
-const hero = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
-  const { locale } = inputs
-  return h.section(
+const hero = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
     [h.AriaLabelledBy('landing-title'), ...styled(h, styles.hero())],
     [
-      film(model, inputs, h),
+      film(model, locale, h),
       h.div(styled(h, styles.words()), [
-        h.h1(
-          [h.Id('landing-title'), ...styled(h, styles.title())],
-          [format(locale, `landing.hero.${inputs.hero}.title`, {})],
-        ),
-        h.p(styled(h, styles.lede()), [format(locale, `landing.hero.${inputs.hero}.lede`, {})]),
+        h.h1([h.Id('landing-title'), ...styled(h, styles.title())], [format(locale, 'landing.hero.title', {})]),
+        h.p(styled(h, styles.lede()), [format(locale, 'landing.hero.lede', {})]),
       ]),
       h.div(styled(h, styles.actions()), [
         // One code signs in and signs up, so Start free and Sign in go to the same page: the first is for someone new.
@@ -112,10 +82,8 @@ const hero = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
           [format(locale, 'landing.signIn', {})],
         ),
       ]),
-      filmControl(model, locale, h),
     ],
   )
-}
 
 /** A feature screen's words: a head and one line. */
 const featureWords = (id: string, title: string, text: string, h: HtmlBuilder<Message>): Html =>
@@ -124,17 +92,20 @@ const featureWords = (id: string, title: string, text: string, h: HtmlBuilder<Me
     h.p(styled(h, styles.text()), [text]),
   ])
 
-/** A tall clip that plays while it is seen; its poster until then, and for good under reduced motion. */
-const clip = (name: 'scan' | 'outfits', style: ReturnType<typeof styles.photoClip>, h: HtmlBuilder<Message>): Html =>
+/** A clip that plays while it is seen; its poster until then, and for good under reduced motion. */
+const clip = (
+  { loop, poster }: { readonly loop: ClipFile; readonly poster: ClipFile },
+  style: ReturnType<typeof styles.photoClip>,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.video([
-    h.Poster(landingMedia.clip(name, 'webp')),
+    h.Poster(landingMedia.clip(poster)),
     h.Muted(true),
     h.Loop(true),
     h.Playsinline(true),
     h.Preload('none'),
     h.AriaHidden(true),
-    h.DataAttribute('clip', name),
-    h.OnMount(PlayWhileSeen({ src: landingMedia.clip(name, 'mp4') })),
+    h.OnMount(PlayWhileSeen({ src: landingMedia.clip(loop) })),
     ...styled(h, style),
   ])
 
@@ -243,14 +214,12 @@ const faq = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-/** The landing: the hero, three feature screens, the price, the questions and the way in again. While the person holds
- * the motion (`data-held`), the clips below stay still too. */
-export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
-  const { locale } = inputs
-  return h.main(
-    [h.Id('main'), ...(model.held ? [h.DataAttribute('held', '')] : [])],
+/** The landing: the hero, three feature screens, the price, the questions and the way in again. */
+export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale }, h) =>
+  h.main(
+    [h.Id('main')],
     [
-      hero(model, inputs, h),
+      hero(model, locale, h),
       h.div(styled(h, styles.page()), [
         h.section(
           [h.AriaLabelledBy('landing-add'), ...styled(h, styles.feature())],
@@ -261,7 +230,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
               format(locale, 'landing.add.text', {}),
               h,
             ),
-            clip('scan', styles.photoClip(), h),
+            clip({ loop: 'scan-tall.mp4', poster: 'scan-tall.webp' }, styles.photoClip(), h),
           ],
         ),
         h.section(
@@ -285,7 +254,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
               format(locale, 'landing.outfits.text', {}),
               h,
             ),
-            clip('outfits', styles.tableClip(), h),
+            clip({ loop: 'coat-loop-wide.mp4', poster: 'coat-poster-wide.webp' }, styles.tableClip(), h),
           ],
         ),
         priceList(locale, h),
@@ -299,5 +268,5 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
         ),
       ]),
     ],
-  )
-})
+  ),
+)

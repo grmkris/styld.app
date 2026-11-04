@@ -149,7 +149,7 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
 - **Signed out:** the top bar keeps the logo and "Sign in". Public pages (a profile, a public board, a shared look or
   piece) read the same as signed in; Sign in appears only when the visitor saves, follows or reports. Home is the
-  landing (owner, 4 November 2026): a full-screen film, one of three heroes the visitor keeps, with its words over it,
+  landing (owner, 4 November 2026): a full-screen film of the wardrobe, the same for everyone, with its words over it,
   and one short page below: three feature screens (add it once, the wardrobe as a shop, one piece in many outfits),
   the price as a `<dl>`, four questions in `<details>` and the call to action again.
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
@@ -224,8 +224,9 @@ Follow the prototype's `board`, `boards`, `person`, `pin`, `wishlist` and `ask-d
 - **The landing film** (owner, 4 November 2026) is the deliberate exception to "every motion answers something the
   person did" and "one reveal at most", and only on the signed-out Home: a full-screen, muted, looping film plays
   behind the hero's words (9:16 on a phone held upright, 16:9 elsewhere), and each feature screen's clip below loops
-  while most of it is on screen. One control in the hero pauses all of it. Under reduced motion or Save-Data no video
-  is requested: the posters stay and the control goes. Nothing else on the landing moves by itself.
+  while most of it is on screen. There is no control: the films always play (owner, 4 November 2026). Under reduced
+  motion or Save-Data no video is requested, and a film the browser refuses to start goes: the posters stay. Nothing
+  else on the landing moves by itself.
 - **Reduced motion:** everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 - **Reduced transparency:** glass turns solid.
 

@@ -334,21 +334,11 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.start': 'Start free',
   'landing.signIn': 'Sign in',
   'landing.contact': 'Contact',
-  'landing.hero.mirror.title': 'Know the outfit before you open the wardrobe.',
-  'landing.hero.mirror.lede': 'Styld lays out outfits from what you already own, so you choose in a minute.',
-  'landing.hero.mirror.film':
-    'A woman in a robe stands with her back to the camera before a tall mirror; her reflection, below the shoulders, wears one outfit after another.',
-  'landing.hero.coat.title': 'One coat, six outfits.',
-  'landing.hero.coat.lede': 'Pick one piece. Styld lays out what you already own around it, outfit after outfit.',
-  'landing.hero.coat.film':
-    'A camel coat lies in the middle of a paper board; around it, the other pieces swap through six outfits.',
-  'landing.hero.wardrobe.title': 'Every outfit starts in your wardrobe.',
-  'landing.hero.wardrobe.lede':
+  'landing.hero.title': 'Every outfit starts in your wardrobe.',
+  'landing.hero.lede':
     'Photograph or film your clothes. Styld cuts out every piece, and you lay out outfits and boards, here or in ChatGPT and Claude.',
-  'landing.hero.wardrobe.film':
+  'landing.hero.film':
     'Clothes float out of an open wardrobe and land flat on a paper board as an outfit, switch to another outfit, then float back.',
-  'landing.film.pause': 'Pause the film',
-  'landing.film.play': 'Play the film',
   'landing.add.title': 'Add it once',
   'landing.add.text':
     'Photograph or film your clothes. Styld cuts out every piece, and you check what it found before it joins your wardrobe.',

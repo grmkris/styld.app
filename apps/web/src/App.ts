@@ -1,5 +1,5 @@
 import { Effect, Match, Option, Predicate, Schema } from 'effect'
-import { LandingHero, type Tone } from '@styld/protocol'
+import type { Tone } from '@styld/protocol'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -80,9 +80,6 @@ export const Flags = Schema.Struct({
   /** A session cookie came with the request: Home waits for the session instead of showing the landing page
    * to someone who is signed in. Only a hint; the session is read in the browser. */
   hasSessionCookie: Schema.optionalKey(Schema.Boolean),
-  /** The film the signed-out Home opens on, chosen by the server (`server/LandingHero.ts`) so the page hydrates the
-   * one it was rendered with. */
-  landingHero: Schema.optionalKey(LandingHero),
 })
 export type Flags = typeof Flags.Type
 

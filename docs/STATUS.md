@@ -42,47 +42,38 @@ beside the house boards, after reviewing the Grokbot inspiration-boards research
   now); no type preset on Add clothes (the capture types each piece); aesthetics show as the catalogue's slugs
   (`city break`) in both languages; a Discovery test of `challenges` over D1.
 
-## The landing that replaces v1 at styld.app (4 November, on main, not deployed)
+## The landing that replaces v1 at styld.app (4 November, live on styld.app; the owner's phone review on main)
 
 The signed-out Home is rebuilt from the landing-film prototypes (owner decisions of 4 November; DESIGN.md › Surfaces,
-› Motion).
+› Motion). Production serves it from `b0af4f3c`.
 
 - **Built:**
-  - Three heroes, `mirror`, `coat` and `wardrobe`. The website's server chooses one (`apps/web/src/server/LandingHero.ts`):
-    `?hero=` forces one for a preview; otherwise the first-party `styld_hero` cookie (HttpOnly, Lax, half a year)
-    keeps the one a first visit got at random. The choice goes into the flags, so the browser hydrates the hero the
-    server rendered. Each hero shows its poster first (tall on a phone held upright, wide elsewhere) and plays its
-    muted loop once the browser allows motion. With reduced motion or Save-Data no video is requested and the film's
-    element goes. One control in the hero follows the element's play and pause events (Play when iOS refuses
-    autoplay) and holds the clips below too. The words, Start free and Sign in are in en and sl, and the mirror keeps
-    Start free.
-  - One page below for all three: Add it once (the scan clip as a photo), Your wardrobe, as a shop (category chips
-    filtering 13 cut-outs, each "Already yours"), One piece, many outfits (the outfits clip on a table), the price as
-    a `<dl>` (Free, 100 credits a day; Premium week, `premiumWeek`), four questions in `<details>` and Start free again.
-    The clips play only while half on screen. The public boards (Edits from Styld) are no longer on the landing
-    (coordinator, 4 November); `LandingBoards` is gone.
+  - One hero for everyone, the wardrobe's film (owner's phone review, 4 November evening, which replaced the three
+    random heroes, their `styld_hero` cookie and the `landing.shown`/`signin.started` count; the edge's `METRICS`,
+    `STYLD_ENV` and `STYLD_RELEASE` bindings and the report's Landing heroes table went with them, and the privacy
+    policy no longer lists the cookie). It shows its poster first (tall on a phone held upright, wide elsewhere) and
+    plays its muted loop once the browser allows motion. There is no control: the films always play. With reduced
+    motion or Save-Data no video is requested, and a film the browser refuses to start (iOS Low Power) goes; the
+    poster stays. The words, Start free and Sign in are in en and sl.
+  - One page below: Add it once (the scan clip as a photo), Your wardrobe, as a shop (category chips filtering 13
+    cut-outs, each "Already yours"), One piece, many outfits (the coat's wide film cropped to its one board on a 4:5
+    table; the tall cut showed the boards above and below it, which read as a mirror on a phone), the price as a
+    `<dl>` (Free, 100 credits a day; Premium week, `premiumWeek`), four questions in `<details>` and Start free again.
+    The clips play only while half on screen.
   - `GET /cdn/landing/:name` (`packages/server/src/LandingMedia.ts`, in Platform's routes) streams `landing/<name>` from
-    the stage's media bucket for the 29 allowlisted names in `@styld/protocol` › `Landing.ts`. It sends the content
-    type, a year's immutable cache, an ETag and 304, and answers a single byte range with 206 (Safari) or 416. Nothing
-    is bundled.
-  - Measurement without trackers: the website names `landing.shown.<hero>` (a signed-out Home served, not forced) or
-    `signin.started.<hero>` (`/login` for a browser carrying the cookie) in an internal `x-styld-count` header. The
-    edge strips it and writes the point to the StyldAiCalls dataset (blobs: environment, release, event, hero), so
-    `alchemy.run.ts` now binds `METRICS`, `STYLD_ENV` and `STYLD_RELEASE` to the edge. `tools/ai-usage-report.ts` has a
-    Landing heroes table. **Sign-ups are counted as sign-ins begun, not accounts created:** registration happens
-    inside Yielded's email persistence, and reading the cookie there was not clean tonight.
-  - The privacy policy lists the `styld_hero` cookie. DESIGN.md has the landing film's exception.
-- **Evidence:** `landing.scene` (each hero in en and sl, the mirror's Start free, reduced motion with no film and no
-  control, the control following a refused film, the shop's chips, the price and the questions), `landingHero.test`
-  (the random choice with its cookie, the same hero hydrated, the cookie kept, `?hero=` forced and uncounted, bad
-  values ignored, the sign-in count, no landing with a session), `LandingMedia.test` (allowlist, 200, 206, open and
-  suffix ranges, 416, 404, 304), `EdgeWorker.test` (the count written, the header stripped, an API or odd name
-  dropped, no dataset). Native, written and not run: `BrowserAcceptance` (`?hero=coat`, a first visit's cookie kept on
-  reload, no film requested under reduced motion, Start free on the first 360×740 screen in sl, no sideways overflow
-  at 360, 390, 768 and 1440). The initial bundle grew by 5,178 gzip bytes (399,851 to 405,029; on top of the first run 402,860 to 408,104; budget 408,200).
-- **Open:** the deploy, the full gate with native, and the visual walk on phone and desktop (coordinator). The top bar
-  keeps the logo and Sign in; the language stays in the footer. The words do not come in on load (no entrance
-  motion). The media is uploaded to production's bucket only.
+    the stage's media bucket for the allowlisted names in `@styld/protocol` › `Landing.ts` (21 since the review). It
+    sends the content type, a year's immutable cache, an ETag and 304, and answers a single byte range with 206
+    (Safari) or 416. Nothing is bundled.
+- **Evidence:** `landing.scene` (the hero in en and sl with no control, reduced motion or a refused film leaving the
+  poster, the coat's board clip, the shop's chips, the price and the questions), `LandingMedia.test` (allowlist, 200,
+  206, open and suffix ranges, 416, 404, 304). Native, written and not run: `BrowserAcceptance` (the hero's words, no
+  film requested under reduced motion, Start free on the first 360×740 screen in sl, no sideways overflow at 360, 390,
+  768 and 1440).
+- **Open:** the review's build promoted to styld.app (styldappv2-0f), the full gate with native, and the visual walk on
+  phone and desktop. The media is uploaded to production's bucket only. Next, decided in the same review: each feature
+  its own full-screen chapter with its own film, under gentle snap (Add it once, the wardrobe as a shop with a film
+  instead of the chips, One piece many outfits with a new tall cut, Try with my wardrobe, Try it on, Ask Styld, and In
+  ChatGPT and Claude from the owner's screen recording), prototyped in the film workspace first.
 
 ## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
 

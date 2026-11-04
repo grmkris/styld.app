@@ -8,10 +8,11 @@ import { type LandingBucket, serveLandingFile } from '../src/LandingMedia.ts'
 const film = new TextEncoder().encode('0123456789')
 const reads: Array<{ readonly key: string; readonly range: unknown }> = []
 const bucket: LandingBucket = {
-  head: (key) => Promise.resolve(key === 'landing/coat-loop-tall.mp4' ? { size: film.length, httpEtag: '"v1"' } : null),
+  head: (key) =>
+    Promise.resolve(key === 'landing/wardrobe-loop-tall.mp4' ? { size: film.length, httpEtag: '"v1"' } : null),
   get: (key, options) => {
     reads.push({ key, range: options?.range })
-    if (key !== 'landing/coat-loop-tall.mp4') return Promise.resolve(null)
+    if (key !== 'landing/wardrobe-loop-tall.mp4') return Promise.resolve(null)
     const { offset, length } = options?.range ?? { offset: 0, length: film.length }
     return Promise.resolve({ body: new Blob([film.slice(offset, offset + length)]).stream() })
   },
@@ -28,7 +29,7 @@ const get = (name: string, headers: Readonly<Record<string, string>> = {}) =>
 
 describe('the landing files', () => {
   test('a film goes out whole, typed and cached for a year', async () => {
-    const response = await get('coat-loop-tall.mp4')
+    const response = await get('wardrobe-loop-tall.mp4')
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toBe('video/mp4')
     expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
@@ -37,7 +38,7 @@ describe('the landing files', () => {
   })
 
   test('a byte range answers 206 with only those bytes, as Safari asks for a video', async () => {
-    const response = await get('coat-loop-tall.mp4', { range: 'bytes=2-5' })
+    const response = await get('wardrobe-loop-tall.mp4', { range: 'bytes=2-5' })
     expect(response.status).toBe(206)
     expect(response.headers.get('content-range')).toBe('bytes 2-5/10')
     expect(response.headers.get('content-length')).toBe('4')
@@ -45,16 +46,16 @@ describe('the landing files', () => {
   })
 
   test('an open range and a suffix range read to the end', async () => {
-    const open = await get('coat-loop-tall.mp4', { range: 'bytes=7-' })
+    const open = await get('wardrobe-loop-tall.mp4', { range: 'bytes=7-' })
     expect(open.headers.get('content-range')).toBe('bytes 7-9/10')
     expect(await open.text()).toBe('789')
-    const suffix = await get('coat-loop-tall.mp4', { range: 'bytes=-3' })
+    const suffix = await get('wardrobe-loop-tall.mp4', { range: 'bytes=-3' })
     expect(suffix.status).toBe(206)
     expect(await suffix.text()).toBe('789')
   })
 
   test('a range past the end is refused with the size', async () => {
-    const response = await get('coat-loop-tall.mp4', { range: 'bytes=10-' })
+    const response = await get('wardrobe-loop-tall.mp4', { range: 'bytes=10-' })
     expect(response.status).toBe(416)
     expect(response.headers.get('content-range')).toBe('bytes */10')
   })
@@ -67,10 +68,10 @@ describe('the landing files', () => {
   })
 
   test('an allowlisted name not uploaded yet is not found', async () => {
-    expect((await get('mirror-loop-wide.mp4')).status).toBe(404)
+    expect((await get('wardrobe-loop-wide.mp4')).status).toBe(404)
   })
 
   test('a browser holding the file is told it is unchanged', async () => {
-    expect((await get('coat-loop-tall.mp4', { 'if-none-match': '"v1"' })).status).toBe(304)
+    expect((await get('wardrobe-loop-tall.mp4', { 'if-none-match': '"v1"' })).status).toBe(304)
   })
 })
