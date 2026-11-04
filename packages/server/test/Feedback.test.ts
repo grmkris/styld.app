@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
-import { CurrentAccount, FeedbackId, maximumFeedbackPerDay } from '@styld/protocol'
-import { Effect, Layer } from 'effect'
+import { CurrentAccount, FeedbackId, maximumFeedbackPerDay, SendFeedback } from '@styld/protocol'
+import { Effect, Layer, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
 import { Feedback } from '../src/mcp/Feedback.ts'
 import { Database } from '../src/kernel/Db.ts'
@@ -62,4 +62,10 @@ describe('assistants’ notes', () => {
       expect(yield* feedback.list('open')).toEqual([])
     }).pipe(Effect.provide(over())),
   )
+
+  it('tells the assistant the note’s limits in the tool’s schema, not only when it refuses', () => {
+    expect(Schema.toJsonSchemaDocument(SendFeedback).schema).toMatchObject({
+      properties: { message: { type: 'string', maxLength: 1000, minLength: 2 } },
+    })
+  })
 })

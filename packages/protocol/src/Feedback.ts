@@ -22,7 +22,8 @@ export const maximumFeedbackPerDay = 30
 /** A note from the assistant: what kind, in its own words, and the tool it was about when there was one. */
 export const SendFeedback = Schema.Struct({
   kind: FeedbackKind,
-  message: Schema.Trim.check(Schema.isMinLength(3), Schema.isMaxLength(1000)),
+  /** Checked rather than trimmed, so the limits reach the tool's JSON Schema. */
+  message: Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(3), Schema.isMaxLength(1000)),
   tool: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[a-z]+_[a-z]+$/u), Schema.isMaxLength(64))),
 })
 export type SendFeedback = typeof SendFeedback.Type

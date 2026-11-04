@@ -21,6 +21,7 @@ import { Boards } from '../src/boards/Boards.ts'
 import { unusedBoards } from './fakes/Boards.ts'
 import { unusedWardrobe } from './fakes/Wardrobe.ts'
 import { callTool } from '../src/mcp/Tools.ts'
+import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { type MediaGrant, SignedMedia } from '../src/kernel/SignedMedia.ts'
 import type { ImageBindings } from '../src/wardrobe/Delivery.ts'
 
@@ -319,5 +320,12 @@ describe('wardrobe_show', () => {
     const navy = await show({ colour: 'navy', limit: 4 })
     expect(navy.page).toMatchObject({ total: 10, nextCursor: '4' })
     expect(navy.page.pieces).toHaveLength(4)
+  })
+})
+
+describe('the views resource', () => {
+  test('describes every view, so ChatGPT never copies one tool’s description onto the others', () => {
+    const meta: Record<string, unknown> = readResource(viewsUri)?.contents[0]?.['_meta'] ?? {}
+    expect(meta['openai/widgetDescription']).toBe(resources[0]?.description)
   })
 })
