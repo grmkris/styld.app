@@ -174,6 +174,19 @@ const targetIs = (target: CheckTarget) =>
 export const forgetCheck = (db: Drizzle, accountId: string, target: CheckTarget) =>
   db.delete(contentChecks).where(and(targetIs(target), eq(contentChecks.accountId, accountId)))
 
+/** The statement that forgets the account's checks of several targets of one kind (at most a chunk of ids, `chunked`),
+ * for the batch that deletes them. */
+export const forgetChecks = (db: Drizzle, accountId: string, kind: CheckTarget['kind'], ids: ReadonlyArray<string>) =>
+  db
+    .delete(contentChecks)
+    .where(
+      and(
+        eq(contentChecks.targetKind, kind),
+        inArray(contentChecks.targetId, [...ids]),
+        eq(contentChecks.accountId, accountId),
+      ),
+    )
+
 /** A check whose target is gone: the target's own table no longer has its row. */
 const targetGone = (db: Drizzle) =>
   or(

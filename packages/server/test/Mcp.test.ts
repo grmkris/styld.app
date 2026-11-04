@@ -87,6 +87,7 @@ const wardrobe = Wardrobe.of({
   addPiece: notUsed,
   updatePiece: notUsed,
   deletePiece: notUsed,
+  deletePieces: notUsed,
   setBack: notUsed,
   removeBack: notUsed,
   choosePicture: notUsed,
@@ -253,6 +254,7 @@ describe('MCP tools', () => {
     ])
     expect(list.map(({ name }) => name)).toEqual([...toolNames])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
+    expect(list.find(({ name }) => name === 'pieces_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
       expect(entry.name).toMatch(/^[a-z]+_[a-z]+$/)
       expect(`mcp__styld__${entry.name}`.length).toBeLessThanOrEqual(64)

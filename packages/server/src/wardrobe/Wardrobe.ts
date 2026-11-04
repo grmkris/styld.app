@@ -3,6 +3,7 @@ import {
   type CreateUpload,
   type CreateVideoUpload,
   CurrentAccount,
+  type DeletePieces,
   NoCleanPicture,
   NotFound,
   ChoosePicture,
@@ -35,7 +36,7 @@ import {
 } from './Shared.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { admitUpload } from './Admission.ts'
-import { type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
+import { type PieceRow, type ReceiptRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { deleting, once, type Operation } from '../kernel/Receipts.ts'
@@ -401,19 +402,40 @@ const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
     const { accountId } = yield* CurrentAccount
     const deletion = { accountId, operationId, command: 'deletePiece', target: pieceId }
     yield* deleting(yield* WardrobeStore, deletion, (receipt) =>
+      Effect.flatMap(ownPiece(pieceId), (piece) => removePieces(accountId, [piece], receipt)),
+    )
+  }, Effect.provide(context)),
+  /** Delete several pieces at once, as `deletePiece` deletes one. A piece already gone is skipped, since gone is what
+   * was asked for; another account's piece is `NotFound`, and then nothing is deleted. A repeat answers done. */
+  deletePieces: Effect.fn('Styld.Wardrobe.deletePieces')(function* (input: DeletePieces) {
+    const { accountId } = yield* CurrentAccount
+    const store = yield* WardrobeStore
+    const pieceIds = [...new Set(input.pieceIds)]
+    const deletion = { accountId, operationId: input.operationId, command: 'deletePieces', target: pieceIds }
+    yield* deleting(store, deletion, (receipt) =>
       Effect.gen(function* () {
-        const piece = yield* ownPiece(pieceId)
-        if (!(yield* stored((yield* WardrobeStore).deletePiece(accountId, piece, receipt))))
-          return yield* NotFound.make({})
-        const own = yield* keysUnder((yield* Media).bucket, piecePrefix(accountId, pieceId)).pipe(
-          Effect.orElseSucceed(() => []),
-        )
-        const shown = [piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull)
-        yield* forgetObjects(accountId, [...shown, ...own], 'piece')
+        const found = yield* stored(store.piecesWithIds(pieceIds))
+        if (found.some((piece) => piece.accountId !== accountId)) return yield* NotFound.make({})
+        yield* removePieces(accountId, found, receipt)
       }),
     )
   }, Effect.provide(context)),
 }))
+
+/** Delete the account's pieces' rows with the delete's receipt, then the objects only they showed (`forgetObjects`):
+ * each piece's own prefix and its photo, image and back. */
+const removePieces = (accountId: string, rows: ReadonlyArray<PieceRow>, receipt: ReceiptRow) =>
+  Effect.gen(function* () {
+    yield* stored((yield* WardrobeStore).deletePieces(accountId, rows, receipt))
+    const bucket = (yield* Media).bucket
+    const own = yield* Effect.forEach(
+      rows,
+      ({ id }) => keysUnder(bucket, piecePrefix(accountId, id)).pipe(Effect.orElseSucceed(() => [])),
+      { concurrency: 6 },
+    )
+    const shown = rows.flatMap((piece) => [piece.originalKey, piece.imageKey, piece.backImageKey])
+    yield* forgetObjects(accountId, [...shown.filter(Predicate.isNotNull), ...own.flat()], 'piece')
+  })
 
 /** Every wardrobe operation, each group built over the services it yields (`Shared.ts` `WardrobeServices`). */
 const make = Effect.gen(function* () {

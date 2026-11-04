@@ -1,4 +1,4 @@
-import { maximumColours, maximumImageBytes, maximumVideoBytes } from './Limits.ts'
+import { maximumColours, maximumImageBytes, maximumVideoBytes, piecesAtOnce } from './Limits.ts'
 import { CategoryName, Hint, Name, Notes } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
@@ -235,6 +235,14 @@ export type PieceChanges = typeof PieceChanges.Type
 /** Change a piece: `PATCH /api/pieces/:pieceId`. */
 export const UpdatePiece = Schema.Struct({ operationId: OperationId, ...PieceChanges.fields })
 export type UpdatePiece = typeof UpdatePiece.Type
+
+/** Delete several pieces at once: `POST /api/pieces/delete`, for good, as deleting one does. A piece already deleted
+ * is skipped; another account's refuses the whole delete. Repeating the `operationId` answers the first request. */
+export const DeletePieces = Schema.Struct({
+  operationId: OperationId,
+  pieceIds: Schema.Array(PieceId).check(Schema.isMinLength(1), Schema.isMaxLength(piecesAtOnce)),
+})
+export type DeletePieces = typeof DeletePieces.Type
 
 /** A photo of the piece's back: `PUT /api/pieces/:pieceId/back`, cut out like the front, for a photo's credit. A new
  * `operationId` each time; repeating one answers the first request again. */

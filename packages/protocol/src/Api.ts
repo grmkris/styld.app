@@ -65,6 +65,7 @@ import {
   ChoosePicture,
   CreateUpload,
   CreateVideoUpload,
+  DeletePieces,
   NoCleanPicture,
   Piece,
   PieceId,
@@ -148,6 +149,13 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.delete('deletePiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
       payload: Operation,
+      success: HttpApiSchema.NoContent,
+      error: [NotFound, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('deletePieces', '/pieces/delete', {
+      payload: DeletePieces,
       success: HttpApiSchema.NoContent,
       error: [NotFound, OperationConflict, Unavailable],
     }),

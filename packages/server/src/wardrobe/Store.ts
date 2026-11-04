@@ -4,8 +4,8 @@ import type { PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
-import { forgetCheck } from '../safety/Checks.ts'
-import { chunked, Database, first, query, StoreUnavailable } from '../kernel/Db.ts'
+import { forgetChecks } from '../safety/Checks.ts'
+import { chunked, Database, first, inChunks, query, StoreUnavailable } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
@@ -347,19 +347,25 @@ export const makeStore = (db: Database['Service']) => ({
       .update(pieces)
       .set(changes)
       .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId))),
-  /** Removes the piece, its upload and its content check, and records the delete's receipt, as one batch. */
-  deletePiece: (accountId: string, piece: PieceRow, receipt: ReceiptRow) =>
+  /** The pieces with these ids, whoever's they are: a delete refuses another account's piece. */
+  piecesWithIds: (pieceIds: ReadonlyArray<string>) =>
+    inChunks(pieceIds, (chunk) => db.select().from(pieces).where(inArray(pieces.id, chunk))),
+  /** Removes the account's pieces, their uploads and their content checks, and records the delete's receipt, as one
+   * batch; the ids go in chunks under D1's parameter limit. What the pieces were in goes with them (looks, pins, worn
+   * days, pictures), and a photo's garment matched to one keeps its place, matched to nothing. */
+  deletePieces: (accountId: string, rows: ReadonlyArray<PieceRow>, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
-        db
-          .delete(pieces)
-          .where(and(eq(pieces.id, piece.id), eq(pieces.accountId, accountId)))
-          .returning({ id: pieces.id }),
-        forgetCheck(db, accountId, { kind: 'piece', id: piece.id }),
         db.insert(operationReceipts).values(receipt),
-        ...(piece.uploadId === null ? [] : [db.delete(uploads).where(eq(uploads.id, piece.uploadId))]),
+        ...chunked(rows.map(({ id }) => id)).flatMap((chunk) => [
+          db.delete(pieces).where(and(eq(pieces.accountId, accountId), inArray(pieces.id, chunk))),
+          forgetChecks(db, accountId, 'piece', chunk),
+        ]),
+        ...chunked(rows.flatMap(({ uploadId }) => (uploadId === null ? [] : [uploadId]))).map((chunk) =>
+          db.delete(uploads).where(inArray(uploads.id, chunk)),
+        ),
       ]),
-    ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
+    ).pipe(Effect.asVoid),
   keysInUse: (accountId: string, keys: ReadonlyArray<string>) => keysInUse(db, accountId, keys),
   /** Records the processed photo; a piece no longer processing is left as it is. */
   finishProcessing: (

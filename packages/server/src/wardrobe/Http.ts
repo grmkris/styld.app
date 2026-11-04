@@ -25,6 +25,7 @@ export const wardrobeHandlers = HttpApiBuilder.group(StyldApi, 'wardrobe', (hand
       .handle('deleteCategory', ({ payload }) => categories.delete(payload))
       .handle('updatePiece', ({ params, payload }) => wardrobe.updatePiece(params.pieceId, payload))
       .handle('deletePiece', ({ params, payload }) => wardrobe.deletePiece(params.pieceId, payload.operationId))
+      .handle('deletePieces', ({ payload }) => wardrobe.deletePieces(payload))
       .handle('setBack', ({ params, payload }) => wardrobe.setBack(params.pieceId, payload))
       .handle('removeBack', ({ params, payload }) => wardrobe.removeBack(params.pieceId, payload.operationId))
       .handle('choosePicture', ({ params, payload }) => wardrobe.choosePicture(params.pieceId, payload))

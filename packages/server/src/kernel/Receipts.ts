@@ -189,12 +189,13 @@ export const madeBefore = (receipts: ReceiptRows, operation: Identified) =>
 /** A receipt as stored, for the batch of the operation it records. */
 export type ReceiptRow = typeof operationReceipts.$inferSelect
 
-/** A delete the account asks for under an operation id, of one thing (`target`, its id). */
+/** A delete the account asks for under an operation id, of one thing (`target`, its id) or of several (their ids,
+ * in the order asked). */
 export interface Deletion {
   readonly accountId: string
   readonly operationId: string
   readonly command: string
-  readonly target: string
+  readonly target: string | ReadonlyArray<string>
 }
 
 /** A delete answered once: `remove` deletes the thing and writes the receipt it is given in the same D1 batch, so a
@@ -211,7 +212,8 @@ export const deleting = Effect.fnUntraced(function* <E, R>(
     .findReceipt(deletion.accountId, deletion.operationId)
     .pipe(Effect.mapError(unavailable))
   if (Option.isSome(yield* priorResult(identified, receipt))) return
-  yield* remove(yield* receiptRow(identified, deletion.target))
+  const result = typeof deletion.target === 'string' ? deletion.target : deletion.target.join(' ')
+  yield* remove(yield* receiptRow(identified, result))
 })
 
 /** A write that is D1 statements and nothing else. */

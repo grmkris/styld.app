@@ -14,6 +14,7 @@ import {
   PieceType,
   Season,
   UpdatePiece,
+  DeletePieces,
   UploadId,
   maximumImageBytes,
   textLength,
@@ -172,6 +173,15 @@ const writeTools = (
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     handler: ({ pieceId, operationId }) =>
       wardrobe.deletePiece(pieceId, operationId).pipe(Effect.as({ deleted: true, pieceId })),
+  }),
+  tool({
+    name: 'pieces_delete',
+    title: 'Delete several pieces',
+    description:
+      'Delete up to 50 pieces and their photos from the wardrobe at once, for good: they also leave the person’s looks, boards and photos. Ask the person before deleting, naming the pieces. A piece already deleted is skipped. Choose a new `operationId`.',
+    parameters: DeletePieces,
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    handler: (input) => wardrobe.deletePieces(input).pipe(Effect.as({ deleted: true, pieceIds: input.pieceIds })),
   }),
 ]
 

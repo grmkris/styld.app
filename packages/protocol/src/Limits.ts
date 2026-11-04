@@ -16,6 +16,8 @@ export const maximumBoardItems = 80
 /** The things pinned on one board, and the most one call pins or unpins. */
 export const maximumBoardPins = 500
 export const pinsAtOnce = 50
+/** The pieces one call deletes. */
+export const piecesAtOnce = 50
 /** The proposals one outfit request returns, the pieces it locks, and the combinations it says were shown. */
 export const mostProposals = 6
 export const mostLocked = 5

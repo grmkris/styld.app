@@ -240,6 +240,10 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   })
   const gone = await client.callTool({ name: 'piece_get', arguments: { pieceId } })
   expect(gone.isError).toBe(true)
+  // Several at once: a piece already deleted is skipped, since gone is what was asked for.
+  expect(
+    await structured(client, 'pieces_delete', { pieceIds: [pieceId], operationId: 'mcp-native-deletes-1' }),
+  ).toEqual({ deleted: true, pieceIds: [pieceId] })
   // A deleted piece leaves its looks; deleting the look leaves nothing behind.
   expect(await structured(client, 'look_get', { lookId })).toMatchObject({ id: lookId, pieces: [] })
   expect(await structured(client, 'look_delete', { lookId, operationId: 'mcp-native-look-delete-1' })).toEqual({

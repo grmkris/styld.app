@@ -177,11 +177,38 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
     shopUrl: 'https://shop.example/knit',
   })
 
-  const key = `accounts/native-wardrobe/uploads/${photo.uploadId}`
-  expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
-  expect((await owner(`/api/pieces/${piece.id}`, { method: 'DELETE' })).status).toBe(204)
-  expect((await owner(`/api/pieces/${piece.id}`)).status).toBe(404)
+  await verifyDeletes(origin, fixtures, { owner, other }, piece.id, photo.uploadId)
+}
+
+/** A piece deleted on its page goes with its photo. Then several deleted from the grid at once: another account's
+ * request deletes nothing, a piece already gone is skipped, the rest go with their photos, and the same request again
+ * answers done. */
+const verifyDeletes = async (
+  origin: string,
+  fixtures: string,
+  { owner, other }: { readonly owner: Call; readonly other: Call },
+  goneId: string,
+  goneUpload: string,
+) => {
+  const goneKey = `accounts/native-wardrobe/uploads/${goneUpload}`
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${goneKey}`)).json()).toEqual({ exists: true })
+  expect((await owner(`/api/pieces/${goneId}`, { method: 'DELETE' })).status).toBe(204)
+  expect((await owner(`/api/pieces/${goneId}`)).status).toBe(404)
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${goneKey}`)).json()).toEqual({ exists: false })
+  const uploadId = await receivedPhoto(origin, owner)
+  const added = await send(owner, '/api/pieces', 'POST', { operationId: 'native-add-0004', uploadId, type: 'tops' })
+  const { id } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await added.json())
+  expect(await waitUntilReady(owner, id)).toBe('ready')
+  const key = `accounts/native-wardrobe/uploads/${uploadId}`
+  expect((await send(other, '/api/pieces/delete', 'POST', { pieceIds: [id] })).status).toBe(404)
+  expect((await owner(`/api/pieces/${id}`)).status).toBe(200)
+  expect((await send(owner, '/api/pieces/delete', 'POST', { pieceIds: [] })).status).toBe(400)
+  const several = { operationId: 'native-delete-several-1', pieceIds: [goneId, id, id] }
+  expect((await send(owner, '/api/pieces/delete', 'POST', several)).status).toBe(204)
+  expect((await owner(`/api/pieces/${id}`)).status).toBe(404)
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
+  expect((await send(owner, '/api/pieces/delete', 'POST', several)).status).toBe(204)
+  expect((await send(owner, '/api/pieces/delete', 'POST', { ...several, pieceIds: [id] })).status).toBe(409)
 }
 
 /** Deleting an account ends its access at once and removes its pieces and photos; the email and

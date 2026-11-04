@@ -78,6 +78,7 @@ const wardrobe = Wardrobe.of({
   addPiece: notUsed,
   updatePiece: notUsed,
   deletePiece: notUsed,
+  deletePieces: notUsed,
   processPiece: notUsed,
   setBack: notUsed,
   removeBack: notUsed,
