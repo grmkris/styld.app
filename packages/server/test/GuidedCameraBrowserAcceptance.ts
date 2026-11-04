@@ -65,7 +65,7 @@ export const verifyGuidedCameraJourney = async (browser: Browser, origin: string
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     await page.getByRole('heading', { name: '1 piece found' }).waitFor({ timeout: 30000 })
     await page.getByRole('button', { name: 'Keep Choose what it is' }).click()
-    await page.getByRole('button', { name: 'Tops & T-shirts', exact: true }).click()
+    await page.getByRole('button', { name: 'T-shirts & short-sleeve tops', exact: true }).click()
     await page.getByRole('button', { name: 'Done', exact: true }).click()
     await page.getByRole('button', { name: 'Add 1 to my wardrobe' }).click()
     await page.waitForURL(`${origin}/wardrobe`, { timeout: 30000 })

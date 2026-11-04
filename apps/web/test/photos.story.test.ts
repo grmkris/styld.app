@@ -16,7 +16,7 @@ const photoOf = (fields: object = {}) =>
     id: `ph_${'beach'.padEnd(22, 'x')}`,
     status: 'ready',
     favourite: false,
-    garments: [{ id: garmentId, type: 'tops', colours: ['white'], match: 'suggested', pieceId }],
+    garments: [{ id: garmentId, type: 'shortSleeveTops', colours: ['white'], match: 'suggested', pieceId }],
     lookId: null,
     hasCutout: false,
     createdAt: '2026-10-31T10:00:00.000Z',

@@ -83,7 +83,7 @@ const seed = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
       ...Array.from({ length: 30 }, (_, i) =>
         database
           .prepare(
-            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_type, suggested_colours, suggested_occasions, whole, created_at) VALUES (?, ?, ?, 'review', ?, ?, 1, 'tops', '[\"blue\"]', '[]', 0.9, ?)",
+            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_type, suggested_colours, suggested_occasions, whole, created_at) VALUES (?, ?, ?, 'review', ?, ?, 1, 'shortSleeveTops', '[\"blue\"]', '[]', 0.9, ?)",
           )
           .bind(id('dt', String(i)), id('cp', 'capture'), mediaLoadAccount, key, key, at + i),
       ),

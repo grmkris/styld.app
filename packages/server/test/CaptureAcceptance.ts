@@ -101,7 +101,7 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   // Old session-backed routes are gone. Another account's tray remains empty.
   expect((await other(`/cdn/detections/${detectionId}/cutout`)).status).toBe(404)
   expect((await tray(other)).captures).toEqual([])
-  const keep = { detectionId, type: 'tops', colours: ['red'], name: 'Red tee' }
+  const keep = { detectionId, type: 'shortSleeveTops', colours: ['red'], name: 'Red tee' }
   expect(
     (
       await send(other, '/api/captures/review', 'POST', {
@@ -127,7 +127,7 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   ).toBe(404)
   expect(await (await owner(`/api/pieces/${pieceIds[0]}`)).json()).toMatchObject({
     status: 'ready',
-    type: 'tops',
+    type: 'shortSleeveTops',
     name: 'Red tee',
   })
   const { images } = Schema.decodeUnknownSync(Schema.Struct({ images: Schema.Struct({ thumb: Schema.String }) }))(

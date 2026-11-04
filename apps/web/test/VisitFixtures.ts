@@ -11,7 +11,7 @@ import { ShownData, VisitShown } from '../src/page/Visit.ts'
 export const knit = {
   id: `pc_${'knit'.padEnd(22, 'x')}`,
   name: 'Navy knit',
-  type: 'tops',
+  type: 'shortSleeveTops',
   colours: [],
 }
 export const nika = Schema.decodeUnknownSync(PublicProfile)({

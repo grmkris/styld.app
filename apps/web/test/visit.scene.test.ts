@@ -93,7 +93,7 @@ describe('a public profile', () => {
       { update, view },
       given(visiting(`/pieces/${knit.id}`, shownAs.Piece({ page }))),
       expect(role('heading', { name: 'Navy knit' })).toExist(),
-      expect(text('Top')).toExist(),
+      expect(text('T-shirt')).toExist(),
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', `/login?next=%2Fpieces%2F${knit.id}`),

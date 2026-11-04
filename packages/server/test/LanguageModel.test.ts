@@ -187,7 +187,13 @@ describe('a chat with tools', () => {
     const { asked, layer } = gateway([
       completion(
         'Looking.',
-        [{ id: 'call_1', type: 'function', function: { name: 'piece_search', arguments: '{"type":"tops"}' } }],
+        [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'piece_search', arguments: '{"type":"shortSleeveTops"}' },
+          },
+        ],
         'tool_calls',
       ),
       completion('Wear the navy shirt.'),

@@ -65,13 +65,17 @@ const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyAr
     garments.filter(({ photoId }) => photoId === row.id),
     (garment) =>
       Effect.gen(function* () {
-        const image = yield* (yield* SignedMedia).address({
-          entityId: garment.id,
-          key: garment.cutoutKey,
-          contentType: 'image/png',
-          variant: 'thumb',
-          version: garment.cutoutKey,
-        })
+        // A garment added by hand has no cut-out yet, so no picture.
+        const image =
+          garment.cutoutKey === null
+            ? Option.none()
+            : yield* (yield* SignedMedia).address({
+                entityId: garment.id,
+                key: garment.cutoutKey,
+                contentType: 'image/png',
+                variant: 'thumb',
+                version: garment.cutoutKey,
+              })
         return {
           id: garment.id,
           type: garment.type,
@@ -228,7 +232,8 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
   Effect.gen(function* () {
     const captureId = yield* newId('cp')
     const detectionId = yield* newId('dt')
-    const bytes = yield* readObject(garment.cutoutKey)
+    // A garment added by hand has no cut-out to offer yet.
+    const bytes = garment.cutoutKey === null ? Option.none() : yield* readObject(garment.cutoutKey)
     if (Option.isNone(bytes)) return yield* unavailable()
     const contentType = 'image/png'
     const key = captureKey(photo.accountId, captureId, `${detectionId}.png`)

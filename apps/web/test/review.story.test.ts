@@ -19,7 +19,7 @@ import {
 } from '../src/page/Review.ts'
 
 const id = (prefix: 'cp' | 'dt', n: number) => `${prefix}_${String(n).padStart(22, '0')}`
-const detection = (n: number, type: 'tops' | 'jeans' | null, preselected = true, sightings = 1) => ({
+const detection = (n: number, type: 'shortSleeveTops' | 'jeans' | null, preselected = true, sightings = 1) => ({
   id: DetectionId.make(id('dt', n)),
   preselected,
   hasCutout: true,
@@ -50,7 +50,7 @@ const tray = (
 })
 
 const found = tray([
-  { status: 'review', detections: [detection(1, 'tops'), detection(2, 'jeans'), detection(3, null)] },
+  { status: 'review', detections: [detection(1, 'shortSleeveTops'), detection(2, 'jeans'), detection(3, null)] },
 ])
 const processing = tray([{ status: 'processing', detections: [] }])
 
@@ -101,9 +101,9 @@ describe('the review tray', () => {
         keep: [
           {
             detectionId: id('dt', 1),
-            type: 'tops',
+            type: 'shortSleeveTops',
             details: {
-              type: Option.some('tops'),
+              type: Option.some('shortSleeveTops'),
               colours: ['navy'],
               seasons: [],
               rainproof: false,
@@ -152,7 +152,7 @@ describe('the review tray', () => {
 
   test('a poll leaves the person’s decisions, the piece open and adding as they were', () => {
     const withWaiting = tray([
-      { status: 'review', detections: [detection(1, 'tops'), detection(2, 'jeans')] },
+      { status: 'review', detections: [detection(1, 'shortSleeveTops'), detection(2, 'jeans')] },
       { status: 'processing', detections: [] },
     ])
     const shown = update(init(), Message.SucceededLoadTray({ tray: withWaiting })).model
@@ -211,8 +211,10 @@ describe('the review tray', () => {
   })
 
   test('a piece seen in several files splits back into its sightings, which the tray reads again', () => {
-    const seenTwice = tray([{ status: 'review', detections: [detection(1, 'tops', true, 2)] }])
-    const apart = tray([{ status: 'review', detections: [detection(1, 'tops'), detection(2, 'tops')] }])
+    const seenTwice = tray([{ status: 'review', detections: [detection(1, 'shortSleeveTops', true, 2)] }])
+    const apart = tray([
+      { status: 'review', detections: [detection(1, 'shortSleeveTops'), detection(2, 'shortSleeveTops')] },
+    ])
     const detectionId = id('dt', 1)
     story(
       update,

@@ -126,3 +126,95 @@ describe('the T-12 rebuild of pieces, detections and photo garments', () => {
     expect(one("SELECT count(*) AS n FROM sqlite_master WHERE name LIKE '__keep_%'")).toEqual({ n: 0 })
   })
 })
+
+/** Every kind of link the tops-by-sleeve rebuild of pieces, detections and photo garments drops and must put back, in
+ * the schema just before it: a board around an anchor piece with a piece item, a text label and a kept outfit, looks,
+ * worn days, saves, a clean picture, a capture of a gallery photo's garment and its detections. */
+const sleeveRows = [
+  `INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac1', 0, 'A', 0);`,
+  `INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at) VALUES ('up1','ac1','d','image/png',1,'k','used',0);`,
+  `INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at) VALUES ('up2','ac1','e','image/png',1,'k2','used',0);`,
+  ...[
+    ['pc1', 'tops'],
+    ['pc2', 'coats'],
+    ['pc3', 'jeans'],
+  ].map(
+    ([id, type]) =>
+      `INSERT INTO pieces (id, account_id, type, colours, seasons, occasions, status, source, original_key, content_type, created_at, updated_at) VALUES ('${id}','ac1','${type}','["white"]','["summer"]','[]','ready','website','k','image/png',0,0);`,
+  ),
+  `INSERT INTO piece_pictures (piece_id, account_id, state, version, redraws, paid, created_at, updated_at) VALUES ('pc1','ac1','ready',1,0,0,0,0);`,
+  `INSERT INTO looks (id, account_id, name, created_at) VALUES ('lk1','ac1','L',0);`,
+  `INSERT INTO look_pieces (look_id, piece_id, position) VALUES ('lk1','pc1',0);`,
+  `INSERT INTO look_pieces (look_id, piece_id, position) VALUES ('lk1','pc3',1);`,
+  `INSERT INTO worn_pieces (account_id, day, piece_id, position) VALUES ('ac1','2026-11-04','pc1',0);`,
+  `INSERT INTO saves (id, account_id, kind, piece_id, created_at) VALUES ('sv1','ac1','piece','pc2',0);`,
+  `INSERT INTO outfit_photos (id, account_id, upload_id, original_key, content_type, status, favourite, created_at, updated_at) VALUES ('ph1','ac1','up2','k','image/png','ready',0,0,0);`,
+  `INSERT INTO photo_garments (id, photo_id, account_id, position, cutout_key, type, colours, piece_id, state) VALUES ('pg1','ph1','ac1',0,'c','tops','[]','pc1','confirmed');`,
+  `INSERT INTO captures (id, account_id, kind, source, status, garment_id, original_key, content_type, bytes, credits, attempt, created_at, updated_at) VALUES ('cp1','ac1','photo','photos','done','pg1','k','image/png',1,0,0,0,0);`,
+  `INSERT INTO capture_frames (capture_id, idx, upload_id, object_key, at_ms, sharpness) VALUES ('cp1',0,'up1','f',0,'[]');`,
+  `INSERT INTO detections (id, capture_id, account_id, status, source_key, preselected, suggested_type, suggested_colours, suggested_occasions, duplicate_of, created_at) VALUES ('dt1','cp1','ac1','kept','s',1,'tops','[]','[]','pc2',0);`,
+  `INSERT INTO detections (id, capture_id, account_id, status, source_key, preselected, suggested_type, suggested_colours, suggested_occasions, group_of, created_at) VALUES ('dt2','cp1','ac1','review','s',1,'jeans','[]','[]','dt1',0);`,
+  `UPDATE pieces SET detection_id = 'dt1' WHERE id = 'pc1';`,
+  `INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, template, anchor_piece_id, created_at, updated_at) VALUES ('bd1','ac1','B','paper',1,'private','[]','b','outfits','pc1',0,0);`,
+  `INSERT INTO board_outfits (id, account_id, board_id, position, mode, session, look_id, created_at) VALUES ('bo1','ac1','bd1',0,'fast','s','lk1',0);`,
+  `INSERT INTO board_outfit_pieces (outfit_id, piece_id, position) VALUES ('bo1','pc1',0);`,
+  `INSERT INTO board_outfit_pieces (outfit_id, piece_id, position) VALUES ('bo1','pc3',1);`,
+  `INSERT INTO board_items (board_id, id, kind, piece_id, x, y, size, turn, z, flipped, outfit_id) VALUES ('bd1','it1','piece','pc1',0,0,1,0,0,0,'bo1');`,
+  `INSERT INTO board_items (board_id, id, kind, text, text_style, x, y, size, turn, z, flipped) VALUES ('bd1','it2','text','Weekend','label',0,0,1,0,1,0);`,
+]
+
+describe('the tops-by-sleeve rebuild of pieces, detections and photo garments', () => {
+  test('keeps every row and link, and makes every top a short-sleeved one', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec('PRAGMA foreign_keys = ON')
+    const rebuild = '20261104111927'
+    const applied = (folder: string) => {
+      for (const statement of statementsOf(folder)) db.exec(statement)
+    }
+    folders.filter((name) => name < rebuild).forEach(applied)
+    for (const row of sleeveRows) db.exec(row)
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all()
+      .map(({ name }) => String(name))
+    const counts = () =>
+      Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT count(*) AS n FROM "${table}"`).get()]))
+    const before = counts()
+    folders.filter((name) => name >= rebuild).forEach(applied)
+    expect(counts()).toEqual(before)
+    const one = (query: string) => db.prepare(query).get()
+    expect(db.prepare('SELECT id, type FROM pieces ORDER BY id').all()).toEqual([
+      { id: 'pc1', type: 'shortSleeveTops' },
+      { id: 'pc2', type: 'coats' },
+      { id: 'pc3', type: 'jeans' },
+    ])
+    expect(db.prepare('SELECT id, suggested_type AS type FROM detections ORDER BY id').all()).toEqual([
+      { id: 'dt1', type: 'shortSleeveTops' },
+      { id: 'dt2', type: 'jeans' },
+    ])
+    expect(one("SELECT type, piece_id AS link FROM photo_garments WHERE id = 'pg1'")).toEqual({
+      type: 'shortSleeveTops',
+      link: 'pc1',
+    })
+    expect(
+      db.prepare("SELECT id, kind, piece_id, outfit_id FROM board_items WHERE board_id = 'bd1' ORDER BY id").all(),
+    ).toEqual([
+      { id: 'it1', kind: 'piece', piece_id: 'pc1', outfit_id: 'bo1' },
+      { id: 'it2', kind: 'text', piece_id: null, outfit_id: null },
+    ])
+    expect(one("SELECT anchor_piece_id AS link FROM boards WHERE id = 'bd1'")).toEqual({ link: 'pc1' })
+    expect(one("SELECT detection_id AS link FROM pieces WHERE id = 'pc1'")).toEqual({ link: 'dt1' })
+    expect(one("SELECT garment_id AS link FROM captures WHERE id = 'cp1'")).toEqual({ link: 'pg1' })
+    expect(one("SELECT duplicate_of AS link FROM detections WHERE id = 'dt1'")).toEqual({ link: 'pc2' })
+    expect(one("SELECT group_of AS link FROM detections WHERE id = 'dt2'")).toEqual({ link: 'dt1' })
+    expect(one("SELECT seasons FROM pieces WHERE id = 'pc1'")).toEqual({ seasons: '["summer"]' })
+    expect(one("SELECT count(*) AS n FROM sqlite_master WHERE name LIKE '__keep_%'")).toEqual({ n: 0 })
+    expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+    // A garment added to a photo by hand has no cut-out yet; one found by the photo keeps its own.
+    expect(one("SELECT cutout_key AS key FROM photo_garments WHERE id = 'pg1'")).toEqual({ key: 'c' })
+    db.exec(
+      `INSERT INTO photo_garments (id, photo_id, account_id, position, cutout_key, type, colours, piece_id, state) VALUES ('pg2','ph1','ac1',1,NULL,'sleevelessTops','[]','pc1','confirmed');`,
+    )
+    expect(one("SELECT cutout_key AS key FROM photo_garments WHERE id = 'pg2'")).toEqual({ key: null })
+  })
+})

@@ -154,7 +154,9 @@
     "emptyHint": "Dodaj fotografije ali video svojih oblačil. Styld izreže vsak kos, ti pa obdržiš tiste, ki so tvoji.",
     "colourFact": "{count, plural, one {Barva} two {Barvi} few {Barve} other {Barve}}",
     "types": {
-      "tops": "Majice in topi",
+      "shortSleeveTops": "Majice s kratkimi rokavi",
+      "longSleeveTops": "Majice z dolgimi rokavi",
+      "sleevelessTops": "Majice brez rokavov",
       "shirts": "Srajce in bluze",
       "bodysuits": "Bodiji",
       "knitwear": "Pletenine",
@@ -193,7 +195,9 @@
     },
     "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
-      "tops": "Majica",
+      "shortSleeveTops": "Majica s kratkimi rokavi",
+      "longSleeveTops": "Majica z dolgimi rokavi",
+      "sleevelessTops": "Majica brez rokavov",
       "shirts": "Srajca",
       "bodysuits": "Bodi",
       "knitwear": "Pletenina",
@@ -231,7 +235,9 @@
       "hairAccessories": "Dodatek za lase"
     },
     "typeWords": {
-      "tops": "majica, majice, top, topi",
+      "shortSleeveTops": "majica, majice, kratki rokavi, kratek rokav, t-shirt",
+      "longSleeveTops": "majica, majice, dolgi rokavi, dolg rokav, longsleeve",
+      "sleevelessTops": "majica, majice, top, topi, brez rokavov, naramnice, ramenke",
       "shirts": "srajca, srajce, bluza, bluze",
       "bodysuits": "bodi",
       "knitwear": "pletenina, pulover, jopica, jopa",

@@ -10,10 +10,10 @@ export const colourName = (colour: Colour) => `wardrobe.addPieceColor_${colour}`
 export const seasonName = (season: Season) => `wardrobe.season.${season}` as const satisfies MessageKey
 export const occasionName = (occasion: Occasion) => `wardrobe.occasion.${occasion}` as const satisfies MessageKey
 export const patternName = (pattern: Pattern) => `wardrobe.pattern.${pattern}` as const satisfies MessageKey
-/** The words people use for a type, beyond its name ("tee" for tops), which Ask's search also matches. */
+/** The words people use for a type, beyond its name ("tee" for T-shirts), which Ask's search also matches. */
 export const typeWordsName = (type: PieceType) => `wardrobe.typeWords.${type}` as const satisfies MessageKey
 
-/** What one piece is, in the singular ("Skirt", "Top"). */
+/** What one piece is, in the singular ("Skirt", "T-shirt"). */
 export const kindName = (piece: Pick<Piece, 'type'>) => `wardrobe.typeOne.${piece.type}` as const satisfies MessageKey
 
 /** A piece's name, or what it is when it has none: the same caption on every page, never a type's plural. */

@@ -75,7 +75,7 @@ const verifyMatching = async (origin: string, owner: Call, other: Call, photo: P
     await send(owner, '/api/pieces', 'POST', {
       operationId: 'native-photo-piece-1',
       uploadId: await receivedPhoto(origin, owner),
-      type: 'tops',
+      type: 'shortSleeveTops',
     }),
   )
   expect(await waitUntilReady(owner, pieceId)).toBe('ready')

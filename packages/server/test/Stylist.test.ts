@@ -13,8 +13,8 @@ import { operationOf, runTool, type ToolAccount } from '../src/stylist/Tools.ts'
 
 const pieces = [
   { id: 'pc_navytrousers0000000000', name: 'Navy trousers', type: 'trousers', colours: ['navy'] },
-  { id: 'pc_whitetee00000000000000', name: 'White tee', type: 'tops', colours: ['white'] },
-  { id: 'pc_greyknit00000000000000', name: 'Grey knit', type: 'tops', colours: ['grey'] },
+  { id: 'pc_whitetee00000000000000', name: 'White tee', type: 'shortSleeveTops', colours: ['white'] },
+  { id: 'pc_greyknit00000000000000', name: 'Grey knit', type: 'shortSleeveTops', colours: ['grey'] },
   { id: 'pc_whitesneakers000000000', name: 'White sneakers', type: 'trainers', colours: ['white'] },
 ]
 const own = new Set(pieces.map(({ id }) => id))
@@ -22,7 +22,7 @@ const own = new Set(pieces.map(({ id }) => id))
 const analysis = analysisOf(
   pieces.map(({ id, type, colours }) => ({
     id: PieceId.make(id),
-    type: Schema.decodeUnknownSync(Schema.Literals(['trousers', 'tops', 'trainers']))(type),
+    type: Schema.decodeUnknownSync(Schema.Literals(['trousers', 'shortSleeveTops', 'trainers']))(type),
     colours: Schema.decodeUnknownSync(Schema.Array(Schema.Literals(['navy', 'white', 'grey'])))(colours),
   })),
   { days: 60, pieceIds: ['pc_whitetee00000000000000', 'pc_whitetee00000000000000'] },
@@ -204,7 +204,7 @@ describe('what Styld is told', () => {
   test('the date and season, the wardrobe in a line, and the person’s language; never an id', () => {
     const prompt = systemPrompt({ language: 'sl', today: '2026-01-12', outline: outlineOf(pieces) })
     expect(prompt).toContain('Today is 2026-01-12 (winter).')
-    expect(prompt).toContain('The wardrobe holds 4 pieces: 1 trousers, 2 tops, 1 trainers.')
+    expect(prompt).toContain('The wardrobe holds 4 pieces: 1 trousers, 2 shortSleeveTops, 1 trainers.')
     expect(prompt).toContain('Write this reply in Slovenian')
     expect(prompt).toContain('informal singular ti')
     // The app's word for a look, and no gender chosen for the person (DESIGN.md › Copy and chrome).

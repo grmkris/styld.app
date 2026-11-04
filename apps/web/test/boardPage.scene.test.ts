@@ -189,7 +189,11 @@ describe('a "One piece, six outfits" board (T-10)', () => {
   const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Dark jeans' })
   const outfit = (seed: string, lookId: string | null) => ({
     id: `bo_${seed.padEnd(22, 'x')}`,
-    pieces: [pieceFixture(`${seed}-tee`, { type: 'tops' }), jeans, pieceFixture(`${seed}-shoes`, { type: 'trainers' })],
+    pieces: [
+      pieceFixture(`${seed}-tee`, { type: 'shortSleeveTops' }),
+      jeans,
+      pieceFixture(`${seed}-shoes`, { type: 'trainers' }),
+    ],
     lookId,
     session: `os_${'run'.padEnd(22, 'x')}`,
     mode: 'fast',

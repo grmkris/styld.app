@@ -140,8 +140,8 @@ describe('generation admission', () => {
     const { layer, database } = over()
     database.sqlite.exec(`
       INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, content_type, created_at, updated_at)
-      VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'k1', 'image/png', 0, 0),
-             ('pc_2', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'k2', 'image/png', 0, 0);
+      VALUES ('pc_1', 'ac_1', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'k1', 'image/png', 0, 0),
+             ('pc_2', 'ac_1', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'k2', 'image/png', 0, 0);
     `)
     return Effect.gen(function* () {
       const job = yield* inserted

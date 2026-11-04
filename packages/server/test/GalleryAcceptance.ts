@@ -19,7 +19,7 @@ export const addedPiece = async (origin: string, call: Call, operationId: string
     await send(call, '/api/pieces', 'POST', {
       operationId,
       uploadId: await receivedPhoto(origin, call),
-      type: 'tops',
+      type: 'shortSleeveTops',
     }),
   )
 

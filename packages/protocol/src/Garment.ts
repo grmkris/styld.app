@@ -13,7 +13,9 @@ export type GarmentGroup = typeof GarmentGroup.Type
 
 /** Every garment type, keyed in English, in the order the wardrobe shows them. */
 export const PieceType = Schema.Literals([
-  'tops',
+  'shortSleeveTops',
+  'longSleeveTops',
+  'sleevelessTops',
   'shirts',
   'bodysuits',
   'knitwear',
@@ -58,7 +60,10 @@ export const Slot = Schema.Literals(['top', 'bottom', 'onePiece', 'layer', 'shoe
 export type Slot = typeof Slot.Type
 
 const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; readonly slot: Slot } } = {
-  tops: { group: 'clothing', slot: 'top' },
+  // Tops by sleeve (Eva's review, 4 November: "I'd split tops and T-shirts into short, long and sleeveless").
+  shortSleeveTops: { group: 'clothing', slot: 'top' },
+  longSleeveTops: { group: 'clothing', slot: 'top' },
+  sleevelessTops: { group: 'clothing', slot: 'top' },
   shirts: { group: 'clothing', slot: 'top' },
   bodysuits: { group: 'clothing', slot: 'top' },
   knitwear: { group: 'clothing', slot: 'top' },

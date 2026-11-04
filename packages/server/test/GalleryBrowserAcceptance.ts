@@ -388,7 +388,7 @@ const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
   try {
     const page = await narrow.newPage()
     // Filters belong to a type's own grid, the wardrobe's last step down (T-07).
-    await page.goto(`${origin}/wardrobe?group=clothing&type=tops`, { waitUntil: 'networkidle' })
+    await page.goto(`${origin}/wardrobe?group=clothing&type=shortSleeveTops`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Filters' }).waitFor({ state: 'visible' })
     await expectNoSidewaysScroll(page)
     await page.setViewportSize({ width: 667, height: 375 })
@@ -405,8 +405,12 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
   await seedAccounts(fixtures, 'native-gallery-browser')
   const cookie = await signIn(origin, 'native-gallery-browser')
   const call = client(origin, cookie)
-  await addPiece(origin, call, 'knit-cable-navy.webp', { type: 'tops', colours: ['navy'], name: 'Cable knit' })
-  await addPiece(origin, call, 'shirt-sky.webp', { type: 'tops', colours: ['blue'], name: 'Oxford shirt' })
+  await addPiece(origin, call, 'knit-cable-navy.webp', {
+    type: 'shortSleeveTops',
+    colours: ['navy'],
+    name: 'Cable knit',
+  })
+  await addPiece(origin, call, 'shirt-sky.webp', { type: 'shortSleeveTops', colours: ['blue'], name: 'Oxford shirt' })
   await addPiece(origin, call, 'shorts-denim.webp', { type: 'trousers', colours: ['blue'], name: 'Denim shorts' })
   await addPiece(origin, call, 'derby-black.webp', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
   await expectConsentReachable(browser, origin)

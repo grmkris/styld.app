@@ -15,8 +15,8 @@ const repeat = <A>(count: number, make: () => A) => Array.from({ length: count }
 describe('the wardrobe’s analysis', () => {
   test('counts every group, type and colour exactly, commonest first', () => {
     const pieces = [
-      piece('tops', ['white']),
-      piece('tops', ['white', 'navy']),
+      piece('shortSleeveTops', ['white']),
+      piece('shortSleeveTops', ['white', 'navy']),
       piece('jeans', ['blue']),
       piece('trainers', ['white']),
       piece('bags', ['black']),
@@ -28,7 +28,7 @@ describe('the wardrobe’s analysis', () => {
       { group: 'shoes', count: 1 },
       { group: 'accessories', count: 1 },
     ])
-    expect(analysis.types[0]).toEqual({ type: 'tops', count: 2 })
+    expect(analysis.types[0]).toEqual({ type: 'shortSleeveTops', count: 2 })
     expect(analysis.colours[0]).toEqual({ colour: 'white', count: 3 })
     expect(analysis.colours.map(({ count }) => count).reduce((a, b) => a + b)).toBe(6)
   })
@@ -49,7 +49,7 @@ describe('the wardrobe’s analysis', () => {
   })
 
   test('too little: fewer than a working wardrobe needs, dresses and accessories never a gap', () => {
-    const analysis = analysisOf([...repeat(6, () => piece('tops')), piece('jeans'), piece('trainers')], {
+    const analysis = analysisOf([...repeat(6, () => piece('shortSleeveTops')), piece('jeans'), piece('trainers')], {
       days: 60,
       pieceIds: [],
     })
@@ -58,7 +58,7 @@ describe('the wardrobe’s analysis', () => {
   })
 
   test('too much: an area past its share of the everyday pieces, only once the wardrobe has ten', () => {
-    const tops = repeat(12, () => piece('tops'))
+    const tops = repeat(12, () => piece('shortSleeveTops'))
     const rest = [
       ...repeat(3, () => piece('trousers')),
       ...repeat(2, () => piece('coats')),
@@ -70,7 +70,7 @@ describe('the wardrobe’s analysis', () => {
     expect(analysis.gaps).toEqual([])
     expect(
       analysisOf(
-        repeat(9, () => piece('tops')),
+        repeat(9, () => piece('shortSleeveTops')),
         { days: 60, pieceIds: [] },
       ).surpluses,
     ).toEqual([])

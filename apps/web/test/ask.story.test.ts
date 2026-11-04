@@ -10,11 +10,11 @@ import { matching } from '../src/page/AskSearch.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', {
-  type: 'tops',
+  type: 'shortSleeveTops',
   colours: ['navy'],
   name: 'Cable knit',
 })
-const shirt = pieceFixture('shirt', { type: 'tops', colours: ['blue'], name: 'Oxford shirt' })
+const shirt = pieceFixture('shirt', { type: 'shortSleeveTops', colours: ['blue'], name: 'Oxford shirt' })
 const shorts = pieceFixture('shorts', {
   type: 'shorts',
   colours: ['blue'],

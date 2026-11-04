@@ -154,7 +154,9 @@
     "emptyHint": "Add photos or a video of your clothes. Styld cuts out every piece, and you keep the ones that are yours.",
     "colourFact": "{count, plural, one {Colour} other {Colours}}",
     "types": {
-      "tops": "Tops & T-shirts",
+      "shortSleeveTops": "T-shirts & short-sleeve tops",
+      "longSleeveTops": "Long-sleeve tops",
+      "sleevelessTops": "Tank tops & camisoles",
       "shirts": "Shirts & blouses",
       "bodysuits": "Bodysuits",
       "knitwear": "Knitwear",
@@ -193,7 +195,9 @@
     },
     "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
-      "tops": "Top",
+      "shortSleeveTops": "T-shirt",
+      "longSleeveTops": "Long-sleeve top",
+      "sleevelessTops": "Tank top",
       "shirts": "Shirt",
       "bodysuits": "Bodysuit",
       "knitwear": "Knit",
@@ -231,7 +235,9 @@
       "hairAccessories": "Hair accessory"
     },
     "typeWords": {
-      "tops": "top, tops, t-shirt, tee, tank, camisole",
+      "shortSleeveTops": "top, tops, t-shirt, t-shirts, tee, tees, short sleeve, short-sleeved",
+      "longSleeveTops": "top, tops, long sleeve, long-sleeved, longsleeve, long-sleeved t-shirt",
+      "sleevelessTops": "top, tops, tank, tank top, vest top, camisole, cami, sleeveless, strappy",
       "shirts": "shirt, shirts, blouse, blouses",
       "bodysuits": "bodysuit, body",
       "knitwear": "knit, jumper, sweater, cardigan, pullover",

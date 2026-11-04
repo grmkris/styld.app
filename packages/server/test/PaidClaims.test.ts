@@ -14,7 +14,7 @@ const over = () => {
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 'r', 'Ana', 0);
     INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, content_type,
       created_at, updated_at)
-      VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'k', 'image/png', 0, 0);
+      VALUES ('pc_1', 'ac_1', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'k', 'image/png', 0, 0);
     INSERT INTO piece_pictures (piece_id, account_id, state, version, redraws, paid, created_at, updated_at)
       VALUES ('pc_1', 'ac_1', 'ready', 1, 2, 1, 0, 0);
     INSERT INTO piece_turns (piece_id, account_id, state, attempt, created_at, updated_at)

@@ -63,8 +63,8 @@ const keptPieces = async (origin: string, owner: Call) => {
   const reviewed = await send(owner, '/api/captures/review', 'POST', {
     operationId: 'native-pictures-review',
     keep: [
-      ...[red, green, blue].map((detectionId) => ({ detectionId, type: 'tops' })),
-      { detectionId: photo, type: 'tops', useOriginal: true },
+      ...[red, green, blue].map((detectionId) => ({ detectionId, type: 'shortSleeveTops' })),
+      { detectionId: photo, type: 'shortSleeveTops', useOriginal: true },
     ],
     discard: [],
   })

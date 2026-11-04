@@ -149,7 +149,7 @@ describe('an assistant laying out a table', () => {
 describe('a "One piece, six outfits" board (T-10)', () => {
   const anchor: OutfitPiece = { id: pieceId('jeans'), type: 'jeans' }
   const outfit = (seed: string): ReadonlyArray<OutfitPiece> => [
-    { id: pieceId(`${seed}-tee`), type: 'tops' },
+    { id: pieceId(`${seed}-tee`), type: 'shortSleeveTops' },
     anchor,
     { id: pieceId(`${seed}-shoes`), type: 'trainers' },
     { id: pieceId(`${seed}-bag`), type: 'bags' },

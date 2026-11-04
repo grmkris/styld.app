@@ -31,7 +31,7 @@ const seeded = (front: 'open' | 'kept' | 'keptWithBack') => {
     sqlite.exec(
       `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, detection_id, back_image_key,
          original_key, image_key, content_type, created_at, updated_at)
-       VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'dt_front',
+       VALUES ('pc_1', 'ac_1', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'dt_front',
          ${front === 'keptWithBack' ? "'k/earlier-back.png'" : 'NULL'}, 'k/up_1', 'k/front.png', 'image/png', 0, 0)`,
     )
   return database

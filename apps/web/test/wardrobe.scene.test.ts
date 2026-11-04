@@ -49,7 +49,10 @@ describe('the wardrobe page', () => {
       given(loadedAt('/wardrobe?group=clothing', tee, jeans, boots)),
       expect(role('heading', { name: 'Clothing' })).toExist(),
       expect(role('link', { name: 'Back to wardrobe' })).toHaveAttr('href', '/wardrobe'),
-      expect(role('link', { name: 'Tops & T-shirts' })).toHaveAttr('href', '/wardrobe?group=clothing&type=tops'),
+      expect(role('link', { name: 'T-shirts & short-sleeve tops' })).toHaveAttr(
+        'href',
+        '/wardrobe?group=clothing&type=shortSleeveTops',
+      ),
       expect(role('link', { name: 'Jeans' })).toHaveAttr('href', '/wardrobe?group=clothing&type=jeans'),
       expect(role('link', { name: 'Boots' })).not.toExist(),
       expect(role('link', { name: 'Coats' })).not.toExist(),
@@ -108,12 +111,12 @@ describe('the wardrobe page', () => {
     const shirt = pieceFixture('shirt', { name: 'Linen shirt' })
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=clothing&type=tops', tee, shirt, jeans)),
-      expect(role('heading', { name: 'Tops & T-shirts' })).toExist(),
+      given(loadedAt('/wardrobe?group=clothing&type=shortSleeveTops', tee, shirt, jeans)),
+      expect(role('heading', { name: 'T-shirts & short-sleeve tops' })).toExist(),
       expect(role('link', { name: 'Back to Clothing' })).toHaveAttr('href', '/wardrobe?group=clothing'),
       expect(role('link', { name: 'White tee' })).toHaveAttr(
         'href',
-        `/wardrobe/${tee.id}?from=%2Fwardrobe%3Fgroup%3Dclothing%26type%3Dtops%23piece-${tee.id}`,
+        `/wardrobe/${tee.id}?from=%2Fwardrobe%3Fgroup%3Dclothing%26type%3DshortSleeveTops%23piece-${tee.id}`,
       ),
       expect(role('link', { name: 'Linen shirt' })).toExist(),
       expect(text('White tee')).not.toExist(),

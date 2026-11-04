@@ -795,18 +795,20 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.typeOne.knitwear': Readonly<Record<string, never>>
   'wardrobe.typeOne.laceUps': Readonly<Record<string, never>>
   'wardrobe.typeOne.loafers': Readonly<Record<string, never>>
+  'wardrobe.typeOne.longSleeveTops': Readonly<Record<string, never>>
   'wardrobe.typeOne.loungewear': Readonly<Record<string, never>>
   'wardrobe.typeOne.outdoorShoes': Readonly<Record<string, never>>
   'wardrobe.typeOne.sandals': Readonly<Record<string, never>>
   'wardrobe.typeOne.scarves': Readonly<Record<string, never>>
   'wardrobe.typeOne.shirts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.shortSleeveTops': Readonly<Record<string, never>>
   'wardrobe.typeOne.shorts': Readonly<Record<string, never>>
   'wardrobe.typeOne.skirts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.sleevelessTops': Readonly<Record<string, never>>
   'wardrobe.typeOne.socks': Readonly<Record<string, never>>
   'wardrobe.typeOne.sportShoes': Readonly<Record<string, never>>
   'wardrobe.typeOne.sportswear': Readonly<Record<string, never>>
   'wardrobe.typeOne.swimwear': Readonly<Record<string, never>>
-  'wardrobe.typeOne.tops': Readonly<Record<string, never>>
   'wardrobe.typeOne.trainers': Readonly<Record<string, never>>
   'wardrobe.typeOne.trousers': Readonly<Record<string, never>>
   'wardrobe.typePlaceholder': Readonly<Record<string, never>>
@@ -832,18 +834,20 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.typeWords.knitwear': Readonly<Record<string, never>>
   'wardrobe.typeWords.laceUps': Readonly<Record<string, never>>
   'wardrobe.typeWords.loafers': Readonly<Record<string, never>>
+  'wardrobe.typeWords.longSleeveTops': Readonly<Record<string, never>>
   'wardrobe.typeWords.loungewear': Readonly<Record<string, never>>
   'wardrobe.typeWords.outdoorShoes': Readonly<Record<string, never>>
   'wardrobe.typeWords.sandals': Readonly<Record<string, never>>
   'wardrobe.typeWords.scarves': Readonly<Record<string, never>>
   'wardrobe.typeWords.shirts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.shortSleeveTops': Readonly<Record<string, never>>
   'wardrobe.typeWords.shorts': Readonly<Record<string, never>>
   'wardrobe.typeWords.skirts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.sleevelessTops': Readonly<Record<string, never>>
   'wardrobe.typeWords.socks': Readonly<Record<string, never>>
   'wardrobe.typeWords.sportShoes': Readonly<Record<string, never>>
   'wardrobe.typeWords.sportswear': Readonly<Record<string, never>>
   'wardrobe.typeWords.swimwear': Readonly<Record<string, never>>
-  'wardrobe.typeWords.tops': Readonly<Record<string, never>>
   'wardrobe.typeWords.trainers': Readonly<Record<string, never>>
   'wardrobe.typeWords.trousers': Readonly<Record<string, never>>
   'wardrobe.types.bags': Readonly<Record<string, never>>
@@ -868,22 +872,24 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.types.knitwear': Readonly<Record<string, never>>
   'wardrobe.types.laceUps': Readonly<Record<string, never>>
   'wardrobe.types.loafers': Readonly<Record<string, never>>
+  'wardrobe.types.longSleeveTops': Readonly<Record<string, never>>
   'wardrobe.types.loungewear': Readonly<Record<string, never>>
   'wardrobe.types.outdoorShoes': Readonly<Record<string, never>>
   'wardrobe.types.sandals': Readonly<Record<string, never>>
   'wardrobe.types.scarves': Readonly<Record<string, never>>
   'wardrobe.types.shirts': Readonly<Record<string, never>>
+  'wardrobe.types.shortSleeveTops': Readonly<Record<string, never>>
   'wardrobe.types.shorts': Readonly<Record<string, never>>
   'wardrobe.types.skirts': Readonly<Record<string, never>>
+  'wardrobe.types.sleevelessTops': Readonly<Record<string, never>>
   'wardrobe.types.socks': Readonly<Record<string, never>>
   'wardrobe.types.sportShoes': Readonly<Record<string, never>>
   'wardrobe.types.sportswear': Readonly<Record<string, never>>
   'wardrobe.types.swimwear': Readonly<Record<string, never>>
-  'wardrobe.types.tops': Readonly<Record<string, never>>
   'wardrobe.types.trainers': Readonly<Record<string, never>>
   'wardrobe.types.trousers': Readonly<Record<string, never>>
   'wardrobe.uploadingImage': Readonly<Record<string, never>>
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5a2d67e00c035c9d486caecfff4a2e3e6bb6fb74dd06e7a7f57cac645f19dcfb'
+export const catalogVersion = 'fe6e4a9e89daca6296d57da895dd4a9b60be4530402300600ae0fc9b2bf24515'

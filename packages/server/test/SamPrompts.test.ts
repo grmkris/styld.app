@@ -59,7 +59,7 @@ describe('SAM on a photo of several pieces', () => {
     route: () => Effect.succeed({ garments: 'several', confidence: 0.9, person: 0.02 }),
     suggest: () =>
       Effect.succeed({
-        type: 'tops',
+        type: 'shortSleeveTops',
         confidence: 0.9,
         colours: ['red'],
         seasons: [],

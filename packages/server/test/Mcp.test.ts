@@ -52,7 +52,7 @@ const undescribed = {
 const piece = (id: string, fields: Partial<Piece>): Piece => ({
   ...undescribed,
   id: PieceId.make(`pc_${id.padEnd(22, '0')}`),
-  type: 'tops',
+  type: 'shortSleeveTops',
   name: null,
   notes: null,
   colours: [],
@@ -436,10 +436,10 @@ describe('MCP wardrobe tools', () => {
       operationId: 'op-both-0001',
       imageUrl: 'https://photos.example/knit.jpg',
       uploadId: `up_${'a'.repeat(22)}`,
-      type: 'tops',
+      type: 'shortSleeveTops',
     })
     expect(jsonOf(both)).toMatchObject({ code: 'invalid_arguments' })
-    expect(jsonOf(await call('piece_add', { operationId: 'op-none-0001', type: 'tops' }))).toMatchObject({
+    expect(jsonOf(await call('piece_add', { operationId: 'op-none-0001', type: 'shortSleeveTops' }))).toMatchObject({
       code: 'invalid_arguments',
     })
   })
@@ -450,7 +450,9 @@ describe('MCP wardrobe tools', () => {
       'https://photos.example:8443/knit.jpg',
       'https://me:pw@photos.example/k.jpg',
     ])
-      expect(jsonOf(await call('piece_add', { operationId: 'op-url-00001', imageUrl, type: 'tops' }))).toMatchObject({
+      expect(
+        jsonOf(await call('piece_add', { operationId: 'op-url-00001', imageUrl, type: 'shortSleeveTops' })),
+      ).toMatchObject({
         code: 'photo_refused',
         retryable: false,
       })

@@ -21,7 +21,7 @@ import { freeAttempts, photoPiece as piece } from './fakes/Outfits.ts'
 const seeded = () => {
   const database = localD1()
   const pieces = [
-    ...['a', 'b', 'c', 'd'].map((seed) => piece(`pc_${`t${seed}`.padEnd(22, 'x')}`, 'tops')),
+    ...['a', 'b', 'c', 'd'].map((seed) => piece(`pc_${`t${seed}`.padEnd(22, 'x')}`, 'shortSleeveTops')),
     ...['a', 'b', 'c'].map((seed) => piece(`pc_${`j${seed}`.padEnd(22, 'x')}`, 'jeans')),
     ...['a', 'b'].map((seed) => piece(`pc_${`s${seed}`.padEnd(22, 'x')}`, 'trainers')),
   ]

@@ -116,7 +116,7 @@ const input = (payer: 'account' | 'styld') => ({
   pieceId: 'pc_1',
   originalKey: 'photo.jpg',
   contentType: 'image/jpeg',
-  type: 'tops' as const,
+  type: 'shortSleeveTops' as const,
   of: { side: 'front' as const, payer },
 })
 

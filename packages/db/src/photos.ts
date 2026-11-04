@@ -53,7 +53,8 @@ export const photoGarments = sqliteTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
-    cutoutKey: text('cutout_key').notNull(),
+    /** None for a garment added to the photo by hand, which has no cut-out yet. */
+    cutoutKey: text('cutout_key'),
     type: text('type', { enum: PieceType.literals }),
     colours: text('colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     pieceId: text('piece_id').references(() => pieces.id, { onDelete: 'set null' }),

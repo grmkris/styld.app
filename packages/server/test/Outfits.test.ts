@@ -41,7 +41,7 @@ const brief = (wardrobe: ReadonlyArray<Wearable>, rest: Partial<Omit<Brief, 'war
 
 const loud = (colour: Colour) => ({ colours: [colour] as const })
 
-const tee = piece('tops')
+const tee = piece('shortSleeveTops')
 const shirt = piece('shirts', loud('red'))
 const knit = piece('knitwear', { seasons: ['autumn', 'winter'] })
 const jeans = piece('jeans')
@@ -106,8 +106,8 @@ describe('the outfit rules', () => {
   })
 
   test('a piece with no season is worn in any; one in some is worn only in those (T-12)', () => {
-    const allYear = piece('tops', { name: 'Grey tee' })
-    const springTop = piece('tops', { seasons: ['spring'] })
+    const allYear = piece('shortSleeveTops', { name: 'Grey tee' })
+    const springTop = piece('shortSleeveTops', { seasons: ['spring'] })
     const tops = [allYear, springTop, jeans, trainers]
     for (const outfit of drawnOver(brief(tops, { brief: { season: 'winter' } })))
       expect(outfit).not.toContain(springTop)
@@ -154,7 +154,7 @@ describe('the outfit rules', () => {
   })
 
   test('clean drawings come first once a place has two, and every photo still has its turn', () => {
-    const photos = [piece('tops'), piece('tops'), piece('tops')]
+    const photos = [piece('shortSleeveTops'), piece('shortSleeveTops'), piece('shortSleeveTops')]
     const drawings = [piece('shirts', { drawn: true }), piece('shirts', { drawn: true })]
     const run = proposed(brief([...photos, ...drawings, jeans, trainers]), 'a', 12)
     expect(run.outfits).toHaveLength(5)
@@ -336,7 +336,7 @@ describe('complete outfits (T-10)', () => {
 
 describe("Thinking's share of a large wardrobe", () => {
   test('deals every place in turn, so old shoes and bags are sent with two hundred newer tops', () => {
-    const tops = Array.from({ length: 200 }, () => piece('tops'))
+    const tops = Array.from({ length: 200 }, () => piece('shortSleeveTops'))
     const oldShoes = [piece('trainers'), piece('boots')]
     const oldBag = piece('bags')
     const sent = sentFrom([...tops, ...oldShoes, oldBag], 150)

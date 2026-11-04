@@ -17,7 +17,7 @@ const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
     modifyFields(current, { query: () => query }),
   )
 
-const tee = pieceFixture('tee', { name: 'White tee', type: 'tops', colours: ['white'] })
+const tee = pieceFixture('tee', { name: 'White tee', type: 'shortSleeveTops', colours: ['white'] })
 const boots = pieceFixture('boots', { type: 'trainers', status: 'processing' })
 
 describe('Ask', () => {
@@ -74,7 +74,7 @@ describe('Ask', () => {
     scene(
       { update, view },
       given(askWith([tee, boots])),
-      expect(role('button', { name: 'Tops & T-shirts' })).toExist(),
+      expect(role('button', { name: 'T-shirts & short-sleeve tops' })).toExist(),
       expect(role('button', { name: 'White' })).toExist(),
       expect(role('button', { name: 'Trainers' })).not.toExist(),
     )
@@ -93,7 +93,7 @@ describe('Ask', () => {
       given(askWith([tee], 'zzz')),
       expect(text('Nothing in your wardrobe matches “zzz”.')).toExist(),
       expect(text('0 pieces')).not.toExist(),
-      expect(role('button', { name: 'Tops & T-shirts' })).toExist(),
+      expect(role('button', { name: 'T-shirts & short-sleeve tops' })).toExist(),
     )
   })
 

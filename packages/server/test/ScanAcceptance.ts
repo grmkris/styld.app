@@ -66,7 +66,7 @@ export const verifyScan = async (origin: string, fixtures: string) => {
     method: 'POST',
     body: JSON.stringify({
       operationId: 'native-scan-review-1',
-      keep: [{ detectionId: scanned.redTwo, type: 'tops' }],
+      keep: [{ detectionId: scanned.redTwo, type: 'shortSleeveTops' }],
       discard: [scanned.greenAgain],
     }),
   })

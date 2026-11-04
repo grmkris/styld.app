@@ -16,7 +16,7 @@ export const pieceFixture = (seed: string, fields: Partial<Record<keyof typeof P
     },
     name: null,
     notes: null,
-    type: 'tops',
+    type: 'shortSleeveTops',
     colours: [],
     seasons: [],
     rainproof: false,

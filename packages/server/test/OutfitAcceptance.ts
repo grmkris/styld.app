@@ -57,7 +57,7 @@ const verifyFast = async (origin: string, owner: Call, other: Call) => {
   expect(empty).toMatchObject({ proposals: [], missing: ['top', 'bottom', 'shoes'], exhausted: true })
   const wardrobe = {
     tops: [
-      await ready(origin, owner, 'native-outfit-top-1', 'tops'),
+      await ready(origin, owner, 'native-outfit-top-1', 'shortSleeveTops'),
       await ready(origin, owner, 'native-outfit-top-2', 'shirts'),
     ],
     bottoms: [

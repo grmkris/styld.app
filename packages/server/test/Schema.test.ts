@@ -28,8 +28,8 @@ describe('the migrated schema', () => {
         )
         .run(id, type, colours, uploadId)
     expect(() => piece('pc_1', 'cardigans', '[]', null)).toThrow(/CHECK constraint failed: pieces_type/)
-    expect(() => piece('pc_2', 'tops', '"black"', null)).toThrow(/CHECK constraint failed: pieces_colours/)
-    expect(() => piece('pc_3', 'tops', '[]', 'up_missing')).toThrow(/FOREIGN KEY constraint failed/)
+    expect(() => piece('pc_2', 'shortSleeveTops', '"black"', null)).toThrow(/CHECK constraint failed: pieces_colours/)
+    expect(() => piece('pc_3', 'shortSleeveTops', '[]', 'up_missing')).toThrow(/FOREIGN KEY constraint failed/)
     // A type added since the baseline (T-12) is accepted.
     piece('pc_5', 'sportShoes', '[]', null)
     piece('pc_4', 'knitwear', '["black"]', null)

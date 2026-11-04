@@ -54,7 +54,12 @@ describe('the wardrobe tab', () => {
 
 describe('filtering the wardrobe', () => {
   const coat = pieceFixture('coat', { type: 'coats', colours: ['beige'], seasons: ['autumn', 'winter'], brand: 'COS' })
-  const tee = pieceFixture('tee', { type: 'tops', colours: ['white'], seasons: ['summer'], occasions: ['casual'] })
+  const tee = pieceFixture('tee', {
+    type: 'shortSleeveTops',
+    colours: ['white'],
+    seasons: ['summer'],
+    occasions: ['casual'],
+  })
   const jeans = pieceFixture('jeans', {
     type: 'jeans',
     colours: ['blue'],

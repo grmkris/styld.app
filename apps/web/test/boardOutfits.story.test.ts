@@ -16,7 +16,7 @@ import {
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const jeans = pieceFixture('jeans', { type: 'jeans' })
-const tee = pieceFixture('tee', { type: 'tops' })
+const tee = pieceFixture('tee', { type: 'shortSleeveTops' })
 const shirt = pieceFixture('shirt', { type: 'shirts' })
 const trainers = pieceFixture('trainers', { type: 'trainers' })
 const bag = pieceFixture('bag', { type: 'bags' })

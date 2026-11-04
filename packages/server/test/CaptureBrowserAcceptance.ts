@@ -32,7 +32,7 @@ const countedWakeLock = `
 `
 
 /** Say what an unnamed found piece is: ticking it opens it, a garment type keeps it, Done closes it; it is then
- * called what one of its kind is ("Top" for Tops & T-shirts). */
+ * called what one of its kind is ("T-shirt" for T-shirts & short-sleeve tops). */
 const keepAs = async (page: Page, type: string, kind: string) => {
   await page.getByRole('button', { name: 'Keep Choose what it is' }).first().click()
   await page.getByRole('button', { name: type, exact: true }).click()
@@ -60,7 +60,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
     await page.getByText('4 of 100 free credits left today').waitFor({ state: 'visible' })
 
-    await keepAs(page, 'Tops & T-shirts', 'Top')
+    await keepAs(page, 'T-shirts & short-sleeve tops', 'T-shirt')
     await keepAs(page, 'Dresses', 'Dress')
     const add = page.getByRole('button', { name: 'Add 2 to my wardrobe' })
     await add.click()
@@ -69,7 +69,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     // picture and its caption, both what one of its kind is.
     await page.getByRole('link', { name: 'Clothing', exact: true }).waitFor({ state: 'visible' })
     for (const [type, tile] of [
-      ['tops', /^Top\b/],
+      ['shortSleeveTops', /^T-shirt\b/],
       ['dresses', /^Dress\b/],
     ] as const) {
       await page.goto(`${origin}/wardrobe?group=clothing&type=${type}`, { waitUntil: 'networkidle' })

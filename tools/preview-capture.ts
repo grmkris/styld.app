@@ -121,7 +121,7 @@ try {
     headers,
     data: {
       operationId: `preview-${crypto.randomUUID()}`,
-      keep: [{ detectionId: first.id, type: first.suggestion.type ?? 'tops' }],
+      keep: [{ detectionId: first.id, type: first.suggestion.type ?? 'shortSleeveTops' }],
       discard: single.capture.detections.slice(1).map(({ id }) => id),
     },
   })

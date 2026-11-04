@@ -28,7 +28,7 @@ const rowsFor = (id: string) => {
     accountId: 'ac_1',
     name: null,
     notes: null,
-    type: 'tops',
+    type: 'shortSleeveTops',
     colours: [],
     seasons: [],
     rainproof: false,

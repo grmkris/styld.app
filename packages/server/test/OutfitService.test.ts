@@ -21,7 +21,7 @@ const seeded = () => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
-    ${piece(`pc_${'t'.repeat(22)}`, 'tops')}
+    ${piece(`pc_${'t'.repeat(22)}`, 'shortSleeveTops')}
     ${piece(`pc_${'j'.repeat(22)}`, 'jeans')}
     ${piece(`pc_${'s'.repeat(22)}`, 'trainers')}
   `)
@@ -94,7 +94,9 @@ describe('a wardrobe of more than three hundred pieces', () => {
     // Eva's shape (4 November 2026): her shoes were her first pieces, and 300 newer ones once hid them.
     const database = localD1()
     const shoes = `pc_${'s'.repeat(22)}`
-    const tops = Array.from({ length: 320 }, (_, at) => piece(`pc_${String(at).padStart(22, '0')}`, 'tops', at + 2))
+    const tops = Array.from({ length: 320 }, (_, at) =>
+      piece(`pc_${String(at).padStart(22, '0')}`, 'shortSleeveTops', at + 2),
+    )
     database.sqlite.exec(`
       INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
       ${piece(shoes, 'trainers', 0)}

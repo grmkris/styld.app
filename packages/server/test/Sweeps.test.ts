@@ -31,7 +31,7 @@ const piece = (database: ReturnType<typeof seeded>, id: string, status: string, 
   database.sqlite.exec(
     `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, content_type,
        created_at, updated_at)
-     VALUES ('${id}', 'ac_1', 'tops', '[]', '[]', '${status}', 'website', 'k/${id}', 'image/png', 0, ${updatedAt})`,
+     VALUES ('${id}', 'ac_1', 'shortSleeveTops', '[]', '[]', '${status}', 'website', 'k/${id}', 'image/png', 0, ${updatedAt})`,
   )
 
 /** A used upload, as a capture or an outfit photo holds one. */

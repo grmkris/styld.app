@@ -63,7 +63,7 @@ describe('the one in-use check', () => {
       const database = seeded()
       database.sqlite.exec(
         `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, back_image_key, content_type, created_at, updated_at)
-         VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'k/photo', 'k/cutout', NULL, 'image/png', 0, 0)`,
+         VALUES ('pc_1', 'ac_1', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'k/photo', 'k/cutout', NULL, 'image/png', 0, 0)`,
       )
       database.sqlite.exec(
         `INSERT INTO captures (id, account_id, kind, source, status, upload_id, original_key, content_type, bytes, credits, attempt, created_at, updated_at)

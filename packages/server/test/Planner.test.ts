@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { mostPicks, planOf } from '../src/generation/Planner.ts'
 
 const wardrobe = [
-  { ref: 'p1', name: 'Navy knit', type: 'tops', colours: ['navy'] },
+  { ref: 'p1', name: 'Navy knit', type: 'shortSleeveTops', colours: ['navy'] },
   { ref: 'p2', name: 'Raincoat', type: 'jackets', colours: ['yellow'] },
   { ref: 'p3', name: 'Wellies', type: 'trainers', colours: ['black'] },
 ]
@@ -21,7 +21,7 @@ describe('planning a mood board from the person’s pieces', () => {
     const many = Array.from({ length: mostPicks + 4 }, (_, at) => ({
       ref: `p${at + 1}`,
       name: 'Tee',
-      type: 'tops',
+      type: 'shortSleeveTops',
       colours: [],
     }))
     const plan = planOf(

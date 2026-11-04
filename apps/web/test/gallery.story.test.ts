@@ -21,8 +21,8 @@ import * as Today from '../src/page/Today.ts'
 import { cropFrom, headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const redTop = pieceFixture('red-top', { type: 'tops', colours: ['red'], name: 'Red shirt' })
-const navyKnit = pieceFixture('navy-knit', { type: 'tops', colours: ['navy'], name: 'Cable knit' })
+const redTop = pieceFixture('red-top', { type: 'shortSleeveTops', colours: ['red'], name: 'Red shirt' })
+const navyKnit = pieceFixture('navy-knit', { type: 'shortSleeveTops', colours: ['navy'], name: 'Cable knit' })
 const greenTrousers = pieceFixture('green-trousers', { type: 'trousers', colours: ['green'], name: 'Green trousers' })
 const blackShoes = pieceFixture('black-shoes', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
 const wardrobe = [redTop, navyKnit, greenTrousers, blackShoes]
@@ -260,7 +260,7 @@ describe("today's table", () => {
   })
 
   test('an outfit with more pieces than the engine locks offers no swap', () => {
-    const many = Array.from({ length: 7 }, (_, at) => pieceFixture(`many-${String(at)}`, { type: 'tops' }))
+    const many = Array.from({ length: 7 }, (_, at) => pieceFixture(`many-${String(at)}`, { type: 'shortSleeveTops' }))
     const big = modifyFields(spun(), {
       outfits: () =>
         Today.OutfitsData.Success({

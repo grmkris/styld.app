@@ -47,8 +47,8 @@ export type Mapped =
 
 /** v1's categories, as the nearest type; words of the name pick a closer one in the same place (below). */
 const categories: Readonly<Record<string, PieceType>> = {
-  top: 'tops',
-  tops: 'tops',
+  top: 'shortSleeveTops',
+  tops: 'shortSleeveTops',
   bottom: 'trousers',
   bottoms: 'trousers',
   outerwear: 'jackets',
@@ -74,6 +74,10 @@ const named: ReadonlyArray<readonly [RegExp, PieceType]> = [
   [/\b(sweater|jumper|cardigan|knit|pullover)s?\b/u, 'knitwear'],
   [/\b(shirt|blouse)s?\b/u, 'shirts'],
   [/\bbodysuits?\b/u, 'bodysuits'],
+  // Tops by sleeve (4 November); a top whose name says neither starts short-sleeved, and Clef's sleeve answer on import
+  // moves it.
+  [/\blong[- ]?sleeved?\b/u, 'longSleeveTops'],
+  [/\b(tank|cami|camisole|halter)s?\b|\bsleeveless\b|\bstrappy\b|\bvest tops?\b/u, 'sleevelessTops'],
   [/\b(boot|bootie)s?\b/u, 'boots'],
   [/\b(heel|pump|stiletto)s?\b/u, 'heels'],
   [/\b(sandal|slide|flip[- ]flop)s?\b/u, 'sandals'],
@@ -90,7 +94,16 @@ const named: ReadonlyArray<readonly [RegExp, PieceType]> = [
 /** The types a category's words may narrow it to: within the same part of an outfit, so a name never moves a coat
  * into the shoes. */
 const narrowsTo: Partial<Readonly<Record<PieceType, ReadonlyArray<PieceType>>>> = {
-  tops: ['shirts', 'bodysuits', 'knitwear', 'hoodies', 'dresses', 'jumpsuits'],
+  shortSleeveTops: [
+    'shirts',
+    'bodysuits',
+    'knitwear',
+    'hoodies',
+    'longSleeveTops',
+    'sleevelessTops',
+    'dresses',
+    'jumpsuits',
+  ],
   trousers: ['jeans', 'shorts', 'skirts'],
   jackets: ['coats', 'blazers', 'gilets', 'hoodies', 'knitwear'],
   dresses: ['jumpsuits', 'skirts'],
@@ -98,10 +111,10 @@ const narrowsTo: Partial<Readonly<Record<PieceType, ReadonlyArray<PieceType>>>> 
   bags: ['belts', 'scarves', 'hats', 'jewellery', 'eyewear'],
 }
 
-/** The nearest type to v1's category, narrowed by the name; a piece v1 never categorised starts as a top, which its
- * import's description by Clef corrects. */
+/** The nearest type to v1's category, narrowed by the name; a piece v1 never categorised starts as a short-sleeved top,
+ * which its import's description by Clef corrects. */
 export const typeOf = (category: string | null, name: string | null): PieceType => {
-  const nearest = categories[(category ?? '').trim().toLowerCase()] ?? 'tops'
+  const nearest = categories[(category ?? '').trim().toLowerCase()] ?? 'shortSleeveTops'
   const words = (name ?? '').toLowerCase()
   const allowed = narrowsTo[nearest] ?? []
   const closer = named.find(([pattern, type]) => allowed.includes(type) && pattern.test(words))

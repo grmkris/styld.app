@@ -10,7 +10,7 @@ import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const tee = pieceFixture('tee', { type: 'tops', name: 'White tee' })
+const tee = pieceFixture('tee', { type: 'shortSleeveTops', name: 'White tee' })
 const shirt = pieceFixture('shirt', { type: 'shirts', name: 'Oxford shirt' })
 const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Blue jeans' })
 const garment = (id: string, fields: object) => ({
@@ -23,7 +23,7 @@ const photo = Schema.decodeUnknownSync(PhotoContract)({
   status: 'ready',
   favourite: false,
   garments: [
-    garment('top', { type: 'tops', match: 'suggested', pieceId: tee.id }),
+    garment('top', { type: 'shortSleeveTops', match: 'suggested', pieceId: tee.id }),
     garment('bottom', { type: 'jeans', match: 'confirmed', pieceId: jeans.id }),
     garment('shoes', { type: 'trainers', match: 'unmatched', pieceId: null }),
   ],

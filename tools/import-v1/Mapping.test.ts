@@ -44,7 +44,11 @@ describe('a v1 piece', () => {
   test('takes the type nearest its category, narrowed by its name within the same place', () => {
     expect(typeOf('top', 'Wool jumper')).toBe('knitwear')
     expect(typeOf('top', 'Linen shirt')).toBe('shirts')
-    expect(typeOf('top', null)).toBe('tops')
+    expect(typeOf('top', null)).toBe('shortSleeveTops')
+    expect(typeOf('top', 'Striped long-sleeve tee')).toBe('longSleeveTops')
+    expect(typeOf('top', 'Silk cami')).toBe('sleevelessTops')
+    expect(typeOf('top', 'Ribbed tank top')).toBe('sleevelessTops')
+    expect(typeOf('top', 'Long sleeve shirt')).toBe('shirts')
     expect(typeOf('bottom', 'Mom jeans')).toBe('jeans')
     expect(typeOf('bottom', 'Pleated skirt')).toBe('skirts')
     expect(typeOf('outerwear', 'Long trench coat')).toBe('coats')
@@ -54,7 +58,7 @@ describe('a v1 piece', () => {
     // A name never moves a piece out of its category's place, and no category starts as a top.
     expect(typeOf('shoes', 'Boot-cut jeans')).toBe('boots')
     expect(typeOf('bottom', 'Ankle boots')).toBe('trousers')
-    expect(typeOf(null, 'Something')).toBe('tops')
+    expect(typeOf(null, 'Something')).toBe('shortSleeveTops')
   })
 
   test('takes the colours its words name, at most six, never a detail’s', () => {

@@ -55,7 +55,11 @@ export const noulOf = (answer: ClefAnswer, id: string) =>
 
 /** Each garment type as a shop names it, so the model sorts a piece the way a person browsing would look for it. */
 const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: string } = {
-  tops: 'A t-shirt, tank top, camisole or casual top, not made for sport or swimming',
+  // Tops by sleeve (Eva's review, 4 November), each asked by what its sleeves are.
+  shortSleeveTops: 'A t-shirt or casual top with short sleeves, not made for sport or swimming',
+  longSleeveTops:
+    'A t-shirt or casual top with long sleeves, not a shirt, a knit or a hoodie, not made for sport or swimming',
+  sleevelessTops: 'A tank top, camisole or other top without sleeves or with straps, not made for sport or swimming',
   shirts: 'A shirt or blouse, with a collar or buttons, or a dressy woven top',
   bodysuits: 'A bodysuit',
   knitwear: 'A knitted jumper, sweater or cardigan',

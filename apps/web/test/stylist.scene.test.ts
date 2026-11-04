@@ -123,7 +123,7 @@ describe('Styld, the stylist in the app', () => {
                   { group: 'clothing', count: 12 },
                   { group: 'shoes', count: 2 },
                 ],
-                types: [{ type: 'tops', count: 9 }],
+                types: [{ type: 'shortSleeveTops', count: 9 }],
                 colours: [{ colour: 'white', count: 6 }],
                 worn: { days: 60, pieces: 5, never: 9, most: [{ pieceId, days: 4 }] },
                 surpluses: ['tops'],

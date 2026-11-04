@@ -111,7 +111,7 @@ const anchorsOn = (board: Board, anchorId: string) =>
  * the jeans six complete outfits are laid out, once per operation id, the jeans in each cluster; another account's piece
  * is not found. */
 const verifyOutfitBoard = async (origin: string, { owner, other }: { readonly owner: Call; readonly other: Call }) => {
-  const tee = await ready(origin, owner, 'native-ob-tee', 'tops')
+  const tee = await ready(origin, owner, 'native-ob-tee', 'shortSleeveTops')
   const trainers = await ready(origin, owner, 'native-ob-trainers', 'trainers')
   const lonely = await send(owner, '/api/boards/outfits', 'POST', {
     operationId: 'native-ob-none',
