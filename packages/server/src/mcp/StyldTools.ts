@@ -80,6 +80,8 @@ export const styldTools = (
     outfits,
     accounts,
     tastes,
+    tryOns,
+    photos,
   }: ToolServices,
 ) => [
   tool({
@@ -91,7 +93,7 @@ export const styldTools = (
     handler: () => accounts.readAccount().pipe(Effect.map((account) => ({ ...account, url: `${origin}/account` }))),
   }),
   ...wardrobeTools(wardrobe, links, origin),
-  ...viewTools(wardrobe, boards, origin, media),
+  ...viewTools(wardrobe, boards, origin, media, { tryOns, photos }),
   ...lookTools(looks, origin),
   ...outfitTools(outfits),
   ...pictureTools(captures, origin),

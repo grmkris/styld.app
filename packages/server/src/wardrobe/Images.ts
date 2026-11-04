@@ -1,4 +1,4 @@
-import type { PieceImages, PieceTurn } from '@styld/protocol'
+import type { PieceImages, PiecePictureKind, PieceTurn } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { SignedMedia } from '../kernel/SignedMedia.ts'
 import type { ImageSize } from './Media.ts'
@@ -53,6 +53,17 @@ const pictureVersion = (piece: PieceRow, { picture, back }: Drawings, which: Pie
         ? `backClean${back?.version ?? 0}`
         : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
   return `${piece.updatedAt.getTime()}.${drawing}`
+}
+
+/** Which of a piece's pictures a grant signed by `pieceImages` is, read back from the version `pictureVersion` gave it:
+ * its drawing (also when the piece shows it), its own photo, cut-out, back or drawn back, or the photo it shows. */
+export const pictureOfVersion = (version: string): Option.Option<PiecePictureKind> => {
+  const drawing = version.slice(version.indexOf('.') + 1)
+  if (drawing === 'original') return Option.some('photo')
+  if (drawing === 'cutout' || drawing === 'back') return Option.some(drawing)
+  if (drawing.startsWith('backClean')) return Option.some('backClean')
+  if (drawing.startsWith('clean')) return Option.some('clean')
+  return drawing.startsWith('photo') ? Option.some('shown') : Option.none()
 }
 
 /** The signed address of one of a piece's pictures at one size, if it has that picture and the reader is the owner's

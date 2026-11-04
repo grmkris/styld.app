@@ -48,6 +48,8 @@ import { Holds } from '../usage/Holds.ts'
 /** A stored photo as the protocol shows it. A confirmed garment whose piece was deleted shows as unmatched. Only the
  * service writes rows, through the same schemas; one that does not decode is a bug. */
 const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyArray<GarmentRow>) {
+  // The original is signed first: an assistant view keeps each photo's first thumbnail, the photo as taken, which is
+  // a try-on's "before" (`mcp/MediaViewTools.ts`), never the person cut out of it.
   const images = yield* imageAddresses({
     entityId: row.id,
     key: row.originalKey,

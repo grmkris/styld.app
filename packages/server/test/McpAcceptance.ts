@@ -6,6 +6,7 @@ import { Schema } from 'effect'
 import { toolNames } from './ToolNames.ts'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { csrf } from '@styld/auth/config'
+import { ViewImages } from '@styld/protocol'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -158,6 +159,12 @@ const exchange = async (
   return { status: response.status, tokens: { access: body.access_token ?? '', refresh: body.refresh_token ?? '' } }
 }
 
+/** The pictures a view result carries for the view alone, in its `_meta`. */
+const viewImagesOf = (result: unknown) =>
+  Schema.decodeUnknownSync(Schema.Struct({ _meta: Schema.Struct({ 'styld/images': ViewImages }) }))(result)['_meta'][
+    'styld/images'
+  ]
+
 /** The 2026-07-28 client (SDK 2.x) and an initialize-era client (SDK 1.x) both see and call the tools. */
 const useTools = async (origin: string, access: string) => {
   const requestInit = { headers: { authorization: `Bearer ${access}` } }
@@ -168,8 +175,8 @@ const useTools = async (origin: string, access: string) => {
   for (const client of [modern, legacy]) {
     expect((await client.listTools()).tools.map(({ name }) => name)).toEqual([...toolNames])
     // Hosts read the view from the resource the tool names, through either protocol era.
-    const view = (await client.readResource({ uri: 'ui://styld/views-v2.html' })).contents[0]
-    expect(view).toMatchObject({ uri: 'ui://styld/views-v2.html', mimeType: 'text/html;profile=mcp-app' })
+    const view = (await client.readResource({ uri: 'ui://styld/views-v3.html' })).contents[0]
+    expect(view).toMatchObject({ uri: 'ui://styld/views-v3.html', mimeType: 'text/html;profile=mcp-app' })
     expect(view !== undefined && 'text' in view ? view.text : '').toContain('<div id="styld-view"></div>')
     const result = await client.callTool({ name: 'account_get', arguments: {} })
     expect(result.structuredContent).toEqual({
@@ -325,6 +332,16 @@ const boardThroughTools = async (origin: string, client: Client, pieceId: string
   expect(await structured(client, 'board_list', {})).toMatchObject({
     boards: [{ id: boardId, pinCount: 2, onTable: 1 }],
   })
+  // The media views read through the services' own contexts: their pictures still reach `_meta`, never the model.
+  const piecesShown = await client.callTool({ name: 'pieces_show', arguments: { pieceIds: [pieceId] } })
+  expect(piecesShown.structuredContent).toMatchObject({ _tag: 'PiecesView', rows: [[{ id: pieceId }]] })
+  expect(Object.keys(viewImagesOf(piecesShown))).toEqual([pieceId])
+  expect(JSON.stringify(piecesShown.structuredContent)).not.toContain('data:')
+  const pieceShown = await client.callTool({ name: 'piece_show', arguments: { pieceId } })
+  expect(pieceShown.structuredContent).toMatchObject({ _tag: 'PieceView', piece: { id: pieceId } })
+  expect(Object.keys(viewImagesOf(pieceShown)).length).toBeGreaterThan(0)
+  const gallery = await client.callTool({ name: 'gallery_show', arguments: {} })
+  expect(gallery.structuredContent).toMatchObject({ _tag: 'GalleryView', photos: [] })
 }
 
 const mcpStatus = async (origin: string, access: string) =>

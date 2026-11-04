@@ -597,7 +597,27 @@
     "ignore": "Če te kode ne pričakuješ, to e-poštno sporočilo prezri. Kode nikoli ne deli z nikomer."
   },
   "assistantView": {
-    "openInStyld": "Odpri v Styldu"
+    "openInStyld": "Odpri v Styldu",
+    "tryOn": {
+      "title": "Pomerjanje",
+      "before": "Prej",
+      "after": "Potem",
+      "drawing": "Styld ga še riše. Vprašaj znova čez trenutek.",
+      "stopped": "Styld tega ni mogel narisati. Krediti so ti vrnjeni.",
+      "wearing": "Oblečeno"
+    },
+    "gallery": {
+      "title": "Tvoja Galerija",
+      "empty": "V tvoji Galeriji še ni fotografij."
+    },
+    "pieces": {
+      "title": "Tvoji kosi",
+      "outfit": "Oprava",
+      "empty": "Ničesar od tega ni v tvoji garderobi."
+    },
+    "piece": {
+      "backClean": "Hrbtna stran kot iz trgovine"
+    }
   },
   "capture": {
     "addTitle": "Dodaj oblačila",

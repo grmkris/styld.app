@@ -3,22 +3,21 @@ import {
   BoardId,
   BoardView,
   type BoardViewLabels,
-  type CurrentAccount,
   type Pin,
   type ViewLabels,
   type ViewPin,
   WardrobeView,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { groupOf, type ViewImages } from '@styld/protocol'
-import { Array, Effect, Match, Option, Record, Schema } from 'effect'
-import { withViewThumbnails, type MediaGrant } from '../kernel/SignedMedia.ts'
+import { groupOf } from '@styld/protocol'
+import { Array, Effect, Match, Schema } from 'effect'
+import { withViewThumbnails } from '../kernel/SignedMedia.ts'
 import type { Boards } from '../boards/Boards.ts'
-import * as Base64 from 'effect/encoding/Base64'
-import { collect } from '../Streams.ts'
-import { deliverImage, transformedOnly, type ImageBindings } from '../wardrobe/Delivery.ts'
+import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import { mediaViewTools, type MediaServices } from './MediaViewTools.ts'
 import { showsView } from './Resources.ts'
+import { thumbnails } from './Thumbnails.ts'
 import { tool, ViewResult } from './Tools.ts'
 
 /** The view's words in one language, from the reviewed catalogs. */
@@ -33,66 +32,6 @@ const labelsIn = (locale: Locale): ViewLabels => ({
     accessories: format(locale, 'wardrobe.groups.accessories', {}),
   },
 })
-
-/** The view shows this many pieces with pictures; their thumbnails ride in the result's `_meta`, out of
- * the model's context, because a host's sandbox cannot load Styld's private image routes. */
-const viewImageLimit = 24
-
-/** A thumbnail is only what the Images binding transformed (`transformedOnly`): an original photo, which may carry its
- * EXIF and GPS, never goes to a host. A transformed one larger than this is left out too. */
-const largestThumbnail = 200 * 1024
-
-type Thumbnail = { readonly body: Parameters<typeof collect>[0]; readonly contentType: string }
-type ThumbnailRead = readonly [string, Effect.Effect<Thumbnail, unknown, CurrentAccount>]
-
-/** A thumbnail as a data URL under its key, or nothing when it cannot be read or is not a small WebP. */
-const thumbnailAt = (key: string, read: Effect.Effect<Thumbnail, unknown, CurrentAccount>) =>
-  read.pipe(
-    Effect.filterOrFail(
-      ({ contentType }) => contentType === 'image/webp',
-      () => 'notThumbnail' as const,
-    ),
-    Effect.flatMap(({ body, contentType }) =>
-      Effect.tryPromise({ try: () => collect(body), catch: () => 'unreadable' as const }).pipe(
-        Effect.filterOrFail(
-          (bytes) => bytes.byteLength <= largestThumbnail,
-          () => 'notThumbnail' as const,
-        ),
-        Effect.map((bytes) => `data:${contentType};base64,${Base64.encode(bytes)}`),
-      ),
-    ),
-    Effect.option,
-    Effect.map((url) => Option.map(url, (data) => [key, data] as const)),
-  )
-
-/** Read a few at a time, the first `viewImageLimit` of them. */
-const readThumbnails = (reads: ReadonlyArray<ThumbnailRead>) =>
-  Effect.map(
-    Effect.forEach(reads.slice(0, viewImageLimit), ([key, read]) => thumbnailAt(key, read), { concurrency: 6 }),
-    (found): ViewImages => Record.fromEntries(found.flatMap(Option.toArray)),
-  )
-
-/** Deliver only objects the containing list/get already authorized. No thumbnail performs another D1 lookup. */
-const thumbnails = (
-  media: ImageBindings,
-  images: ReadonlyMap<string, MediaGrant>,
-  targets: ReadonlyArray<readonly [string, string]>,
-) =>
-  readThumbnails(
-    targets.flatMap(([name, id]): ReadonlyArray<ThumbnailRead> => {
-      const image = images.get(id)
-      return image === undefined
-        ? []
-        : [
-            [
-              name,
-              deliverImage(media, image, 'thumb', { ...transformedOnly, rotation: image.rotation }).pipe(
-                Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed })),
-              ),
-            ],
-          ]
-    }),
-  )
 
 /** A board's view words in one language, from the reviewed catalogs. */
 const boardLabelsIn = (locale: Locale): BoardViewLabels => ({
@@ -151,12 +90,14 @@ const boardTargets = (board: Board) => {
   return Array.dedupeWith([...onTable, ...pinned], ([left], [right]) => left === right)
 }
 
-/** Tools whose results a host draws with Styld's view (MCP Apps). */
+/** Tools whose results a host draws with Styld's view (MCP Apps): the wardrobe and a board, then the person's media
+ * (`MediaViewTools.ts`). */
 export const viewTools = (
   wardrobe: Wardrobe['Service'],
   boards: Boards['Service'],
   origin: string,
   media: ImageBindings,
+  { tryOns, photos }: Pick<MediaServices, 'tryOns' | 'photos'>,
 ) => [
   tool({
     name: 'wardrobe_show',
@@ -211,4 +152,5 @@ export const viewTools = (
         return new ViewResult(view, { 'styld/images': yield* thumbnails(media, images, boardTargets(board)) })
       }),
   }),
+  ...mediaViewTools({ origin, media, wardrobe, tryOns, photos }),
 ]
