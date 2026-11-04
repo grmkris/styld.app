@@ -176,6 +176,15 @@ Sports tops, Sports leggings & shorts and Tracksuits & ski wear in place of the 
   white pleated tennis skirt to skirts; a striped crop cami stays a sport top. Her Sport now holds 7 bras, 10 tops, 21
   bottoms, 1 tracksuit and 3 pairs of shoes. Reports and the picture sheets are private
   (`~/private/styld-research/sport-retype-2026-11-05/`).
+- **Eva's whole wardrobe audited** (5 November, production, read-only first): all 393 ready pieces sorted again as a new
+  piece is (both pictures, new descriptions). 337 agreed with the stored type (a random 35 checked by eye: all right).
+  Of the 55 that differed, 21 clear errors in the stored types were fixed by hand with the same guard (T-shirts out of
+  loungewear, fleece jackets out of hoodies, shirt dresses, a long skirt, leggings out of trousers, hiking shoes and snow
+  boots to outdoor shoes, a headband); about 10 the sorter got wrong and about 23 judgement calls (gym or everyday,
+  sleep shorts) were left as they are. Her pieces are v1 imports whose "original" is v1's own shop-style picture, so the
+  second picture adds nothing for them; v1 holds no shelf she chose herself and no extra photos (read-only query of v1's
+  database, 5 November), and its guessed "sport" shelf agrees with her Sport types. Her stored types are hers from here:
+  no further re-sorting runs over her wardrobe unless she asks.
 - **v1 importer**: names like "sports bra", "leggings", "cycling shorts", "running tee" and "ski pants" pick the Sport
   types.
 - **Open:** Eva's check on her phone; leggings and sport pieces already stored under other types (trousers, shorts,
