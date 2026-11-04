@@ -56,12 +56,20 @@ Rule tests for the fallback; the board native journey asserts shoes in every clu
 after Eva's Pinterest references (fig14, fig15, fig17 in `docs/research/eva-review-tracker/evidence/`) and her own
 rearranged board: the anchor piece large in the centre, and around it each outfit as one tight flat-lay (outer layer
 overlapping the top, the bottom beside it, shoes at its foot, the bag and accessories tucked against it, not apart).
-The anchor also repeats, smaller, inside every outfit (owner, 4 November). Three layouts (owner: "a bit of randomness"):
-eight outfits on a 3×3 grid around the centre (fig17), six in a radial ring (fig15), six on a 3×3 grid whose middle row
-leaves the anchor room. A board picks one at random when made, and "Another layout" deals a new one. The number of
-outfits follows the layout, so the template is renamed "One piece, many outfits" / "En kos, več outfitov". The board's
-paper starts light, as in every reference. Pure layout tests (no overlap between clusters, every piece inside the
-board, the anchor largest); a native screenshot of each layout on a phone, light and dark.
+The anchor also repeats, smaller, inside every outfit (owner, 4 November). Layouts (owner: "a bit of randomness"),
+from Eva's references (fig14, fig15, fig17, and six more she sent on 4 November, kept privately in
+`~/private/styld-research/board-references-2026-11-04.png` because they are other people's pins):
+
+- **Six flanking** (the most common in her references): the anchor tall in the centre column, three outfits stacked on
+  each side, thin arrows from the anchor out to each outfit.
+- **Eight around** a 3×3 grid, the anchor in the middle cell (fig17).
+- **Six radial**: a ring around the centre, two above, one at each side, two below, with arrows (fig15).
+  A board picks one at random when made, and "Another layout" deals a new one. The number of outfits follows the layout,
+  so the template is renamed "One piece, many outfits" / "En kos, več outfitov". The board starts on the warm `sand`
+  paper, as in every reference. The arrows are drawn by the board face from the layout (the template's decoration), not
+  stored as items the person moves; a board the person rearranges keeps them only while its outfits stay in their
+  places. Later templates, not this slice: a two-piece base ("tank + jeans") and a which-shoes-go guide (✓/✗). Pure layout tests (no overlap between clusters, every piece inside the
+  board, the anchor largest); a native screenshot of each layout on a phone, light and dark.
 
 **B3: kept outfits and cards follow.** Keep/Another and the outfit cards (T-16/T-10) work with six or eight clusters;
 Another replaces one cluster in place within the current layout.
