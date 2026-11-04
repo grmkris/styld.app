@@ -336,8 +336,10 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   and loungewear (3bdd9308).
 - **Seeded (4 November evening):** all 166 garments generated and judged, $3.44 of the $5 cap with cut-outs (pages
   `styld-house-garments`, `styld-boards-live`). Preview: 53 boards, 52 public and passed; `w-witch-october`'s check
-  says unsure. Production (styld.app): 173 garments imported and 37 boards created on the first pass; the other 16
-  followed once c7b6e51d was live; checks pending at the time of writing (see Open).
+  says unsure. Production (styld.app): 173 garments imported and all 53 boards public on both house profiles; 50
+  checks passed and 3 say unsure (`w-carry-on-7d`, `m-prep-3`, `w-updated-lady`). Its first pass waited on checks
+  that failed until production's LiteLLM key gained the judge's model alias (0f, 4 November). The report with the
+  board ids is private (`~/private/styld-research/house-boards-2026-11-04/report-production-2026-11-04.md`).
 - **Runbook:** `docs/DEPLOYMENT.md` › House inspiration boards.
 - **Bundle budget** 388,200: Show me +2,284, Try +808 and the card's first paint +203, each measured in a clean
   worktree.
@@ -350,7 +352,7 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   - Preview: the fixture run of two boards passed its checks and read back in en and sl, a rerun changed nothing,
     and the boards were pruned.
 - **Open:**
-  - Production: the boards' content checks were still pending after ten minutes; they show on styld.app once passed.
+  - Production: the three unsure checks, for a person to look at.
   - The admin calls on production: `curation_house` for both handles and the report's `curation_feature` calls.
   - `w-witch-october`'s unsure check, for a person to look at (a Challenges card opens it).
   - Eva's review of the Slovenian copy, and her call on the sl chip ("Ustvarjeno" or "Ustvarjeno z UI").
