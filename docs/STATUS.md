@@ -29,6 +29,31 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
   these bumps (A/B builds differ by bytes). mediabunny's phone-side video cutting and the stylist on beta.192 still
   need preview acceptance once deployed.
 
+## Tops by sleeve (P4 of `docs/PLAN-eva-feedback-2026-11-04.md`), 4 November (worktree, not merged or deployed)
+
+- Tops & T-shirts is now three Clothing types, in the wardrobe's order: T-shirts & short-sleeve tops
+  (`shortSleeveTops`), Long-sleeve tops (`longSleeveTops`), Tank tops & camisoles (`sleevelessTops`); sl "Majice s
+  kratkimi rokavi", "Majice z dolgimi rokavi", "Majice brez rokavov". All three sit in the outfit slot `top`, so the
+  outfit rules, Placement, matching, Analyze my wardrobe and MCP behave as `tops` did. Clef's type criteria ask by
+  sleeve; the v1 importer starts a top short-sleeved (long-sleeved or sleeveless when its name says so) and Clef's
+  description on import moves it within Clothing. Ask's search words and the stylist's Slovenian notes name them.
+- Migration `20261104111927_tops_by_sleeve_p4` rebuilds pieces, detections and photo_garments by T-12's keep-aside
+  pattern with 0eedb270's fix, and also restores `boards.anchor_piece_id` and `board_outfit_pieces` (T-10's, newer
+  than T-12). Every stored `tops` becomes `shortSleeveTops`. The same rebuild makes `photo_garments.cutout_key`
+  nullable, for a garment added to a photo by hand (another session's work). MigrationSafety's new case (a board
+  around an anchor with a piece item, a label and a kept outfit; looks, worn days, saves, a clean picture, a capture
+  of a gallery garment with grouped and duplicate detections) keeps every table's count and link; dropping the
+  `piece_id IS NOT NULL` filter or the anchor restore fails it. On a private copy of the preview's real dump (at
+  c8_durability, every later migration applied first): all 49 tables keep their counts, foreign-key check clean, 88
+  pieces and 32 detections move from `tops` to `shortSleeveTops`, every link count unchanged.
+- `tools/retype-tops.ts` (dry by default, `--apply` guarded by `type = 'shortSleeveTops'`) asks Clef only the sleeve
+  question of each stored short-sleeved top and moves it on an answer of long sleeves or none at 0.7 or more
+  (`tools/Sleeves.ts`, unit-tested). Not run against any database. `tools/CloudflareRest.ts` now holds the REST calls
+  it shares with `retype-pieces.ts`.
+- Evidence: typecheck 0 findings, lint, knip, unit, MigrationSafety and the real-data rehearsal. Open: the full gate and
+  native suite on the merged batch; deploy; the retype dry run on the preview, a sample checked by eye, then `--apply`;
+  Eva's look at the three cards. An old link or bookmark with `type=tops` no longer names a type.
+
 ## Boards: a look kept on a board (T-16) and "One piece, six outfits" (T-10), 4 November (on main, not deployed)
 
 Built from `docs/PLAN-boards-t16-t10.md` (owner decisions of 4 November: Fast and free; the anchor repeated in each of

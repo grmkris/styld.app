@@ -11,6 +11,7 @@ export default {
         'tools/preview-capture.ts',
         'tools/provider-live.ts',
         'tools/retype-pieces.ts',
+        'tools/retype-tops.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/**/*.test.ts',
         '*.config.ts',

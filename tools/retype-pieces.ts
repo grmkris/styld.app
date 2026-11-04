@@ -22,7 +22,8 @@ import { modelPicture, readPng } from '@styld/imaging'
 import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
-import { makeGarmentVision, type RunClef } from '../packages/server/src/providers/Clef.ts'
+import { makeGarmentVision } from '../packages/server/src/providers/Clef.ts'
+import { cloudflareStage } from './CloudflareRest.ts'
 
 const { values } = parseArgs({
   options: {
@@ -63,10 +64,6 @@ const addedTypes: ReadonlySet<PieceType> = new Set<PieceType>([
   'hairAccessories',
 ])
 
-const Failure = Schema.Struct({ errors: Schema.optionalKey(Schema.Array(Schema.Struct({ message: Schema.String }))) })
-const Databases = Schema.Struct({ result: Schema.Array(Schema.Struct({ name: Schema.String, uuid: Schema.String })) })
-const Rows = Schema.Struct({ result: Schema.Array(Schema.Struct({ results: Schema.Array(Schema.Unknown) })) })
-const Ran = Schema.Struct({ result: Schema.Unknown })
 const Stored = Schema.Struct({
   id: Schema.String,
   type: PieceType,
@@ -75,59 +72,7 @@ const Stored = Schema.Struct({
 })
 type Stored = typeof Stored.Type
 
-const api = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccount}`
-
-/** A Cloudflare API answer; a refusal names Cloudflare's own reasons. */
-const cloudflare = async (path: string, init: RequestInit = {}) => {
-  const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${token}`)
-  const response = await fetch(`${api}${path}`, { ...init, headers })
-  if (response.ok) return response
-  const failure = Schema.decodeUnknownOption(Failure)(await response.json().catch(() => ({})))
-  const reasons = Option.match(failure, {
-    onNone: () => '',
-    onSome: ({ errors = [] }) => errors.map(({ message }) => message).join('; '),
-  })
-  throw new Error(`Cloudflare answered ${response.status} for ${path.split('?')[0]}: ${reasons}`)
-}
-
-/** A Cloudflare API answer's body, not yet decoded. */
-const answer = async (path: string, init?: RequestInit): Promise<unknown> => (await cloudflare(path, init)).json()
-
-const posted = (body: unknown): RequestInit => ({
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify(body),
-})
-
-const databaseId = async () => {
-  const { result } = await Schema.decodeUnknownPromise(Databases)(
-    await answer(`/d1/database?name=${encodeURIComponent(database)}`),
-  )
-  const found = result.find(({ name }) => name === database)
-  if (found === undefined) throw new Error(`No D1 database named ${database}`)
-  return found.uuid
-}
-
-const d1 = (uuid: string) => async (sql: string, params: ReadonlyArray<string | number>) => {
-  const { result } = await Schema.decodeUnknownPromise(Rows)(
-    await answer(`/d1/database/${uuid}/query`, posted({ sql, params })),
-  )
-  return result[0]?.results ?? []
-}
-
-const object = async (key: string) =>
-  new Uint8Array(
-    await (
-      await cloudflare(`/r2/buckets/${bucket}/objects/${key.split('/').map(encodeURIComponent).join('/')}`, {
-        headers: { 'cf-r2-jurisdiction': 'eu' },
-      })
-    ).arrayBuffer(),
-  )
-
-const runClef: RunClef = async ({ model, ...body }) =>
-  (await Schema.decodeUnknownPromise(Ran)(await answer(`/ai/run/@cf/cloudflare/${model}`, posted(body)))).result
-
+const { query, object, runClef } = await cloudflareStage({ token, cloudflareAccount, database, bucket })
 const vision = makeGarmentVision(runClef, CaptureMetrics.discarding)
 
 interface Change {
@@ -173,7 +118,6 @@ const changeOf = (piece: Stored) =>
         })
   })
 
-const query = d1(await databaseId())
 const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
   await query(
     `SELECT id, type, colours, image_key FROM pieces

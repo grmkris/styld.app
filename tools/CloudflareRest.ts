@@ -1,0 +1,72 @@
+import { Option, Schema } from 'effect'
+import type { RunClef } from '../packages/server/src/providers/Clef.ts'
+
+// What the operator scripts that re-sort stored pieces (`retype-pieces.ts`, `retype-tops.ts`) reach through the
+// Cloudflare REST API: a stage's D1 database by name, its R2 media bucket (in the EU jurisdiction) and Workers AI's
+// Clef-flash, so their answers are the ones the Worker gets. The token is sent only as the Authorization header and
+// never printed; a refusal names Cloudflare's own reasons.
+
+const Failure = Schema.Struct({ errors: Schema.optionalKey(Schema.Array(Schema.Struct({ message: Schema.String }))) })
+const Databases = Schema.Struct({ result: Schema.Array(Schema.Struct({ name: Schema.String, uuid: Schema.String })) })
+const Rows = Schema.Struct({ result: Schema.Array(Schema.Struct({ results: Schema.Array(Schema.Unknown) })) })
+const Ran = Schema.Struct({ result: Schema.Unknown })
+
+export interface Stage {
+  readonly token: string
+  readonly cloudflareAccount: string
+  readonly database: string
+  readonly bucket: string
+}
+
+const posted = (body: unknown): RequestInit => ({
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(body),
+})
+
+/** The stage's database, bucket and decision model, once its database is found by name. */
+export const cloudflareStage = async ({ token, cloudflareAccount, database, bucket }: Stage) => {
+  const api = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccount}`
+  const cloudflare = async (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers)
+    headers.set('Authorization', `Bearer ${token}`)
+    const response = await fetch(`${api}${path}`, { ...init, headers })
+    if (response.ok) return response
+    const failure = Schema.decodeUnknownOption(Failure)(await response.json().catch(() => ({})))
+    const reasons = Option.match(failure, {
+      onNone: () => '',
+      onSome: ({ errors = [] }) => errors.map(({ message }) => message).join('; '),
+    })
+    throw new Error(`Cloudflare answered ${response.status} for ${path.split('?')[0]}: ${reasons}`)
+  }
+  /** A Cloudflare API answer's body, not yet decoded. */
+  const answer = async (path: string, init?: RequestInit): Promise<unknown> => (await cloudflare(path, init)).json()
+
+  const { result: databases } = await Schema.decodeUnknownPromise(Databases)(
+    await answer(`/d1/database?name=${encodeURIComponent(database)}`),
+  )
+  const found = databases.find(({ name }) => name === database)
+  if (found === undefined) throw new Error(`No D1 database named ${database}`)
+
+  return {
+    /** One SQL statement's rows. */
+    query: async (sql: string, params: ReadonlyArray<string | number>) => {
+      const { result } = await Schema.decodeUnknownPromise(Rows)(
+        await answer(`/d1/database/${found.uuid}/query`, posted({ sql, params })),
+      )
+      return result[0]?.results ?? []
+    },
+    /** An object's bytes from the media bucket. */
+    object: async (key: string) =>
+      new Uint8Array(
+        await (
+          await cloudflare(`/r2/buckets/${bucket}/objects/${key.split('/').map(encodeURIComponent).join('/')}`, {
+            headers: { 'cf-r2-jurisdiction': 'eu' },
+          })
+        ).arrayBuffer(),
+      ),
+    runClef: (async ({ model, ...body }) =>
+      (await Schema.decodeUnknownPromise(Ran)(await answer(`/ai/run/@cf/cloudflare/${model}`, posted(body))))
+        .result) satisfies RunClef,
+  }
+}
