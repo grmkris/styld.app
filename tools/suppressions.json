@@ -56,8 +56,8 @@
     "comment": "SAFETY: the fake implements the bucket read and the Images transform delivery calls -- the rest of R2 and Images is never called by a delivery"
   },
   {
-    "file": "packages/server/test/Operations.test.ts",
-    "comment": "SAFETY: the media binding is an empty fake -- no profile or social write reads or stores an object"
+    "file": "packages/server/test/PassingChecks.ts",
+    "comment": "SAFETY: the media binding is an empty fake -- no profile, social write or public page's words reads or stores an object"
   },
   {
     "file": "packages/server/test/ProviderFiles.test.ts",

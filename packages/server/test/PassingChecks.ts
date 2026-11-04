@@ -17,16 +17,14 @@ export const passingChecks = Checks.layer.pipe(
   ),
 )
 
+/** A media binding no test here reads or writes: profiles, social writes and public pages' words touch no object. */
+// SAFETY: the media binding is an empty fake -- no profile, social write or public page's words reads or stores an object
+export const noMedia = Layer.succeed(Media, Media.of({} as never))
+
 /** Public pages over the test's database, its checks passing everything and its media never read. */
 export const publicPagesOver = (database: ReturnType<typeof localD1>) =>
   PublicPages.layer.pipe(
     Layer.provide(BoardStore.layer),
     Layer.provideMerge(passingChecks),
-    Layer.provideMerge(
-      Layer.mergeAll(
-        Database.layer(database),
-        // SAFETY: the media binding is an empty fake -- reading a public page's words reads no object
-        Layer.succeed(Media, Media.of({} as never)),
-      ),
-    ),
+    Layer.provideMerge(Layer.mergeAll(Database.layer(database), noMedia)),
   )

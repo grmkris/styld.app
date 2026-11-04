@@ -3,13 +3,12 @@ import { CurrentAccount, Handle, OperationId } from '@styld/protocol'
 import { Effect, Layer } from 'effect'
 import { BoardStore } from '../src/boards/Store.ts'
 import { Database } from '../src/kernel/Db.ts'
-import { Media } from '../src/kernel/Media.ts'
 import { recorded } from '../src/kernel/Receipts.ts'
 import { Profiles } from '../src/social/Profiles.ts'
 import { PublicPages } from '../src/social/Public.ts'
 import { Social } from '../src/social/Social.ts'
 import { localD1 } from './LocalD1.ts'
-import { passingChecks } from './PassingChecks.ts'
+import { noMedia, passingChecks } from './PassingChecks.ts'
 
 // A write that takes an operation id keeps its promise: the first request writes, a repeat writes nothing and answers
 // as the first did, and the same id with other input is OperationConflict. A repeat that wrote again would undo
@@ -39,8 +38,7 @@ const services = (database: ReturnType<typeof localD1>) => {
     Layer.provideMerge(
       Layer.mergeAll(
         Database.layer(database),
-        // SAFETY: the media binding is an empty fake -- no profile or social write reads or stores an object
-        Layer.succeed(Media, Media.of({} as never)),
+        noMedia,
         Layer.succeed(CurrentAccount, CurrentAccount.of({ accountId: 'ac_1', via: 'session' })),
       ),
     ),
