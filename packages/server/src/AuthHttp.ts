@@ -33,7 +33,11 @@ export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOpt
           database.raw,
         ),
       },
-      callbacks: { google: { path: googleCallbackPath } },
+      // Google returns `scope`, `authuser` and `prompt` with every code, and `hd` for a Workspace account; Yielded
+      // refuses a callback carrying any parameter it was not told of, which failed every real Google sign-in.
+      callbacks: {
+        google: { path: googleCallbackPath, allowedQueryParameters: ['scope', 'authuser', 'prompt', 'hd'] },
+      },
     },
   })
   const dependencies = runtime
