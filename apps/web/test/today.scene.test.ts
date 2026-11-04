@@ -250,3 +250,59 @@ describe('Home', () => {
     )
   })
 })
+
+describe('Home before the first outfit', () => {
+  test('an empty wardrobe leads to the first piece and says what a photo costs', () => {
+    scene(
+      { update, view },
+      given(withPieces(home(0, Option.none()), [])),
+      expect(role('heading', { name: 'Add your first piece' })).toExist(),
+      expect(text('Photograph a piece, or a few laid out, and Styld cuts each one out.')).toExist(),
+      expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
+      expect(text('1 credit a photo · 97 of 100 left today')).toExist(),
+    )
+    // Before the tray says today's credits, only the price shows.
+    scene(
+      { update, view },
+      given(
+        withPage(withPieces(home(0, Option.none()), []), lenses.today, (today) =>
+          modifyFields(today, { pickUp: (pickUp) => modifyFields(pickUp, { tray: () => AsyncData.Loading() }) }),
+        ),
+      ),
+      expect(text('1 credit a photo')).toExist(),
+    )
+  })
+
+  test('pieces still being cut out say so, with the way to the tray', () => {
+    scene(
+      { update, view },
+      given(withPieces(home(0, Option.none()), [pieceFixture('cutting', { status: 'processing' })])),
+      expect(role('heading', { name: 'Add your first piece' })).not.toExist(),
+      expect(text('Your first pieces are being cut out.')).toExist(),
+      expect(role('link', { name: 'Finish adding' })).toHaveAttr('href', '/wardrobe/review'),
+    )
+  })
+
+  test('one piece says how many more make a whole outfit, and what they are', () => {
+    scene(
+      { update, view },
+      given(
+        withOutfits(
+          OutfitsData.Success({
+            data: {
+              session: OutfitSession.make(`os_${'a'.repeat(22)}`),
+              proposals: [proposalOf([knit])],
+              at: 0,
+              missing: ['bottom', 'shoes'],
+              exhausted: true,
+              refilling: false,
+            },
+          }),
+        ),
+      ),
+      expect(text('Add 2 more pieces for a whole outfit.')).toExist(),
+      expect(role('link', { name: 'Add trousers or a skirt' })).toHaveAttr('href', '/wardrobe/add'),
+      expect(role('link', { name: 'Add shoes' })).toHaveAttr('href', '/wardrobe/add'),
+    )
+  })
+})

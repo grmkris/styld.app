@@ -10,7 +10,7 @@ import { FeedData, More } from '../src/page/WhatsNew.ts'
 export const settled = (today: Model, waiting = 0, pictures: ReadonlyArray<string> = []): Model =>
   modifyFields(today, {
     pickUp: () => ({
-      tray: TrayData.Success({ data: { waiting, pictures } }),
+      tray: TrayData.Success({ data: { waiting, pictures, allowance: { remaining: 97, daily: 100 } } }),
       favourite: FavouriteData.Success({ data: Option.none() }),
     }),
     whatsNew: () => ({ feed: FeedData.Success({ data: { items: [], cursor: null } }), more: More.Idle() }),

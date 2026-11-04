@@ -82,6 +82,7 @@ export const placeholder = style({
   color: 'ink2',
 })
 export const placeholderBody = style({ display: 'grid', justifyItems: 'center', gap: 'related' })
+export const placeholderTitle = style({ margin: '0', fontSize: 'heading' })
 export const actions = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
 export const wear = style({ flexGrow: 1 })
 /** Wear this and Spin in outline while the pieces load: the same row, the same sizes. */
@@ -133,6 +134,7 @@ export const note = style({
   '&[data-tone="error"]': { color: 'error' },
 })
 /** What a whole outfit still needs, as small ways into adding pieces. */
+export const missingGroup = style({ display: 'grid', gap: 'related' })
 export const missing = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 export const missingLink = style({
   display: 'inline-flex',

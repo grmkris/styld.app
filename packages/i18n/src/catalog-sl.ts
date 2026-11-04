@@ -817,8 +817,16 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.title': 'Danes',
   'today.outfit': 'Današnja oprava: {names}',
   'today.loading': 'Pripravljam današnjo opravo …',
-  'today.empty': 'Dodaj oblačila in tu se pokaže današnja oprava.',
   'today.addClothes': 'Dodaj oblačila',
+  'today.firstTitle': 'Dodaj svoj prvi kos',
+  'today.firstHint': 'Fotografiraj kos ali več razloženih in Styld izreže vsakega posebej.',
+  'today.photoCost':
+    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo',
+  'today.photoCostLeft':
+    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · danes še {remaining} od {daily}',
+  'today.cutting': 'Tvoji prvi kosi se izrezujejo.',
+  'today.moreForOutfit':
+    '{count, plural, one {Dodaj še # kos za celo opravo.} two {Dodaj še # kosa za celo opravo.} few {Dodaj še # kose za celo opravo.} other {Dodaj še # kosov za celo opravo.}}',
   'today.failed': 'Tvoja garderoba se ni naložila.',
   'today.outfitFailed': 'Današnje oprave se niso naložile.',
   'today.retry': 'Poskusi znova',

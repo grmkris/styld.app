@@ -631,15 +631,24 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.challengeWitch': Readonly<Record<string, never>>
   'today.challenges': Readonly<Record<string, never>>
   'today.comingSoon': Readonly<Record<string, never>>
-  'today.empty': Readonly<Record<string, never>>
+  'today.cutting': Readonly<Record<string, never>>
   'today.failed': Readonly<Record<string, never>>
+  'today.firstHint': Readonly<Record<string, never>>
+  'today.firstTitle': Readonly<Record<string, never>>
   'today.keepGoing': Readonly<Record<string, never>>
   'today.loading': Readonly<Record<string, never>>
   'today.loadingMore': Readonly<Record<string, never>>
   'today.lovedOutfit': Readonly<Record<string, never>>
   'today.moreFailed': Readonly<Record<string, never>>
+  'today.moreForOutfit': { readonly count: number }
   'today.outfit': { readonly names: string | number }
   'today.outfitFailed': Readonly<Record<string, never>>
+  'today.photoCost': { readonly credits: number }
+  'today.photoCostLeft': {
+    readonly credits: number
+    readonly remaining: string | number
+    readonly daily: string | number
+  }
   'today.pickUp': Readonly<Record<string, never>>
   'today.retry': Readonly<Record<string, never>>
   'today.review': Readonly<Record<string, never>>
@@ -935,4 +944,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'd5e11096e7b7572e3848e7448de728487a85e02459dc5b4bd15ddbc73efb1955'
+export const catalogVersion = '3b834470b8e2c47bda97a042681f880a0530187933b1483eb95c8180721428ef'

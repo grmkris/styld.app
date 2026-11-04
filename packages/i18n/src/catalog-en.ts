@@ -799,8 +799,15 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.title': 'Today',
   'today.outfit': 'Today’s outfit: {names}',
   'today.loading': 'Laying out today’s outfit…',
-  'today.empty': 'Add clothes and today’s outfit appears here.',
   'today.addClothes': 'Add clothes',
+  'today.firstTitle': 'Add your first piece',
+  'today.firstHint': 'Photograph a piece, or a few laid out, and Styld cuts each one out.',
+  'today.photoCost': '{credits, plural, one {# credit} other {# credits}} a photo',
+  'today.photoCostLeft':
+    '{credits, plural, one {# credit} other {# credits}} a photo · {remaining} of {daily} left today',
+  'today.cutting': 'Your first pieces are being cut out.',
+  'today.moreForOutfit':
+    '{count, plural, one {Add # more piece for a whole outfit.} other {Add # more pieces for a whole outfit.}}',
   'today.failed': 'Your wardrobe didn’t load.',
   'today.outfitFailed': 'Today’s outfits didn’t come through.',
   'today.retry': 'Try again',

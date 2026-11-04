@@ -18,7 +18,7 @@ const home = (feed: FeedData, locale: 'en' | 'sl' = 'en') =>
   withPage(at('/', { signedIn: true, locale }), lenses.today, (today) =>
     modifyFields(today, {
       pickUp: () => ({
-        tray: TrayData.Success({ data: { waiting: 0, pictures: [] } }),
+        tray: TrayData.Success({ data: { waiting: 0, pictures: [], allowance: { remaining: 97, daily: 100 } } }),
         favourite: FavouriteData.Success({ data: Option.none() }),
       }),
       whatsNew: () => ({ feed, more: More.Idle() }),

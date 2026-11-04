@@ -1,5 +1,5 @@
 import { cdn } from '../Cdn.ts'
-import { Photo } from '@styld/protocol'
+import { Photo, Tray as CaptureTray } from '@styld/protocol'
 import { Array, Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -14,8 +14,13 @@ import { StyldClient } from '../StyldClient.ts'
 /** The newest favourite photo of My Gallery, for "Wear it again". */
 export const FavouriteData = AsyncData.Schema(Schema.Option(Photo), Schema.Literal('Unavailable'))
 export type FavouriteData = typeof FavouriteData.schema.Type
-/** The review tray as Home shows it: how many found pieces wait, and the first three's pictures. */
-export const Tray = Schema.Struct({ waiting: Schema.Int, pictures: Schema.Array(Schema.String) })
+/** The review tray as Home shows it: how many found pieces wait, the first three's pictures, and today's free
+ * credits, which the first piece's invitation quotes. */
+export const Tray = Schema.Struct({
+  waiting: Schema.Int,
+  pictures: Schema.Array(Schema.String),
+  allowance: CaptureTray.fields.allowance,
+})
 export type Tray = typeof Tray.Type
 export const TrayData = AsyncData.Schema(Tray, Schema.Literal('Unavailable'))
 export type TrayData = typeof TrayData.schema.Type
@@ -49,11 +54,11 @@ export const ReadFavourite = Command.define('ReadFavourite', {
 export const ReadTray = Command.define('ReadTray', {
   messages: [Message.SucceededReadTray, Message.FailedReadTray],
   execute: Effect.gen(function* () {
-    const { captures } = yield* (yield* (yield* StyldClient).api).capture.tray()
+    const { captures, allowance } = yield* (yield* (yield* StyldClient).api).capture.tray()
     const detections = captures.flatMap((capture) => capture.detections)
     // A found piece's cut-out when it has one, else its photo, as the tray first shows it.
     const pictures = detections.slice(0, 3).map((detection) => cdn.detection(detection, detection.hasCutout))
-    return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures } })
+    return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures, allowance } })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadTray())),
 })
 

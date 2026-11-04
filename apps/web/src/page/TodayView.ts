@@ -1,6 +1,6 @@
 import { piecesById } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
-import { flatLay, type Piece, type Slot } from '@styld/protocol'
+import { flatLay, type Piece, prices, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { Button } from '@foldkit/ui'
 import { AsyncData, Submodel } from 'foldkit'
@@ -10,7 +10,7 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { chip } from '../Controls.styles.ts'
 import { addIcon, checkIcon, loader, retryIcon, spinIcon } from '../Icon.ts'
-import { addPiecesRouter } from '../route.ts'
+import { addPiecesRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
@@ -72,16 +72,38 @@ const retryView = (problem: string, retry: Message, locale: Locale, h: HtmlBuild
     ]),
   ])
 
+/** What a photo costs, and today's free credits once the tray has said them. */
+const photoCost = (model: Model, locale: Locale) =>
+  Option.match(AsyncData.getData(model.pickUp.tray), {
+    onNone: () => format(locale, 'today.photoCost', { credits: prices.photo }),
+    onSome: ({ allowance }) => format(locale, 'today.photoCostLeft', { credits: prices.photo, ...allowance }),
+  })
+
+/** An empty wardrobe: the way to the first piece, with what it costs. */
+const firstPieceView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.placeholder()), [
+    h.div(styled(h, styles.placeholderBody()), [
+      h.h2(styled(h, styles.placeholderTitle()), [format(locale, 'today.firstTitle', {})]),
+      h.p([], [format(locale, 'today.firstHint', {})]),
+      h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'today.addClothes', {})]),
+      h.p(styled(h, styles.note()), [photoCost(model, locale)]),
+    ]),
+  ])
+
+/** Pieces kept, none cut out yet: they are on their way, and the tray is where to follow them. */
+const cuttingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.placeholder()), [
+    h.div(styled(h, styles.placeholderBody()), [
+      h.p([h.Role('status')], [format(locale, 'today.cutting', {})]),
+      h.a([h.Href(reviewRouter({})), ...styled(h, secondaryAction())], [format(locale, 'today.review', {})]),
+    ]),
+  ])
+
 /** The table: the outfit's pieces laid flat. Spin brings in new ones, which drop onto the paper; until the first
  * outfits come, it waits, unless it shows what was worn today. */
 const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (Array.isReadonlyArrayEmpty(pieces.filter((piece) => piece.status === 'ready')))
-    return h.div(styled(h, styles.placeholder()), [
-      h.div(styled(h, styles.placeholderBody()), [
-        h.p([], [format(locale, 'today.empty', {})]),
-        h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'today.addClothes', {})]),
-      ]),
-    ])
+  if (Array.isReadonlyArrayEmpty(pieces)) return firstPieceView(model, locale, h)
+  if (!pieces.some((piece) => piece.status === 'ready')) return cuttingView(locale, h)
   if (!showsWornOutfit(model) && isPending(model.outfits)) return loadingView(locale, h)
   if (!showsWornOutfit(model) && AsyncData.isFailure(model.outfits))
     return retryView(format(locale, 'today.outfitFailed', {}), Message.ClickedRetryOutfits(), locale, h)
@@ -161,17 +183,24 @@ const missingOf = (model: Model) =>
     onSome: ({ missing }) => missing.flatMap((slot) => Option.toArray(Option.fromNullishOr(missingLabel[slot]))),
   })
 
-/** A wardrobe short of a whole outfit says what to add, each a way into adding pieces. */
+/** A wardrobe short of a whole outfit says how many pieces it lacks and what they are, each a way into adding
+ * pieces. */
 const missingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Array.match(missingOf(model), {
     onEmpty: () => h.empty,
     onNonEmpty: (missing) =>
-      h.div(
-        styled(h, styles.missing()),
-        missing.map((key) =>
-          h.a([h.Href(addPiecesRouter({})), ...styled(h, styles.missingLink())], [addIcon(h), format(locale, key, {})]),
+      h.div(styled(h, styles.missingGroup()), [
+        h.p(styled(h, styles.note()), [format(locale, 'today.moreForOutfit', { count: missing.length })]),
+        h.div(
+          styled(h, styles.missing()),
+          missing.map((key) =>
+            h.a(
+              [h.Href(addPiecesRouter({})), ...styled(h, styles.missingLink())],
+              [addIcon(h), format(locale, key, {})],
+            ),
+          ),
         ),
-      ),
+      ]),
   })
 
 /** What a swap that did not change the table says: nothing else fits in place of the piece, or the swap failed. */
