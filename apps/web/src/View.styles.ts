@@ -143,8 +143,15 @@ export const footer = style({
   color: 'ink2',
 })
 export const footerLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
-/** Diagnostics and Contact, kept together at the footer's far end, so neither wraps onto a line alone. */
-export const footerLinks = style({ display: 'flex', alignItems: 'center', gap: 'section', marginInlineStart: 'auto' })
+/** Diagnostics, Privacy, Terms and Contact, kept together at the footer's far end; on a narrow phone they wrap among
+ * themselves rather than one of them dropping onto a line alone under the language. */
+export const footerLinks = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  columnGap: 'section',
+  marginInlineStart: 'auto',
+})
 // A footer control that reads like the contact link beside it.
 export const footerButton = style({
   padding: '0',

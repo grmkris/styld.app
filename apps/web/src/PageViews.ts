@@ -10,6 +10,7 @@ import { accountView } from './page/AccountView.ts'
 import * as AskView from './page/AskView.ts'
 import * as BoardPageView from './page/Board/PageView.ts'
 import * as BoardsView from './page/BoardsView.ts'
+import { legalView, privacyDocument, termsDocument } from './page/LegalView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
@@ -265,7 +266,8 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
   }
 }
 
-/** Ask's chat with Styld, a board and its collage, someone's public page, and a page that does not exist. */
+/** Ask's chat with Styld, a board and its collage, someone's public page, the legal pages, and a page that does not
+ * exist. */
 const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
   const { locale, timeZone } = model.context
   const signedIn = hasSession(model)
@@ -315,6 +317,8 @@ const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
       ),
     Person: () => visitPage(model, lenses.visit, h),
     PublicPiece: () => visitPage(model, lenses.visit, h),
+    Privacy: () => legalView(privacyDocument, locale, h),
+    Terms: () => legalView(termsDocument, locale, h),
     NotFound: () => notFoundView(locale, h),
   }
 }

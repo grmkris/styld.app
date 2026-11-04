@@ -9,17 +9,21 @@ import { Flags, Message, Model, init, subscriptions, update } from './App.ts'
 import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
 import { isTabChange, routing } from './Navigation.ts'
+import { isLegal, routeFromPathname } from './route.ts'
 import { styldClientLayer } from './StyldClient.ts'
 import { consentFromCookies, telemetryConsentLayer } from './TelemetryConsent.ts'
 import { pictureEncoderLayer } from './Upload.ts'
 
 // Telemetry's code loads only for a visitor who allowed it; everyone else never downloads it. Only the page's language
-// ships with it; another one loads when the person switches to it.
+// ships with it; another one loads when the person switches to it. The privacy policy's and the terms' words load only
+// on those two pages, which every link reaches with a whole load (Navigation.ts).
 const [telemetry] = await Promise.all([
   consentFromCookies(document.cookie) === 'granted'
     ? import('./Telemetry.ts').then(({ startTelemetry }) => startTelemetry(window.location.origin))
     : Promise.resolve(undefined),
-  loadCatalog(normalizeLocale(document.documentElement.lang)),
+  loadCatalog(normalizeLocale(document.documentElement.lang), {
+    legal: isLegal(routeFromPathname(window.location.pathname)),
+  }),
 ])
 
 const config = {
