@@ -7,6 +7,26 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Privacy policy and terms of use (4 November, on main, not deployed)
+
+Google sign-in's consent screen and the app directories need both pages on styld.app.
+
+- **Built:** `/privacy` and `/terms` (`AppRoute.Privacy`/`Terms`, `page/LegalView.ts`), readable signed out, linked
+  from the footer beside Contact on every page (the sign-in page has no small print of its own; its footer carries
+  them). The words are in the en/sl catalogs under `legal`. Each statement was checked against the code; Premium Week
+  against `premiumWeek` in `Prices.ts` ($4.99, 500 credits a day for 7 days, buying again extends).
+  The sections' words (`legal.privacy.*`, `legal.terms.*`) are their own catalog modules (`legal-en.ts`,
+  `legal-sl.ts`) that the browser loads only on those two pages, so no other page carries them; the first load grows
+  by about 1,100 gzip bytes (393,989 at d64d4d64; budget 394,100).
+- **Evidence:** `apps/web/test/legal.scene.test.ts` (every section, the date and the contact address in en and sl; the
+  footer links signed in and out), `legalRoutes.test.ts`, and the i18n test of the legal words' loading.
+- **Open:**
+  - Kris reviews the content. v1 names no operator, company, address or governing law, so neither page does; the
+    minimum age of 16 is v1's, not enforced in v2. Docs' "original photos never leave Styld" is not true: a resized
+    copy of each photo (and each video) goes to Meta SAM, so the policy says so.
+  - The pages describe Dodo Payments and Premium Week (server on main at `eb92789e`). The policy says Dodo takes the payment; check that matches the checkout.
+  - Deployed readback of both paths on the preview.
+
 ## Sign in with Google (4 November, on main, not deployed)
 
 The owner chose Google sign-in with v1's OAuth client and v1's linking, from Grok's competitor onboarding report.
