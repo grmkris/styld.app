@@ -175,7 +175,8 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
       side: input.side ?? null,
       pairsWith: input.pairsWith ?? null,
       importId: yield* importOf(accountId, input.importOf),
-      credits: prices.photo,
+      // A back is free (owner, 4 November): the camera asks for one after every front.
+      credits: input.side === 'back' ? 0 : prices.photo,
     }
     return yield* admit(capture, [], operation)
   }, Effect.provide(context)),

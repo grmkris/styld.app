@@ -332,7 +332,6 @@
     "removeBack": "Odstrani hrbtno stran",
     "backSending": "Izrezujem hrbtno stran …",
     "backFailed": "Hrbtna stran ni uspela. Poskusi znova.",
-    "backCost": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} od današnjih brezplačnih.",
     "patternFact": "Vzorec",
     "shopLink": "Odpri stran v trgovini",
     "shopFact": "Trgovina",

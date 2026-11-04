@@ -1,6 +1,7 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { type Call, client, seedAccounts, send, signIn, signInBody, withOperation } from './Accounts.ts'
+import { Allowance, decoded } from './CleanPictureAcceptance.ts'
 import { csrf } from '@styld/auth/config'
 
 /** A 1x1 PNG: the smallest photo the upload checks accept. */
@@ -75,15 +76,18 @@ const altered = (address: string, field: string, value: string) => {
   return `${url.pathname}${url.search}`
 }
 
-/** A back added on the piece's page: shown by its signed address only, repeated as is, and forgotten again. */
+/** A back added on the piece's page: free (owner, 4 November), shown by its signed address only, repeated as is, and
+ * forgotten again. */
 const verifyBack = async (origin: string, owner: Call, other: Call, pieceId: string) => {
   const back = { operationId: 'native-back-0001', uploadId: await receivedPhoto(origin, owner) }
+  const before = await decoded(Allowance, await owner('/api/captures/tray'))
   expect((await send(other, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(404)
   const set = await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)
   expect(await set.json()).toMatchObject({ id: pieceId, hasBack: true })
   expect(await (await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).json()).toMatchObject({ hasBack: true })
   const backImage = (await imagesOf(owner, pieceId)).back
   expect((await fetch(`${origin}${backImage ?? ''}`)).status).toBe(200)
+  expect(await decoded(Allowance, await owner('/api/captures/tray'))).toEqual(before)
   const removed = await owner(`/api/pieces/${pieceId}/back`, { method: 'DELETE' })
   expect(await removed.json()).toMatchObject({ hasBack: false })
   expect((await imagesOf(owner, pieceId)).back).toBeUndefined()

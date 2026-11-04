@@ -16,7 +16,7 @@ import { Database, first, nowDate, query } from '../kernel/Db.ts'
 // never reused: the Wallet's receipts would answer a reused id as already reserved, and the work would run unpaid.
 // Every hold is kept in D1 (`pending_settlements`) from before it is reserved until the Wallet confirms it settled.
 
-/** What a hold pays for. */
+/** What a hold pays for. A back held a photo's credit until 4 November; `back` names those holds until they settle. */
 export type HoldKind = 'capture' | 'piece' | 'back' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist'
 
 export const HoldId = Schema.String.pipe(Schema.brand('Styld/HoldId'))
@@ -124,7 +124,8 @@ export const settlementRows = (db: Database['Service']) => ({
 export class Holds extends Context.Service<
   Holds,
   {
-    /** Hold the charge's credits; holding the same charge again is the same hold. */
+    /** Hold the charge's credits; holding the same charge again is the same hold. A charge of no credits holds
+     * nothing (a back, free since 4 November), and settling it is done like any hold never reserved. */
     readonly reserve: (charge: Charge) => Effect.Effect<void, LimitReached | Unavailable>
     /** Settle a hold by how its work ended; the first settlement stands, and one with no hold is done. Done once the
      * ending is recorded: a Wallet that cannot take it now is settled by the sweep. */
@@ -155,6 +156,7 @@ export class Holds extends Context.Service<
       return Holds.of({
         reserve: Effect.fn('Styld.Holds.reserve')(function* (charge: Charge) {
           yield* Effect.annotateCurrentSpan('styld.hold', charge.hold)
+          if (charge.credits === 0) return
           const now = yield* DateTime.now
           if (!(yield* ledger.enabled(charge.accountId).pipe(Effect.mapError(unavailable)))) return yield* unavailable()
           // No hold without its row: the row is what settles it if everything after this is lost.

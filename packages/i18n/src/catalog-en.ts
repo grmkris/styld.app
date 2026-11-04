@@ -302,7 +302,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.removeBack': 'Remove the back',
   'wardrobe.backSending': 'Cutting out the back…',
   'wardrobe.backFailed': 'The back didn’t go through. Try again.',
-  'wardrobe.backCost': '{credits, plural, one {# credit} other {# credits}} from today’s free allowance.',
   'wardrobe.patternFact': 'Pattern',
   'wardrobe.shopLink': 'Open the shop’s page',
   'wardrobe.shopFact': 'Shop',

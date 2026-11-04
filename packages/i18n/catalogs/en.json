@@ -332,7 +332,6 @@
     "removeBack": "Remove the back",
     "backSending": "Cutting out the back…",
     "backFailed": "The back didn’t go through. Try again.",
-    "backCost": "{credits, plural, one {# credit} other {# credits}} from today’s free allowance.",
     "patternFact": "Pattern",
     "shopLink": "Open the shop’s page",
     "shopFact": "Shop",

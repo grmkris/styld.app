@@ -15,7 +15,7 @@ import { WardrobeStore } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
-/** A back of the piece: the person's photo of it, cut out like the front, for a photo's credit (owner, 2026-10-31).
+/** A back of the piece: the person's photo of it, cut out like the front (owner, 2026-10-31), free since 4 November.
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
 export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   setBack: Effect.fn('Styld.Wardrobe.setBack')(function* (pieceId: PieceId, input: SetBack) {

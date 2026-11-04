@@ -5,7 +5,8 @@
 export const dailyCredits = 100
 
 export const prices = {
-  /** A photo's garments found and cut out, and a piece's back (owner, 30 October). */
+  /** A photo's garments found and cut out (owner, 30 October). A piece's back is free (owner, 4 November): the camera
+   * asks for it after each front, and a back is what Styld's carousel turns the piece to. */
   photo: 1,
   /** Each started half-minute of a video, about 10 credits a minute. */
   videoHalfMinute: 5,

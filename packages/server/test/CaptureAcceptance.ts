@@ -216,7 +216,8 @@ const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
   const secondBack = await shot('native-pair-0004', 'green-shirt.png', 'back', second.captureId)
   const current = await paired(call, [front.captureId, second.captureId])
   expect(current.captures.map(({ id }) => id).toSorted()).toEqual([front.captureId, second.captureId].toSorted())
-  expect(current.allowance.remaining).toBe(nativeDailyAllowance - 4)
+  // Two fronts at a photo's credit each; their backs are free (owner, 4 November).
+  expect(current.allowance.remaining).toBe(nativeDailyAllowance - 2)
   const detection = current.captures.find(({ id }) => id === front.captureId)?.detections[0]
   await verifySignedImage(origin, detection?.images.back ?? '')
 

@@ -17,7 +17,7 @@ import { GarmentCutout } from '../src/wardrobe/Processing.ts'
 import { importedDetails } from '../src/wardrobe/Work.ts'
 
 // Cut-outs SAM bills for. A piece's own: the account pays a photo's credit for its own piece, Styld pays for a piece
-// imported from v1, and a stored cut-out is described by the decision model (an import's attributes). A gallery
+// imported from v1 and for a back, and a stored cut-out is described by the decision model (an import's attributes). A gallery
 // photo's person: free to the person, so asked once per photo, whether a person was found or not, at the account's
 // pace.
 
@@ -134,6 +134,17 @@ describe("a piece's cut-out", () => {
       held.length = 0
       expect(yield* cutout.cut({ ...input('styld'), pieceId: 'pc_2' })).toEqual({
         imageKey: 'accounts/ac_1/pieces/pc_2/cutout.png',
+      })
+      expect(held).toEqual([])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("holds none of the account's credits for a back added on the piece's page (owner, 4 November)", () => {
+    const { held, layer } = over()
+    return Effect.gen(function* () {
+      const cutout = yield* GarmentCutout
+      expect(yield* cutout.cut({ ...input('account'), of: { side: 'back', uploadId: 'up_1' } })).toEqual({
+        imageKey: 'accounts/ac_1/pieces/pc_1/back-up_1.png',
       })
       expect(held).toEqual([])
     }).pipe(Effect.provide(layer))

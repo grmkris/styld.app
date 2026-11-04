@@ -307,8 +307,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.removeBack': 'Odstrani hrbtno stran',
   'wardrobe.backSending': 'Izrezujem hrbtno stran …',
   'wardrobe.backFailed': 'Hrbtna stran ni uspela. Poskusi znova.',
-  'wardrobe.backCost':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} od današnjih brezplačnih.',
   'wardrobe.patternFact': 'Vzorec',
   'wardrobe.shopLink': 'Odpri stran v trgovini',
   'wardrobe.shopFact': 'Trgovina',

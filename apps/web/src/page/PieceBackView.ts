@@ -1,4 +1,3 @@
-import { prices } from '@styld/protocol'
 import type { Piece } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Submodel } from 'foldkit'
@@ -31,7 +30,6 @@ export const actions = Submodel.defineView<Model, Message, Inputs>((model, { pie
                 h.Id('piece-back'),
                 h.Type('file'),
                 h.Accept(pictureAccept),
-                h.AriaDescribedBy('piece-back-cost'),
                 h.OnFileChange((files) => Message.ChoseBack({ files })),
                 ...styled(h, visuallyHidden()),
               ]),
@@ -48,10 +46,6 @@ export const actions = Submodel.defineView<Model, Message, Inputs>((model, { pie
               )
             : h.empty,
         ]),
-    h.p(
-      [h.Id('piece-back-cost'), ...styled(h, styles.pictureNote())],
-      [format(locale, 'wardrobe.backCost', { credits: prices.photo })],
-    ),
     model.work === 'failed'
       ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.backFailed', {})])
       : h.empty,

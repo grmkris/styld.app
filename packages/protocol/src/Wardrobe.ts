@@ -248,7 +248,7 @@ export const DeletePieces = Schema.Struct({
 })
 export type DeletePieces = typeof DeletePieces.Type
 
-/** A photo of the piece's back: `PUT /api/pieces/:pieceId/back`, cut out like the front, for a photo's credit. A new
+/** A photo of the piece's back: `PUT /api/pieces/:pieceId/back`, cut out like the front, free (owner, 4 November). A new
  * `operationId` each time; repeating one answers the first request again. */
 export const SetBack = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
 export type SetBack = typeof SetBack.Type

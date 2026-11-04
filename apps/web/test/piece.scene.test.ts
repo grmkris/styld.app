@@ -164,6 +164,7 @@ describe('the piece page', () => {
       click(role('button', { name: 'Edit' })),
       expect(role('button', { name: 'Rotate image 90°' })).toExist(),
       expect(text('Add the back')).toExist(),
+      expect(text('1 credit from today’s free allowance.')).not.toExist(),
       expect(role('textbox', { name: 'Name (optional)' })).toHaveValue(''),
       type(role('textbox', { name: 'Name (optional)' }), 'Weekend denim'),
       click(role('button', { name: 'Delete' })),
