@@ -1,5 +1,6 @@
 import * as Domain from '@alchemy.run/domain'
 import { Effect, Record } from 'effect'
+import { spendableOn } from './Allowance.ts'
 import { maximumPendingReservations } from './Credits.ts'
 import {
   CreditsReserved,
@@ -12,7 +13,7 @@ import { CreditsSettled, ReservationNotFound, SettleCredits } from './SettleCred
 import { WalletId } from './Wallet.id.ts'
 import { WalletState } from './WalletState.ts'
 
-/** An account's free daily credits and the holds on them. Internal commands only: no Domain Api exposes the
+/** An account's daily credits and the holds on them. Internal commands only: no Domain Api exposes the
  * Wallet, so only the server's own code sends them, with transport IDs from `WalletCommandIds.ts`. */
 export class Wallet extends Domain.Aggregate('Wallet', {
   id: WalletId,
@@ -27,7 +28,7 @@ export class Wallet extends Domain.Aggregate('Wallet', {
         return []
       }
       if (Object.keys(state.reservations).length >= maximumPendingReservations) return yield* new TooManyReservations()
-      const available = state.daily.day === command.day ? state.daily.remaining : command.dailyAllowance
+      const { available, allowance } = spendableOn(state.daily, command.day, command.dailyAllowance)
       if (command.amount > available) return yield* new InsufficientCredits({ available, required: command.amount })
       return [
         new CreditsReserved({
@@ -35,6 +36,7 @@ export class Wallet extends Domain.Aggregate('Wallet', {
           day: command.day,
           amount: command.amount,
           dailyAfter: available - command.amount,
+          dailyAllowance: allowance,
         }),
       ]
     }),
@@ -55,7 +57,11 @@ export class Wallet extends Domain.Aggregate('Wallet', {
   },
   evolve: {
     CreditsReserved: (state, event) => ({
-      daily: { day: event.day, remaining: event.dailyAfter },
+      daily: {
+        day: event.day,
+        remaining: event.dailyAfter,
+        ...(event.dailyAllowance === undefined ? {} : { allowance: event.dailyAllowance }),
+      },
       reservations: { ...state.reservations, [event.operationId]: { day: event.day, amount: event.amount } },
     }),
     CreditsSettled: (state, event) => ({
