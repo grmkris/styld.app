@@ -63,7 +63,7 @@ export const toPiece = Effect.fnUntraced(function* (
     source: row.source,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    ...(picture === undefined ? {} : { picture: pictureView(picture, at) }),
+    ...(picture === undefined ? {} : { picture: pictureView(picture, at, row) }),
     ...(turn === undefined ? {} : { turn: yield* shownTurn(turn, at) }),
     ...Option.match(images, { onNone: () => ({}), onSome: (shown) => ({ images: shown }) }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.

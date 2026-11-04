@@ -41,16 +41,21 @@ const addressOf = (piece: Piece, slide: Slide) => {
 }
 
 /** The quarter turn a picture is shown with on top of the one it arrives with, as a data attribute (zyzz composes only
- * statically known styles). The server turns the person's photo and cut-out by the saved rotation and never the
- * drawing or the back, so outside Edit nothing turns here; in Edit the photo and cut-out preview only the turn not yet
- * saved. */
+ * statically known styles). The server turns the person's photo, cut-out and drawing by the saved rotation and never
+ * the back, so outside Edit nothing turns here; in Edit they preview only the turn not yet saved (Eva, 4 November:
+ * Rotate never turned the shop-style picture). */
 const previewTurn = (piece: Piece, model: Model, slide: Slide) =>
-  slide === 'photo' || slide === 'cutout'
+  slide === 'photo' || slide === 'cutout' || slide === 'clean'
     ? Option.match(model.draft, {
         onNone: () => 0,
         onSome: (draft) => (draft.rotation - piece.rotation + 360) % 360,
       })
     : 0
+
+/** The quarter turn the turn's frames are shown with: served as they were made, so the drawing's own turn, and in
+ * Edit the turn not yet saved. */
+const turnTurn = (piece: Piece, model: Model) =>
+  ((piece.picture?.rotation ?? 0) + previewTurn(piece, model, 'clean')) % 360
 
 /** The shop-style picture: its turn, played on tap, once one is ready; else the drawing. */
 const drawing = (
@@ -78,7 +83,8 @@ const drawing = (
           h.Role('img'),
           h.AriaLabel(pieceLabel(piece, locale)),
           h.OnMount(ShowTurn({ sheet, layout: turn.layout })),
-          ...styled(h, styles.cutout()),
+          h.DataAttribute('rotation', String(turnTurn(piece, model))),
+          ...styled(h, cx(styles.cutout(), pieceStyles.rotated())),
         ]),
       ],
     ),

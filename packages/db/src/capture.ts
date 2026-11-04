@@ -1,4 +1,12 @@
-import { CaptureSource, CaptureStatus, Pattern, PictureChoice, PieceType, Side } from '@styld/protocol'
+import {
+  CaptureSource,
+  CaptureStatus,
+  Pattern,
+  PictureChoice,
+  type PieceRotation,
+  PieceType,
+  Side,
+} from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import {
   type AnySQLiteColumn,
@@ -209,6 +217,9 @@ export const piecePictures = sqliteTable(
     cleanKey: text('clean_key'),
     /** Counts drawings: each redraw is the next version, and image URLs carry it. */
     version: integer('version').notNull(),
+    /** The piece's rotation its drawing was drawn at (Muse draws from the turned cut-out, `capture/Drawing.ts`): the
+     * drawing is shown turned by what the piece's rotation is past it (`wardrobe/Shown.ts` › `drawingTurn`). */
+    drawnRotation: integer('drawn_rotation').$type<PieceRotation>().notNull().default(0),
     keyColour: text('key_colour', { enum: keyColours }),
     /** Who drew it, for the pictures' metrics. */
     provider: text('provider'),
@@ -232,6 +243,7 @@ export const piecePictures = sqliteTable(
     oneOf('piece_pictures_state', table.state, pictureStates),
     oneOf('piece_pictures_shown', table.shown, PictureChoice.literals),
     oneOf('piece_pictures_key_colour', table.keyColour, keyColours),
+    check('piece_pictures_drawn_rotation', sql`${table.drawnRotation} IN (0, 90, 180, 270)`),
   ],
 )
 

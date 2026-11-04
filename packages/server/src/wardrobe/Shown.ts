@@ -21,16 +21,28 @@ export const isDrawn = <P extends Pick<PictureRow, 'state' | 'cleanKey'>>(
 export const shows = (picture: PictureRow | undefined): PictureChoice =>
   isDrawn(picture) ? (picture.shown ?? 'clean') : 'photo'
 
+/** The quarter turn a piece's drawing, and the turn made from it, are shown with: what the piece's rotation is past
+ * the one it was drawn at. Muse draws from the cut-out turned by the piece's rotation (`capture/Drawing.ts` ›
+ * `frontOf`), so a drawing made after a rotation is upright, and one made before it turns with the piece (Eva,
+ * 4 November: Rotate turned the cut-out but never the shop-style picture). */
+export const drawingTurn = (
+  piece: Pick<PieceRow, 'rotation'>,
+  picture: Pick<PictureRow, 'drawnRotation'> | undefined,
+): PieceRotation => {
+  const turn = (piece.rotation - (picture?.drawnRotation ?? 0) + 360) % 360
+  return turn === 90 || turn === 180 || turn === 270 ? turn : 0
+}
+
 /** The stored image a piece shows, wherever a piece's picture appears: its clean drawing (`shows`), else its cut-out,
  * else the photo it came from; with the quarter turn it is delivered with. The owner's rotation turns their own photo
- * and cut-out, never a drawing: Muse draws the garment upright from the turned cut-out (`capture/Pictures.ts`). */
+ * and cut-out, and the drawing by what it is past the rotation the drawing was drawn at (`drawingTurn`). */
 export const shownImage = (
   piece: Pick<PieceRow, 'imageKey' | 'originalKey' | 'contentType' | 'rotation'>,
   picture: PictureRow | undefined,
 ): { readonly key: string; readonly contentType: string; readonly rotation: PieceRotation } => {
   const cleanKey = picture?.cleanKey ?? null
   return cleanKey !== null && shows(picture) === 'clean'
-    ? { key: cleanKey, contentType: 'image/png', rotation: 0 }
+    ? { key: cleanKey, contentType: 'image/png', rotation: drawingTurn(piece, picture) }
     : { key: piece.imageKey ?? piece.originalKey, contentType: piece.contentType, rotation: piece.rotation }
 }
 
@@ -46,13 +58,18 @@ const states: Record<PictureRow['state'], PiecePicture['state']> = {
   failed: 'failed',
 }
 
-/** A piece's clean picture as its owner sees it. A drawing claimed too long ago shows as failed: the photo stays and
- * the person may ask again. */
-export const pictureView = (picture: PictureRow, at: Date): PiecePicture => ({
-  state: isStale(picture, at) ? 'failed' : states[picture.state],
-  shows: shows(picture),
-  version: picture.version,
-})
+/** A piece's clean picture as its owner sees it, with the quarter turn its drawing is served with (`drawingTurn`),
+ * which the browser gives the turn made from it, served as it was made; a redraw's answer, a drawing on its way, has
+ * none. A drawing claimed too long ago shows as failed: the photo stays and the person may ask again. */
+export const pictureView = (picture: PictureRow, at: Date, piece?: Pick<PieceRow, 'rotation'>): PiecePicture => {
+  const rotation = piece === undefined ? 0 : drawingTurn(piece, picture)
+  return {
+    state: isStale(picture, at) ? 'failed' : states[picture.state],
+    shows: shows(picture),
+    version: picture.version,
+    ...(rotation === 0 ? {} : { rotation }),
+  }
+}
 
 // A turn no step has moved for this long has lost its delivery; it shows as failed and may be asked for again.
 const turnPatienceMillis = 20 * 60 * 1000

@@ -51,6 +51,8 @@ const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
     Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: cutoutAt(piece.backImageKey) }),
+  // Drawn from the cut-out turned by the piece's rotation (`frontOf`), and shown turned by what it is past that.
+  drawnWith: (piece) => ({ drawnRotation: piece.rotation }),
   plan: planFront,
   photo: photoOf,
   hint: (picture) => Option.fromNullishOr(picture.hint),

@@ -8,8 +8,10 @@ import type { PictureRow, PieceRow } from '../src/wardrobe/Store.ts'
 import type { BackPictureRow } from '../src/capture/BackPictureStore.ts'
 
 // The signed addresses of a piece's pictures, and the quarter turn each is delivered with: the owner's rotation turns
-// their own photo and cut-out, never the drawing (drawn upright) or the back (a photo of its own). A rotation applied
-// twice, by the address and again on the page, once made "Rotate image" never stick (Eva's skirt, 4 November).
+// their own photo and cut-out, and the drawing by what it is past the rotation it was drawn at; never the back (a
+// photo of its own). A rotation applied twice, by the address and again on the page, once made "Rotate image" never
+// stick (Eva's skirt, 4 November); a drawing that never turned once made it useless on the shop-style picture (Eva's
+// top, 4 November).
 
 const at = new Date(0)
 
@@ -41,13 +43,15 @@ const piece: PieceRow = {
   updatedAt: at,
 }
 
-const drawn = (shown: PictureRow['shown']): PictureRow => ({
+/** The front's drawing, drawn at `drawnRotation` (by default the piece's, so upright). */
+const drawn = (shown: PictureRow['shown'], drawnRotation: PictureRow['drawnRotation'] = 180): PictureRow => ({
   pieceId: 'pc_1',
   accountId: 'ac_1',
   state: 'ready',
   shown,
   cleanKey: 'accounts/ac_1/pieces/pc_1/clean-1.png',
   version: 1,
+  drawnRotation,
   keyColour: 'green',
   provider: 'meta-muse',
   face: 0.01,
@@ -96,7 +100,15 @@ const grantsOf = (picture: PictureRow, back?: BackPictureRow) => {
 }
 
 describe('the turn a piece’s pictures are delivered with', () => {
-  test('the drawing and the back come upright; the photo and cut-out turned by the owner’s rotation', () => {
+  test('a drawing made before the piece was turned turns with it, by what the rotation is past the one it was drawn at', () => {
+    const grants = grantsOf(drawn('clean', 0))
+    expect(grants.get('accounts/ac_1/pieces/pc_1/clean-1.png')?.rotation).toBe(180)
+    expect(grantsOf(drawn('clean', 90)).get('accounts/ac_1/pieces/pc_1/clean-1.png')?.rotation).toBe(90)
+    expect(grantsOf(drawn('clean', 270)).get('accounts/ac_1/pieces/pc_1/clean-1.png')?.rotation).toBe(270)
+    expect(grants.get('accounts/ac_1/pieces/pc_1/back.png')?.rotation).toBe(0)
+  })
+
+  test('a drawing made at the piece’s rotation and the back come upright; the photo and cut-out turned by it', () => {
     const grants = grantsOf(drawn('clean'))
     expect(grants.get('accounts/ac_1/pieces/pc_1/clean-1.png')?.rotation).toBe(0)
     expect(grants.get('accounts/ac_1/pieces/pc_1/back.png')?.rotation).toBe(0)

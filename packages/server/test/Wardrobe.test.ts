@@ -212,6 +212,7 @@ const pictureRow = (state: PictureRow['state'], changes: Partial<PictureRow> = {
   shown: null,
   cleanKey: 'accounts/ac_1/pieces/pc_1/clean-2.png',
   version: 2,
+  drawnRotation: 0,
   keyColour: 'green',
   provider: 'meta-muse',
   face: 0.01,
@@ -247,11 +248,15 @@ describe('the picture a piece shows', () => {
     expect(shownImage({ ...cutout, imageKey: null }, undefined).key).toBe('photo.jpg')
   })
 
-  test('turns the owner’s own cut-out by their rotation, never the drawing, which is drawn upright', () => {
+  test('turns the owner’s own cut-out by their rotation, and the drawing by what it is past the one drawn at', () => {
     const turned = { ...cutout, rotation: 180 } as const
-    expect(shownImage(turned, pictureRow('ready')).rotation).toBe(0)
+    expect(shownImage(turned, pictureRow('ready', { drawnRotation: 180 })).rotation).toBe(0)
+    expect(shownImage(turned, pictureRow('ready')).rotation).toBe(180)
+    expect(shownImage(turned, pictureRow('ready', { drawnRotation: 270 })).rotation).toBe(270)
     expect(shownImage(turned, pictureRow('ready', { shown: 'photo' })).rotation).toBe(180)
     expect(shownImage(turned, undefined).rotation).toBe(180)
+    expect(pictureView(pictureRow('ready'), new Date(0), turned)).toMatchObject({ rotation: 180 })
+    expect(pictureView(pictureRow('ready', { drawnRotation: 180 }), new Date(0), turned)).not.toHaveProperty('rotation')
   })
 
   test('tells its owner where the drawing stands, and shows a claim no delivery finished as failed', () => {
