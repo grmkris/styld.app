@@ -103,7 +103,7 @@
     "@types/node": "catalog:",
     "@x18n/cli": "0.1.2",
     "@x18n/core": "0.1.2",
-    "@yielded/effect-tsrs": "0.2.2",
+    "@yielded/effect-tsrs": "0.2.3",
     "alchemy": "catalog:",
     "drizzle-kit": "catalog:",
     "effect": "catalog:",
