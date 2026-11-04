@@ -1304,5 +1304,21 @@
     "clothesTitle": "Zdaj še tvoja oblačila",
     "clothesReason": "Doma ti pokažemo, kako naprej: fotografiraj nekaj kosov ali posnemi obešalnik, Styld pa vsakega izreže in iz njih sestavi videze.",
     "done": "Končano"
+  },
+  "consent": {
+    "title": "Dovoliš, da {client} dostopa do tvojega Styld?",
+    "lede": "{client} bo v Styldu deloval zate, kadar ga prosiš.",
+    "signedInAs": "Račun",
+    "canDo": "Lahko",
+    "readWardrobe": "vidi tvoje kose, videze, table, fotografije in pomerjanja",
+    "changeWardrobe": "jih doda in spremeni, ko ga prosiš",
+    "credits": "porabi tvoje dnevne kredite za plačljive stvari, na primer za pomerjanje",
+    "client": "Odjemalec: {host}",
+    "returnTo": "vrne se na {host}",
+    "local": "Ta dostop bo dobil program na tem računalniku. Nadaljuj le, če povezavo vzpostavljaš sam.",
+    "allow": "Dovoli",
+    "deny": "Zavrni",
+    "otherAccount": "Uporabi drug račun",
+    "revoke": "{client} lahko kadar koli odklopiš na strani svojega računa v Styldu."
   }
 }

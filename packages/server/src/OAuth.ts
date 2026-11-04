@@ -10,6 +10,8 @@ import { Deployment } from './Config.ts'
 import { Database } from './kernel/Db.ts'
 import { hostedClientMetadata, McpScope, redirectUriAllowed } from './mcp/Policy.ts'
 import { networkOf, Pacing } from './kernel/Pacing.ts'
+import { consentPage, type ConsentPerson, consentStylesheet, consentStylesheetPath } from './ConsentPage.ts'
+import { readerLocaleOf } from './social/Translated.ts'
 
 /** Styld's authorization server for MCP clients: Yielded's authorization-code server with PKCE,
  * rotating refresh tokens and client metadata documents. */
@@ -222,11 +224,57 @@ const routes = <R>(db: D1, origin: string, allowRegistration: (client: string) =
         HttpRouter.add('*', McpOAuth.paths.token, forward),
         HttpRouter.add('*', McpOAuth.paths.revoke, forward),
         HttpRouter.add('GET', McpOAuth.paths.metadata, metadata),
+        HttpRouter.add('GET', consentStylesheetPath, Effect.succeed(consentStyles)),
         HttpRouter.add('GET', '/.well-known/oauth-protected-resource/mcp', forward),
         HttpRouter.add('POST', '/oauth/mcp/register', register(db, allowRegistration)),
       )
     }),
   )
+
+/** The signed-in person as the consent page names them: their display name and the email they sign in with. */
+const personOf = (db: D1, subjectId: string) =>
+  Effect.map(
+    Effect.all([
+      query(() =>
+        db
+          .prepare('SELECT display_name AS name FROM accounts WHERE id = ?')
+          .bind(subjectId)
+          .first<{ readonly name: string }>(),
+      ),
+      query(() =>
+        db
+          .prepare(
+            "SELECT value FROM styld_auth_identifiers WHERE subject_id = ? AND namespace = 'email' AND active = 1",
+          )
+          .bind(subjectId)
+          .first<{ readonly value: string }>(),
+      ),
+    ]),
+    ([account, email]): ConsentPerson => ({ name: account?.name ?? email?.value ?? '', email: email?.value }),
+  )
+
+/** The consent page in Styld's look and the reader's language (`ConsentPage.ts`). */
+const styldConsent = (db: D1) =>
+  Layer.succeed(
+    OAuthServer.ConsentRenderer,
+    OAuthServer.ConsentRenderer.of({
+      render: (consent) =>
+        Effect.gen(function* () {
+          const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
+          const locale = Option.match(request, {
+            onNone: () => 'en' as const,
+            onSome: ({ headers }) => readerLocaleOf(headers),
+          })
+          return consentPage(consent, yield* personOf(db, consent.subjectId), locale)
+        }),
+    }),
+  )
+
+/** The consent page's stylesheet: the one style source its policy allows. */
+const consentStyles = HttpServerResponse.text(consentStylesheet, {
+  contentType: 'text/css; charset=utf-8',
+  headers: { 'cache-control': 'public, max-age=3600' },
+})
 
 /** The OAuth server for MCP, over the application's database and the website's session. */
 export const mcpOAuthServer = Layer.unwrap(
@@ -242,6 +290,7 @@ export const mcpOAuthServer = Layer.unwrap(
       keys: deployment.auth.sessionKeys,
     }).pipe(
       Layer.provide(Layer.succeed(OAuthServer.Persistence, persistence(db))),
+      Layer.provide(styldConsent(db)),
       Layer.provide(Layer.succeed(McpOAuth.Clients, registeredClients(db))),
       Layer.provide(sessionIdentity(yield* Auth)),
       // Client metadata documents are fetched from the public web without following redirects.
