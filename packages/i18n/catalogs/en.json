@@ -1176,5 +1176,19 @@
       "changesHeading": "Changes",
       "changes": "When these terms change, we update them here with a new date. If you keep using Styld after a change, the new terms apply."
     }
+  },
+  "firstRun": {
+    "step": "Step {at} of {of}",
+    "skip": "Skip",
+    "skipAll": "Skip all",
+    "next": "Next",
+    "boardsTitle": "Pick {count} boards you like",
+    "boardsReason": "They go into Saved, and What's new puts boards like them first.",
+    "boardsLoading": "Loading boards…",
+    "occasionsTitle": "What do you dress for?",
+    "occasionsReason": "Today's outfits follow your days: smart on weekdays if you dress smart.",
+    "clothesTitle": "Now your own clothes",
+    "clothesReason": "Home shows you how next: photograph a few pieces, or film your rail, and Styld cuts each one out and makes outfits from them.",
+    "done": "Done"
   }
 }

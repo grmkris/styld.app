@@ -1,3 +1,4 @@
+import * as Challenges from '../src/page/Challenges.ts'
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../src/page/Today.ts'
@@ -13,5 +14,9 @@ export const settled = (today: Model, waiting = 0, pictures: ReadonlyArray<strin
       tray: TrayData.Success({ data: { waiting, pictures, allowance: { remaining: 97, daily: 100 } } }),
       favourite: FavouriteData.Success({ data: Option.none() }),
     }),
-    whatsNew: () => ({ feed: FeedData.Success({ data: { items: [], cursor: null } }), more: More.Idle() }),
+    whatsNew: () => ({
+      feed: FeedData.Success({ data: { items: [], cursor: null } }),
+      more: More.Idle(),
+      challenges: Challenges.init(),
+    }),
   })

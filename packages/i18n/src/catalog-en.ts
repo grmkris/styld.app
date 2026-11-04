@@ -991,4 +991,17 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'legal.termsLink': 'Terms',
   'legal.updated': 'Last updated 4 November 2026',
   'legal.questions': 'Questions or requests:',
+  'firstRun.step': 'Step {at} of {of}',
+  'firstRun.skip': 'Skip',
+  'firstRun.skipAll': 'Skip all',
+  'firstRun.next': 'Next',
+  'firstRun.boardsTitle': 'Pick {count} boards you like',
+  'firstRun.boardsReason': "They go into Saved, and What's new puts boards like them first.",
+  'firstRun.boardsLoading': 'Loading boards…',
+  'firstRun.occasionsTitle': 'What do you dress for?',
+  'firstRun.occasionsReason': "Today's outfits follow your days: smart on weekdays if you dress smart.",
+  'firstRun.clothesTitle': 'Now your own clothes',
+  'firstRun.clothesReason':
+    'Home shows you how next: photograph a few pieces, or film your rail, and Styld cuts each one out and makes outfits from them.',
+  'firstRun.done': 'Done',
 }

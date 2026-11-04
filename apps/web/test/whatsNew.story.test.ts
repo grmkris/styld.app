@@ -1,3 +1,4 @@
+import { ReadChallenges } from '../src/page/Challenges.ts'
 import { Option } from 'effect'
 import { AsyncData } from 'foldkit'
 import { describe, expect, test } from 'vitest'
@@ -16,9 +17,10 @@ const names = (commands: ReadonlyArray<{ readonly name: string }> | undefined) =
 describe("What's new", () => {
   test('a first visit reads the newest; a visit after keeps them on screen while they are read again', () => {
     const first = enter(init())
-    expect(names(first.commands)).toEqual([ReadFeed.name])
+    // The challenges' boards are read beside the newest.
+    expect(names(first.commands)).toEqual([ReadFeed.name, ReadChallenges.name])
     const again = enter(shown(['a'], null))
-    expect(names(again.commands)).toEqual([ReadFeed.name])
+    expect(names(again.commands)).toEqual([ReadFeed.name, ReadChallenges.name])
     expect(again.model.feed).toEqual(FeedData.Refreshing({ data: feedOf(['a'], null) }))
   })
 

@@ -329,6 +329,18 @@ export interface MessageArgumentsByKey<_T = string> {
   'connect.copy': Readonly<Record<string, never>>
   'connect.copyFailed': Readonly<Record<string, never>>
   'feed.save': Readonly<Record<string, never>>
+  'firstRun.boardsLoading': Readonly<Record<string, never>>
+  'firstRun.boardsReason': Readonly<Record<string, never>>
+  'firstRun.boardsTitle': { readonly count: string | number }
+  'firstRun.clothesReason': Readonly<Record<string, never>>
+  'firstRun.clothesTitle': Readonly<Record<string, never>>
+  'firstRun.done': Readonly<Record<string, never>>
+  'firstRun.next': Readonly<Record<string, never>>
+  'firstRun.occasionsReason': Readonly<Record<string, never>>
+  'firstRun.occasionsTitle': Readonly<Record<string, never>>
+  'firstRun.skip': Readonly<Record<string, never>>
+  'firstRun.skipAll': Readonly<Record<string, never>>
+  'firstRun.step': { readonly at: string | number; readonly of: string | number }
   'follow.follow': Readonly<Record<string, never>>
   'follow.following': Readonly<Record<string, never>>
   'lab.title': Readonly<Record<string, never>>
@@ -1033,4 +1045,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '940fdd4fc630026889f7d292e8c0e38e1be99c911b862200dcb7907cb3c50c5f'
+export const catalogVersion = '2ad1ebee945b922873e8867479974d2899a07a48808981fc969684b67c3e636d'

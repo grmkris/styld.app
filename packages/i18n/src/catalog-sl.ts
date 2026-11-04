@@ -1013,4 +1013,17 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'legal.termsLink': 'Pogoji',
   'legal.updated': 'Zadnja sprememba: 4. november 2026',
   'legal.questions': 'Vprašanja ali zahteve:',
+  'firstRun.step': 'Korak {at} od {of}',
+  'firstRun.skip': 'Preskoči',
+  'firstRun.skipAll': 'Preskoči vse',
+  'firstRun.next': 'Naprej',
+  'firstRun.boardsTitle': 'Izberi {count} table, ki so ti všeč',
+  'firstRun.boardsReason': 'Shranijo se med shranjene, Novosti pa podobne table pokažejo najprej.',
+  'firstRun.boardsLoading': 'Nalagam table …',
+  'firstRun.occasionsTitle': 'Za kaj se oblačiš?',
+  'firstRun.occasionsReason': 'Današnji videzi sledijo tvojim dnevom: med tednom elegantno, če se tako oblačiš.',
+  'firstRun.clothesTitle': 'Zdaj še tvoja oblačila',
+  'firstRun.clothesReason':
+    'Doma ti pokažemo, kako naprej: fotografiraj nekaj kosov ali posnemi obešalnik, Styld pa vsakega izreže in iz njih sestavi videze.',
+  'firstRun.done': 'Končano',
 }

@@ -1176,5 +1176,19 @@
       "changesHeading": "Spremembe",
       "changes": "Ko se pogoji spremenijo, jih posodobimo tukaj z novim datumom. Če Styld uporabljaš še po spremembi, veljajo novi pogoji."
     }
+  },
+  "firstRun": {
+    "step": "Korak {at} od {of}",
+    "skip": "Preskoči",
+    "skipAll": "Preskoči vse",
+    "next": "Naprej",
+    "boardsTitle": "Izberi {count} table, ki so ti všeč",
+    "boardsReason": "Shranijo se med shranjene, Novosti pa podobne table pokažejo najprej.",
+    "boardsLoading": "Nalagam table …",
+    "occasionsTitle": "Za kaj se oblačiš?",
+    "occasionsReason": "Današnji videzi sledijo tvojim dnevom: med tednom elegantno, če se tako oblačiš.",
+    "clothesTitle": "Zdaj še tvoja oblačila",
+    "clothesReason": "Doma ti pokažemo, kako naprej: fotografiraj nekaj kosov ali posnemi obešalnik, Styld pa vsakega izreže in iz njih sestavi videze.",
+    "done": "Končano"
   }
 }

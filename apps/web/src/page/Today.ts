@@ -26,7 +26,7 @@ import * as PickUp from './PickUp.ts'
 import * as ShowMe from './ShowMe.ts'
 import * as Tombola from './Tombola.ts'
 import * as WhatsNew from './WhatsNew.ts'
-import * as Challenges from './Challenges.ts'
+import * as FirstRun from './FirstRun.ts'
 
 // MODEL
 
@@ -85,8 +85,8 @@ export const Model = Schema.Struct({
   /** What What's new starts with: asked once, above it. */
   showMe: ShowMe.Model,
   whatsNew: WhatsNew.Model,
-  /** The house boards Eva's challenges open, once seeded. */
-  challenges: Challenges.Model,
+  /** The first run over Home, until it is behind the person. */
+  firstRun: FirstRun.Model,
   /** What to wear today: the wheel that draws one piece. */
   tombola: Tombola.Model,
   /** The piece drawn and chosen to wear today: every outfit of the run is made around it, until the person goes back
@@ -106,7 +106,7 @@ export const init = (): Model => ({
   pickUp: PickUp.init(),
   showMe: ShowMe.init(),
   whatsNew: WhatsNew.init(),
-  challenges: Challenges.init(),
+  firstRun: FirstRun.init(),
   tombola: Tombola.init(),
   maybeAnchor: Option.none(),
 })
@@ -120,7 +120,7 @@ export const Message = defineMessageUnion({
   GotPickUpMessage: { message: PickUp.Message },
   GotShowMeMessage: { message: ShowMe.Message },
   GotWhatsNewMessage: { message: WhatsNew.Message },
-  GotChallengesMessage: { message: Challenges.Message },
+  GotFirstRunMessage: { message: FirstRun.Message },
   GotTombolaMessage: { message: Tombola.Message },
   SucceededMakeOutfits: { batch: OutfitProposals },
   FailedMakeOutfits: {},
@@ -280,13 +280,6 @@ const whatsNewFold = {
   toParentMessage: (message: WhatsNew.Message) => Message.GotWhatsNewMessage({ message }),
 }
 const foldWhatsNew = Update.foldChild({ update: WhatsNew.update, ...whatsNewFold })
-const challengesFold = {
-  read: (model: Model) => Option.some(model.challenges),
-  write: (model: Model, challenges: Challenges.Model) => modifyFields(model, { challenges: () => challenges }),
-  toParentMessage: (message: Challenges.Message) => Message.GotChallengesMessage({ message }),
-}
-const foldChallenges = Update.foldChild({ update: Challenges.update, ...challengesFold })
-const enterChallenges = Update.foldChildStep({ update: Challenges.enter, ...challengesFold })
 const foldTombola = Update.foldChild({
   update: Tombola.update,
   read: (model: Model) => Option.some(model.tombola),
@@ -308,6 +301,7 @@ const foldTombola = Update.foldChild({
   }),
 })
 const enterWhatsNew = Update.foldChildStep({ update: WhatsNew.enter, ...whatsNewFold })
+const refreshWhatsNew = Update.foldChildStep({ update: WhatsNew.refresh, ...whatsNewFold })
 const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
 const enterShowMe = Update.foldChildStep({ update: ShowMe.enter, ...showMeFold })
 /** A new Show me reads What's new again, in its order. */
@@ -316,7 +310,17 @@ const foldShowMe = Update.foldChild({
   ...showMeFold,
   foldOutMessage: ShowMe.OutMessage.match<
     Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
-  >({ ChangedShowMe: () => enterWhatsNew }),
+  >({ ChangedShowMe: () => refreshWhatsNew }),
+})
+
+const firstRunFold = FirstRun.heldBy<Model, Message>((message) => Message.GotFirstRunMessage({ message }))
+/** An answer in the first run: Home reads Show me again (its card goes, this browser remembers) and What's new in its
+ * order. */
+const foldFirstRun = Update.foldChild({
+  update: FirstRun.update,
+  ...firstRunFold,
+  foldOutMessage: () => (step: Model) =>
+    Update.combine<Model, Message, StyldClient>(step, [enterShowMe, refreshWhatsNew]),
 })
 
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
@@ -329,7 +333,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
     enterPickUp,
     enterShowMe,
     enterWhatsNew,
-    enterChallenges,
+    Update.foldChildStep({ update: FirstRun.enter, ...firstRunFold }),
   ])
 
 /** The season a day's outfit is for, by its month where Styld's people live (the northern hemisphere): winter from
@@ -554,7 +558,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
     GotWhatsNewMessage: (got) => foldWhatsNew(model, got.message),
-    GotChallengesMessage: (got) => foldChallenges(model, got.message),
+    GotFirstRunMessage: (got) => foldFirstRun(model, got.message),
     GotTombolaMessage: (got) => foldTombola(model, got.message),
     GotPickUpMessage: (got) => foldPickUp(model, got.message),
     GotShowMeMessage: (got) => foldShowMe(model, got.message),

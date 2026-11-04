@@ -138,7 +138,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
 // pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
 // on top of e2560062 it measured 399,847.
-if (initialGzip > 399900) throw new Error(`Initial browser assets exceed the 399,900-byte gzip budget: ${initialGzip}`)
+// Raised to 402,900 on 4 November for the first run over Home (taste, L6): its submodel (the taste read, the house
+// boards, four steps and their saves, the modal Mount), its screen with the boards to pick and the occasions, its styles
+// and the en/sl words add 3,010: main measured 399,850 in a clean worktree at cbcf9b58 (9daa3422 adds no browser code)
+// and 402,860 with them.
+if (initialGzip > 402900) throw new Error(`Initial browser assets exceed the 402,900-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

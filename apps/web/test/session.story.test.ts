@@ -14,6 +14,7 @@ import * as ShowMe from '../src/page/ShowMe.ts'
 import * as Today from '../src/page/Today.ts'
 import * as WhatsNew from '../src/page/WhatsNew.ts'
 import * as Challenges from '../src/page/Challenges.ts'
+import * as FirstRun from '../src/page/FirstRun.ts'
 import { AppRoute } from '../src/route.ts'
 import { lenses } from '../src/Page.ts'
 import { at, claims, flags, pageOf, urlOf } from './AppFixtures.ts'
@@ -117,6 +118,7 @@ describe('the session decides where a visitor belongs', () => {
         ShowMe.ReadPreferences,
         WhatsNew.ReadFeed,
         Challenges.ReadChallenges,
+        FirstRun.ReadFirstRun,
         ListPieces,
         ListBoards,
         ReadYou,
@@ -129,6 +131,7 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(ShowMe.ReadPreferences, ShowMe.Message.FailedReadPreferences()),
       Command.resolve(WhatsNew.ReadFeed, WhatsNew.Message.FailedReadFeed()),
       Command.resolve(Challenges.ReadChallenges, Challenges.Message.FailedReadChallenges()),
+      Command.resolve(FirstRun.ReadFirstRun, FirstRun.Message.FailedReadTaste()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
       // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.
       Command.resolve(Today.MakeOutfits, Today.Message.FailedMakeOutfits()),

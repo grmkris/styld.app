@@ -37,6 +37,7 @@ import { type HomeData, pickUpView } from './PickUpView.ts'
 import * as ShowMeView from './ShowMeView.ts'
 import { earlierView, stripView } from './WhatsNewView.ts'
 import * as TombolaView from './TombolaView.ts'
+import * as FirstRunView from './FirstRunView.ts'
 
 const dateOf = (day: string) => {
   const [year = 2026, month = 1, date = 1] = day.split('-').map(Number)
@@ -378,6 +379,13 @@ export const view = Submodel.defineView<
           viewInputs: { pieces, maybeSeason: seasonOf(model), locale },
           toParentMessage: (message) => Message.GotTombolaMessage({ message }),
         }),
+        h.submodel({
+          slotId: 'first-run',
+          model: model.firstRun,
+          view: FirstRunView.view,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotFirstRunMessage({ message }),
+        }),
       ]),
       // An empty wardrobe has one thing to do first: the table that waits for its first piece comes before the rest.
       isEmptyWardrobe(pieces) ? todayView(model, pieces, locale, h) : h.empty,
@@ -399,7 +407,7 @@ export const view = Submodel.defineView<
       ]),
       isEmptyWardrobe(pieces) ? h.empty : todayView(model, pieces, locale, h),
       h.div(styled(h, styles.side()), [
-        challengesView(model.challenges, locale, h),
+        challengesView(model.whatsNew.challenges, locale, h),
         pickUpView(model.pickUp, { pieces, boards }, locale, h),
         h.submodel({
           slotId: 'whats-new-earlier',
