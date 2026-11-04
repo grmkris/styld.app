@@ -29,7 +29,10 @@ const choose = async (page: Page) => {
   await page.getByText('2 credits.').waitFor({ state: 'visible' })
   const tryOn = page.getByRole('button', { name: 'Try on', exact: true })
   expect(await tryOn.getAttribute('aria-disabled')).toBe('true')
-  await page.getByRole('checkbox', { name: 'This is me' }).check()
+  // A click, then a wait for the next render: Playwright's check() reads aria-checked at once, and Foldkit draws the
+  // change on the next frame, which a loaded box can delay past it.
+  await page.getByRole('checkbox', { name: 'This is me' }).click()
+  await page.getByRole('checkbox', { name: 'This is me', checked: true }).waitFor({ state: 'visible' })
   expect(await tryOn.getAttribute('aria-disabled')).not.toBe('true')
   await tryOn.click()
   await page.waitForURL(/\/try-on\/to_[A-Za-z0-9_-]{22}$/u)

@@ -105,5 +105,9 @@ export const verifyTryOn = async (origin: string, fixtures: string): Promise<voi
   expect((await send(owner, `/api/try-ons/${started.id}`, 'DELETE', removal)).status).toBe(204)
   expect((await send(owner, `/api/try-ons/${started.id}`, 'DELETE', removal)).status).toBe(204)
   expect((await owner(`/api/try-ons/${started.id}`)).status).toBe(404)
-  expect((await fetch(new URL(full, origin))).status).not.toBe(200)
+  // The drawing itself is gone from R2. Its signed address, fetched above, may still answer from the edge cache until it
+  // expires (kernel/SignedMedia.ts: an address is a 24-hour capability served without D1), as a piece's or photo's does.
+  const resultKey = new URL(full, origin).searchParams.get('k') ?? ''
+  expect(resultKey).not.toBe('')
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${resultKey}`)).json()).toEqual({ exists: false })
 }
