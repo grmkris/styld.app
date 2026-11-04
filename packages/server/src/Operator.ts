@@ -1,5 +1,5 @@
 import { CurrentOperator, NotFound, OperatorAuth } from '@styld/protocol'
-import { Effect, Layer, Option, Redacted } from 'effect'
+import { Data, Effect, Layer, Option, Redacted } from 'effect'
 import { Deployment } from './Config.ts'
 
 // The operator's token checked at the edge of the operator's routes (`@styld/protocol` › Operator): the Worker keeps
@@ -14,11 +14,12 @@ const digest = (token: string) =>
     Effect.map((bytes) => new Uint8Array(bytes)),
   )
 
+/** `STYLD_OPERATOR_TOKEN` is too short to be a random secret: a broken stage, so the Worker does not start. */
+class OperatorTokenTooShort extends Data.TaggedError('OperatorTokenTooShort')<{ readonly shortest: number }> {}
+
 /** The digest the Worker keeps of the stage's operator token; a token too short to be a secret is a broken stage. */
 export const operatorDigestOf = (token: string) =>
-  token.length < shortest
-    ? Effect.die(new Error(`STYLD_OPERATOR_TOKEN must be a random secret of at least ${shortest} characters`))
-    : digest(token)
+  token.length < shortest ? Effect.die(new OperatorTokenTooShort({ shortest })) : digest(token)
 
 /** Two digests of the same length compared without stopping at the first difference. */
 const sameDigest = (a: Uint8Array, b: Uint8Array) => {
