@@ -40,7 +40,7 @@
       "vitest": "5.1.0",
       "@types/bun": "1.4.4",
       "@types/node": "24.19.2",
-      "zyzz": "0.0.43",
+      "zyzz": "0.0.44",
       "@maple-dev/effect-sdk": "0.12.1",
       "@meta-sam/parser": "0.1.0",
       "fast-png": "8.0.0",
@@ -120,7 +120,7 @@
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "zyzz": "catalog:"
+    "zyzz": "0.0.44"
   },
   "overrides": {
     "@effect/platform-browser": "4.1.2",
