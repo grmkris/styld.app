@@ -38,7 +38,7 @@ export interface Judge {
 const uses: ReadonlySet<string> = new Set(['sportswear', 'loungewear'])
 
 /** Whether the judge read the garment as the spec's type: the same, or any shape for a type that names a use. */
-const typeFits = (read: string, spec: Spec) => read === spec.type || uses.has(spec.type)
+const typeFits = (read: string | null, spec: Spec) => read === spec.type || (read !== null && uses.has(spec.type))
 
 export const passes = (verdict: Verdict, spec: Spec) =>
   verdict.garments === 1 &&
