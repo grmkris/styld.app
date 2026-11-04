@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { parse } from 'yaml'
 import { Catalogue, catalogueFaults, manifestIdFor, needsOf, slotOf } from './Catalogue.ts'
 import { manifestOf } from './Manifest.ts'
-import { planOf, publishOrder } from './Plan.ts'
+import { onlyBoards, planOf, publishOrder } from './Plan.ts'
 import { restOrder } from './Report.ts'
 
 // The seed's plan (owner, 4 November 2026): the catalogue decodes strictly and keeps its rules, its slots resolve to
@@ -106,5 +106,17 @@ describe('the publish order', () => {
     const published = publishOrder(boards)
     expect(restOrder(published, 'men').map(({ seedId }) => seedId)).toEqual(['m2', 'm1', 'a1', 'w3', 'w2', 'w1'])
     expect(restOrder(published, 'all').map(({ seedId }) => seedId)).toEqual(['m2', 'w3', 'w2', 'a1', 'm1', 'w1'])
+  })
+})
+
+describe('a sample of the boards', () => {
+  test('is the whole plan’s boards it names, with only the garments they show', () => {
+    const whole = planOf(catalogue, manifest)
+    const sample = onlyBoards(whole, ['fx-navy-weekend'])
+    expect(sample.boards).toEqual(whole.boards.filter(({ seedId }) => seedId === 'fx-navy-weekend'))
+    const shown = new Set(sample.boards[0]?.request.board.pieces ?? [])
+    expect(sample.accounts.flatMap(({ garments }) => garments).every((id) => shown.has(id))).toBe(true)
+    expect(sample.accounts.find(({ account }) => account.id === 'women')?.garments).toEqual([])
+    expect(() => onlyBoards(whole, ['nowhere'])).toThrow('Not in the catalogue: nowhere')
   })
 })

@@ -10,7 +10,8 @@
  * What's new under each Show me. `--test-batch` generates and judges exactly the ten test-batch specs and stops before
  * any import, writing `tools/seed/.out/test-batch.html`. `--full` (only once the owner approved the test batch)
  * generates what the catalogue needs, imports it into the house accounts, seeds their profiles and boards and writes
- * `tools/seed/.out/report.md`. `--prune` takes the named seeded boards down. Every paid call goes through the ledger
+ * `tools/seed/.out/report.md`; with `--only <seed id,…>` it seeds only those boards and their garments, a sample
+ * planned from the whole catalogue. `--prune` takes the named seeded boards down. Every paid call goes through the ledger
  * (`tools/seed/.out/ledger.json`), which refuses the call that would pass `--max-usd` (default 5, across runs).
  * Meta's key is the operator's `META_MUSE_API_KEY`; the stage's are `STYLD_URL`, `STYLD_OPERATOR_TOKEN`,
  * `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` and `R2_BUCKET` (and `STYLD_D1_DATABASE` for `--judge clef`).
@@ -205,7 +206,15 @@ if (import.meta.main) {
     const deps = stageDeps(work, pieces)
     if (flags.mode === 'prune') await pruned(deps, planOf(catalogue, manifest), flags.prune)
     else {
-      const { file } = await fullRun({ catalogue, manifest, work, deps, regenerate: flags.regenerate, out })
+      const { file } = await fullRun({
+        catalogue,
+        manifest,
+        work,
+        deps,
+        regenerate: flags.regenerate,
+        only: flags.only,
+        out,
+      })
       console.log(await readFile(file, 'utf8'))
     }
   }

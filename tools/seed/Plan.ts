@@ -141,6 +141,28 @@ export const planOf = (catalogue: Catalogue, manifest: Manifest) => {
 
 export type SeedPlan = ReturnType<typeof planOf>
 
+/** The garments a board shows: its pieces and its anchor. */
+const garmentsOn = ({ request }: PlannedBoard) => [
+  ...request.board.pieces,
+  ...(request.board.anchor === undefined ? [] : [request.board.anchor]),
+]
+
+/** The plan cut to the named boards and only the garments they show, for a sample seeded before the rest: planned
+ * from the whole catalogue, so the boards and their operations are the ones the whole run seeds (it finds them
+ * unchanged). Every name must be a board of the plan. */
+export const onlyBoards = (plan: SeedPlan, seedIds: ReadonlyArray<string>): SeedPlan => {
+  const unknown = seedIds.filter((id) => !plan.boards.some(({ seedId }) => seedId === id))
+  if (unknown.length > 0) throw new Error(`Not in the catalogue: ${unknown.join(', ')}`)
+  const boards = plan.boards.filter(({ seedId }) => seedIds.includes(seedId))
+  return {
+    accounts: plan.accounts.map((planned) => {
+      const shown = new Set(boards.filter(({ owner }) => owner === planned.account.id).flatMap(garmentsOn))
+      return { ...planned, garments: planned.garments.filter((id) => shown.has(id)) }
+    }),
+    boards,
+  }
+}
+
 /** A garment as the import takes it: `seed:<id>`, its picture `pictures/<id>`, marked as the seed generated it. */
 export const importPieceOf = (spec: Spec, promptDigest: string): ImportPiece => ({
   v1Id: `seed:${spec.id}`,

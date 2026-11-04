@@ -7,7 +7,7 @@ import { r2Bucket } from '../R2Rest.ts'
 import type { Catalogue } from './Catalogue.ts'
 import { generateAll, type GarmentWork } from './Garments.ts'
 import type { Manifest } from './Manifest.ts'
-import { planOf, type SeedPlan } from './Plan.ts'
+import { onlyBoards, planOf, type SeedPlan } from './Plan.ts'
 import { seedReport } from './Report.ts'
 import { checkedBoards, importAccount, type ReadyGarment, type SeedDeps, seedBoards } from './Seeder.ts'
 import { operatorApi } from './Stage.ts'
@@ -74,10 +74,13 @@ export const fullRun = async (input: {
   readonly work: GarmentWork
   readonly deps: SeedDeps
   readonly regenerate: ReadonlyArray<string>
+  /** Only these boards and their garments, when named: a sample before the whole run. */
+  readonly only: ReadonlyArray<string>
   readonly out: string
 }) => {
   const { deps, work } = input
-  const plan = planOf(input.catalogue, input.manifest)
+  const whole = planOf(input.catalogue, input.manifest)
+  const plan = input.only.length === 0 ? whole : onlyBoards(whole, input.only)
   const musesBefore = work.ledger.byKind('muse')
   const { ready, failed } = await readyGarments(plan, input.manifest, work, input.regenerate)
   let imported = 0
