@@ -13,7 +13,7 @@ const tee = pieceFixture('tee', { name: 'White tee' })
 const shirt = pieceFixture('shirt', { name: 'Linen shirt' })
 const vest = pieceFixture('vest', { name: 'Ribbed vest' })
 
-const tops = modifyFields(at('/wardrobe?group=clothing&type=tops', { signedIn: true }), {
+const tops = modifyFields(at('/wardrobe?group=clothing&type=shortSleeveTops', { signedIn: true }), {
   data: (data) => modifyFields(data, { pieces: () => PiecesData.Success({ data: [tee, shirt, vest] }) }),
 })
 

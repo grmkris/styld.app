@@ -136,7 +136,7 @@ describe('pieces deleted at once', () => {
         INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, content_type,
             created_at, updated_at)
           VALUES ('pc_2', 'ac_1', 'jeans', '[]', '[]', 'ready', 'website', 'k2', 'image/png', 0, 0),
-            ('pc_3', 'ac_2', 'tops', '[]', '[]', 'ready', 'website', 'k3', 'image/png', 0, 0);
+            ('pc_3', 'ac_2', 'shortSleeveTops', '[]', '[]', 'ready', 'website', 'k3', 'image/png', 0, 0);
         INSERT INTO look_pieces (look_id, piece_id, position) VALUES ('lk_1', 'pc_1', 0), ('lk_1', 'pc_2', 1);
         INSERT INTO board_pins (id, board_id, kind, piece_id, created_at) VALUES ('pn_1', 'bd_1', 'piece', 'pc_1', 0);
         INSERT INTO board_items (board_id, id, kind, piece_id, x, y, size, turn, z, flipped)
@@ -152,7 +152,7 @@ describe('pieces deleted at once', () => {
             created_at, updated_at)
           VALUES ('ph_1', 'ac_1', 'up_1', 'photo.jpg', 'image/jpeg', 'ready', 0, 0, 0);
         INSERT INTO photo_garments (id, photo_id, account_id, position, cutout_key, type, colours, piece_id, state)
-          VALUES ('pg_1', 'ph_1', 'ac_1', 0, 'cut.png', 'tops', '[]', 'pc_1', 'confirmed');
+          VALUES ('pg_1', 'ph_1', 'ac_1', 0, 'cut.png', 'shortSleeveTops', '[]', 'pc_1', 'confirmed');
       `)
       const store = makeStore(drizzle(database))
       const rows = yield* store.listPieces('ac_1')

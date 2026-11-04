@@ -94,12 +94,12 @@ describe('select mode on the wardrobe grid', () => {
 })
 
 describe('the wardrobe page with select mode', () => {
-  const browsing = Wardrobe.init({ group: 'clothing', type: 'tops' })
+  const browsing = Wardrobe.init({ group: 'clothing', type: 'shortSleeveTops' })
 
   test('pieces deleted from the grid ask the app to read the pieces again', () => {
     story(
       Wardrobe.update,
-      given(Wardrobe.restore(browsing, { group: 'clothing', type: 'tops' })),
+      given(Wardrobe.restore(browsing, { group: 'clothing', type: 'shortSleeveTops' })),
       message(Wardrobe.Message.GotSelectMessage({ message: Message.ClickedSelect() })),
       message(Wardrobe.Message.GotSelectMessage({ message: Message.SucceededDeletePieces() })),
       model((current) => expect(current.selection).toEqual(Model.Off())),

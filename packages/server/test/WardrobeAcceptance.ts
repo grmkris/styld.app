@@ -196,7 +196,11 @@ const verifyDeletes = async (
   expect((await owner(`/api/pieces/${goneId}`)).status).toBe(404)
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${goneKey}`)).json()).toEqual({ exists: false })
   const uploadId = await receivedPhoto(origin, owner)
-  const added = await send(owner, '/api/pieces', 'POST', { operationId: 'native-add-0004', uploadId, type: 'tops' })
+  const added = await send(owner, '/api/pieces', 'POST', {
+    operationId: 'native-add-0004',
+    uploadId,
+    type: 'shortSleeveTops',
+  })
   const { id } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await added.json())
   expect(await waitUntilReady(owner, id)).toBe('ready')
   const key = `accounts/native-wardrobe/uploads/${uploadId}`
