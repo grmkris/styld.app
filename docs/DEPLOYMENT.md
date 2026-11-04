@@ -43,7 +43,11 @@ but that token. `STYLD_RELEASE` (the commit) is
 passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`
 of `{ id, material }`, material at least 32 random bytes as unpadded base64url. Never print the file, commit it, or use
 v1 or production secrets in it. `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` come from the environment (both:
-a token alone falls back to the configured profile); the preview's account is `bceaeae4788dce3493514fde194b4a7e`.
+a token alone falls back to the configured profile). Since 4 November 2026 every Styld stage lives in its own Cloudflare
+account, `styld` (`849414470335f8f59091e26df5ae86c5`), which also holds the styld.app zone and its own v8 Alchemy state
+store; the preview is `https://styldappv2-styldedge-preview-h42vz2fxetx2ymwx.styld.workers.dev`. Never deploy Styld to
+the personal account (`bceaeae4788dce3493514fde194b4a7e`): its state store is v7 and shared with other projects, and
+bootstrapping it to v8 breaks them. Set `CLOUDFLARE_ACCOUNT_ID=849414470335f8f59091e26df5ae86c5` before every deploy.
 
 ## Deploy the preview
 
