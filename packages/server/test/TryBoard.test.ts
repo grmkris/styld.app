@@ -131,6 +131,8 @@ describe('trying a house board with one’s own wardrobe', () => {
       const tries = yield* TryBoards
       const tried = yield* tries.tryBoard(houseBoard, { operationId: OperationId.make('try-office-1') })
       expect({ fromWardrobe: tried.fromWardrobe, of: tried.of }).toEqual({ fromWardrobe: 2, of: 3 })
+      // What the wardrobe lacked, for Add these.
+      expect(tried.missing).toEqual([{ type: 'loafers', colours: ['brown'] }])
       const board = yield* (yield* Boards).getBoard(tried.boardId)
       expect({ name: board.name, paper: board.paper, visibility: board.visibility }).toEqual({
         name: 'Office in navy',

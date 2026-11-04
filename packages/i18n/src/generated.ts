@@ -781,6 +781,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.wornNote': Readonly<Record<string, never>>
   'today.wornUnread': Readonly<Record<string, never>>
   'tryBoard.action': Readonly<Record<string, never>>
+  'tryBoard.addThese': Readonly<Record<string, never>>
   'tryBoard.failed': Readonly<Record<string, never>>
   'tryBoard.missing': { readonly colour: string | number; readonly type: string | number }
   'tryBoard.missingKind': { readonly type: string | number }
@@ -1045,4 +1046,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '2ad1ebee945b922873e8867479974d2899a07a48808981fc969684b67c3e636d'
+export const catalogVersion = '2ab849662a6a4c29d1cce0330bbbd59e76f467a4bebfc0b583531ac5b712c812'

@@ -1093,7 +1093,8 @@
     "open": "Odpri svojo zbirko",
     "failed": "Ni uspelo. Poskusi znova.",
     "missing": "Še manjka: {type}, {colour}",
-    "missingKind": "Še manjka: {type}"
+    "missingKind": "Še manjka: {type}",
+    "addThese": "Dodaj še te, da bo vse tvoje:"
   },
   "taste": {
     "title": "Kaj Styld ve o tebi",

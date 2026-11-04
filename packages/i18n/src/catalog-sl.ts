@@ -995,6 +995,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'tryBoard.failed': 'Ni uspelo. Poskusi znova.',
   'tryBoard.missing': 'Še manjka: {type}, {colour}',
   'tryBoard.missingKind': 'Še manjka: {type}',
+  'tryBoard.addThese': 'Dodaj še te, da bo vse tvoje:',
   'taste.title': 'Kaj Styld ve o tebi',
   'taste.reason': 'Styld to upošteva pri današnjih videzih in v odgovorih. Vidiš samo ti.',
   'taste.occasions': 'Priložnosti, za katere se oblačiš',

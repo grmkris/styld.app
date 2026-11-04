@@ -142,7 +142,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // boards, four steps and their saves, the modal Mount), its screen with the boards to pick and the occasions, its styles
 // and the en/sl words add 3,010: main measured 399,850 in a clean worktree at cbcf9b58 (9daa3422 adds no browser code)
 // and 402,860 with them.
-if (initialGzip > 402900) throw new Error(`Initial browser assets exceed the 402,900-byte gzip budget: ${initialGzip}`)
+// Raised to 403,200 the same day for Try with my wardrobe's Add these (taste, L7): what the wardrobe lacked, in the
+// board labels' words, and the way to add clothes add 292 over 66f99166's 402,860 (c7b6e51d adds no browser code).
+if (initialGzip > 403200) throw new Error(`Initial browser assets exceed the 403,200-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

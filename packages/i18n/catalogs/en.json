@@ -1093,7 +1093,8 @@
     "open": "Open your board",
     "failed": "That didn't work. Try again.",
     "missing": "No {colour} {type} yet",
-    "missingKind": "No {type} yet"
+    "missingKind": "No {type} yet",
+    "addThese": "Add these to make it all yours:"
   },
   "taste": {
     "title": "What Styld knows about you",

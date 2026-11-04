@@ -973,6 +973,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'tryBoard.failed': "That didn't work. Try again.",
   'tryBoard.missing': 'No {colour} {type} yet',
   'tryBoard.missingKind': 'No {type} yet',
+  'tryBoard.addThese': 'Add these to make it all yours:',
   'taste.title': 'What Styld knows about you',
   'taste.reason': "Styld uses this for today's outfits and in its answers. Only you see it.",
   'taste.occasions': 'Occasions you dress for',
