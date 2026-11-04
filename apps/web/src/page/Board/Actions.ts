@@ -64,6 +64,37 @@ export const addedPiece = (model: Model, pieceId: string): UpdateReturn => {
   })
 }
 
+/** A look's pieces on the table, as one undo step: those already there stay where they are, and the first new one is
+ * selected. */
+export const addedPieces = (model: Model, pieceIds: ReadonlyArray<string>): UpdateReturn => {
+  const onTable = new Set<string>(piecesOnTable(model.items))
+  const fresh = Array.dedupe(pieceIds.filter((pieceId) => !onTable.has(pieceId)))
+  const placed = Array.reduce(fresh, { model, items: model.items, refill: false }, (state, pieceId) =>
+    Option.match(takeId(state.model), {
+      onNone: () => state,
+      onSome: ({ id, model: next, refill }) => ({
+        model: next,
+        refill: state.refill || refill,
+        items: Array.append(
+          state.items,
+          PieceItem.make({
+            id: itemIdOf(id),
+            pieceId: Schema.decodeUnknownSync(PieceId)(pieceId),
+            ...landing(state.items, 380),
+          }),
+        ),
+      }),
+    }),
+  )
+  const first = Array.get(placed.items, model.items.length)
+  const addition = committed(
+    modifyFields(placed.model, { maybeSelectedId: () => Option.map(first, (item) => item.id) }),
+    model.items,
+    placed.items,
+  )
+  return { model: addition.model, commands: [...(addition.commands ?? []), ...refillIds(placed.refill)] }
+}
+
 export const addedText = (model: Model, text: string): UpdateReturn =>
   // A label lands across the middle: words run wider than a piece.
   added(model, (id) => TextItem.make({ id, text, style: 'label', ...landing(model.items, 360), x: 500 }))
@@ -192,15 +223,22 @@ export const paperSaved = (model: Model, board: Board): UpdateReturn =>
 export const picturesChosen = (model: Model, files: ReadonlyArray<File>): UpdateReturn => {
   const taken = Array.take(files, picturesAtOnce)
   if (Array.isReadonlyArrayEmpty(taken)) return { model: modifyFields(model, { isPasting: () => false }) }
+  return picturesSent(
+    modifyFields(model, { isPasting: () => false }),
+    taken.map((file) => AddImage({ boardId: model.boardId, file })),
+  )
+}
+
+/** Pictures on their way to the board, one Command each; each lands on the table when it gets there. */
+export const picturesSent = (model: Model, commands: NonNullable<UpdateReturn['commands']>): UpdateReturn => {
   const sending = Upload.guards.Sending(model.upload)
     ? model.upload
     : Upload.Sending({ count: 0, problem: Option.none() })
   return {
     model: modifyFields(model, {
-      upload: () => Upload.Sending({ count: sending.count + taken.length, problem: sending.problem }),
-      isPasting: () => false,
+      upload: () => Upload.Sending({ count: sending.count + commands.length, problem: sending.problem }),
     }),
-    commands: taken.map((file) => AddImage({ boardId: model.boardId, file })),
+    commands,
   }
 }
 

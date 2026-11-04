@@ -1,7 +1,6 @@
 import { Dialog } from '@foldkit/ui'
-import { Board, BoardItemId, Look, PieceItem, PinId } from '@styld/protocol'
+import { Board, BoardImageId, BoardItemId, ImageItem, Look, PieceItem, PinId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
@@ -17,13 +16,17 @@ import {
   Publishing,
   Removal,
   Saving,
+  Upload,
 } from '../src/page/Board/Model.ts'
+import { AddGalleryPicture, AddTryOnPicture, MakeIds, WaitToSave } from '../src/page/Board/Commands.ts'
 import {
   DeleteBoard,
   FocusPin,
   LeaveBoard,
   LoadLooks,
-  PinThings,
+  LoadPhotos,
+  LoadTryOns,
+  PinLook,
   ReloadBoard,
   RenameBoard,
   SetBoardMoods,
@@ -32,6 +35,7 @@ import {
 } from '../src/page/Board/PageCommands.ts'
 import { update } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { done as doneTryOn, photo } from './TryOnFixtures.ts'
 
 const knit = pieceFixture('knit')
 const shoes = pieceFixture('shoes', { type: 'trainers' })
@@ -42,7 +46,7 @@ const look = Schema.decodeUnknownSync(Look)({
   id: `lk_${'monday'.padEnd(22, 'x')}`,
   name: 'Monday',
   occasion: null,
-  pieces: [knit],
+  pieces: [knit, shoes],
   shared: false,
   check: null,
   createdAt: '2026-10-30T07:00:00.000Z',
@@ -74,6 +78,12 @@ const open: Model = fromBoard(init(board.id, true), board)
 const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
   Schema.decodeUnknownSync(Board)({ ...board, pins, ...changes })
 
+/** A table change's wait to save and its fresh ids, answered without saving: these stories are about what lands. */
+const tableSettled = [
+  Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: -1 })),
+  Command.resolve(MakeIds, Message.CompletedMakeIds({ ids: [] })),
+]
+
 describe('a board page', () => {
   test('pin mutations wait for the local table save, then discard history of removed pins', () => {
     const edited: Model = modifyFields(open, {
@@ -84,7 +94,6 @@ describe('a board page', () => {
     const waiting = update(edited, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
     expect(waiting.model).toEqual(edited)
     expect(waiting.commands ?? []).toEqual([])
-    expect(update(edited, Message.ClickedAddPins()).commands ?? []).toEqual([])
     const settled = modifyFields(edited, { saving: () => Saving.Saved() })
     const sending = update(settled, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
     expect(PinWork.guards.Sending(sending.model.pinWork)).toBe(true)
@@ -205,34 +214,75 @@ describe('a board page', () => {
     )
   })
 
-  test('the picker pins what is ticked, pieces and looks alike, and the board keeps its table version', () => {
+  test('a look from the Add sheet lays its pieces on the table as one step, and is pinned', () => {
+    const withIds = modifyFields(open, {
+      ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
+    })
     story(
       update,
-      given(open),
-      message(Message.ClickedAddPins()),
+      given(withIds),
+      message(Message.ClickedAdd()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...storySheetMoved(1),
+      message(Message.SelectedAddKind({ kind: 'looks' })),
       Command.expectExact(LoadLooks),
       Command.resolve(LoadLooks, Message.SucceededLoadLooks({ looks: [look] })),
-      model(({ looks }) => expect(AsyncData.getData(looks)).toEqual(Option.some([look]))),
-      message(Message.ToggledPick({ pick: `piece:${shoes.id}` })),
-      message(Message.ToggledPick({ pick: `look:${look.id}` })),
-      message(Message.ToggledPick({ pick: `piece:${knit.id}` })),
-      message(Message.ToggledPick({ pick: `piece:${knit.id}` })),
-      model(({ picks }) => expect(picks).toEqual([`piece:${shoes.id}`, `look:${look.id}`])),
-      message(Message.SubmittedPicks()),
-      Command.expectExact(PinThings),
-      model(({ pinWork }) => expect(PinWork.guards.Sending(pinWork)).toBe(true)),
-      Command.resolve(PinThings, Message.SucceededPins({ board: withPins([shoesPin, knitPin]) })),
-      model(({ pins, picks, picker, version, items }) => {
-        expect(pins.map(({ id }) => id)).toEqual([shoesPin.id, knitPin.id])
-        expect(picks).toEqual([])
-        expect(picker.isOpen).toBe(false)
-        expect(version).toBe(2)
-        expect(items).toEqual([knitOnTable])
-      }),
+      message(Message.ClickedLook({ lookId: look.id })),
+      Command.expectHas(PinLook({ boardId: board.id, lookId: look.id })),
+      ...tableSettled,
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      model(({ items, past, piecePicker }) => {
+        // The knit was on the table already and stays where it is; the shoes join it, and undo takes them off again.
+        expect(items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId)).toEqual([knit.id, shoes.id])
+        expect(past).toEqual([[knitOnTable]])
+        expect(piecePicker.sheet.isOpen).toBe(false)
+      }),
+      Command.resolve(
+        PinLook({ boardId: board.id, lookId: look.id }),
+        Message.CompletedPinLook({
+          maybeBoard: Option.some(
+            withPins([{ _tag: 'LookPin', id: pinId('look'), look, addedAt: '2026-10-30T10:00:00.000Z' }, knitPin]),
+          ),
+        }),
+      ),
+      model(({ pins, items }) => {
+        expect(pins).toHaveLength(2)
+        expect(items).toHaveLength(2)
+      }),
+    )
+  })
+
+  test('a Gallery cut-out and a try-on go up as pictures and land on the table when the board holds them', () => {
+    const cutout = { ...photo, hasCutout: true }
+    const imageId = Schema.decodeUnknownSync(BoardImageId)(`bm_${'cutout'.padEnd(22, 'x')}`)
+    const withIds = modifyFields(open, {
+      ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
+    })
+    const galleryAdd = AddGalleryPicture({ boardId: board.id, photoId: cutout.id, picture: 'cutout' })
+    const tryOnAdd = AddTryOnPicture({ boardId: board.id, tryOnId: doneTryOn.id })
+    story(
+      update,
+      given(withIds),
+      message(Message.SelectedAddKind({ kind: 'gallery' })),
+      Command.expectExact(LoadPhotos),
+      Command.resolve(LoadPhotos, Message.SucceededLoadPhotos({ photos: [cutout] })),
+      message(Message.ClickedGalleryPhoto({ photoId: cutout.id, picture: 'cutout' })),
+      Command.expectHas(galleryAdd),
+      model(({ upload }) => expect(upload).toEqual(Upload.Sending({ count: 1, problem: Option.none() }))),
+      Command.resolve(galleryAdd, Message.SucceededAddImage({ imageId })),
+      ...tableSettled,
+      model(({ items, upload }) => {
+        expect(items.filter(Schema.is(ImageItem)).map((item) => item.imageId)).toEqual([imageId])
+        expect(Upload.guards.Idle(upload)).toBe(true)
+      }),
+      message(Message.SelectedAddKind({ kind: 'tryOns' })),
+      Command.expectExact(LoadTryOns),
+      Command.resolve(LoadTryOns, Message.SucceededLoadTryOns({ tryOns: [doneTryOn] })),
+      message(Message.ClickedTryOn({ tryOnId: doneTryOn.id })),
+      Command.expectHas(tryOnAdd),
+      Command.resolve(tryOnAdd, Message.FailedAddImage({ problem: 'failed' })),
+      model(({ upload }) => expect(upload).toEqual(Upload.Failed({ problem: 'failed' }))),
     )
   })
 

@@ -10,9 +10,14 @@ import {
   LookId,
   Mood,
   Paper,
+  Photo,
+  PhotoId,
+  PhotoPicture,
   PinId,
   PublicBoard,
   TextStyle,
+  TryOn,
+  TryOnId,
 } from '@styld/protocol'
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
@@ -24,7 +29,7 @@ import { File } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { LoadError } from '../../ServerData.ts'
 import { Pointer } from './Geometry.ts'
-import { UploadProblem } from './Model.ts'
+import { AddKind, UploadProblem } from './Model.ts'
 
 // MESSAGE
 
@@ -127,17 +132,23 @@ export const Message = defineMessageUnion({
   ClickedConfirmUnpin: { pinId: PinId },
   ClickedKeepPin: { pinId: PinId },
   CompletedFocusPin: {},
-  ClickedAddPins: {},
-  ClickedAddYourPiece: {},
+  ClickedAdd: {},
   GotPiecePickerMessage: { message: Dialog.Message },
+  SelectedAddKind: { kind: AddKind },
   SelectedPickerGroup: { group: Schema.Option(GarmentGroup) },
   SelectedPickerType: { type: Schema.Option(PieceType) },
   UpdatedPickerQuery: { query: Schema.String },
-  GotPickerMessage: { message: Dialog.Message },
-  ToggledPick: { pick: Schema.String },
-  SubmittedPicks: {},
+  ClickedLook: { lookId: LookId },
+  ClickedGalleryPhoto: { photoId: PhotoId, picture: PhotoPicture },
+  ClickedTryOn: { tryOnId: TryOnId },
   SucceededLoadLooks: { looks: Schema.Array(Look) },
   FailedLoadLooks: {},
+  SucceededLoadPhotos: { photos: Schema.Array(Photo) },
+  FailedLoadPhotos: {},
+  SucceededLoadTryOns: { tryOns: Schema.Array(TryOn) },
+  FailedLoadTryOns: {},
+  /** A look put on the table is pinned too; the table is the page's, so only the pins come back. */
+  CompletedPinLook: { maybeBoard: Schema.Option(Board) },
   SucceededPins: { board: Board },
   FailedPins: {},
 

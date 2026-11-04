@@ -18,7 +18,6 @@ import {
   paperSaved,
   paperSelected,
   picturesChosen,
-  placedPicture,
   removed,
   styleSelected,
   textUpdated,
@@ -39,7 +38,8 @@ import {
 import { Message } from './Message.ts'
 import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving, Ticks } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
-import { closePiecePicker, pageSteps } from './Page.ts'
+import { addSteps, closeAddSheet } from './AddSheet.ts'
+import { pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
@@ -154,9 +154,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedTidy: () => committed(model, model.items, tidied(model.items)),
     ClickedAddText: ({ text }) => addedText(model, text),
     ClickedWardrobePiece: ({ pieceId }) =>
-      Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closePiecePicker]),
-    ClickedPinnedPicture: ({ imageId }) =>
-      Update.combine(model, [(stepModel) => placedPicture(stepModel, imageId), closePiecePicker]),
+      Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closeAddSheet]),
     ClickedFlip: ({ id }) => flipped(model, id),
     ClickedDuplicate: ({ id }) => duplicated(model, id),
     ClickedLayer: ({ id }) => layered(model, id),
@@ -183,6 +181,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
+    ...addSteps(model),
     ClickedSelect: () => ({
       model: modifyFields(model, { ticks: () => Ticks.On({ itemIds: [] }), maybeSelectedId: () => Option.none() }),
     }),

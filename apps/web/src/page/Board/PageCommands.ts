@@ -1,5 +1,5 @@
 import { drawOperationId } from '../../OperationIds.ts'
-import { BoardId, BoardName, LookId, Mood, PieceId, PinId } from '@styld/protocol'
+import { BoardId, BoardName, LookId, Mood, PinId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { Command, Dom } from 'foldkit'
 import { load as loadPage } from 'foldkit/navigation'
@@ -98,25 +98,6 @@ export const LeaveBoard = Command.define('LeaveBoard', {
   execute: loadPage(boardsRouter({})).pipe(Effect.as(Message.CompletedLeaveBoard())),
 })
 
-export const PinThings = Command.define('PinThings', {
-  args: { boardId: Schema.String, pieceIds: Schema.Array(Schema.String), lookIds: Schema.Array(Schema.String) },
-  messages: [Message.SucceededPins, Message.FailedPins],
-  execute: ({ boardId, pieceIds, lookIds }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.addPins({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: {
-          operationId: yield* drawOperationId(),
-          placeOnTable: true,
-          pieceIds: yield* Schema.decodeUnknownEffect(Schema.Array(PieceId))(pieceIds),
-          lookIds: yield* Schema.decodeUnknownEffect(Schema.Array(LookId))(lookIds),
-        },
-      })
-      return Message.SucceededPins({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
-})
-
 /** The unpin question's Keep takes focus as it opens, and the × takes it back when the pin stays. */
 export const FocusPin = Command.define('FocusPin', {
   args: { selector: Schema.String },
@@ -145,7 +126,46 @@ export const UnpinThings = Command.define('UnpinThings', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
 
-/** The person's looks, for the picker. */
+/** Pin a look the person put on the table from the Add sheet: pinned only, the table being the page's to save. A pin
+ * that does not go through leaves the table as it is. */
+export const PinLook = Command.define('PinLook', {
+  args: { boardId: Schema.String, lookId: Schema.String },
+  messages: [Message.CompletedPinLook],
+  execute: ({ boardId, lookId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.addPins({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: {
+          operationId: yield* drawOperationId(),
+          lookIds: [yield* Schema.decodeUnknownEffect(LookId)(lookId)],
+        },
+      })
+      return Message.CompletedPinLook({ maybeBoard: Option.some(board) })
+    }).pipe(Effect.orElseSucceed(() => Message.CompletedPinLook({ maybeBoard: Option.none() }))),
+})
+
+/** The person's Gallery photos, for the Add sheet. */
+export const LoadPhotos = Command.define('LoadPhotos', {
+  messages: [Message.SucceededLoadPhotos, Message.FailedLoadPhotos],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const { photos } = yield* api.photo.listPhotos()
+    return Message.SucceededLoadPhotos({ photos })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadPhotos())),
+})
+
+/** The person's try-ons, for the Add sheet. */
+export const LoadTryOns = Command.define('LoadTryOns', {
+  messages: [Message.SucceededLoadTryOns, Message.FailedLoadTryOns],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const { tryOns } = yield* api.tryOn.listTryOns()
+    return Message.SucceededLoadTryOns({ tryOns })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTryOns())),
+})
+
+/** The person's looks, for the Add sheet. */
 export const LoadLooks = Command.define('LoadLooks', {
   messages: [Message.SucceededLoadLooks, Message.FailedLoadLooks],
   execute: Effect.gen(function* () {

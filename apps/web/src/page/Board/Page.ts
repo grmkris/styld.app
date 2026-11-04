@@ -1,8 +1,6 @@
-import { type Board, type Look, maximumMoods, type Mood } from '@styld/protocol'
-import { Array, Option } from 'effect'
-import { AsyncData } from 'foldkit'
+import { type Board, maximumMoods, type Mood } from '@styld/protocol'
+import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { pickerFolds } from '../PiecePicker.ts'
 import { sheetFolds } from '../Sheet.ts'
 import type { UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
@@ -13,7 +11,6 @@ import {
   BoardShown,
   fromBoard,
   Gesture,
-  LooksData,
   ownBoard,
   type Model,
   PinWork,
@@ -27,8 +24,6 @@ import {
 import {
   DeleteBoard,
   LeaveBoard,
-  LoadLooks,
-  PinThings,
   ReloadBoard,
   RenameBoard,
   SetBoardMoods,
@@ -39,33 +34,17 @@ import {
   unpinId,
 } from './PageCommands.ts'
 
-// The board page's own steps: its settings sheet, its pins and the picker that adds them, and catching up when
-// the page comes back into view.
+// The board page's own steps: its settings sheet, its pins, and catching up when the page comes back into view.
 
 const settingsSheet = sheetFolds<Model, Message>({
   read: (model) => model.settings,
   write: (model, nextSettings) => modifyFields(model, { settings: () => nextSettings }),
   toParentMessage: (message) => Message.GotSettingsMessage({ message }),
 })
-const pickerSheet = sheetFolds<Model, Message>({
-  read: (model) => model.picker,
-  write: (model, nextPicker) => modifyFields(model, { picker: () => nextPicker }),
-  toParentMessage: (message) => Message.GotPickerMessage({ message }),
-})
-
-const piecePickerSheet = pickerFolds<Model, Message>({
-  read: (model) => model.piecePicker,
-  write: (model, nextPiecePicker) => modifyFields(model, { piecePicker: () => nextPiecePicker }),
-  toParentMessage: (message) => Message.GotPiecePickerMessage({ message }),
-})
-export const closePiecePicker = piecePickerSheet.close
 
 const foldSettings = settingsSheet.update
-const foldPicker = pickerSheet.update
 const openSettings = settingsSheet.open
 const closeSettings = settingsSheet.close
-const openPicker = pickerSheet.open
-const closePicker = pickerSheet.close
 
 /** The settings sheet opens on the board's name, with nothing pending. */
 const settingsOpened = (model: Model): UpdateReturn =>
@@ -155,45 +134,6 @@ const pinKept = (model: Model, pinId: string): UpdateReturn => ({
   commands: [FocusPin({ selector: `#${unpinId(pinId)}` })],
 })
 
-/** The picker opens with nothing ticked, and asks for the person's looks the first time. */
-const pickerOpened = (model: Model): UpdateReturn => {
-  if (!canChangePins(model)) return { model }
-  const next = modifyFields(model, { picks: () => [], pinWork: () => PinWork.Idle() })
-  const opened = openPicker(next)
-  return AsyncData.isIdle(model.looks)
-    ? {
-        ...opened,
-        model: modifyFields(opened.model, { looks: () => AsyncData.Loading() }),
-        commands: [...(opened.commands ?? []), LoadLooks()],
-      }
-    : opened
-}
-
-const pickToggled = (model: Model, pick: string): UpdateReturn => ({
-  model: modifyFields(model, {
-    picks: (picks) => (picks.includes(pick) ? Array.filter(picks, (each) => each !== pick) : [...picks, pick]),
-  }),
-})
-
-const picked = (picks: ReadonlyArray<string>, kind: 'piece' | 'look') =>
-  Array.flatMap(picks, (pick) => (pick.startsWith(`${kind}:`) ? [pick.slice(kind.length + 1)] : []))
-
-const picksSubmitted = (model: Model): UpdateReturn =>
-  !canChangePins(model)
-    ? { model }
-    : model.picks.length === 0
-      ? closePicker(model)
-      : {
-          model: modifyFields(model, { pinWork: () => PinWork.Sending() }),
-          commands: [
-            PinThings({
-              boardId: model.boardId,
-              pieceIds: picked(model.picks, 'piece'),
-              lookIds: picked(model.picks, 'look'),
-            }),
-          ],
-        }
-
 /** The board after pinning or unpinning. Unpinning can take things off the table, which moves its version on. */
 const pinsChanged = (model: Model, board: Board): UpdateReturn => {
   const next: Model =
@@ -205,12 +145,8 @@ const pinsChanged = (model: Model, board: Board): UpdateReturn => {
           maybeSelectedId: () => Option.none(),
           saving: () => Saving.Saved(),
         })
-  return closePicker(modifyFields(next, { pinWork: () => PinWork.Idle(), picks: () => [] }))
+  return { model: modifyFields(next, { pinWork: () => PinWork.Idle() }) }
 }
-
-const looksLoaded = (model: Model, looks: ReadonlyArray<Look>): UpdateReturn => ({
-  model: modifyFields(model, { looks: () => LooksData.Success({ data: looks }) }),
-})
 
 /** Coming back into view, the board is read again, but only while nothing is being changed or saved here. */
 const becameVisible = (model: Model): UpdateReturn =>
@@ -260,17 +196,6 @@ type PageTag =
   | 'ClickedConfirmUnpin'
   | 'ClickedKeepPin'
   | 'CompletedFocusPin'
-  | 'ClickedAddYourPiece'
-  | 'GotPiecePickerMessage'
-  | 'SelectedPickerGroup'
-  | 'SelectedPickerType'
-  | 'UpdatedPickerQuery'
-  | 'ClickedAddPins'
-  | 'GotPickerMessage'
-  | 'ToggledPick'
-  | 'SubmittedPicks'
-  | 'SucceededLoadLooks'
-  | 'FailedLoadLooks'
   | 'SucceededPins'
   | 'FailedPins'
 
@@ -307,19 +232,6 @@ export const pageSteps = (
   ClickedConfirmUnpin: ({ pinId }) => unpinned(model, pinId),
   ClickedKeepPin: ({ pinId }) => pinKept(model, pinId),
   CompletedFocusPin: () => ({ model }),
-  ClickedAddYourPiece: () => piecePickerSheet.open(model),
-  GotPiecePickerMessage: ({ message }) => piecePickerSheet.update(model, message),
-  SelectedPickerGroup: ({ group }) => piecePickerSheet.selectedGroup(model, group),
-  SelectedPickerType: ({ type }) => piecePickerSheet.selectedType(model, type),
-  UpdatedPickerQuery: ({ query }) => piecePickerSheet.updatedQuery(model, query),
-  ClickedAddPins: () => pickerOpened(model),
-  GotPickerMessage: (got) => foldPicker(model, got.message),
-  ToggledPick: ({ pick }) => pickToggled(model, pick),
-  SubmittedPicks: () => picksSubmitted(model),
-  SucceededLoadLooks: ({ looks }) => looksLoaded(model, looks),
-  FailedLoadLooks: () => ({
-    model: modifyFields(model, { looks: () => LooksData.Failure({ error: 'Unavailable' }) }),
-  }),
   SucceededPins: ({ board }) => pinsChanged(model, board),
   FailedPins: () => ({ model: modifyFields(model, { pinWork: () => PinWork.Failed() }) }),
 })

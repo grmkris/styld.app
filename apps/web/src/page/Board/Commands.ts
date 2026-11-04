@@ -1,5 +1,15 @@
 import { drawOperationId } from '../../OperationIds.ts'
-import { BoardId, BoardItem, BoardItemId, boardWidth, Paper, PieceId } from '@styld/protocol'
+import {
+  BoardId,
+  BoardItem,
+  BoardItemId,
+  boardWidth,
+  Paper,
+  PhotoId,
+  PhotoPicture,
+  PieceId,
+  TryOnId,
+} from '@styld/protocol'
 import { Array, Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
@@ -162,6 +172,42 @@ export const AddImage = Command.define('AddImage', {
       ),
       Effect.orElseSucceed(() => Message.FailedAddImage({ problem: 'failed' })),
     ),
+})
+
+/** Put a Gallery photo's picture (the photo, or the person cut out of it) on the board, pinned only: the page lays it
+ * on the table it edits, as it does a picture the person sends. */
+export const AddGalleryPicture = Command.define('AddGalleryPicture', {
+  args: { boardId: Schema.String, photoId: PhotoId, picture: PhotoPicture },
+  messages: [Message.SucceededAddImage, Message.FailedAddImage],
+  execute: ({ boardId, photoId, picture }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const image = yield* api.photo.addToBoard({
+        params: { photoId },
+        payload: {
+          operationId: yield* drawOperationId(),
+          boardId: yield* boardIdOf(boardId),
+          picture,
+          placeOnTable: false,
+        },
+      })
+      return Message.SucceededAddImage(image)
+    }).pipe(Effect.orElseSucceed(() => Message.FailedAddImage({ problem: 'failed' }))),
+})
+
+/** Put a try-on's picture on the board, pinned only, for the page to lay on its table. */
+export const AddTryOnPicture = Command.define('AddTryOnPicture', {
+  args: { boardId: Schema.String, tryOnId: TryOnId },
+  messages: [Message.SucceededAddImage, Message.FailedAddImage],
+  execute: ({ boardId, tryOnId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const image = yield* api.tryOn.addTryOnToBoard({
+        params: { tryOnId },
+        payload: { operationId: yield* drawOperationId(), boardId: yield* boardIdOf(boardId) },
+      })
+      return Message.SucceededAddImage(image)
+    }).pipe(Effect.orElseSucceed(() => Message.FailedAddImage({ problem: 'failed' }))),
 })
 
 /** The pictures on the clipboard, read when the person taps Paste (the only way a phone's browser shares

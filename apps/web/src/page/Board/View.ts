@@ -15,7 +15,7 @@ import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload } from './Model.ts'
 import * as styles from './View.styles.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
-import { piecePickerView } from './PiecePickerView.ts'
+import { addSheetView } from './AddSheetView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { paperChoiceView, selectHintView, selectedView, toolbarView } from './ViewTools.ts'
 
@@ -295,10 +295,10 @@ export const editorView = (
         selectedView(model, locale, h),
         actionButton(
           {
-            label: format(locale, 'board.addYourPiece', {}),
+            label: format(locale, 'board.add.button', {}),
             leading: addIcon(h),
             style: secondaryAction(),
-            onClick: Message.ClickedAddYourPiece(),
+            onClick: Message.ClickedAdd(),
           },
           h,
         ),
@@ -306,5 +306,5 @@ export const editorView = (
     ),
     paperChoiceView(model, paper, locale, h),
     h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
-    piecePickerView(model, pieces, locale, h),
+    addSheetView(model, pieces, locale, h),
   ])

@@ -107,10 +107,31 @@ export interface MessageArgumentsByKey<_T = string> {
   'authEmail.instructions': Readonly<Record<string, never>>
   'authEmail.subjectRegistration': { readonly code: string | number }
   'authEmail.subjectSignIn': { readonly code: string | number }
+  'board.add.button': Readonly<Record<string, never>>
+  'board.add.gallery': Readonly<Record<string, never>>
+  'board.add.galleryFailed': Readonly<Record<string, never>>
+  'board.add.justMe': Readonly<Record<string, never>>
+  'board.add.kinds': Readonly<Record<string, never>>
+  'board.add.looks': Readonly<Record<string, never>>
+  'board.add.noLooks': Readonly<Record<string, never>>
+  'board.add.noPhotos': Readonly<Record<string, never>>
+  'board.add.noTryOns': Readonly<Record<string, never>>
+  'board.add.noneFound': Readonly<Record<string, never>>
+  'board.add.offTable': Readonly<Record<string, never>>
+  'board.add.openGallery': Readonly<Record<string, never>>
+  'board.add.openTryOn': Readonly<Record<string, never>>
+  'board.add.pieces': Readonly<Record<string, never>>
+  'board.add.putCutout': Readonly<Record<string, never>>
+  'board.add.putLook': { readonly name: string | number }
+  'board.add.putPhoto': Readonly<Record<string, never>>
+  'board.add.putTryOn': Readonly<Record<string, never>>
+  'board.add.search': Readonly<Record<string, never>>
+  'board.add.title': Readonly<Record<string, never>>
+  'board.add.tryOns': Readonly<Record<string, never>>
+  'board.add.tryOnsFailed': Readonly<Record<string, never>>
   'board.addPicture': Readonly<Record<string, never>>
   'board.addPiece': { readonly name: string | number }
   'board.addText': Readonly<Record<string, never>>
-  'board.addYourPiece': Readonly<Record<string, never>>
   'board.bringFront': Readonly<Record<string, never>>
   'board.dropHere': Readonly<Record<string, never>>
   'board.duplicate': Readonly<Record<string, never>>
@@ -167,9 +188,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.paper_slate': Readonly<Record<string, never>>
   'board.paper_stock': Readonly<Record<string, never>>
   'board.paste': Readonly<Record<string, never>>
-  'board.pickSelected': { readonly count: number }
-  'board.pickerEmpty': Readonly<Record<string, never>>
-  'board.pickerTitle': { readonly name: string | number }
   'board.picture': Readonly<Record<string, never>>
   'board.pictureFailed': Readonly<Record<string, never>>
   'board.pictureRefused': Readonly<Record<string, never>>
@@ -712,10 +730,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'showMe.reason': Readonly<Record<string, never>>
   'showMe.title': Readonly<Record<string, never>>
   'showMe.women': Readonly<Record<string, never>>
-  'studio.add': Readonly<Record<string, never>>
-  'studio.addFailed': Readonly<Record<string, never>>
-  'studio.addMenuLooks': Readonly<Record<string, never>>
-  'studio.addMenuPieces': Readonly<Record<string, never>>
   'studio.backToBoards': Readonly<Record<string, never>>
   'studio.boardName': Readonly<Record<string, never>>
   'studio.boardSettings': Readonly<Record<string, never>>
@@ -729,7 +743,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'studio.deleteFailed': Readonly<Record<string, never>>
   'studio.emptyGridTitle': Readonly<Record<string, never>>
   'studio.pinCount': { readonly count: number }
-  'studio.pinning': Readonly<Record<string, never>>
   'studio.removeFailed': Readonly<Record<string, never>>
   'studio.renameFailed': Readonly<Record<string, never>>
   'studio.retry': Readonly<Record<string, never>>
@@ -1168,4 +1181,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4cd85aa6be863dab07813e5cceb825b66a7ed23aef2225be4f37d89bcc1f4ffb'
+export const catalogVersion = 'cf15b249ebff6c4ff354f73173bb571ec7ea5a36d854513c0eb951619a9d0668'

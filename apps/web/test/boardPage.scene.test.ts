@@ -1,12 +1,12 @@
-import { Board, BoardItemId, BoardOutfitId, type OutfitLayout, outfitsLaidOut, PieceItem } from '@styld/protocol'
+import { Board, BoardItemId, BoardOutfitId, Look, type OutfitLayout, outfitsLaidOut, PieceItem } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Dialog } from '@foldkit/ui'
-import { all, click, Command, expect, expectAll, given, Mount, role, scene, selector, text } from 'foldkit/scene'
+import { all, click, Command, expect, expectAll, given, Mount, role, scene, selector, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
-import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
+import { fromBoard, init as boardInit, LooksData } from '../src/page/Board/Model.ts'
 import { FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
@@ -36,11 +36,13 @@ const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board
   fromBoard(boardInit(boardId, true), board),
 )
 
-/** The board's page with its picker open over the person's pieces, in `locale`. */
+/** The board's page with its Add sheet open over the person's pieces, in `locale`. */
 const picking = (locale: 'en' | 'sl') =>
   withPieces(
     withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
-      modifyFields(fromBoard(boardInit(boardId, true), board), { picker: (picker) => ({ ...picker, isOpen: true }) }),
+      modifyFields(fromBoard(boardInit(boardId, true), board), {
+        piecePicker: (picker) => ({ ...picker, sheet: { ...picker.sheet, isOpen: true } }),
+      }),
     ),
     [
       knit,
@@ -136,7 +138,7 @@ describe("a board's page", () => {
       measured,
       expect(text('1 pin, only you can see it')).toExist(),
       expect(role('region', { name: 'The table' })).toExist(),
-      expect(role('button', { name: 'Add your piece' })).toExist(),
+      expect(role('button', { name: 'Add' })).toExist(),
       expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('link', { name: 'Edit collage' })).not.toExist(),
     )
@@ -165,22 +167,53 @@ describe("a board's page", () => {
     )
   })
 
-  test('the picker tells each piece apart by its name, or what it is and its colours', () => {
+  test('the Add sheet tells each piece apart by its name, or what it is and its colours', () => {
     scene(
       { update, view },
       given(picking('en')),
       measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
-      expect(role('button', { name: 'Shirt (white and blue)' })).toExist(),
-      expect(role('button', { name: 'Flats (black)' })).toExist(),
+      expect(role('button', { name: 'Put Shirt (white and blue) on the table' })).toExist(),
+      expect(role('button', { name: 'Put Flats (black) on the table' })).toExist(),
+      expect(role('button', { name: 'Pieces' })).toHaveAttr('aria-pressed', 'true'),
     )
     scene(
       { update, view },
       given(picking('sl')),
       measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
-      expect(role('button', { name: 'Srajca (bela in modra)' })).toExist(),
-      expect(role('button', { name: 'Balerinke (črna)' })).toExist(),
+      expect(role('button', { name: 'Položi na mizo: Srajca (bela in modra)' })).toExist(),
+      expect(role('button', { name: 'Položi na mizo: Balerinke (črna)' })).toExist(),
+    )
+  })
+
+  test('the Add sheet searches looks by their name and their pieces, and says when none matches', () => {
+    const tee = pieceFixture('tee', { type: 'shirts', colours: ['white', 'blue'] })
+    const look = (seed: string, name: string, pieces: ReadonlyArray<typeof knit>) =>
+      Schema.decodeUnknownSync(Look)({
+        id: `lk_${seed.padEnd(22, 'x')}`,
+        name,
+        occasion: null,
+        pieces,
+        shared: false,
+        check: null,
+        createdAt: '2026-10-31T07:00:00.000Z',
+      })
+    const looks = [look('monday', 'Monday', [knit]), look('dinner', 'Dinner', [tee])]
+    const state = withPage(picking('en'), lenses.board, (current) =>
+      modifyFields(current, { addKind: () => 'looks', looks: () => LooksData.Success({ data: looks }) }),
+    )
+    scene(
+      { update, view },
+      given(state),
+      measured,
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      expect(role('button', { name: 'Put the pieces of Monday on the table' })).toExist(),
+      type(role('searchbox', { name: 'Search pieces, looks and photos' }), 'blue'),
+      expect(role('button', { name: 'Put the pieces of Dinner on the table' })).toExist(),
+      expect(role('button', { name: 'Put the pieces of Monday on the table' })).not.toExist(),
+      type(role('searchbox', { name: 'Search pieces, looks and photos' }), 'sequins'),
+      expect(text('Nothing matches that.')).toExist(),
     )
   })
 })

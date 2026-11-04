@@ -97,21 +97,25 @@ const pieceButton = <M>(piece: Piece, config: PickerConfig<M>, h: HtmlBuilder<M>
   ])
 }
 
-const searchField = <M>({ picker, locale, messages }: PickerConfig<M>, h: HtmlBuilder<M>): Html =>
+/** The sheet's search box: what is typed reads every word a piece answers to. */
+export const searchField = <M>(
+  { query, label, onInput }: { readonly query: string; readonly label: string; readonly onInput: (value: string) => M },
+  h: HtmlBuilder<M>,
+): Html =>
   h.div(styled(h, askStyles.search()), [
     searchIcon(h),
     h.input([
       h.Type('search'),
-      h.AriaLabel(format(locale, 'piecePicker.search', {})),
-      h.Placeholder(format(locale, 'piecePicker.search', {})),
-      h.Value(picker.query),
+      h.AriaLabel(label),
+      h.Placeholder(label),
+      h.Value(query),
       h.Autocomplete('off'),
       h.Attribute('enterkeyhint', 'search'),
       h.Attribute('autocapitalize', 'none'),
       h.Attribute('autocorrect', 'off'),
       h.Attribute('spellcheck', 'false'),
       ...styled(h, askStyles.searchInput()),
-      h.OnInput(messages.query),
+      h.OnInput(onInput),
     ]),
   ])
 
@@ -144,7 +148,7 @@ const typeFilters = <M>(
     ],
   )
 
-const body = <M>(pieces: ReadonlyArray<Piece>, config: PickerConfig<M>, h: HtmlBuilder<M>): Html => {
+const body = <M>(pieces: ReadonlyArray<Piece>, config: PickerConfig<M>, h: HtmlBuilder<M>): ReadonlyArray<Html> => {
   const { picker, locale } = config
   const ready = pieces.filter((piece) => piece.status === 'ready')
   const inGroup = Option.match(picker.group, {
@@ -159,8 +163,7 @@ const body = <M>(pieces: ReadonlyArray<Piece>, config: PickerConfig<M>, h: HtmlB
   // opened on is found by its name, brand or colour. The chips step aside while something is typed.
   const searching = picker.query.trim().length > 0
   const shown = searching ? matching(ready, picker.query, [locale]) : ofType
-  return h.div(styled(h, boardStyles.head()), [
-    searchField(config, h),
+  return [
     // Eight shop groups: only those holding a ready piece get a chip, and the one the sheet opened on.
     searching
       ? h.empty
@@ -191,8 +194,16 @@ const body = <M>(pieces: ReadonlyArray<Piece>, config: PickerConfig<M>, h: HtmlB
           offered.map((piece) => pieceButton(piece, config, h)),
         ),
     }),
-  ])
+  ]
 }
+
+/** The pieces a picker offers, under its chips, once the wardrobe is read; the search box is the sheet's. */
+export const piecesPane = <M>(config: PickerConfig<M>, h: HtmlBuilder<M>): ReadonlyArray<Html> =>
+  AsyncData.matchData(config.pieces, {
+    onEmpty: () => [h.p([h.Role('status')], [format(config.locale, 'common.loading', {})])],
+    onFailure: () => [h.p([h.Role('alert')], [format(config.locale, 'piecePicker.failed', {})])],
+    onData: (wardrobe) => body(wardrobe, config, h),
+  })
 
 /** The sheet of the person's pieces, while it is shown. */
 export const piecePickerSheet = <M>(config: PickerConfig<M>, h: HtmlBuilder<M>): Html =>
@@ -205,11 +216,17 @@ export const piecePickerSheet = <M>(config: PickerConfig<M>, h: HtmlBuilder<M>):
           toParentMessage: config.messages.sheet,
           body: () => [
             h.div(styled(h, boardStyles.sheetBody()), [
-              AsyncData.matchData(config.pieces, {
-                onEmpty: () => h.p([h.Role('status')], [format(config.locale, 'common.loading', {})]),
-                onFailure: () => h.p([h.Role('alert')], [format(config.locale, 'piecePicker.failed', {})]),
-                onData: (wardrobe) => body(wardrobe, config, h),
-              }),
+              h.div(styled(h, boardStyles.head()), [
+                searchField(
+                  {
+                    query: config.picker.query,
+                    label: format(config.locale, 'piecePicker.search', {}),
+                    onInput: config.messages.query,
+                  },
+                  h,
+                ),
+                ...piecesPane(config, h),
+              ]),
               ...config.after,
             ]),
           ],

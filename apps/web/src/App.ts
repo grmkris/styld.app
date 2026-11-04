@@ -465,7 +465,6 @@ export const subscriptions = Subscription.aggregate(
         (board) =>
           Option.isSome(ownBoard(board.board)) &&
           !sheetShown(board.settings) &&
-          !sheetShown(board.picker) &&
           !sheetShown(board.piecePicker.sheet) &&
           !sheetShown(board.make.sheet) &&
           !PinWork.guards.Sending(board.pinWork),

@@ -36,3 +36,15 @@ export const matching = (
     return Array.every(typed, (token) => words.some((word) => wordMatches(token, word)))
   })
 }
+
+/** Whether something made of pieces (a look, an outfit photo, a try-on) answers the query: every word of it matches
+ * the thing's name or one of its pieces. An empty query matches everything. */
+export const wearsMatching = (
+  name: string,
+  pieces: ReadonlyArray<Piece>,
+  query: string,
+  locales: ReadonlyArray<Locale>,
+): boolean => {
+  const words = [...wordsIn(name), ...pieces.flatMap((piece) => wordsOf(piece, locales))]
+  return Array.every(wordsIn(query), (token) => words.some((word) => wordMatches(token, word)))
+}

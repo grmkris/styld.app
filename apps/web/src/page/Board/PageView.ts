@@ -3,13 +3,13 @@ import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Mood, type Paper, type Pin, type PublicBoard, textLength } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
-import { AsyncData, Submodel } from 'foldkit'
+import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { addIcon, backIcon, loader, shareIcon } from '../../Icon.ts'
+import { backIcon, loader, shareIcon } from '../../Icon.ts'
 import { boardRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
@@ -20,7 +20,7 @@ import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
 import { unpinButton } from './Unpin.ts'
 import { boardStateView } from './Unready.ts'
-import { lookMosaic, pickerBody } from './PickerView.ts'
+import { lookMosaic } from './PickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
 import * as TryItView from './TryItView.ts'
@@ -156,18 +156,8 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     [
       h.div(styled(h, styles.pinsHead()), [
         h.h2([h.Id('board-pins'), ...styled(h, styles.pinsTitle())], [format(locale, 'board.pinsTitle', {})]),
-        actionButton(
-          {
-            label: format(locale, 'studio.add', {}),
-            style: secondaryAction(),
-            leading: addIcon(h),
-            onClick: Message.ClickedAddPins(),
-            isDisabled: !canChangePins(model),
-          },
-          h,
-        ),
       ]),
-      PinWork.guards.Failed(model.pinWork) && !model.picker.isOpen
+      PinWork.guards.Failed(model.pinWork)
         ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.removeFailed', {})])
         : h.empty,
       Array.match(model.pins, {
@@ -434,28 +424,6 @@ const readyView = (
             title: format(locale, 'studio.boardSettings', {}),
             body: (info) => [h.div(styled(h, styles.sheetBody()), settingsBody(model, locale, h, info))],
             toParentMessage: (message) => Message.GotSettingsMessage({ message }),
-            locale,
-          },
-          h,
-        )
-      : h.empty,
-    sheetShown(model.picker)
-      ? bottomSheet(
-          {
-            dialog: model.picker,
-            title: format(locale, 'board.pickerTitle', { name }),
-            body: () => [
-              h.div(
-                styled(h, styles.sheetBody()),
-                pickerBody(
-                  model,
-                  Option.getOrElse(AsyncData.getData(pieces), () => []),
-                  locale,
-                  h,
-                ),
-              ),
-            ],
-            toParentMessage: (message) => Message.GotPickerMessage({ message }),
             locale,
           },
           h,
