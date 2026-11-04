@@ -7,7 +7,7 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction } from '../Actions.styles.ts'
 import { styled } from '../Styled.ts'
-import { Answer, asks, choices, Message, type Model, shownChoice } from './ShowMe.ts'
+import { Answer, answerOnItsWay, asks, choices, Message, type Model, shownChoice } from './ShowMe.ts'
 import * as styles from './ShowMeView.styles.ts'
 
 const choiceKey = {
@@ -16,10 +16,16 @@ const choiceKey = {
   all: 'showMe.all',
 } as const satisfies Record<Audience, string>
 
-/** The three choices, the chosen one pressed; none takes a press while an answer is on its way. Home's card and the
- * Account page draw them the same. */
-export const choiceButtons = (model: Model, labelledBy: string, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const chosen = shownChoice(model)
+/** The three choices, the chosen one pressed; none takes a press while an answer is on its way. The Account page
+ * presses the order in force (Everything until one is chosen); Home's card asks, so it presses only the answer on its
+ * way, never a default the person did not pick. */
+export const choiceButtons = (
+  model: Model,
+  { labelledBy, pressesDefault }: { readonly labelledBy: string; readonly pressesDefault: boolean },
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html => {
+  const chosen = pressesDefault ? shownChoice(model) : answerOnItsWay(model)
   return h.div(
     [h.Role('group'), h.AriaLabelledBy(labelledBy), ...styled(h, styles.choices())],
     choices.map((showMe) =>
@@ -54,7 +60,7 @@ export const card = Submodel.defineView<Model, Message, { readonly locale: Local
             h.h2([h.Id('show-me-title'), ...styled(h, styles.title())], [format(locale, 'showMe.title', {})]),
             h.p(styled(h, styles.reason()), [format(locale, 'showMe.reason', {})]),
             h.div(styled(h, styles.choices()), [
-              choiceButtons(model, 'show-me-title', locale, h),
+              choiceButtons(model, { labelledBy: 'show-me-title', pressesDefault: false }, locale, h),
               actionButton(
                 {
                   label: format(locale, 'showMe.notNow', {}),

@@ -321,7 +321,10 @@ const showMeSection = Submodel.defineView<ShowMeModel, ShowMeMessage, { readonly
                 ),
               ]),
             ]
-          : [choiceButtons(model, 'show-me-setting', locale, h), showMeFailure(model, locale, h)]),
+          : [
+              choiceButtons(model, { labelledBy: 'show-me-setting', pressesDefault: true }, locale, h),
+              showMeFailure(model, locale, h),
+            ]),
       ],
     ),
 )

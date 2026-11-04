@@ -41,9 +41,13 @@ const orderOf = (showMe: Audience | null): Audience => showMe ?? 'all'
 
 /** The choice shown as chosen: the one on its way, else the one saved. */
 export const shownChoice = (model: Model): Option.Option<Audience> =>
-  Answer.guards.Saving(model.answer) && model.answer.showMe !== null
-    ? Option.some(model.answer.showMe)
-    : Option.map(AsyncData.getData(model.preferences), ({ showMe }) => orderOf(showMe))
+  Option.orElse(answerOnItsWay(model), () =>
+    Option.map(AsyncData.getData(model.preferences), ({ showMe }) => orderOf(showMe)),
+  )
+
+/** The choice being saved, if one is. */
+export const answerOnItsWay = (model: Model): Option.Option<Audience> =>
+  Answer.guards.Saving(model.answer) && model.answer.showMe !== null ? Option.some(model.answer.showMe) : Option.none()
 
 /** Whether the person just put Home's card away. */
 const putAway = (answer: Answer) =>
