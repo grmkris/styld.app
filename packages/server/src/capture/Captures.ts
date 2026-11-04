@@ -270,15 +270,22 @@ const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings:
 
 /** The tray's cards: one for each garment, shown by the sighting that shows it best, with how often the import saw
  * it. A sighting whose garment's card is gone (decided, or retried away) shows on its own. A capture whose every
- * sighting shows on another capture's card leaves the tray's list, unless it is still being processed. */
-const trayCards = (open: {
+ * sighting shows on another capture's card leaves the tray's list, unless it is still being processed. A camera's back
+ * shot shows as still processing while its front is: it becomes the front's back once both are cut out, so shown on
+ * its own it would be a second piece that vanishes, and keeping it then fails (owner's scan, 5 November).
+ * @internal Exported for its tests. */
+export const trayCards = (open: {
   readonly captures: ReadonlyArray<CaptureRow>
   readonly detections: ReadonlyArray<DetectionRow>
 }) => {
   const shown = new Set(open.detections.filter(({ groupOf }) => groupOf === null).map(({ id }) => id))
   const hidden = (row: DetectionRow) => row.groupOf !== null && shown.has(row.groupOf)
   const sightings = (row: DetectionRow) => 1 + open.detections.filter(({ groupOf }) => groupOf === row.id).length
+  const processing = new Set(open.captures.filter(({ status }) => status === 'processing').map(({ id }) => id))
+  const awaitsFront = (capture: CaptureRow) =>
+    capture.side === 'back' && capture.pairsWith !== null && processing.has(capture.pairsWith)
   return open.captures.flatMap((capture) => {
+    if (awaitsFront(capture)) return [{ capture: { ...capture, status: 'processing' as const }, detections: [] }]
     const own = open.detections.filter(({ captureId }) => captureId === capture.id)
     const cards = own.filter((row) => !hidden(row))
     return own.length > 0 && cards.length === 0 && capture.status !== 'processing'
