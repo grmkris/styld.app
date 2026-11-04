@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { exists, processed, uploaded } from './CaptureAcceptance.ts'
-import { colours, cutout, picturesAccount } from './PictureFixture.ts'
+import { PictureBackfilled } from '@styld/protocol'
+import { backfillAccount, backfilled, colours, cutout, picturesAccount } from './PictureFixture.ts'
+import { nativeOperatorToken } from './OperatorToken.ts'
 import { type Call, client, send, signIn } from './Accounts.ts'
 
 /** The API Worker's settings for clean pictures on the native stack: Clef and Muse are the fixture's stand-ins. */
@@ -160,4 +162,59 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   expect((await owner(`/api/pieces/${kept.red}`, { method: 'DELETE' })).status).toBe(204)
   expect(await exists(fixtures, `${tee}/clean-2.png`)).toBe(false)
   return kept
+}
+
+/** Requests as the operator's script makes them: a bearer token, no cookie. */
+const asOperator = (origin: string, token: string, body: object) =>
+  fetch(`${origin}/api/operator/pictures/backfill`, {
+    method: 'POST',
+    headers: { origin, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+/** The operator's backfill (owner, 4 November): every ready cut-out of the account without a clean picture gets one
+ * drawn on the queue, paid by Styld; a drawing proposed before then is shown; a photo and a piece still processing
+ * are left; running it again queues nothing; to anyone without the operator's token it is not there. */
+export const verifyBackfill = async (origin: string, fixtures: string) => {
+  expect((await fetch(`${fixtures}/test/pictures/backfill/seed`, { method: 'POST' })).status).toBe(204)
+  expect((await fetch(`${fixtures}/test/pictures/answer?key=green`, { method: 'PUT', body: museTee() })).status).toBe(
+    204,
+  )
+  const owner = client(origin, await signIn(origin, backfillAccount))
+  const email = { email: `${backfillAccount}@example.invalid` }
+  const earlier = (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.length
+  const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
+
+  // A signed-in person, a wrong token and no token find nothing; an email nobody signs in with is not found.
+  expect((await send(owner, '/api/operator/pictures/backfill', 'POST', email)).status).toBe(404)
+  expect((await asOperator(origin, `${nativeOperatorToken}-not`, email)).status).toBe(404)
+  expect(
+    (
+      await fetch(`${origin}/api/operator/pictures/backfill`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(email),
+      })
+    ).status,
+  ).toBe(404)
+  expect((await asOperator(origin, nativeOperatorToken, { email: 'nobody@example.invalid' })).status).toBe(404)
+
+  const first = await decoded(PictureBackfilled, await asOperator(origin, nativeOperatorToken, email))
+  expect(first).toEqual({ accountId: backfillAccount, queued: 1, shown: 1, remaining: 0 })
+  // The proposed drawing shows at once; the undrawn piece is drawn on the queue and shows too.
+  expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.proposed}`))).picture).toEqual({
+    state: 'ready',
+    shows: 'clean',
+    version: 1,
+  })
+  expect((await settled(owner, backfilled.undrawn)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
+  expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.photo}`))).picture).toBeUndefined()
+  expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.processing}`))).picture).toBeUndefined()
+
+  // Again: nothing to queue or show, and Muse was asked once in all, never on the person's credits.
+  const second = await decoded(PictureBackfilled, await asOperator(origin, nativeOperatorToken, email))
+  expect(second).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
+  const drawn = (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.slice(earlier)
+  expect(drawn).toHaveLength(1)
+  expect((await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining).toBe(before)
 }

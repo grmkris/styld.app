@@ -27,7 +27,11 @@ export type WorkMessage = typeof WorkMessage.Type
 /** The piece queue's producer, as the Worker binds it: every module that queues piece work sends through it. */
 export class PieceQueue extends Context.Service<
   PieceQueue,
-  { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
+  {
+    send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown>
+    /** Up to a hundred messages a call. */
+    sendBatch(messages: ReadonlyArray<{ readonly body: WorkMessage; readonly delaySeconds?: number }>): Promise<unknown>
+  }
 >()('@styld/server/wardrobe/PieceQueue') {
   static readonly layer = (queue: PieceQueue['Service']) => Layer.succeed(this, queue)
 }

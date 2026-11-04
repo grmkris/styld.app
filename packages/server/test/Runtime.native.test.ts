@@ -10,7 +10,7 @@ import { type Browser, chromium } from 'playwright'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { testPassword } from './IdentityFixture.ts'
 import { verifyBrowser } from './BrowserAcceptance.ts'
-import { verifyCleanPictures } from './CleanPictureAcceptance.ts'
+import { verifyBackfill, verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGuidedCameraJourney } from './GuidedCameraBrowserAcceptance.ts'
@@ -124,6 +124,12 @@ test(
     verifyCleanPictures(origin, testUrl).then((pieces) => verifyTurn(browser, origin, testUrl, pieces)),
   ),
   { timeout: 260000 },
+)
+
+test(
+  'draws a clean picture for every piece that has none when the operator asks, once, paid by Styld',
+  overHttp(verifyBackfill),
+  { timeout: 90000 },
 )
 
 test(

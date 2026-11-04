@@ -32,6 +32,60 @@ export const cutout = (colour: readonly [number, number, number]) => {
 /** The account the clean-picture journey keeps its pieces in. */
 const seed = (database: QueryDatabaseClient) => seedIdentity(database, picturesAccount)
 
+/** The backfill journey's account: pieces kept before clean pictures were drawn, as the operator finds them. */
+export const backfillAccount = 'native-backfill'
+
+const backfillId = (name: string) => `pc_${`nativebackfill${name}`.padEnd(22, '0')}`
+
+/** The backfill journey's pieces, by name: a red cut-out never drawn, a green one whose drawing waits as proposed
+ * (before 4 November), a piece kept as its photo, and a red cut-out still processing. */
+export const backfilled = {
+  undrawn: backfillId('undrawn'),
+  proposed: backfillId('proposed'),
+  photo: backfillId('photo'),
+  processing: backfillId('processing'),
+} as const
+
+/** The backfill journey's account and pieces, their cut-outs stored, and the proposed piece's drawing. */
+const seedBackfill = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
+  Effect.gen(function* () {
+    yield* seedIdentity(database, backfillAccount)
+    const now = yield* Clock.currentTimeMillis
+    const prefix = `accounts/${backfillAccount}/pieces`
+    const pieces = [
+      { id: backfilled.undrawn, colour: 'red', status: 'ready', cutOut: true },
+      { id: backfilled.proposed, colour: 'green', status: 'ready', cutOut: true },
+      { id: backfilled.photo, colour: 'blue', status: 'ready', cutOut: false },
+      { id: backfilled.processing, colour: 'red', status: 'processing', cutOut: true },
+    ] as const
+    for (const piece of pieces) yield* media.put(`${prefix}/${piece.id}/image.png`, cutout(colours[piece.colour]))
+    yield* media.put(`${prefix}/${backfilled.proposed}/clean-1.png`, cutout(colours.green))
+    yield* database.batch([
+      ...pieces.map((piece, at) => {
+        const image = `${prefix}/${piece.id}/image.png`
+        return database
+          .prepare(
+            "INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, content_type, created_at, updated_at) VALUES (?, ?, 'tops', ?, '[]', ?, 'import', ?, ?, 'image/png', ?, ?)",
+          )
+          .bind(
+            piece.id,
+            backfillAccount,
+            JSON.stringify([piece.colour]),
+            piece.status,
+            piece.cutOut ? `${prefix}/${piece.id}/original.png` : image,
+            image,
+            now - 10_000 + at * 1000,
+            now,
+          )
+      }),
+      database
+        .prepare(
+          "INSERT INTO piece_pictures (piece_id, account_id, state, clean_key, version, redraws, paid, created_at, updated_at) VALUES (?, ?, 'proposed', ?, 1, 0, 0, ?, ?)",
+        )
+        .bind(backfilled.proposed, backfillAccount, `${prefix}/${backfilled.proposed}/clean-1.png`, now, now),
+    ])
+  })
+
 /** The colour a flattened picture shows most, ignoring the light grey it was laid on. */
 const colourOf = (base64: string) => {
   const picture = decodePng(Result.getOrElse(Base64.decode(base64), () => new Uint8Array()))
@@ -169,6 +223,11 @@ export const pictureRoutes = (database: QueryDatabaseClient, media: ReadWriteBuc
       'POST',
       '/test/pictures/seed',
       seed(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+    ),
+    HttpRouter.add(
+      'POST',
+      '/test/pictures/backfill/seed',
+      seedBackfill(database, media).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
     ),
     HttpRouter.add('POST', '/test/pictures/clef', clef),
     HttpRouter.add('POST', '/test/pictures/meta/v1/images/edits', muse(media)),

@@ -47,7 +47,7 @@ const AccountRow = Schema.Struct({
 interface LifecycleBindings {
   readonly database: Database['Service']
   readonly bucket: Listing
-  readonly queue: PieceQueue['Service']
+  readonly queue: Pick<PieceQueue['Service'], 'send'>
 }
 
 /** The account's stores outside D1 and the bucket, each forgotten for good: its chats with Styld and its videos at

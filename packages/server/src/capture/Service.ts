@@ -5,6 +5,7 @@ import { matching } from './Matching.ts'
 import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { redrawing } from './Redraw.ts'
+import { backfilling } from './Backfill.ts'
 import { askingTurns, turning } from './Turns.ts'
 import { reviewing } from './Review.ts'
 
@@ -21,6 +22,7 @@ const make = Effect.gen(function* () {
     ...(yield* matching),
     ...(yield* picturing),
     ...(yield* redrawing),
+    ...(yield* backfilling),
     ...(yield* turning),
     ...(yield* askingTurns),
   }

@@ -229,6 +229,14 @@ const make = Effect.gen(function* () {
       const { accountId } = found.value
       return { importId, accountId, pieces: yield* piecesIn(accountId, manifest) } satisfies ImportStatus
     }, Effect.provide(context)),
+    /** The account an email signs in to, as the operator: whose pieces the operator's other tools act on, such as the
+     * backfill of clean pictures. An email that signs in to none is not found. */
+    accountOf: Effect.fn('Styld.Imports.accountOf')(function* (email: string) {
+      yield* CurrentOperator
+      const found = yield* stored((yield* ImportStore).accountOf(email))
+      if (Option.isNone(found)) return yield* NotFound.make({})
+      return found.value.accountId
+    }, Effect.provide(context)),
     /** Import one piece and process it: cut out and described, paid by Styld. */
     importPiece: Effect.fn('Styld.Imports.piece')(function* (message: ImportMessage) {
       const pieceId = yield* pieceOf(message)

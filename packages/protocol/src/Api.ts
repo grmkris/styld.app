@@ -19,6 +19,7 @@ import {
 import { GenerationApi } from './Generation.ts'
 import { LinkApi } from './Link.ts'
 import { ImportApi } from './Import.ts'
+import { PictureBackfillApi } from './PictureBackfill.ts'
 import {
   CreateReport,
   Feed,
@@ -504,4 +505,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(OutfitApi)
   .add(PhotoApi)
   .add(ImportApi)
+  .add(PictureBackfillApi)
   .prefix('/api') {}
