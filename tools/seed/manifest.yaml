@@ -1091,9 +1091,9 @@ specs:
       name: 'Black running shoes',
     }
   - {
-      id: w-sportswear-black,
+      id: w-sportBottoms-black,
       accounts: [women],
-      type: sportswear,
+      type: sportBottoms,
       colours: [black],
       pattern: plain,
       subcategory: leggings,
@@ -1102,9 +1102,9 @@ specs:
       name: 'Black leggings',
     }
   - {
-      id: w-sportswear-red,
+      id: w-sportBottoms-red,
       accounts: [women],
-      type: sportswear,
+      type: sportBottoms,
       colours: [red],
       pattern: plain,
       subcategory: leggings,
@@ -1751,9 +1751,9 @@ specs:
       name: 'White running shoes',
     }
   - {
-      id: m-sportswear-black,
+      id: m-sportBottoms-black,
       accounts: [men],
-      type: sportswear,
+      type: sportBottoms,
       colours: [black],
       pattern: plain,
       subcategory: track trousers,
@@ -1762,9 +1762,9 @@ specs:
       name: 'Black track trousers',
     }
   - {
-      id: m-sportswear-grey,
+      id: m-sportBottoms-grey,
       accounts: [men],
-      type: sportswear,
+      type: sportBottoms,
       colours: [grey],
       pattern: plain,
       subcategory: track trousers,

@@ -167,7 +167,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // button and words, add 188 over 417,212, for 417,400.
 // Raised to 417,800 the same night for the assistants' consent page in Styld's words: the page is rendered by the API
 // Worker, but its en/sl words live in the catalogs the browser loads whole, and add 168 (417,600 to 417,768).
-if (initialGzip > 417800) throw new Error(`Initial browser assets exceed the 417,800-byte gzip budget: ${initialGzip}`)
+// Raised to 418,000 the same night for the four Sport types merged with main (Eva: leggings, sports bras): their en/sl
+// names and search words replace Sportswear's, and add 180 (417,768 to 417,948).
+if (initialGzip > 418000) throw new Error(`Initial browser assets exceed the 418,000-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

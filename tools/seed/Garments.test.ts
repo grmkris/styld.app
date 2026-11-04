@@ -30,8 +30,8 @@ describe('the gate', () => {
     expect(failureOf(verdict, spec)).toContain(said)
   })
 
-  test('takes any shape for a type that names a use: sportswear joggers read as trousers', () => {
-    const joggers = specOf({ type: 'sportswear', colours: ['grey'] })
+  test('takes any shape for a type that names a use: track trousers read as trousers', () => {
+    const joggers = specOf({ type: 'sportBottoms', colours: ['grey'] })
     expect(passes(verdictFor(joggers, { type: 'trousers' }), joggers)).toBe(true)
   })
 
