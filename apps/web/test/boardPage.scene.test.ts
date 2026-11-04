@@ -1,5 +1,5 @@
-import { Board } from '@styld/protocol'
-import { Schema } from 'effect'
+import { Board, BoardOutfitId } from '@styld/protocol'
+import { Option, Schema } from 'effect'
 import { Dialog } from '@foldkit/ui'
 import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
@@ -14,6 +14,7 @@ import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
+import { KeepOutfit, Message as OutfitsMessage } from '../src/page/Board/Outfits.ts'
 import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
@@ -180,6 +181,65 @@ describe("a board's page", () => {
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('button', { name: 'Srajca (bela in modra)' })).toExist(),
       expect(role('button', { name: 'Balerinke (črna)' })).toExist(),
+    )
+  })
+})
+
+describe('a "One piece, six outfits" board (T-10)', () => {
+  const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Dark jeans' })
+  const outfit = (seed: string, lookId: string | null) => ({
+    id: `bo_${seed.padEnd(22, 'x')}`,
+    pieces: [pieceFixture(`${seed}-tee`, { type: 'tops' }), jeans, pieceFixture(`${seed}-shoes`, { type: 'trainers' })],
+    lookId,
+    session: `os_${'run'.padEnd(22, 'x')}`,
+    mode: 'fast',
+  })
+  const outfitBoard = (anchor: typeof jeans | null) =>
+    withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+      fromBoard(boardInit(boardId, true), {
+        ...board,
+        name: 'Jeans: six outfits',
+        outfitsAround: Schema.decodeUnknownSync(Board.fields.outfitsAround)({
+          anchor,
+          outfits: [outfit('a', null), outfit('b', `lk_${'kept'.padEnd(22, 'x')}`)],
+        }),
+      }),
+    )
+
+  test('shows each outfit as a card under the table: Keep and Another, or the look it became; fewer than six said', () => {
+    scene(
+      { update, view },
+      given(outfitBoard(jeans)),
+      measured,
+      expect(role('heading', { name: 'Six outfits' })).toExist(),
+      expect(text('Your wardrobe made 2 outfits around this piece. Add shoes and accessories for more.')).toExist(),
+      expect(role('img', { name: 'Outfit 1' })).toExist(),
+      expect(role('button', { name: 'Keep' })).toExist(),
+      expect(role('button', { name: 'Another' })).not.toHaveAttr('aria-disabled', 'true'),
+      expect(role('link', { name: 'Open the look' })).toHaveAttr('href', `/looks/lk_${'kept'.padEnd(22, 'x')}`),
+      click(role('button', { name: 'Keep' })),
+      Command.expectHas(KeepOutfit),
+      expect(role('button', { name: 'Keeping…' })).toHaveAttr('aria-disabled', 'true'),
+      Command.resolve(
+        KeepOutfit,
+        OutfitsMessage.FailedKeep({
+          outfitId: BoardOutfitId.make(`bo_${'a'.padEnd(22, 'x')}`),
+          problem: 'failed',
+          operationId: Option.none(),
+        }),
+      ),
+      expect(role('alert')).toHaveText('That didn’t go through. Try again.'),
+      expect(role('button', { name: 'Keep' })).not.toHaveAttr('aria-disabled', 'true'),
+    )
+  })
+
+  test('says when its piece was deleted, and offers no other outfit', () => {
+    scene(
+      { update, view },
+      given(outfitBoard(null)),
+      measured,
+      expect(text('The piece this board was built around was deleted. Its outfits stay.')).toExist(),
+      expect(role('button', { name: 'Another' })).toHaveAttr('aria-disabled', 'true'),
     )
   })
 })

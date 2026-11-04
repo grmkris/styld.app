@@ -350,6 +350,20 @@ export interface MessageArgumentsByKey<_T = string> {
   'nav.navigation': Readonly<Record<string, never>>
   'nav.sessionUnavailable': Readonly<Record<string, never>>
   'nav.wardrobe': Readonly<Record<string, never>>
+  'outfits.anchorGone': Readonly<Record<string, never>>
+  'outfits.another': Readonly<Record<string, never>>
+  'outfits.failed': Readonly<Record<string, never>>
+  'outfits.fewer': { readonly count: number }
+  'outfits.keep': Readonly<Record<string, never>>
+  'outfits.keeping': Readonly<Record<string, never>>
+  'outfits.kept': Readonly<Record<string, never>>
+  'outfits.keptElsewhere': Readonly<Record<string, never>>
+  'outfits.lookName': { readonly board: string | number; readonly place: string | number }
+  'outfits.noMore': Readonly<Record<string, never>>
+  'outfits.openLook': Readonly<Record<string, never>>
+  'outfits.outfit': { readonly place: string | number }
+  'outfits.replacing': Readonly<Record<string, never>>
+  'outfits.title': Readonly<Record<string, never>>
   'people.actionFailed': Readonly<Record<string, never>>
   'people.fromFollowing': Readonly<Record<string, never>>
   'people.openYours': Readonly<Record<string, never>>
@@ -850,4 +864,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '52e6a5fa67169815886fdc591dbda4c8d55daaa1fff3f4fe47aed6f67cd814ba'
+export const catalogVersion = '85666f48f1e19f99eb94cb73dbd806c0d67d64c4d7df6184c386eba6fd75f4d3'

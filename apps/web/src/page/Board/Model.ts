@@ -23,6 +23,7 @@ import { Deletion } from '../../Confirm.ts'
 import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../../ServerData.ts'
 import * as Make from './Make.ts'
+import * as Outfits from './Outfits.ts'
 import { Pointer } from './Geometry.ts'
 
 // MODEL
@@ -206,6 +207,8 @@ export const Model = Schema.Struct({
   drop: FileDrop.Model,
   /** Make with Styld: a mood board or one picture from the person's words, and how it is going. */
   make: Make.Model,
+  /** A "One piece, six outfits" board's outfits as cards (T-10), none on a blank board. */
+  outfits: Outfits.Model,
   /** A session came with the page; signed out the board can only be someone's public one. */
   signedIn: Schema.Boolean,
 })
@@ -254,6 +257,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   isDropping: false,
   drop: FileDrop.init({ id: 'board-pictures' }),
   make: Make.init(boardId),
+  outfits: Outfits.init(boardId),
 })
 
 /** Who sees the board and which of its pins, and Styld's check of it, as the server last confirmed them. */
@@ -277,6 +281,7 @@ export const fromBoard = (model: Model, board: Board): Model =>
     version: () => board.version,
     items: () => board.items,
     pins: () => board.pins,
+    outfits: (outfits) => Outfits.withBoard(outfits, board),
   })
 
 /** Pin changes replace the saved table, so wait for every local edit and upload to settle first. */

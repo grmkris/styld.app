@@ -15,6 +15,7 @@ import {
   TextStyle,
 } from '@styld/protocol'
 import * as Make from './Make.ts'
+import * as Outfits from './Outfits.ts'
 import * as People from '../People.ts'
 import * as Share from '../Share.ts'
 import { Schema } from 'effect'
@@ -107,6 +108,7 @@ export const Message = defineMessageUnion({
   GotPeopleMessage: { message: People.Message },
   GotShareMessage: { message: Share.Message },
   GotMakeMessage: { message: Make.Message },
+  GotOutfitsMessage: { message: Outfits.Message },
   ToggledMood: { mood: Mood },
   SucceededSetBoardMoods: { board: Board },
   FailedSetBoardMoods: { attempted: Schema.Array(Mood), previous: Schema.Array(Mood) },

@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { tidied } from '@styld/protocol'
+import { type Board, tidied } from '@styld/protocol'
 import { Option, Result } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -37,12 +37,13 @@ import {
   releasedPointer,
 } from './Gestures.ts'
 import { Message } from './Message.ts'
-import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving, Ticks } from './Model.ts'
+import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving, Ticks } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
 import { closePiecePicker, pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as Share from '../Share.ts'
 import * as Make from './Make.ts'
+import * as Outfits from './Outfits.ts'
 import { ReloadBoard } from './PageCommands.ts'
 
 /** The Commands that open the board: the board and a first batch of ids (the app reads the pieces for the tray).
@@ -61,6 +62,34 @@ const foldMake = Update.foldChild({
   toParentMessage: (message: Make.Message) => Message.GotMakeMessage({ message }),
   foldOutMessage: Make.OutMessage.match<Update.Step<Model, Message, Services>>({
     FinishedMaking: () => (model) => ({ model, commands: [ReloadBoard({ boardId: model.boardId })] }),
+  }),
+})
+
+/** A card kept an outfit or put another in its place: a keep pins a look and leaves the table; another outfit brings a
+ * new table, which the editor takes with a fresh history, as one saved elsewhere. */
+const outfitChanged = (model: Model, board: Board): UpdateReturn =>
+  board.version === model.version
+    ? { model: modifyFields(model, { pins: () => board.pins, publicPins: () => board.publicPins }) }
+    : {
+        model: modifyFields(fromBoard(model, board), {
+          saving: () => Saving.Saved(),
+          past: () => [],
+          future: () => [],
+          gesture: () => Gesture.Idle(),
+          maybeSelectedId: () => Option.none(),
+        }),
+      }
+
+const foldOutfits = Update.foldChild({
+  update: Outfits.update,
+  read: (model: Model) => Option.some(model.outfits),
+  write: (model: Model, outfits: Outfits.Model) => modifyFields(model, { outfits: () => outfits }),
+  toParentMessage: (message: Outfits.Message) => Message.GotOutfitsMessage({ message }),
+  foldOutMessage: Outfits.OutMessage.match<Update.Step<Model, Message, Services>>({
+    ChangedBoard:
+      ({ board }) =>
+      (model) =>
+        outfitChanged(model, board),
   }),
 })
 
@@ -95,6 +124,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotPeopleMessage: (got) => foldPeople(model, got.message),
     GotShareMessage: (got) => foldShare(model, got.message),
     GotMakeMessage: (got) => foldMake(model, got.message),
+    GotOutfitsMessage: (got) => foldOutfits(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),
     MeasuredPaper: ({ width }) => ({ model: modifyFields(model, { pxPerUnit: () => unitsPerPixel(width) }) }),
     PressedItem: ({ id, pointer, isTouch }) => pressedItem(model, id, pointer, isTouch),

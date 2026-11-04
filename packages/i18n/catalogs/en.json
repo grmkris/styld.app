@@ -830,6 +830,22 @@
     "failed": "Your boards didn’t load.",
     "retry": "Try again"
   },
+  "outfits": {
+    "title": "Six outfits",
+    "outfit": "Outfit {place}",
+    "keep": "Keep",
+    "keeping": "Keeping…",
+    "kept": "Kept as a look",
+    "openLook": "Open the look",
+    "another": "Another",
+    "replacing": "Finding another…",
+    "failed": "That didn’t go through. Try again.",
+    "noMore": "Your wardrobe has no other outfit around this piece.",
+    "keptElsewhere": "This outfit is already kept.",
+    "fewer": "{count, plural, one {Your wardrobe made # outfit around this piece.} other {Your wardrobe made # outfits around this piece.}} Add shoes and accessories for more.",
+    "anchorGone": "The piece this board was built around was deleted. Its outfits stay.",
+    "lookName": "{board} · {place}"
+  },
   "ask": {
     "title": "Search",
     "searchLabel": "Search your wardrobe",

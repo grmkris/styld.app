@@ -26,6 +26,7 @@ import { visitingView } from './Visiting.ts'
 import { type Model, canChangePins, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
+import * as OutfitsView from './OutfitsView.ts'
 import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage } from './Table.ts'
@@ -373,6 +374,16 @@ const makeSlot = (
     toParentMessage: (message) => Message.GotMakeMessage({ message }),
   })
 
+/** A "One piece, six outfits" board's outfits as cards under its table (T-10); nothing on a blank board. */
+const outfitsSlot = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'board-outfits',
+    model: model.outfits,
+    view: OutfitsView.view,
+    viewInputs: { locale, boardName: name, paper },
+    toParentMessage: (message) => Message.GotOutfitsMessage({ message }),
+  })
+
 const readyView = (
   model: Model,
   pieces: PiecesData,
@@ -414,6 +425,7 @@ const readyView = (
       makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
     ]),
     editorView(model, pieces, paper, locale, h),
+    outfitsSlot(model, name, paper, locale, h),
     sheetShown(model.settings)
       ? bottomSheet(
           {

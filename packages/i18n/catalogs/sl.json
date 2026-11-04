@@ -830,6 +830,22 @@
     "failed": "Tvoje zbirke se niso naložile.",
     "retry": "Poskusi znova"
   },
+  "outfits": {
+    "title": "Šest oprav",
+    "outfit": "Oprava {place}",
+    "keep": "Obdrži",
+    "keeping": "Shranjujem …",
+    "kept": "Shranjeno kot videz",
+    "openLook": "Odpri videz",
+    "another": "Druga",
+    "replacing": "Iščem drugo …",
+    "failed": "Ni uspelo. Poskusi znova.",
+    "noMore": "Tvoja garderoba okoli tega kosa nima druge oprave.",
+    "keptElsewhere": "Ta oprava je že shranjena.",
+    "fewer": "{count, plural, one {Tvoja garderoba je okoli tega kosa sestavila # opravo.} two {Tvoja garderoba je okoli tega kosa sestavila # opravi.} few {Tvoja garderoba je okoli tega kosa sestavila # oprave.} other {Tvoja garderoba je okoli tega kosa sestavila # oprav.}} Za več dodaj čevlje in dodatke.",
+    "anchorGone": "Kos, okoli katerega je zbirka nastala, je izbrisan. Njene oprave ostanejo.",
+    "lookName": "{board} · {place}"
+  },
   "ask": {
     "title": "Iskanje",
     "searchLabel": "Išči po garderobi",
