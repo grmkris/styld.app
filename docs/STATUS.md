@@ -29,7 +29,7 @@ no card is ever asked for.
   test-card purchase on the preview: the webhook's 200, the purchase row, 500 a day and the top-up, a refund taking the
   week back; then production's live readback after the cutover. A payment for an account deleted since its checkout is
   answered 200 and logged (`Styld.Billing a payment arrived for an account that is gone`) for a refund by hand. The
-  initial bundle budget rose by 1,677 bytes to 394,600.
+  initial bundle budget rose by 1,687 bytes to 394,600.
 
 ## Sign in with Google (4 November, on main, not deployed)
 

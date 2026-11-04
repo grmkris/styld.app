@@ -120,7 +120,7 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // 392,864 to 392,913 on main.
 // Raised to 394,600 on 4 November for Styld Premium Week (payments): the account's Credits section (its read, the
 // return poll, the checkout's Command and states), the way to more credits beside every refusal of the day's credits,
-// and their words add 1,677 (main 392,866 at f67b6a92 and 394,543 with it, each measured in a clean worktree).
+// and their words add 1,687 (main 392,913 at d64d4d64 and 394,600 with it).
 if (initialGzip > 394600) throw new Error(`Initial browser assets exceed the 394,600-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
