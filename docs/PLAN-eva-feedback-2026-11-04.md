@@ -1,9 +1,12 @@
-# Plan: Eva's 4 November feedback (shop-style pictures, a picture carousel, tops by sleeve)
+# Plan: Eva's 4 November feedback (shop-style pictures, a picture carousel, tops by sleeve, boards)
 
 Owner decisions, 4 November 2026: a piece shows its drawn shop-style picture by default with the original one swipe
-away; every piece gets one; Tops & T-shirts splits into three built-in types by sleeve. Source: Eva's messages and
+away; every piece gets one; Tops & T-shirts splits into three built-in types by sleeve; an outfit board puts its
+piece big in the middle with whole outfits, shoes included, laid out around it in one of several layouts. Source: Eva's messages and
 screenshots of the new preview (her words: "redo it without the wrinkles, as if it were in a shop"; "it only cuts
-them out"; "I'd split tops and T-shirts into short, long and sleeveless").
+them out"; "I'd split tops and T-shirts into short, long and sleeveless"; on boards: "the outfits are semi OK, but
+it has to lay them out together better", "every outfit needs shoes", "the piece I pick should appear big in the
+middle").
 
 ## What is wrong today
 
@@ -44,13 +47,33 @@ back only the rows the drop deleted), proven on a copy of the preview's real dat
 `retype-pieces.ts`: a dry run first, a sample checked against the pictures by eye, then `--apply`. The v1 importer's
 mapping sends v1 tops through the same sleeve question.
 
+**B1: shoes in every outfit.** A complete board outfit always wears shoes when the wardrobe has any: shoes that
+suit the brief's season and occasion first, any other shoes (not sport shoes outside sport) when none suit. Today
+`outfits/Rules.ts` treats shoes as optional and an empty seasonal pool leaves them out (Eva: "it does not add shoes").
+Rule tests for the fallback; the board native journey asserts shoes in every cluster.
+
+**B2: the anchor big in the middle, outfits laid out together.** `Placement.ts` `outfitsAround` is replaced by layouts
+after Eva's Pinterest references (fig14, fig15, fig17 in `docs/research/eva-review-tracker/evidence/`) and her own
+rearranged board: the anchor piece large in the centre, and around it each outfit as one tight flat-lay (outer layer
+overlapping the top, the bottom beside it, shoes at its foot, the bag and accessories tucked against it, not apart).
+The anchor also repeats, smaller, inside every outfit (owner, 4 November). Three layouts (owner: "a bit of randomness"):
+eight outfits on a 3×3 grid around the centre (fig17), six in a radial ring (fig15), six on a 3×3 grid whose middle row
+leaves the anchor room. A board picks one at random when made, and "Another layout" deals a new one. The number of
+outfits follows the layout, so the template is renamed "One piece, many outfits" / "En kos, več outfitov". The board's
+paper starts light, as in every reference. Pure layout tests (no overlap between clusters, every piece inside the
+board, the anchor largest); a native screenshot of each layout on a phone, light and dark.
+
+**B3: kept outfits and cards follow.** Keep/Another and the outfit cards (T-16/T-10) work with six or eight clusters;
+Another replaces one cluster in place within the current layout.
+
 **P5: release.** Full gate; deploy; readback of the pictures (a new scan shows its drawing within a few minutes), the
 backfill for Eva, the carousel on a phone, the three tops cards; STATUS, DELIVERY and the tracker; Eva re-checks.
 
 ## Order and who
 
-P1 → P3 depend on each other (the carousel shows what P1 decides); P2 needs P1's rule; P4 is independent. P4 and
-P1–P3 can run side by side in separate worktrees; the deploy waits for both.
+Three tracks in separate worktrees, side by side: pictures (P1 → P2 → P3, in order: the carousel shows what P1
+decides and the backfill uses its rule), tops (P4) and boards (B1 → B3). Boards and tops both touch
+`outfits/Rules.ts` and the type lists, so the later one rebases on the earlier. The deploy waits for all three.
 
 ## Out
 
