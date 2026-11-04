@@ -1,9 +1,11 @@
 import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
-import { enqueueMatch, readPixels, storedAs } from './Shared.ts'
+import { enqueueMatch, storedAs } from './Shared.ts'
+import { comparablePictures } from './Comparable.ts'
+import { Media } from '../kernel/Media.ts'
 import { judgedAt } from './Garments.ts'
-import { modelPicture } from '@styld/imaging'
+import { modelPicture, readPng } from '@styld/imaging'
 import { capturePolicy } from './Policy.ts'
 import { type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
@@ -22,14 +24,16 @@ const scopeOf = (capture: CaptureRow): MatchScope => ({
   importId: capture.importId,
 })
 
+/** The isolate's comparable pictures: one sighting's comparisons, its own and the next one's together, fit. */
+const comparablePicture = comparablePictures(48, (bytes) =>
+  Option.map(readPng(bytes), (picture) => modelPicture(picture, judgedAt)),
+)
+
 /** A stored cut-out as the decision model compares it; none when it is gone or is not a cut-out. */
 const comparable = (key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Picture>())
-    : Effect.map(
-        readPixels(key),
-        Option.map((picture) => modelPicture(picture, judgedAt)),
-      )
+    : Effect.flatMap(Media, ({ bucket }) => comparablePicture(bucket, key))
 
 /** The one of `candidates` most likely the garment in `picture`, if the decision model is at least `bar` sure of it. */
 export const sameAs = <A>(
@@ -117,7 +121,7 @@ const matchNext = (capture: CaptureRow) =>
     const at = yield* nowDate
     const claimedAt = next.matchClaimedAt?.getTime() ?? 0
     if (next.matching === 'claimed' && at.getTime() - claimedAt < patienceSeconds * 1000) {
-      // Another delivery compares it and the ones after it; this one looks again in case that one gives up.
+      // Another delivery compares it and passes the ones after it on; this one looks again in case that one gives up.
       yield* enqueueMatch(capture.id, patienceSeconds)
       return false
     }
@@ -135,13 +139,14 @@ const matchNext = (capture: CaptureRow) =>
 /** The queue side of comparing sightings. */
 export const matching = Effect.map(Effect.context<CaptureServices>(), (context) => ({
   /** Compare the waiting sightings of a capture's import, oldest first, one at a time, so a sighting is compared
-   * with every one before it, whichever part finished first. */
+   * with every one before it, whichever part finished first. A delivery compares one and sends the queue on to the
+   * next: one costs seconds of CPU, and a delivery that compared a whole photo import in one go ran past the Worker's
+   * CPU limit, losing its work and retrying it (4 November). */
   processMatch: Effect.fn('Styld.Capture.match')(function* (captureId: string) {
     const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
     if (Option.isNone(found)) return
     if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(found.value.accountId)))) return
-    let more = true
-    while (more) more = yield* matchNext(found.value)
+    if (yield* matchNext(found.value)) yield* enqueueMatch(captureId)
   }, Effect.provide(context)),
   /** The last attempt failed: the import's waiting sightings stay on their own cards. */
   failMatch: Effect.fn('Styld.Capture.failMatch')(function* (captureId: string) {

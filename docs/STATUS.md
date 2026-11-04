@@ -7,6 +7,34 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Photo imports no longer stall styld.app (4 November, on main, not deployed)
+
+Eva (4 November, about 21:20 UTC): the app hung and lagged while about 80 photos were processing.
+
+- **The cause.** Workers Logs for production showed several piece-queue invocations ending `exceededCpu` (32.5 s of
+  CPU). One of them held 5 match messages, made 72 `Styld.Capture.sameGarment` calls and 79 R2 reads. Meanwhile,
+  wardrobe thumbnails waited 3–8 s on little CPU, `/api/captures/review` took 12 s and was cancelled, and p99 rose to
+  8 s, from under 1 s before the cutover.
+  - Matching made every compared cut-out into the model's picture again: decode, shrink, flatten, encode, 0.4–0.9 s of
+    CPU each at the working size. That is up to 17 per sighting.
+  - One delivery compared every waiting sighting of the import.
+  - The piece queue ran batches of 10, so one job past the CPU limit retried the nine beside it, spent their tries and
+    repeated their paid Clef calls.
+  - The queue consumer shares the API Worker's isolate, so every request waited behind it.
+- **The fix.**
+  - `capture/Comparable.ts`: the isolate keeps up to 48 comparable pictures, each with its R2 etag, and reads the
+    object again only when the etag changed (`onlyIf.etagDoesNotMatch`). Only finished pictures are kept, never a read
+    in progress.
+  - `processMatch` compares one sighting a delivery and sends the queue on to the next.
+  - The piece queue's batch size is 1.
+- **Evidence.** `Comparable.test.ts` (unchanged, overwritten, deleted, not a picture, least recently used) and
+  `Jobs.test.ts` (batch size); typecheck, lint, Knip, graph, patterns and unit. The native suite and the production
+  readback after the deploy are open.
+- **Open.**
+  - Moving piece processing into its own Worker would keep image work out of the API's isolate altogether.
+  - A thumbnail answering 304 still spends about 300 ms of CPU.
+  - MCP clients get 404 on `/api/auth/oauth2/token` and `/.well-known/openid-configuration`.
+
 ## Rotate turns the shop-style picture too (4 November, `0f29dcd4`, live on the preview and styld.app)
 
 Eva (4 November): Rotate turned her photo and cut-out but never the shop-style picture, so a drawing Muse made from
