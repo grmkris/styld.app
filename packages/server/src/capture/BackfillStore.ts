@@ -1,10 +1,27 @@
 import { piecePictures, pieces } from '@styld/db'
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne } from 'drizzle-orm'
+import type { BatchItem } from 'drizzle-orm/batch'
 import { Array, Effect } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
 
 type Database = Db['Service']
 type NewPicture = typeof piecePictures.$inferInsert
+
+/** One statement for each item, sent fifty to a batch; the pieces the statements returned. */
+const batchedPieces = <A>(
+  db: Database,
+  items: ReadonlyArray<A>,
+  statement: (item: A) => BatchItem<'sqlite'> & PromiseLike<ReadonlyArray<{ readonly pieceId: string }>>,
+) =>
+  Effect.map(
+    Effect.forEach(Array.chunksOf(items, 50), (chunk) =>
+      query(() => {
+        const [head, ...rest] = Array.map(chunk, statement)
+        return db.batch([head, ...rest])
+      }),
+    ),
+    (results) => results.flat(2).map(({ pieceId }) => pieceId),
+  )
 
 /** The drawings a changed prompt draws again: shown, dropped by the check, or failed. A retake and a piece kept as its
  * photo were the judge's call on the cut-out, not the prompt's, and stay; a picture on its way is left to its job. */
@@ -33,26 +50,18 @@ const redrawRows = (db: Database) => ({
    * picture moved meanwhile keeps its own way; the pieces queued. Until the new drawing passes its check the piece shows
    * its cut-out, so a run queues only a minute's worth (`Backfill.ts`). */
   requeueDrawings: (pictures: ReadonlyArray<{ readonly pieceId: string; readonly turn: Date }>, before: Date) =>
-    Effect.map(
-      Effect.forEach(Array.chunksOf(pictures, 50), (chunk) =>
-        query(() => {
-          const [head, ...rest] = Array.map(chunk, ({ pieceId, turn }) =>
-            db
-              .update(piecePictures)
-              .set({ state: 'queued', paid: false, claimedAt: null, updatedAt: turn })
-              .where(
-                and(
-                  eq(piecePictures.pieceId, pieceId),
-                  inArray(piecePictures.state, [...redrawable]),
-                  lt(piecePictures.updatedAt, before),
-                ),
-              )
-              .returning({ pieceId: piecePictures.pieceId }),
-          )
-          return db.batch([head, ...rest])
-        }),
-      ),
-      (results) => results.flat(2).map(({ pieceId }) => pieceId),
+    batchedPieces(db, pictures, ({ pieceId, turn }) =>
+      db
+        .update(piecePictures)
+        .set({ state: 'queued', paid: false, claimedAt: null, updatedAt: turn })
+        .where(
+          and(
+            eq(piecePictures.pieceId, pieceId),
+            inArray(piecePictures.state, [...redrawable]),
+            lt(piecePictures.updatedAt, before),
+          ),
+        )
+        .returning({ pieceId: piecePictures.pieceId }),
     ),
 })
 
@@ -81,20 +90,8 @@ export const backfillRows = (db: Database) => ({
   /** Pictures for pieces that have none, one statement each; the pieces whose picture was added (a piece given one
    * meanwhile keeps its own). */
   addPictures: (pictures: ReadonlyArray<NewPicture>) =>
-    Effect.map(
-      Effect.forEach(Array.chunksOf(pictures, 50), (chunk) =>
-        query(() => {
-          const [head, ...rest] = Array.map(chunk, (picture) =>
-            db
-              .insert(piecePictures)
-              .values(picture)
-              .onConflictDoNothing()
-              .returning({ pieceId: piecePictures.pieceId }),
-          )
-          return db.batch([head, ...rest])
-        }),
-      ),
-      (results) => results.flat(2).map(({ pieceId }) => pieceId),
+    batchedPieces(db, pictures, (picture) =>
+      db.insert(piecePictures).values(picture).onConflictDoNothing().returning({ pieceId: piecePictures.pieceId }),
     ),
   /** The account's pictures still waiting for the queue since before `until`: their message may have been lost. */
   overduePictures: (accountId: string, until: Date) =>
