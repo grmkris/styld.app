@@ -14,8 +14,9 @@ When work is split across tracks (worktree agents or other sessions), one sessio
 track checks only what is cheap: format, typecheck, lint, unit, scene and story tests, translations, Knip, and the build
 with its bundle budget. It writes or updates native tests but does not run the native suite, the full gate or take
 screenshots, and it never deploys. The coordinator merges the tracks (small conflicts are resolved at merge rather than
-by serialising the work), runs `heavy --wait bun run check` once on the merged result, deploys once, runs the operator
-backfills, and compares screenshots on the deployed preview. Trust the gates: no line-by-line re-review of a track.
+by serialising the work); once the cheap checks pass on the merged result it deploys straight away and runs the
+operator backfills, then runs `heavy --wait bun run check` with native once after the deploy, in the background, and
+fixes forward. No screenshots. Trust the gates: no line-by-line re-review of a track.
 When two tracks need to rebuild the same table, one migration carries both changes; a D1 table rebuild is the riskiest
 migration and is checked against a private copy of the preview's real data (owner, 4 November 2026).
 
@@ -88,4 +89,4 @@ Before completion, run multiple reviewer rounds for architecture/tooling, securi
 
 ## Definition of done
 
-A change is done when `heavy --wait bun run check` passes on the commit (for parallel tracks, on the coordinator's merged result), touched code has zero lint, Effect and suppression debt, behaviour has a test at the right evidence level, `docs/STATUS.md` states what changed and what remains, and, for anything user-facing or deployed, the preview is redeployed and its acceptance and readback recorded. Never claim a feature done without its acceptance evidence in `docs/DELIVERY.md`.
+A change is done when `heavy --wait bun run check` passes on the commit (for parallel tracks, on the coordinator's merged result, after its deploy), touched code has zero lint, Effect and suppression debt, behaviour has a test at the right evidence level, `docs/STATUS.md` states what changed and what remains, and, for anything user-facing or deployed, the preview is redeployed and its acceptance and readback recorded. Never claim a feature done without its acceptance evidence in `docs/DELIVERY.md`.
