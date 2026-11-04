@@ -55,6 +55,9 @@ export const MakeOutfit = Schema.Struct({
   lockedPieceIds: Schema.Array(PieceId).check(Schema.isMaxLength(mostLocked)),
   /** Combinations already shown: none of them comes back. */
   seen: Schema.Array(OutfitKey).check(Schema.isMaxLength(mostSeen)),
+  /** Complete outfits (T-10): one to three accessories besides everything else when the wardrobe has them, and a batch
+   * that repeats as few pieces as it can. */
+  complete: Schema.optionalKey(Schema.Boolean),
   count: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: mostProposals })),
 })
 export type MakeOutfit = typeof MakeOutfit.Type

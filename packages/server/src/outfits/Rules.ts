@@ -42,12 +42,15 @@ export interface Brief {
   readonly brief: OutfitBrief
   /** Keys of the combinations already shown. */
   readonly seen: ReadonlySet<string>
+  /** A complete outfit (T-10): one to three accessories of different kinds besides everything else, whenever the
+   * wardrobe has accessories that suit. */
+  readonly complete?: boolean
 }
 
 /** The order an outfit is worn and listed in. */
 const wearingOrder: ReadonlyArray<Slot> = ['set', 'onePiece', 'top', 'bottom', 'layer', 'shoes', 'accessory']
 
-/** The most pieces one place holds in an outfit. */
+/** The most pieces one place holds in an outfit; a complete outfit's accessories, `mostCompleteAccessories`. */
 const mostIn: Readonly<Record<Slot, number>> = {
   set: 2,
   onePiece: 1,
@@ -57,6 +60,15 @@ const mostIn: Readonly<Record<Slot, number>> = {
   shoes: 1,
   accessory: 2,
 }
+
+/** A complete outfit wears up to three accessories (T-10, Eva's review: "at least one, preferably two"). */
+const mostCompleteAccessories = 3
+
+/** How many accessories a complete outfit's draw wears, out of 6: one once, two three times, three twice. */
+const completeAccessories: ReadonlyArray<number> = [1, 2, 2, 2, 3, 3]
+
+/** Socks finish an outfit but do not style it: a complete outfit's accessories are the others. */
+const isStyling = (piece: Wearable) => slotOf(piece.type) === 'accessory' && piece.type !== 'socks'
 
 /** What an outfit is built on: separates, a one-piece, or a set for sport or lounging. */
 type Shape = 'separates' | 'onePiece' | 'set'
@@ -171,6 +183,24 @@ const standsOn = (
 }
 
 /** A proposal kept to the rules: the request's own pieces in wearing order, or none when it breaks one. */
+/** A complete outfit's accessories: at least one when the wardrobe has one that suits, at most three, each of its own
+ * kind, and socks only when fixed. Anything goes for an outfit that is not asked to be complete. */
+const accessorised = (
+  request: Brief,
+  pools: ReadonlyMap<Slot, ReadonlyArray<Wearable>>,
+  pieces: ReadonlyArray<Wearable>,
+  fixedIds: ReadonlySet<string>,
+) => {
+  const worn = pieces.filter((piece) => slotOf(piece.type) === 'accessory')
+  if (request.complete !== true) return worn.length <= mostIn.accessory
+  return (
+    worn.length <= mostCompleteAccessories &&
+    new Set(worn.map(({ type }) => type)).size === worn.length &&
+    worn.every((piece) => isStyling(piece) || fixedIds.has(piece.id)) &&
+    (worn.length > 0 || !(pools.get('accessory') ?? []).some(isStyling))
+  )
+}
+
 export const validated = (request: Brief, pieceIds: ReadonlyArray<string>): Option.Option<ReadonlyArray<Wearable>> => {
   const byId = new Map<string, Wearable>(request.wardrobe.map((piece) => [piece.id, piece]))
   const unique = [...new Set(pieceIds)]
@@ -183,7 +213,8 @@ export const validated = (request: Brief, pieceIds: ReadonlyArray<string>): Opti
   const free = pieces.filter(({ id }) => !fixedIds.has(id))
   const fixedStatements = request.fixed.filter(isStatement).length
   const fits =
-    wearingOrder.every((slot) => count(slot) <= mostIn[slot]) &&
+    wearingOrder.every((slot) => slot === 'accessory' || count(slot) <= mostIn[slot]) &&
+    accessorised(request, pools, pieces, fixedIds) &&
     layersWell(pieces) &&
     standsOn(count, shapesFor(request, pools), pools) &&
     (count('shoes') === 1 || !has(pools, 'shoes')) &&
@@ -245,7 +276,19 @@ const draw = (
     const knits = (pools.get('top') ?? []).filter(isMidLayer)
     return [...tops, ...Array.take(ordered(knits, `${seed}:over`, drawingsFirst), 1)]
   }
+  // A complete outfit's accessories: one to three of different kinds, the fixed ones among them.
+  const accessories = () => {
+    const fixed = fixedIn('accessory')
+    const howMany = completeAccessories[hash(`${seed}:accessories`) % completeAccessories.length] ?? 2
+    const styling = ordered((pools.get('accessory') ?? []).filter(isStyling), `${seed}:accessory`, drawingsFirst)
+    return styling.reduce<ReadonlyArray<Wearable>>(
+      (picked, piece) =>
+        picked.length >= howMany || picked.some(({ type }) => type === piece.type) ? picked : [...picked, piece],
+      fixed,
+    )
+  }
   return wanted.flatMap(([slot, wear]) => {
+    if (slot === 'accessory' && request.complete === true) return accessories()
     const fixed = fixedIn(slot)
     if (fixed.length > 0 || !wear) return fixed
     const drawn = Array.take(ordered(pools.get(slot) ?? [], `${seed}:${slot}`, drawingsFirst), 1)

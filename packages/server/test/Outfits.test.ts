@@ -1,6 +1,15 @@
-import { type Colour, type OutfitBrief, outfitKeyOf, PieceId, type PieceType, slotOf } from '@styld/protocol'
+import {
+  type Colour,
+  type OutfitBrief,
+  outfitKeyOf,
+  type OutfitProposal,
+  PieceId,
+  type PieceType,
+  slotOf,
+} from '@styld/protocol'
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { distinct } from '../src/outfits/Outfits.ts'
 import { keptProposals, proposalMessages } from '../src/outfits/Proposer.ts'
 import { type Brief, missingOf, proposed, validated, type Wearable } from '../src/outfits/Rules.ts'
 
@@ -237,5 +246,87 @@ describe('Thinking’s proposals', () => {
     expect(keptProposals(request, answer, pieceOf)).toEqual([[tee, jeans, trainers]])
     const seen = new Set([outfitKeyOf([tee.id, jeans.id, trainers.id])])
     expect(keptProposals({ ...request, seen }, answer, pieceOf)).toEqual([])
+  })
+})
+
+const accessoriesOf = (outfit: ReadonlyArray<Wearable>) => outfit.filter(({ type }) => slotOf(type) === 'accessory')
+const systemOf = (request: Brief) => proposalMessages(request, 6).messages[0]?.content ?? ''
+const proposal = (score: number, ...worn: ReadonlyArray<Wearable>): OutfitProposal => ({
+  key: outfitKeyOf(worn.map(({ id }) => id)),
+  pieceIds: worn.map(({ id }) => id),
+  score,
+})
+
+describe('complete outfits (T-10)', () => {
+  const belt = piece('belts')
+  const hat = piece('hats')
+  const necklace = piece('jewellery')
+  const tote = piece('bags', { colours: ['black'] })
+  const socks = piece('socks')
+  const styled = [...wardrobe, belt, hat, necklace, tote, socks]
+
+  test('every outfit wears the anchor, a base, shoes and one to three accessories of different kinds, never socks', () => {
+    const outfits = drawnOver(brief(styled, { fixed: [tee], complete: true }))
+    expect(outfits.length).toBeGreaterThan(20)
+    for (const outfit of outfits) {
+      const slots = slotsOf(outfit)
+      const accessories = accessoriesOf(outfit)
+      expect(outfit).toContain(tee)
+      expect(slots).toContain('bottom')
+      expect(slots.filter((slot) => slot === 'shoes')).toHaveLength(1)
+      expect(accessories.length).toBeGreaterThanOrEqual(1)
+      expect(accessories.length).toBeLessThanOrEqual(3)
+      expect(new Set(accessories.map(({ type }) => type)).size).toBe(accessories.length)
+      expect(accessories).not.toContain(socks)
+    }
+    expect(new Set(outfits.map((outfit) => accessoriesOf(outfit).length))).toEqual(new Set([1, 2, 3]))
+  })
+
+  test('a dress anchor takes no bottom; an accessory anchor is one of the three, and no second of its kind', () => {
+    for (const outfit of drawnOver(brief(styled, { fixed: [dress], complete: true })))
+      expect(slotsOf(outfit).filter((slot) => slot === 'top' || slot === 'bottom')).toEqual([])
+    for (const outfit of drawnOver(brief(styled, { fixed: [bag], complete: true }))) {
+      expect(accessoriesOf(outfit)).toContain(bag)
+      expect(accessoriesOf(outfit)).not.toContain(tote)
+      expect(accessoriesOf(outfit).length).toBeLessThanOrEqual(3)
+    }
+  })
+
+  test('a wardrobe whose only accessory is socks still makes complete outfits, with nothing invented', () => {
+    const plain = [tee, jeans, trainers, socks]
+    const request = brief(plain, { fixed: [jeans], complete: true })
+    const outfits = drawnOver(request)
+    expect(outfits.length).toBeGreaterThan(0)
+    for (const outfit of outfits) expect(accessoriesOf(outfit)).toEqual([])
+    expect(missingOf(request)).toEqual([])
+  })
+
+  test('the rules refuse a complete outfit with no accessory, four, two of a kind or loose socks', () => {
+    const complete = brief(styled, { complete: true })
+    const base = [tee.id, jeans.id, trainers.id]
+    expect(validated(complete, [...base, belt.id, necklace.id])).toSatisfy(Option.isSome)
+    expect(validated(complete, base)).toSatisfy(Option.isNone)
+    expect(validated(complete, [...base, belt.id, hat.id, necklace.id, bag.id])).toSatisfy(Option.isNone)
+    expect(validated(complete, [...base, bag.id, tote.id])).toSatisfy(Option.isNone)
+    expect(validated(complete, [...base, belt.id, socks.id])).toSatisfy(Option.isNone)
+    // An outfit not asked to be complete keeps its old rules.
+    expect(validated(brief(styled), base)).toSatisfy(Option.isSome)
+    expect(validated(brief(styled), [...base, belt.id, hat.id, necklace.id])).toSatisfy(Option.isNone)
+  })
+
+  test('Thinking is asked for complete outfits only when they are wanted', () => {
+    expect(systemOf(brief(styled, { complete: true }))).toContain('one to three accessories')
+    expect(systemOf(brief(styled))).not.toContain('one to three accessories')
+  })
+
+  test('a complete batch repeats as few pieces as it can, the fixed ones aside, keeping Clef’s order on a tie', () => {
+    const best = proposal(0.9, tee, jeans, trainers, bag)
+    const sameShoes = proposal(0.8, tee, skirt, trainers, belt)
+    const fresh = proposal(0.7, tee, shorts, sandals, hat)
+    const alsoFresh = proposal(0.6, tee, skirt, sandals, necklace)
+    const ranked = [best, sameShoes, fresh, alsoFresh]
+    expect(distinct(ranked, 2, new Set([tee.id]))).toEqual([best, fresh])
+    expect(distinct(ranked, 3, new Set([tee.id]))).toEqual([best, fresh, sameShoes])
+    expect(distinct(ranked, 9, new Set([tee.id]))).toHaveLength(4)
   })
 })

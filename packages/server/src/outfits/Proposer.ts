@@ -46,6 +46,13 @@ const instructions = (count: number) =>
     'pieces. Never propose an outfit already shown, and never use a ref that is not in the list.',
   ].join(' ')
 
+/** What a complete outfit adds (T-10), for the rules to check. */
+const completeInstructions = [
+  'Make every outfit complete: besides the rest, one to three accessories of different kinds (a bag, a belt, a scarf,',
+  'a hat, jewellery), never socks, whenever the list has accessories; and let the outfits share as few pieces as',
+  'they can besides the fixed ones.',
+].join(' ')
+
 const line = (ref: string, piece: Wearable) =>
   [
     `${ref}: ${piece.type}`,
@@ -74,7 +81,10 @@ export const proposalMessages = (request: Brief, count: number) => {
   )
   const { season, occasion, words } = request.brief
   const messages = [
-    { role: 'system' as const, content: instructions(count) },
+    {
+      role: 'system' as const,
+      content: request.complete === true ? `${instructions(count)} ${completeInstructions}` : instructions(count),
+    },
     {
       role: 'user' as const,
       content: [

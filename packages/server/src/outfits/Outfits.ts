@@ -118,6 +118,37 @@ const ranked = (
     Order.mapInput(Order.Number, (proposal: OutfitProposal) => -(proposal.score ?? -1)),
   )
 
+/** How many of these pieces a batch already wears. */
+const overlap = (proposal: OutfitProposal, worn: ReadonlySet<string>) =>
+  proposal.pieceIds.filter((id) => worn.has(id)).length
+
+/** A complete batch (T-10): Clef's best first, then each time the best-ranked of those repeating the fewest pieces the
+ * batch already wears, the fixed pieces aside, so six outfits do not all share one pair of shoes.
+ * @internal Exported for its tests. */
+export const distinct = (
+  byScore: ReadonlyArray<OutfitProposal>,
+  count: number,
+  fixed: ReadonlySet<string>,
+): ReadonlyArray<OutfitProposal> => {
+  const next = (
+    chosen: ReadonlyArray<OutfitProposal>,
+    rest: ReadonlyArray<OutfitProposal>,
+  ): ReadonlyArray<OutfitProposal> => {
+    const [first, ...others] = rest
+    if (chosen.length >= count || first === undefined) return chosen
+    const worn = new Set(chosen.flatMap(({ pieceIds }) => pieceIds.filter((id) => !fixed.has(id))))
+    const best = others.reduce(
+      (kept, proposal) => (overlap(proposal, worn) < overlap(kept, worn) ? proposal : kept),
+      first,
+    )
+    return next(
+      [...chosen, best],
+      rest.filter((proposal) => proposal !== best),
+    )
+  }
+  return next([], byScore)
+}
+
 /** Fast's candidates, or Thinking's, and whether the rules have nothing new beyond them. */
 const candidatesFor = (input: MakeOutfit, request: Brief, session: string, accountId: string) =>
   Effect.gen(function* () {
@@ -181,6 +212,7 @@ const batchFor = Effect.fnUntraced(function* (accountId: string, input: MakeOutf
     fixed,
     brief: input.brief,
     seen: new Set(input.seen),
+    complete: input.complete === true,
   }
   const metrics = yield* CaptureMetrics
   const measure = (event: { outcome: 'ok' | 'empty' | 'failed'; judged: boolean; proposals: number; cost: number }) =>
@@ -200,7 +232,11 @@ const batchFor = Effect.fnUntraced(function* (accountId: string, input: MakeOutf
     Effect.tapError(() => measure({ outcome: 'failed', judged: false, proposals: 0, cost: 0 })),
   )
   const scores = yield* judged(accountId, owned, request)(candidates.outfits)
-  const proposals = ranked(candidates.outfits, scores).slice(0, input.count)
+  const best = ranked(candidates.outfits, scores)
+  const proposals =
+    input.complete === true
+      ? distinct(best, input.count, new Set(fixed.map(({ id }) => id)))
+      : best.slice(0, input.count)
   const judgeCost = scores.reduce(
     (sum, score) => sum + Option.match(score, { onNone: () => 0, onSome: (s) => s.costMicroUsd }),
     0,
