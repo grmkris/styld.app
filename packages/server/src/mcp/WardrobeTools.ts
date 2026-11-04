@@ -32,7 +32,8 @@ import { fetchOperation, type Links } from '../links/Links.ts'
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
 
 /** What piece_search filters by: words, and any of the piece's type, group and attributes. */
-const SearchFilter = Schema.Struct({
+/** What the person's pieces are filtered by, in piece_search and wardrobe_show. */
+export const SearchFilter = Schema.Struct({
   q: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.search))),
   type: Schema.optionalKey(PieceType),
   group: Schema.optionalKey(GarmentGroup),
@@ -44,7 +45,8 @@ const SearchFilter = Schema.Struct({
 })
 
 /** Words match as they do on the device (protocol `Search.ts`): any case or accent, any ending, a word's start. */
-const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
+/** Whether a piece passes the filter. */
+export const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
   const words = wordsIn([piece.name, piece.notes, piece.type, piece.brand].filter((part) => part !== null).join(' '))
   const typed = wordsIn(input.q ?? '')
   return (

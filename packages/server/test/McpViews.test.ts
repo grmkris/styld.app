@@ -16,6 +16,10 @@ import {
 import { Effect, Option, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { mediaViewTools, type MediaServices } from '../src/mcp/MediaViewTools.ts'
+import { viewTools } from '../src/mcp/ViewTools.ts'
+import { Boards } from '../src/boards/Boards.ts'
+import { unusedBoards } from './fakes/Boards.ts'
+import { unusedWardrobe } from './fakes/Wardrobe.ts'
 import { callTool } from '../src/mcp/Tools.ts'
 import { type MediaGrant, SignedMedia } from '../src/kernel/SignedMedia.ts'
 import type { ImageBindings } from '../src/wardrobe/Delivery.ts'
@@ -262,5 +266,58 @@ describe('the media views', () => {
     })
     expect(Schema.decodeUnknownSync(PiecesView)(result.structuredContent).rows[0]).toHaveLength(9)
     expect(Object.keys(imagesOf(result))).toHaveLength(7)
+  })
+})
+
+// wardrobe_show (owner, 4 November 2026): the whole wardrobe filled the host and its pictures ran out after 24, so it
+// shows a page of 12, filtered like piece_search, with the count and the next page's cursor.
+describe('wardrobe_show', () => {
+  const many = Array.from({ length: 30 }, (_, at) =>
+    piece('w', { id: PieceId.make(`pc_${String(at).padStart(22, 'w')}`), colours: [at % 3 === 0 ? 'navy' : 'white'] }),
+  )
+  const tools = viewTools(
+    {
+      ...unusedWardrobe,
+      listPieces: () =>
+        signing(
+          many,
+          many.map(({ id }) => thumb(id, `pieces/${id}/shown`)),
+        ),
+    },
+    Boards.of(unusedBoards),
+    'https://styld.test',
+    mediaOf(4),
+    { tryOns: servicesFor('done').tryOns, photos: servicesFor('done').photos },
+  )
+  const Page = Schema.Struct({
+    pieces: Schema.Array(Schema.Struct({ id: Schema.String })),
+    total: Schema.Number,
+    nextCursor: Schema.NullOr(Schema.String),
+  })
+  const show = async (args: object) => {
+    const result = Schema.decodeUnknownSync(Shown)(
+      await Effect.runPromise(
+        callTool(tools, 'wardrobe_show', args).pipe(
+          Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
+        ),
+      ),
+    )
+    return { page: Schema.decodeUnknownSync(Page)(result.structuredContent), images: imagesOf(result) }
+  }
+
+  test('shows twelve pieces at a time, each with its picture, and where the next page starts', async () => {
+    const first = await show({})
+    expect(first.page.pieces.map(({ id }) => id)).toEqual(many.slice(0, 12).map(({ id }) => id))
+    expect(Object.keys(first.images)).toHaveLength(12)
+    expect(first.page).toMatchObject({ total: 30, nextCursor: '12' })
+    const last = await show({ cursor: '24' })
+    expect(last.page.pieces).toHaveLength(6)
+    expect(last.page.nextCursor).toBeNull()
+  })
+
+  test('filters like piece_search and takes a smaller page', async () => {
+    const navy = await show({ colour: 'navy', limit: 4 })
+    expect(navy.page).toMatchObject({ total: 10, nextCursor: '4' })
+    expect(navy.page.pieces).toHaveLength(4)
   })
 })
