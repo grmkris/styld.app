@@ -1,24 +1,24 @@
 import { piecePictures, pieces } from '@styld/db'
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { Array, Effect } from 'effect'
+import { Array, Effect, Schema } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
 
 type Database = Db['Service']
 type NewPicture = typeof piecePictures.$inferInsert
 
-/** One statement for each item, sent fifty to a batch; the pieces the statements returned. */
-const batchedPieces = <A>(
-  db: Database,
-  items: ReadonlyArray<A>,
-  statement: (item: A) => BatchItem<'sqlite'> & PromiseLike<ReadonlyArray<{ readonly pieceId: string }>>,
-) =>
+/** What each batched statement returns: the pieces it wrote. */
+const Written = Schema.Array(Schema.Array(Schema.Struct({ pieceId: Schema.String })))
+
+/** One statement for each item, sent fifty to a batch; the pieces the statements returned. A batch's own result type
+ * is lost to the generic statement, so its rows are decoded; rows of another shape are a broken invariant. */
+const batchedPieces = <A>(db: Database, items: ReadonlyArray<A>, statement: (item: A) => BatchItem<'sqlite'>) =>
   Effect.map(
     Effect.forEach(Array.chunksOf(items, 50), (chunk) =>
-      query(() => {
+      query((): Promise<unknown> => {
         const [head, ...rest] = Array.map(chunk, statement)
         return db.batch([head, ...rest])
-      }),
+      }).pipe(Effect.flatMap((rows) => Effect.orDie(Schema.decodeUnknownEffect(Written)(rows)))),
     ),
     (results) => results.flat(2).map(({ pieceId }) => pieceId),
   )
