@@ -5,6 +5,7 @@ import { Schema } from 'effect'
 import type { Browser, BrowserContext, Locator, Page } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
 import {
+  expectBoardStartFromAsk,
   expectInstantTabs,
   expectSameTitleTops,
   expectSlovenianSearch,
@@ -401,6 +402,19 @@ const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
   }
 }
 
+/** On a phone: Home, a board, Ask and the wardrobe, Styld, then the layout's promises across the tabs. */
+const phoneJourney = async (phone: BrowserContext, page: Page, origin: string) => {
+  await verifyHome(page, origin)
+  await verifyBoard(phone, page, origin)
+  await verifyAskAndWardrobe(page, origin)
+  await verifyStylist(page, origin)
+  await expectSameTitleTops(page, origin)
+  await expectSteadyFullLoads(page, origin, steadyPaths)
+  await expectInstantTabs(page, origin)
+  await expectBoardStartFromAsk(page, origin)
+  await expectSlovenianSearch(phone, page, origin)
+}
+
 export const verifyGalleryJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-gallery-browser')
   const cookie = await signIn(origin, 'native-gallery-browser')
@@ -421,14 +435,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     const page = await phone.newPage()
     const problems = recordProblems(page)
     try {
-      await verifyHome(page, origin)
-      await verifyBoard(phone, page, origin)
-      await verifyAskAndWardrobe(page, origin)
-      await verifyStylist(page, origin)
-      await expectSameTitleTops(page, origin)
-      await expectSteadyFullLoads(page, origin, steadyPaths)
-      await expectInstantTabs(page, origin)
-      await expectSlovenianSearch(phone, page, origin)
+      await phoneJourney(phone, page, origin)
     } catch (error) {
       await shoot(page, 'phone-failure')
       if (shots !== undefined) {

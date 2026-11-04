@@ -10,7 +10,7 @@ import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
-import { arrive, followLink, Navigate, ReplaceInternal, returnAfterSignIn } from './Navigation.ts'
+import { arrive, followLink, Navigate, NavigateInternal, ReplaceInternal, returnAfterSignIn } from './Navigation.ts'
 import * as NavigationState from './NavigationState.ts'
 import { at, data } from './AppLens.ts'
 import { lenses, openPage, Page } from './Page.ts'
@@ -188,8 +188,10 @@ const foldBoards = {
   }),
 }
 
-/** Start a board from outside Boards (Ask's + sheet): Boards opens with its new-board sheet, as its own + does. */
+/** Start a board from outside Boards (Ask's + sheet): Boards opens with its new-board sheet, as its own + does. Both
+ * are tabs, so the move stays in the page: a full load would start the app over and forget the sheet was asked for. */
 const startOnEnter = Update.foldChildStep({ update: Boards.startOnEnter, ...foldBoards })
+const toBoards = (model: Model) => ({ model, commands: [NavigateInternal({ href: boardsRouter({}) })] })
 
 // INIT
 
@@ -379,8 +381,7 @@ const foldAsk = Update.foldChild({
   ...at(lenses.ask),
   foldOutMessage: Ask.OutMessage.match<Step>({
     RequestedPieces: () => revisitPieces,
-    RequestedNewBoard: () => (model) =>
-      Update.combine(model, [startOnEnter, NavigationState.navigateTo(boardsRouter({}))]),
+    RequestedNewBoard: () => (model) => Update.combine(model, [startOnEnter, toBoards]),
   }),
 })
 

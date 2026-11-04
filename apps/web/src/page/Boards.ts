@@ -67,7 +67,7 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-const ListSaved = Command.define('ListSaved', {
+export const ListSaved = Command.define('ListSaved', {
   messages: [Message.SucceededListSaved, Message.FailedListSaved],
   execute: Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api

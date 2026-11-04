@@ -6,9 +6,11 @@ import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import * as Ask from '../src/page/Ask.ts'
-import { Navigate } from '../src/Navigation.ts'
+import { FocusPageTitle, NavigateInternal, ScrollToTop } from '../src/Navigation.ts'
+import * as Boards from '../src/page/Boards.ts'
+import { ListBoards, ListPieces, Message as DataMessage } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
-import { sceneSheetMoved } from './SheetFixtures.ts'
+import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 import { at, urlOf, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -55,9 +57,10 @@ describe('Ask', () => {
       ...sceneSheetMoved(1),
       expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
-      // Start a board opens Boards with its new-board sheet, where Blank or a template is chosen (F-26).
+      // Start a board opens Boards with its new-board sheet, where Blank or a template is chosen (F-26). Both are tabs,
+      // so the move stays in the page and Boards still knows the sheet was asked for.
       click(role('button', { name: /^Start a board/ })),
-      Command.resolve(Navigate({ href: '/boards' }), AppMessage.CompletedNavigate()),
+      Command.resolve(NavigateInternal({ href: '/boards' }), AppMessage.CompletedNavigateInternal()),
       Command.resolve(
         Animation.WaitForPaint({ generation: 2 }),
         Animation.Message.CompletedWaitForPaint({ generation: 2 }),
@@ -65,8 +68,16 @@ describe('Ask', () => {
       Command.resolve(Animation.WaitForAnimationSettled, Animation.Message.EndedAnimation({ generation: 2 })),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Mount.expectEnded(Dialog.AcquireResources),
-      // Boards, once entered, opens its sheet (gallery.story covers it).
-      expect(role('dialog')).not.toExist(),
+      Subscription.emit(AppMessage.ChangedUrl({ url: urlOf('/boards') })),
+      Command.resolve(ListBoards, DataMessage.FailedListBoards()),
+      Command.resolve(ListPieces, DataMessage.FailedListPieces()),
+      Command.resolve(Boards.ListSaved, Boards.Message.FailedListSaved()),
+      Command.resolve(ScrollToTop, AppMessage.CompletedScrollToTop()),
+      Command.resolve(FocusPageTitle, AppMessage.CompletedFocusPageTitle()),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('dialog', { name: 'New board' })).toExist(),
     )
   })
 

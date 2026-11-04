@@ -118,6 +118,22 @@ export const expectInstantTabs = async (page: Page, origin: string) => {
   expect(await page.evaluate(() => document.documentElement.dataset['kept'] ?? 'new')).toBe('new')
 }
 
+/** Ask's + then Start a board opens Boards with its new-board sheet, in the same document: both are tabs, and a full
+ * load would start the app over and forget the sheet was asked for (found 4 November). */
+export const expectBoardStartFromAsk = async (page: Page, origin: string) => {
+  await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
+  await page.evaluate(() => {
+    document.documentElement.dataset['kept'] = 'yes'
+  })
+  await page.getByRole('button', { name: 'Add clothes or a board', exact: true }).click()
+  await page.getByRole('button', { name: /^Start a board/ }).click()
+  await page.waitForURL((url) => url.pathname === '/boards' && url.search === '')
+  await page.getByRole('dialog', { name: 'New board' }).waitFor({ state: 'visible' })
+  expect(await page.evaluate(() => document.documentElement.dataset['kept'])).toBe('yes')
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog').waitFor({ state: 'detached' })
+}
+
 /** Ask in Slovenian finds pieces the way people type, in either language, and its + sheet opens and closes like
  * a sheet: Escape shuts it and focus returns to the +. */
 export const expectSlovenianSearch = async (context: BrowserContext, page: Page, origin: string) => {
