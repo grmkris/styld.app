@@ -1082,5 +1082,19 @@
     "failed": "Ni uspelo. Poskusi znova.",
     "missing": "Še manjka: {type}, {colour}",
     "missingKind": "Še manjka: {type}"
+  },
+  "taste": {
+    "title": "Kaj Styld ve o tebi",
+    "reason": "Styld to upošteva pri današnjih videzih in v odgovorih. Vidiš samo ti.",
+    "occasions": "Priložnosti, za katere se oblačiš",
+    "notes": "Styld si zapomni",
+    "notesEmpty": "Še nič. Ko Styldu v klepetu kaj poveš, te vpraša, preden si to zapomni.",
+    "remove": "Odstrani",
+    "failed": "Ni se shranilo. Poskusi znova.",
+    "learned": "Iz tega, kar shraniš in nosiš",
+    "learnedEmpty": "Še nič. Raste, ko nosiš kose in shranjuješ table.",
+    "colours": "Barve, ki jih največ nosiš: {list}",
+    "kinds": "Kar največ nosiš: {list}",
+    "aesthetics": "Shranjene table: {list}"
   }
 }

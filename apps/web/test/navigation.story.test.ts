@@ -20,6 +20,7 @@ import {
 import { ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import * as ShowMe from '../src/page/ShowMe.ts'
+import * as Taste from '../src/page/Taste.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
 import { AppRoute } from '../src/route.ts'
 import { browseGroup, unfiltered } from '../src/WardrobeBrowse.ts'
@@ -144,10 +145,11 @@ describe('opening a tab page inside the page', () => {
       update,
       given(signedIn('/ask')),
       message(Message.ChangedUrl({ url: urlOf('/account#assistants') })),
-      // The account reads its profile, to say where it stands, and what What's new starts with.
-      Command.expectExact(ReadProfile, ShowMe.ReadPreferences, ScrollToAnchor),
+      // The account reads its profile, to say where it stands, what What's new starts with, and what Styld knows.
+      Command.expectExact(ReadProfile, ShowMe.ReadPreferences, Taste.ReadTaste, ScrollToAnchor),
       Command.resolve(ReadProfile, AccountMessage.FailedReadProfile()),
       Command.resolve(ShowMe.ReadPreferences, ShowMe.Message.FailedReadPreferences()),
+      Command.resolve(Taste.ReadTaste, Taste.Message.FailedReadTaste()),
       Command.resolve(ScrollToAnchor, Message.CompletedScrollToAnchor()),
       model(({ route }) => expect(route).toEqual(AppRoute.Account())),
     )

@@ -619,6 +619,18 @@ export interface MessageArgumentsByKey<_T = string> {
   'stylist.startersLabel': Readonly<Record<string, never>>
   'stylist.title': Readonly<Record<string, never>>
   'stylist.writing': Readonly<Record<string, never>>
+  'taste.aesthetics': { readonly list: string | number }
+  'taste.colours': { readonly list: string | number }
+  'taste.failed': Readonly<Record<string, never>>
+  'taste.kinds': { readonly list: string | number }
+  'taste.learned': Readonly<Record<string, never>>
+  'taste.learnedEmpty': Readonly<Record<string, never>>
+  'taste.notes': Readonly<Record<string, never>>
+  'taste.notesEmpty': Readonly<Record<string, never>>
+  'taste.occasions': Readonly<Record<string, never>>
+  'taste.reason': Readonly<Record<string, never>>
+  'taste.remove': Readonly<Record<string, never>>
+  'taste.title': Readonly<Record<string, never>>
   'telemetryConsent.allow': Readonly<Record<string, never>>
   'telemetryConsent.decline': Readonly<Record<string, never>>
   'telemetryConsent.message': Readonly<Record<string, never>>
@@ -946,4 +958,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5cab58ac8e1b63578d3badaff07494383ad20be908b30cc2b844beafaf5e22e9'
+export const catalogVersion = '62ec30167539503e027aa8774c5d070cbe167cd6ad7ddd63f2bda8434ff6865e'

@@ -118,7 +118,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // it, each measured in a clean worktree).
 // Raised to 393,000 the same day for Styld taking Ask's question once (addressInPlace and samePageArrival): 49 more,
 // 392,864 to 392,913 on main.
-if (initialGzip > 393000) throw new Error(`Initial browser assets exceed the 393,000-byte gzip budget: ${initialGzip}`)
+// Raised to 395,400 on 4 November for the Account page's What Styld knows about you (taste, L4): its submodel (the
+// read, the occasions' save, a note's removal), the section with its chips, notes and learned lines, their styles and
+// the en/sl words add 2,454: main measured 392,912 in a clean worktree at d64d4d64 and 395,366 with them.
+if (initialGzip > 395400) throw new Error(`Initial browser assets exceed the 395,400-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

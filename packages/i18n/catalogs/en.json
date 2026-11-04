@@ -1082,5 +1082,19 @@
     "failed": "That didn't work. Try again.",
     "missing": "No {colour} {type} yet",
     "missingKind": "No {type} yet"
+  },
+  "taste": {
+    "title": "What Styld knows about you",
+    "reason": "Styld uses this for today's outfits and in its answers. Only you see it.",
+    "occasions": "Occasions you dress for",
+    "notes": "Styld remembers",
+    "notesEmpty": "Nothing yet. When you tell Styld something in a chat, it asks before it remembers it.",
+    "remove": "Remove",
+    "failed": "That didn't save. Try again.",
+    "learned": "From what you save and wear",
+    "learnedEmpty": "Nothing yet. It grows as you wear pieces and save boards.",
+    "colours": "Colours you wear most: {list}",
+    "kinds": "What you wear most: {list}",
+    "aesthetics": "Boards you saved: {list}"
   }
 }

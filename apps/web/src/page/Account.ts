@@ -10,6 +10,7 @@ import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { ProfileData, readProfile } from './ProfileRead.ts'
 import * as ShowMe from './ShowMe.ts'
+import * as Taste from './Taste.ts'
 
 // MODEL
 
@@ -25,6 +26,8 @@ export const Model = Schema.Struct({
   profile: ProfileData.schema,
   /** What What's new starts with, as Home's card asked. */
   showMe: ShowMe.Model,
+  /** What Styld knows about the person: occasions, notes and what it learned. */
+  taste: Taste.Model,
 })
 export type Model = typeof Model.Type
 
@@ -33,6 +36,7 @@ export const init = (): Model => ({
   copy: Copy.Idle(),
   profile: AsyncData.Loading(),
   showMe: ShowMe.init(),
+  taste: Taste.init(),
 })
 
 // MESSAGE
@@ -51,6 +55,7 @@ export const Message = defineMessageUnion({
   FailedReadProfile: {},
   ClickedRetryProfile: {},
   GotShowMeMessage: { message: ShowMe.Message },
+  GotTasteMessage: { message: Taste.Message },
 })
 export type Message = typeof Message.Type
 
@@ -87,12 +92,15 @@ export const ReadProfile = Command.define('ReadProfile', {
 })
 
 const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
+const tasteFold = Taste.heldBy<Model, Message>((message) => Message.GotTasteMessage({ message }))
 
-/** Opening the page: the profile and Show me as they are now; what is already shown stays while it is read again. */
+/** Opening the page: the profile, Show me and what Styld knows as they are now; what is already shown stays while it
+ * is read again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Update.combine<Model, Message, StyldClient>(model, [
     (current) => ({ model: current, commands: [ReadProfile()] }),
     Update.foldChildStep({ update: ShowMe.enter, ...showMeFold }),
+    Update.foldChildStep({ update: Taste.enter, ...tasteFold }),
   ])
 
 // UPDATE
@@ -107,6 +115,8 @@ const foldShowMe = Update.foldChild({
     Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
   >({ ChangedShowMe: () => (stepModel) => ({ model: stepModel }) }),
 })
+
+const foldTaste = Update.foldChild({ update: Taste.update, ...tasteFold })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -137,4 +147,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onSome: (profile) => ({ model: modifyFields(model, { profile: () => profile }), commands: [ReadProfile()] }),
       }),
     GotShowMeMessage: (got) => foldShowMe(model, got.message),
+    GotTasteMessage: (got) => foldTaste(model, got.message),
   })

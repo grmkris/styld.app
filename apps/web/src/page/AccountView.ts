@@ -38,6 +38,7 @@ import {
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { tasteSection } from './TasteView.ts'
 import { Message as ShowMeMessage, type Model as ShowMeModel } from './ShowMe.ts'
 import { choiceButtons, failure as showMeFailure } from './ShowMeView.ts'
 import { assistantsSection, personRouter, profileRouter } from '../route.ts'
@@ -272,6 +273,13 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
         view: showMeSection,
         viewInputs: { locale: inputs.locale },
         toParentMessage: (message) => Message.GotShowMeMessage({ message }),
+      }),
+      h.submodel({
+        slotId: 'account-taste',
+        model: model.taste,
+        view: tasteSection,
+        viewInputs: { locale: inputs.locale },
+        toParentMessage: (message) => Message.GotTasteMessage({ message }),
       }),
       assistants(model, inputs, h),
       deletion(model, inputs, h),
