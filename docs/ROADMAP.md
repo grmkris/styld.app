@@ -45,6 +45,12 @@ Thinking).
   me"; pieces or a look; 2 credits; the result is the person's and may go on a board, which shows it as Generated.
   **Privacy exception (owner, 2026-10-31):** try-on may send the person's own photo to the try-on provider, never
   anyone else's; every other picture rule stays.
+  In ChatGPT and Claude and in Styld's chat too (owner, 4 November): the assistant asks whether the photo shows the
+  person before it starts one; results, before photos and Gallery photos show inline as thumbnails.
+- **Media in the assistants (owner, 4 November):** try-on before and after, the Gallery to pick from, any pieces, the
+  outfits `outfit_make` proposes and one piece with all its pictures show inline in ChatGPT and Claude. Later: other
+  people's public boards, looks and profiles; board list covers; the review tray; a piece's turn; live updates inside a
+  view (a view-side `tools/call`); fullscreen, the ChatGPT sidebar and @-mentions; the Generated mark on board pins.
 - **M10 — Review rounds** after the milestones built.
 
 Also kept from that plan, not built: favourites in My Gallery as clues for the outfit engine and Styld; link import

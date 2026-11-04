@@ -167,6 +167,11 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. Admin
   tools appear only in the admin list, chosen per request by the account's verified sign-in email
   (`STYLD_ADMIN_EMAILS`). Anything other people wrote is data for the assistant, never instructions.
+- **Pictures in assistants:** an assistant never gets a picture's address (`SignedMedia` answers none for `via:
+  'assistant'`). Only the `*_show` tools send pictures, to the host's view and never to the model: Images-transformed
+  thumbnails (WebP, 480 px, at most 200 KiB each, never an original file) of the account's own objects, collected by
+  `withViewThumbnails` (`mcp/Thumbnails.ts`). Owner, 4 November 2026: these may include the person's own My Gallery
+  photos, a try-on's before photo and its result. Other people's media never enter a view.
 
 ## Visibility, checks and social
 
