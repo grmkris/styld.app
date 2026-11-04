@@ -2,7 +2,8 @@ import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, SlowDown } from '@styld/protocol'
 import { Effect, Record } from 'effect'
 import * as Headers from 'effect/http/Headers'
-import { type Limiter, networkOf, Pacing, paces } from '../src/kernel/Pacing.ts'
+import { type Limiter, networkOf, Pacing } from '../src/kernel/Pacing.ts'
+import { paces } from '../src/kernel/Paces.ts'
 
 /** Limiters that allow each key `allowed` times, counting what they were asked, and one that has failed. */
 const limiters = (allowed: number) => {

@@ -32,7 +32,7 @@
     "comment": "SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare"
   },
   {
-    "file": "packages/server/src/StyldWorker.ts",
+    "file": "packages/server/src/Application.ts",
     "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
   },
   {
