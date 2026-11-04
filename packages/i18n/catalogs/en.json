@@ -1020,7 +1020,9 @@
       "network": "Not sent. Try again."
     },
     "chatToday": "Today, {time}",
-    "openTryOn": "Open the try-on"
+    "openTryOn": "Open the try-on",
+    "tryOnOpening": "Opening the try-on…",
+    "tryOnStopped": "This try-on wasn’t drawn. Your credits are back."
   },
   "photos": {
     "back": "Back to the gallery",

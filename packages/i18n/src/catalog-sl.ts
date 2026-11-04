@@ -931,6 +931,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'stylist.problem.network': 'Ni poslano. Poskusi znova.',
   'stylist.chatToday': 'Danes ob {time}',
   'stylist.openTryOn': 'Odpri pomerjanje',
+  'stylist.tryOnOpening': 'Odpiram pomerjanje …',
+  'stylist.tryOnStopped': 'To pomerjanje ni narisano. Krediti so ti vrnjeni.',
   'photos.back': 'Nazaj v galerijo',
   'photos.add': 'Dodaj fotografijo',
   'photos.addCost':

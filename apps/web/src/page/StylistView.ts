@@ -1,7 +1,7 @@
 import { cdn, type PieceImagesById } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import { format, languageOf, type Locale, type MessageKey } from '@styld/i18n'
-import type { Chat, ChatMessage, ReplyPart, WardrobeAnalysis, WardrobeArea } from '@styld/protocol'
+import type { Chat, ChatMessage, ReplyPart, TryOn, TryOnId, WardrobeAnalysis, WardrobeArea } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -10,7 +10,7 @@ import { actionButton } from '../ActionButton.ts'
 import { textArea, textField } from '../Fields.styles.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon, forwardIcon, loader } from '../Icon.ts'
-import { wardrobeRouter, lookRouter, pieceRouter, tryOnRouter } from '../route.ts'
+import { wardrobeRouter, lookRouter, pieceRouter, tryOnPageRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { barStart, round } from './PageBar.styles.ts'
@@ -33,6 +33,7 @@ import { Button } from '@foldkit/ui'
 import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
 import * as styles from './StylistView.styles.ts'
+import * as StylistTryOns from './StylistTryOns.ts'
 import { spentWords } from './MoreCredits.ts'
 
 const composerId = 'stylist-message'
@@ -66,6 +67,9 @@ type Inputs = {
   /** The render's stable now, so a chat from today says when today. */
   readonly referenceTime: number
 }
+
+/** What a chat's thread is drawn with: the page's inputs and the try-ons its replies name, as last read. */
+type Reading = Inputs & { readonly tryOnCards: StylistTryOns.Model }
 
 const dayOf = (at: Date, timeZone: string) =>
   new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(at)
@@ -173,7 +177,37 @@ const analysisView = (analysis: WardrobeAnalysis, inputs: Inputs, h: HtmlBuilder
   )
 }
 
-const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+/** What a try-on card says: opening it, being drawn, drawn, or not drawn with the credits back. */
+const tryOnWords = (maybeTryOn: Option.Option<TryOn>, locale: Locale): string =>
+  Option.match(maybeTryOn, {
+    onNone: () => format(locale, 'stylist.tryOnOpening', {}),
+    onSome: (tryOn) =>
+      Match.value(tryOn.status).pipe(
+        Match.when('done', () => format(locale, 'stylist.openTryOn', {})),
+        Match.whenOr('admitting', 'drawing', () => format(locale, 'tryOn.making', {})),
+        Match.whenOr('refused', 'failed', () => format(locale, 'stylist.tryOnStopped', {})),
+        Match.exhaustive,
+      ),
+  })
+
+/** A try-on Styld started or read, opening its own page: its picture once drawn, else where it stands. */
+const tryOnCard = (tryOnId: TryOnId, reading: Reading, h: HtmlBuilder<Message>): Html => {
+  const { locale } = reading
+  const maybeTryOn = StylistTryOns.tryOnOf(reading.tryOnCards, tryOnId)
+  const address = Option.match(maybeTryOn, { onNone: () => '', onSome: (tryOn) => cdn.tryOn(tryOn, 'thumb') })
+  const making = Option.match(maybeTryOn, { onNone: () => true, onSome: StylistTryOns.isMaking })
+  return h.a(
+    [h.Href(tryOnPageRouter({ tryOnId })), ...styled(h, styles.tryOn())],
+    [
+      address.length > 0
+        ? h.img([h.Src(address), h.Alt(format(locale, 'tryOn.afterAlt', {})), ...styled(h, styles.tryOnPicture())])
+        : h.empty,
+      h.span(styled(h, styles.tryOnWords()), [making ? loader(h) : h.empty, tryOnWords(maybeTryOn, locale)]),
+    ],
+  )
+}
+
+const partView = (part: ReplyPart, inputs: Reading, h: HtmlBuilder<Message>): Html =>
   Match.valueTags(part, {
     Pieces: ({ pieceIds }) =>
       h.ul(
@@ -186,23 +220,22 @@ const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Htm
         [format(inputs.locale, 'stylist.openLook', { name })],
       ),
     Analysis: ({ analysis }) => analysisView(analysis, inputs, h),
-    TryOn: () =>
-      h.a([h.Href(tryOnRouter({})), ...styled(h, secondaryAction())], [format(inputs.locale, 'stylist.openTryOn', {})]),
+    TryOn: ({ tryOnId }) => tryOnCard(tryOnId, inputs, h),
   })
 
-const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, inputs: Reading, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.reply()), [
     text.length === 0 ? h.empty : h.p(styled(h, styles.replyText()), [plain(text)]),
     ...parts.map((part) => partView(part, inputs, h)),
   ])
 
-const messageView = (message: ChatMessage, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+const messageView = (message: ChatMessage, inputs: Reading, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(message.id, message.role === 'person' ? styled(h, styles.person()) : [], [
     message.role === 'person' ? message.text : replyView(message.text, message.parts, inputs, h),
   ])
 
 /** The reply being written, with what it says so far, or the note that it did not come. */
-const replyingView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+const replyingView = (chat: Chat, inputs: Reading, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
   if (chat.replying === undefined) return h.empty
   const { state, text, parts } = chat.replying
@@ -225,7 +258,7 @@ const replyingView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html
   )
 }
 
-const threadView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+const threadView = (chat: Chat, inputs: Reading, h: HtmlBuilder<Message>): Html =>
   h.div(
     [],
     [
@@ -395,7 +428,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
         : h.empty,
       Option.match(model.open, {
         onNone: () => (isReadingChat(model) ? readingView(h) : startView(model, inputs, h)),
-        onSome: (chat) => threadView(chat, inputs, h),
+        onSome: (chat) => threadView(chat, { ...inputs, tryOnCards: model.tryOnCards }, h),
       }),
       composerView(model, locale, h),
     ],

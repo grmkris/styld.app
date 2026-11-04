@@ -691,6 +691,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'stylist.starter.together': Readonly<Record<string, never>>
   'stylist.startersLabel': Readonly<Record<string, never>>
   'stylist.title': Readonly<Record<string, never>>
+  'stylist.tryOnOpening': Readonly<Record<string, never>>
+  'stylist.tryOnStopped': Readonly<Record<string, never>>
   'stylist.writing': Readonly<Record<string, never>>
   'taste.aesthetics': { readonly list: string | number }
   'taste.colours': { readonly list: string | number }
@@ -1070,4 +1072,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3c5236982f49b272b59c2c084556485e858583e804a9e358618af868ac0e632a'
+export const catalogVersion = '13eae4f89c1e12da379fce0c2c19b616c887071d8f6020ec63e4f31cbfbde993'

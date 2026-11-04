@@ -1,4 +1,4 @@
-import { OperationId, Photo, TryOn } from '@styld/protocol'
+import { Chat, OperationId, Photo, TryOn } from '@styld/protocol'
 import { Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import * as TryOnPage from '../src/page/TryOn.ts'
@@ -55,4 +55,18 @@ export const loaded = (tryOns: ReadonlyArray<TryOn>, model: TryOnPage.Model = Tr
   modifyFields(model, {
     tryOns: () => TryOnPage.TryOnsData.Success({ data: tryOns }),
     choices: () => TryOnPage.ChoicesData.Success({ data: { photos: [photo, otherPhoto], looks: [] } }),
+  })
+
+const chatId = `ch_${'tryon'.padEnd(22, 'x')}`
+
+/** A chat with Styld whose reply names these parts (try-ons, for the chat's try-on cards). */
+export const chatNaming = (parts: ReadonlyArray<object>) =>
+  Schema.decodeUnknownSync(Chat)({
+    id: chatId,
+    title: 'Try the blazer on me',
+    thread: `acct--${chatId}`,
+    messages: [
+      { id: 'm1', role: 'person', text: 'Try the blazer on me', parts: [], at: '2026-11-04T20:00:00.000Z' },
+      { id: 'm2', role: 'styld', text: 'Drawing you in it now.', parts, at: '2026-11-04T20:00:09.000Z' },
+    ],
   })

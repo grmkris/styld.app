@@ -227,3 +227,19 @@ export const send = style({
   '@media (hover: hover) and (pointer: fine)': { '&:not([data-disabled]):hover': { backgroundColor: 'inkHover' } },
 })
 export const price = style({ fontSize: 'small', color: 'ink3' })
+/** A try-on Styld started or read: its picture and where it stands, opening its own page. */
+export const tryOn = style({
+  display: 'grid',
+  gap: 'close',
+  justifyItems: 'start',
+  maxInlineSize: '220px',
+  color: 'ink',
+  textDecorationLine: 'none',
+})
+export const tryOnPicture = style({
+  display: 'block',
+  inlineSize: '100%',
+  borderRadius: 'photo',
+  backgroundColor: 'stock',
+})
+export const tryOnWords = style({ display: 'inline-flex', alignItems: 'center', gap: 'close', fontSize: 'label' })
