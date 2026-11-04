@@ -183,7 +183,13 @@ export const renderTools = <R>(tools: ReadonlyArray<Tool<R>>) =>
     title: entry.title,
     description: entry.description,
     inputSchema: entry.inputSchema,
-    annotations: { title: entry.title, ...entry.annotations },
+    // A read changes nothing: hosts take a missing destructive hint as true (MCP's default), and ChatGPT showed every
+    // read as destructive until it was said.
+    annotations: {
+      title: entry.title,
+      ...(entry.annotations.readOnlyHint ? { destructiveHint: false } : {}),
+      ...entry.annotations,
+    },
     ...(entry.meta === undefined ? {} : { _meta: entry.meta }),
   }))
 

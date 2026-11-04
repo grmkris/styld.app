@@ -248,12 +248,14 @@ describe('MCP tools', () => {
         title: 'Your Styld account',
         description: 'The Styld account this connection acts for: name, email and a link to the account page.',
         inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        annotations: { title: 'Your Styld account', readOnlyHint: true, openWorldHint: false },
+        annotations: { title: 'Your Styld account', destructiveHint: false, readOnlyHint: true, openWorldHint: false },
       },
     ])
     expect(list.map(({ name }) => name)).toEqual([...toolNames])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     expect(list.find(({ name }) => name === 'pieces_delete')?.annotations).toMatchObject({ destructiveHint: true })
+    for (const read of list.filter(({ annotations }) => annotations.readOnlyHint))
+      expect(read.annotations.destructiveHint).toBe(false)
     for (const entry of list) {
       expect(entry.name).toMatch(/^[a-z]+_[a-z]+$/)
       expect(`mcp__styld__${entry.name}`.length).toBeLessThanOrEqual(64)
