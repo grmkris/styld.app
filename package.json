@@ -44,7 +44,7 @@
       "@maple-dev/effect-sdk": "0.12.1",
       "@meta-sam/parser": "0.1.0",
       "fast-png": "8.0.0",
-      "mediabunny": "1.61.6"
+      "mediabunny": "1.65.1"
     }
   },
   "type": "module",
