@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "2a6b2e4b-702e-4537-9c22-26258f5b1637",
-  "prevIds": ["9001bd3e-32a4-4b9f-8178-aaed44966a3b"],
+  "id": "68e35aff-b3d9-4072-9a89-2b698e6dc917",
+  "prevIds": ["78a37783-b339-4435-a264-91ef9672a134"],
   "ddl": [
     {
       "name": "account_deletions",
@@ -166,6 +166,14 @@
     },
     {
       "name": "generation_pictures",
+      "entityType": "tables"
+    },
+    {
+      "name": "try_on_pieces",
+      "entityType": "tables"
+    },
+    {
+      "name": "try_ons",
       "entityType": "tables"
     },
     {
@@ -3603,6 +3611,116 @@
       "entityType": "columns"
     },
     {
+      "table": "try_on_pieces",
+      "name": "try_on_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_on_pieces",
+      "name": "position",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_on_pieces",
+      "name": "piece_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "account_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "photo_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "status",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "started_at",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "result_key",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "created_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "try_ons",
+      "name": "updated_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
       "table": "thinking_days",
       "name": "account_id",
       "type": "text",
@@ -6141,6 +6259,70 @@
       "entityType": "indexes"
     },
     {
+      "table": "try_on_pieces",
+      "name": "try_on_pieces_piece",
+      "columns": [
+        {
+          "value": "piece_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "try_ons",
+      "name": "try_ons_account_created",
+      "columns": [
+        {
+          "value": "account_id",
+          "isExpression": false
+        },
+        {
+          "value": "created_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "try_ons",
+      "name": "try_ons_photo",
+      "columns": [
+        {
+          "value": "photo_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "try_ons",
+      "name": "try_ons_status_updated",
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false
+        },
+        {
+          "value": "updated_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "thinking_days",
       "name": "thinking_days_day",
       "columns": [
@@ -7472,6 +7654,50 @@
       "entityType": "fks"
     },
     {
+      "table": "try_on_pieces",
+      "name": "fk_try_on_pieces_try_on_id_try_ons_id_fk",
+      "columns": ["try_on_id"],
+      "tableTo": "try_ons",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "try_on_pieces",
+      "name": "fk_try_on_pieces_piece_id_pieces_id_fk",
+      "columns": ["piece_id"],
+      "tableTo": "pieces",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "try_ons",
+      "name": "fk_try_ons_account_id_accounts_id_fk",
+      "columns": ["account_id"],
+      "tableTo": "accounts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "try_ons",
+      "name": "fk_try_ons_photo_id_outfit_photos_id_fk",
+      "columns": ["photo_id"],
+      "tableTo": "outfit_photos",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
       "table": "thinking_days",
       "name": "fk_thinking_days_account_id_accounts_id_fk",
       "columns": ["account_id"],
@@ -7698,6 +7924,13 @@
       "entityType": "pks"
     },
     {
+      "table": "try_on_pieces",
+      "name": "try_on_pieces_pk",
+      "columns": ["try_on_id", "position"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
       "table": "thinking_days",
       "name": "thinking_days_pk",
       "columns": ["account_id", "day"],
@@ -7897,6 +8130,13 @@
       "table": "generation_pictures",
       "name": "generation_pictures_pk",
       "columns": ["job_id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "try_ons",
+      "name": "try_ons_pk",
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -8416,6 +8656,12 @@
       "table": "generation_pictures",
       "name": "generation_pictures_status",
       "value": "\"status\" IN ('waiting', 'drawing', 'drawn', 'refused', 'unknown')",
+      "entityType": "checks"
+    },
+    {
+      "table": "try_ons",
+      "name": "try_ons_status",
+      "value": "\"status\" IN ('admitting', 'drawing', 'done', 'refused', 'failed')",
       "entityType": "checks"
     },
     {

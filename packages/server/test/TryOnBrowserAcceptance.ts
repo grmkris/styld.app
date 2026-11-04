@@ -26,7 +26,7 @@ const choose = async (page: Page) => {
     .first()
     .click()
   await page.getByText('Chosen: 1 of 9').waitFor({ state: 'visible' })
-  await page.getByText('2 credits from today’s free allowance.').waitFor({ state: 'visible' })
+  await page.getByText('2 credits.').waitFor({ state: 'visible' })
   const tryOn = page.getByRole('button', { name: 'Try on', exact: true })
   expect(await tryOn.getAttribute('aria-disabled')).toBe('true')
   await page.getByRole('checkbox', { name: 'This is me' }).check()

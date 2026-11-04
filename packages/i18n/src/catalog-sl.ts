@@ -1094,8 +1094,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'tryOn.thisIsMeNote':
     'Styld pošlje to fotografijo Metinemu slikovnemu modelu, da te nariše v teh oblačilih. Rezultat vidiš samo ti, dokler ga ne dodaš na tablo.',
   'tryOn.tryOn': 'Pomeri',
-  'tryOn.cost':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih.',
+  'tryOn.cost': '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}.',
   'tryOn.startFailed': 'Ni šlo skozi. Poskusi znova.',
   'tryOn.back': 'Vsa pomerjanja',
   'tryOn.drawing': 'Rišem te v teh oblačilih. Traja približno 15 sekund.',

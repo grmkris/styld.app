@@ -3,7 +3,8 @@ import { describe, expect, it } from '@effect/vitest'
 import { Styld } from '@styld/domain/Styld.model'
 import {
   CurrentAccount,
-  dailyCredits,
+  freeCredits,
+  memberDailyCredits,
   OperationId,
   PhotoId,
   PieceId,
@@ -29,6 +30,9 @@ import { unlimited } from './fakes/Pacing.ts'
 import { unusedWardrobe } from './fakes/Wardrobe.ts'
 import { localD1 } from './LocalD1.ts'
 
+/** A member's credits on a fresh day: the day's allowance and the free credits. */
+const allCredits = memberDailyCredits + freeCredits
+
 // Try on over real SQLite and the real Wallet in memory: the credits it holds, the one drawing it makes, what it sends
 // the image model, and whose photo it may send.
 
@@ -45,6 +49,7 @@ const over = (behaviour: Behaviour) => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 'r', 'Ana', 0), ('ac_2', 'r', 'Bo', 0);
+    INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES ('ac_1', 'lifetime', NULL, 'active', 0);
     INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at)
       VALUES ('up_1', 'ac_1', 'd1', 'image/jpeg', 3, '${photoKey}', 'used', 0),
              ('up_2', 'ac_2', 'd2', 'image/jpeg', 3, 'accounts/ac_2/uploads/up_2', 'used', 0);
@@ -124,7 +129,7 @@ describe('a try-on', () => {
         const tryOns = yield* TryOns
         const started = yield* tryOns.start(ask([top, jeans]))
         expect(started.status).toBe('drawing')
-        expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.tryOn)
+        expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.tryOn)
         expect(sent).toEqual([{ _tag: 'TakeTryOn', tryOnId: started.id }])
 
         yield* tryOns.work(started.id)
@@ -140,7 +145,7 @@ describe('a try-on', () => {
         expect(done.pieceIds).toEqual([top, jeans])
         expect(done.images?.full).toBe(`/cdn/media/${started.id}/full`)
         expect(objects.get(`accounts/ac_1/photos/${photo}/try-ons/${started.id}.png`)).toEqual(new Uint8Array([9, 9]))
-        expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.tryOn)
+        expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.tryOn)
       }).pipe(Effect.provide(layer))
     },
   )
@@ -152,7 +157,7 @@ describe('a try-on', () => {
       const started = yield* tryOns.start(ask([top]))
       yield* tryOns.work(started.id)
       expect((yield* tryOns.get(started.id)).status).toBe('refused')
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
 
@@ -165,7 +170,7 @@ describe('a try-on', () => {
       yield* tryOns.work(started.id)
       expect((yield* tryOns.get(started.id)).status).toBe('failed')
       expect((yield* Ref.get(asked)).length).toBe(1)
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
 
@@ -177,7 +182,7 @@ describe('a try-on', () => {
       const repeat = yield* tryOns.start(ask([top]))
       expect(repeat.id).toBe(first.id)
       expect(yield* Effect.flip(tryOns.start(ask([jeans])))).toMatchObject({ _tag: 'OperationConflict' })
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.tryOn)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.tryOn)
     }).pipe(Effect.provide(layer))
   })
 
@@ -189,7 +194,7 @@ describe('a try-on', () => {
       expect(yield* Effect.flip(tryOns.start(ask([top, theirShoes], 'try-on-3')))).toMatchObject({ _tag: 'NotFound' })
       expect((yield* tryOns.list()).tryOns).toEqual([])
       expect(yield* Ref.get(asked)).toEqual([])
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
 
@@ -197,7 +202,7 @@ describe('a try-on', () => {
     const { layer } = over('draw')
     return Effect.gen(function* () {
       const holds = yield* Holds
-      yield* holds.reserve({ accountId: 'ac_1', hold: holdId('photo', 'ph_other', 0), credits: dailyCredits - 1 })
+      yield* holds.reserve({ accountId: 'ac_1', hold: holdId('photo', 'ph_other', 0), credits: allCredits - 1 })
       const tryOns = yield* TryOns
       expect(yield* Effect.flip(tryOns.start(ask([top])))).toMatchObject({ _tag: 'LimitReached' })
       expect((yield* tryOns.list()).tryOns).toEqual([])
@@ -230,7 +235,7 @@ describe('a try-on', () => {
       expect((yield* tryOns.list()).tryOns).toEqual([])
       expect([...objects.keys()].some((key) => key.includes('try-ons'))).toBe(false)
       expect(yield* Effect.flip(tryOns.get(TryOnId.make(drawn.id)))).toMatchObject({ _tag: 'NotFound' })
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.tryOn)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.tryOn)
     }).pipe(Effect.provide(layer))
   })
 })

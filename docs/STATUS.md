@@ -129,7 +129,7 @@ packs. Judges get Dodo's discount code STYLDJUDGE (100% off the Week): a $0 week
 - **Built:** the Wallet's one-time free credits (`free` in its state, recorded by the first reservation that brings
   `freeCredits`; the day's allowance spent first, refunds return each part where it came from; old events replay as
   before; `Wallet.story`), a non-member's daily allowance 0 (`billing/Membership.ts` › `allowanceAt`), migration
-  `20261104203702_plans_memberships` (`memberships` replaces `premium`, its rows carried over as weeks; `purchases`
+  `20261104211843_plans_memberships` (`memberships` replaces `premium`, its rows carried over as weeks; `purchases`
   gains `plan` and drops `premium_until_after`), the webhook for every plan (`billing/Webhook.ts`, `Store.ts`: week and
   lifetime payments once per payment id, subscription active/renewed/plan_changed/cancelled/expired/failed/on_hold
   applied by Dodo's event time so a late one never undoes a newer one, refunds and lost disputes of a week or a

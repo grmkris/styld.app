@@ -1072,7 +1072,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'tryOn.thisIsMeNote':
     'Styld sends this photo to Meta’s image model to draw you in these clothes. Only you see the result until you put it on a board.',
   'tryOn.tryOn': 'Try on',
-  'tryOn.cost': '{credits, plural, one {# credit} other {# credits}} from today’s free allowance.',
+  'tryOn.cost': '{credits, plural, one {# credit} other {# credits}}.',
   'tryOn.startFailed': 'That didn’t go through. Try again.',
   'tryOn.back': 'All try-ons',
   'tryOn.drawing': 'Drawing you in these clothes. It takes about 15 seconds.',
