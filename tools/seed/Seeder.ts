@@ -48,8 +48,11 @@ export const importAccount = async (deps: SeedDeps, planned: PlannedAccount, gar
   for (const { spec, file } of garments)
     await deps.bucket.write(`${prefix}pictures/${spec.id}`, await deps.picture(file), { type: 'image/png' })
   await deps.bucket.write(`${prefix}manifest.json`, JSON.stringify(manifest), { type: 'application/json' })
-  const started = await deps.api.startImport(importId, `start-${importId}`)
-  const sent = started.pieces.filter(({ status }) => status !== 'ready').length
+  // What the import will send is what is not ready before it starts: a start repeated under its operation id answers
+  // from its first receipt, as things stood then. An account the import has not made yet has nothing ready.
+  const before = await deps.api.importStatus(importId).catch(() => undefined)
+  const sent = manifest.pieces.length - (before?.pieces.filter(({ status }) => status === 'ready').length ?? 0)
+  await deps.api.startImport(importId, `start-${importId}`)
   if (sent > 0)
     await deps.ledger.paid(
       { kind: 'cutout', ref: importId, worst: sent * prices.cutoutPerPiece },
