@@ -19,8 +19,8 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 - Found again (0faaeb55): `tools/refind-photos.ts <email>` (operator token) re-finds an account's ready photos at
   Styld's cost; confirmed, offered and hand-added garments stay, Styld's guesses are replaced.
 - Evidence: unit `photos.story/scene`, `collage.scene`, `GalleryPerson`, `PhotoRefind`. Native `PhotosAcceptance`
-  (adding by hand, the offered guard) passed in the coordinator's full gate on 671022d8; `verifyRefinding` first runs
-  in the gate on 679e8d09 (pending). Preview: the re-find ran once for Eva on 679e8d09; at 300 s her 7 photos were
+  (adding by hand, the offered guard) passed in the coordinator's full gate on 671022d8; `verifyRefinding` passed in
+  the full gate on the deployed 679e8d09. Preview: the re-find ran once for Eva on 679e8d09; at 300 s her 7 photos were
   ready, 13 garments (3 confirmed, 10 not in the wardrobe), and 2 photos still have nothing found.
 - Open: why 2 of Eva's photos still find nothing (the seated fallback did not reach them); Eva's check on her phone.
 
