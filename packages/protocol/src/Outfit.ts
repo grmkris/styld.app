@@ -1,6 +1,7 @@
 import { mostLocked, mostProposals, mostSeen } from './Limits.ts'
+import { OutfitKey, OutfitMode, OutfitSession } from './OutfitRun.ts'
 import { textLength, trimmedText } from './Text.ts'
-import { entityId, OperationId } from './Ids.ts'
+import { OperationId } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, passing, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
@@ -16,9 +17,6 @@ import { PieceId } from './Wardrobe.ts'
 // request names what is fixed and what was already shown, and gets a ranked batch back. What became of a proposal
 // travels with the write that keeps it (Wear this, Keep), so keep rates compare per way.
 
-export const OutfitMode = Schema.Literals(['fast', 'thinking'])
-export type OutfitMode = typeof OutfitMode.Type
-
 const Words = trimmedText(textLength.label)
 
 /** What the outfit is for, when known: the season, the occasion, and the person's own words ("a dinner out"), which
@@ -29,17 +27,6 @@ export const OutfitBrief = Schema.Struct({
   words: Schema.optionalKey(Words),
 })
 export type OutfitBrief = typeof OutfitBrief.Type
-
-/** A combination's key: its piece ids, sorted and joined. Two proposals of the same pieces share one key. */
-export const OutfitKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(240))
-export type OutfitKey = typeof OutfitKey.Type
-
-/** The key of a combination of pieces. */
-export const outfitKeyOf = (pieceIds: ReadonlyArray<string>): OutfitKey => pieceIds.toSorted().join('.')
-
-/** Names one run of making and shuffling, so what the person kept is counted against the way that made it. */
-export const OutfitSession = entityId('os').pipe(Schema.brand('OutfitSession'))
-export type OutfitSession = typeof OutfitSession.Type
 
 /** Ask for outfits: `POST /api/outfits`. Free, at the account's pace; Thinking at most a set number of times a day.
  * The first request of a run names no session and gets one; refills name it. */
@@ -81,16 +68,6 @@ export const OutfitProposals = Schema.Struct({
   exhausted: Schema.Boolean,
 })
 export type OutfitProposals = typeof OutfitProposals.Type
-
-/** The proposal a kept outfit came from: its run, the way that made it, where in the run it was shown (from 0), and
- * whether the person changed it before keeping it. Counted, never stored. */
-export const ProposalRef = Schema.Struct({
-  session: OutfitSession,
-  mode: OutfitMode,
-  position: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: mostSeen + mostProposals })),
-  edited: Schema.Boolean,
-})
-export type ProposalRef = typeof ProposalRef.Type
 
 /** Thinking's model gave no usable outfit just now; Fast may still answer. */
 export class ThinkingUnanswered extends Schema.TaggedError<ThinkingUnanswered>()(

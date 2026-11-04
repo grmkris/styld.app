@@ -2,7 +2,7 @@ import { OperationId } from './Ids.ts'
 import { maximumWornPieces } from './Limits.ts'
 import { Schema } from 'effect'
 import { Day } from './Day.ts'
-import { ProposalRef } from './Outfit.ts'
+import { ProposalRef } from './OutfitRun.ts'
 import { PieceId } from './Wardrobe.ts'
 
 /** What the person wore on a day: the pieces still in the wardrobe. */

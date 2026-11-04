@@ -6,7 +6,7 @@ import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
 import { Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
-import { OutfitKey, OutfitMode, OutfitSession, ProposalRef } from './Outfit.ts'
+import { OutfitKey, OutfitMode, OutfitSession, ProposalRef } from './OutfitRun.ts'
 import { Season, Slot } from './Garment.ts'
 import { Piece, PieceId, UploadId } from './Wardrobe.ts'
 
