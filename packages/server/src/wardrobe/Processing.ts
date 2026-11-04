@@ -78,8 +78,9 @@ export class GarmentCutout extends Context.Service<
       readonly type: PieceType
       readonly of: CutSide
     }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed | AttemptElsewhere>
-    /** What a stored cut-out shows, as the decision model reads it; none when it cannot be read or answered. */
-    readonly describe: (cutoutKey: string) => Effect.Effect<Option.Option<PieceDescription>>
+    /** What a stored cut-out shows, as the decision model reads it beside the photo it was cut from; none when it
+     * cannot be read or answered. */
+    readonly describe: (cutoutKey: string, originalKey: string) => Effect.Effect<Option.Option<PieceDescription>>
   }
 >()('@styld/server/GarmentCutout') {
   static readonly keepOriginal = Layer.succeed(this, {

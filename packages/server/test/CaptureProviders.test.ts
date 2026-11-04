@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import type { PieceType } from '@styld/protocol'
 import { Effect, Exit, Option, Redacted } from 'effect'
+import * as Base64 from 'effect/encoding/Base64'
 import { describe, expect, test } from 'vitest'
-import { makeGarmentVision } from '../src/providers/Clef.ts'
+import { type ClefRequest, makeGarmentVision } from '../src/providers/Clef.ts'
 import { pngSize } from '../src/providers/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/providers/Meta.ts'
@@ -278,7 +279,7 @@ describe('Clef-flash', () => {
           pattern: chose('plain', 0.9),
           whole: chose('part', 0.7),
         },
-      }).suggest(picture),
+      }).suggest(picture, Option.none()),
     )
     expect(suggestion).toEqual(
       Exit.succeed({
@@ -294,8 +295,28 @@ describe('Clef-flash', () => {
         whole: 0,
       }),
     )
-    const unsure = await run(answering({ answers: { type: chose('none', 0.9) } }).suggest(picture))
+    const unsure = await run(answering({ answers: { type: chose('none', 0.9) } }).suggest(picture, Option.none()))
     expect(Exit.isSuccess(unsure) && unsure.value.type).toBe(undefined)
+  })
+
+  test('reads a piece beside the photo it was cut from, cut-out first, and alone when there is none', async () => {
+    const asked: Array<ClefRequest> = []
+    const vision = makeGarmentVision((request) => {
+      asked.push(request)
+      return Promise.resolve({ answers: { type: chose('sportswear', 0.9) } })
+    }, CaptureMetrics.discarding)
+    const photo = { bytes: new Uint8Array([1, 2, 3]), contentType: 'image/jpeg' } as const
+    await run(vision.suggest(picture, Option.some(photo)))
+    await run(vision.suggest(picture, Option.none()))
+    const [beside, alone] = asked
+    expect(beside?.images).toEqual([
+      { content_type: 'image/png', base64: Base64.encode(picture.bytes) },
+      { content_type: 'image/jpeg', base64: Base64.encode(photo.bytes) },
+    ])
+    expect(beside?.state).toContain('The first image is one piece cut out of the second image')
+    expect(alone?.images).toEqual([{ content_type: 'image/png', base64: Base64.encode(picture.bytes) }])
+    // The same questions either way: only what the model is shown changes.
+    expect(Object.keys(beside?.questions ?? {})).toEqual(Object.keys(alone?.questions ?? {}))
   })
 
   test('confirms a held garment and its side, and fails retryably when Workers AI does', async () => {

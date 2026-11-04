@@ -1,5 +1,5 @@
 import { Colour, PieceType } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
 import { makeGarmentVision, type RunClef } from '../../packages/server/src/providers/Clef.ts'
 import { dataUrl, type Fetch } from '../../packages/server/src/providers/Http.ts'
@@ -156,7 +156,8 @@ export const clefJudge = (run: RunClef): Judge => {
     judge: async (png) => {
       const picture = { bytes: png, contentType: 'image/png' as const }
       const [route, suggestion] = await Effect.runPromise(
-        Effect.all([vision.route(picture), vision.suggest(picture)], { concurrency: 2 }),
+        // A generated garment was cut from no photo, so it is read alone.
+        Effect.all([vision.route(picture), vision.suggest(picture, Option.none())], { concurrency: 2 }),
       )
       const verdict: Verdict = {
         garments: garmentsSeen[route.garments],

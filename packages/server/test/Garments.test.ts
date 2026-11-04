@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Garments } from '../src/capture/Garments.ts'
 import { type Cut, joined, pairsOf, promptsFor } from '../src/capture/GarmentRules.ts'
-import type { Suggestion } from '../src/capture/Providers.ts'
+import type { Picture, Suggestion } from '../src/capture/Providers.ts'
 import { scriptedGarments } from './fakes/GarmentPipeline.ts'
 import type { Found } from '../src/providers/SamStream.ts'
 
@@ -78,7 +78,8 @@ describe('the pipeline on two shoes', () => {
   const width = 200
   const height = 100
   const photo = encodePng({ width, height, data: new Uint8Array(width * height * 4).fill(200) })
-  const copies = { width, height, png: photo, jpeg: new Uint8Array([1]), small: new Uint8Array([1]) }
+  const copies = { width, height, png: photo, jpeg: new Uint8Array([1]), small: new Uint8Array([7]) }
+  const sources: Array<Option.Option<Picture>> = []
   const suggestion: Suggestion = {
     type: 'trainers',
     confidence: 0.9,
@@ -96,6 +97,7 @@ describe('the pipeline on two shoes', () => {
           scriptedGarments({
             copies,
             suggestion,
+            sources,
             route: { garments: 'several', confidence: 0.9, person },
             // Clothing misses the shoes; the shoes prompt finds both.
             still: (_picture, prompt) => Effect.succeed(prompt === 'shoes' ? [solid(20, '0'), solid(120, '1')] : []),
@@ -109,6 +111,15 @@ describe('the pipeline on two shoes', () => {
     expect(garments).toHaveLength(1)
     expect(garments[0]).toMatchObject({ track: 'shoes-0+shoes-1', preselect: true })
     expect(Option.map(readPng(garments[0]?.png ?? new Uint8Array()), wide)).toEqual(Option.some(true))
+  })
+
+  test('each shoe is read beside the photo it was cut from, its small working copy', async () => {
+    sources.length = 0
+    await run((pipeline) => pipeline.find(photo, { for: 'tray', camera: false }))
+    expect(sources).toEqual([
+      Option.some({ bytes: copies.small, contentType: 'image/jpeg' }),
+      Option.some({ bytes: copies.small, contentType: 'image/jpeg' }),
+    ])
   })
 
   test('a pair of boots added as a piece is cut out as one picture of both', async () => {
