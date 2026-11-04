@@ -1,7 +1,16 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect } from 'effect'
 import { Database } from '../src/kernel/Db.ts'
-import { bandsFor, candidates, cursorOf, everyone, followedFirst, pageFrom, positionOf } from '../src/social/Feed.ts'
+import {
+  bandsFor,
+  byTaste,
+  candidates,
+  cursorOf,
+  everyone,
+  followedFirst,
+  pageFrom,
+  positionOf,
+} from '../src/social/Feed.ts'
 import { localD1 } from './LocalD1.ts'
 
 // What's new on Home (Eva, owner 4 November): everyone's public things, newest first, never the reader's own; a pin
@@ -59,6 +68,26 @@ describe("What's new", () => {
     const items = ['a1', 'a2', 'a3', 'b1', 'c1', 'b2'].map((id) => ({ id, person: id.slice(0, 1) }))
     const ordered = followedFirst(items, new Set(['b']), ({ person }) => person)
     expect(ordered.map(({ id }) => id)).toEqual(['b1', 'b2', 'a1', 'a2', 'c1', 'a3'])
+  })
+})
+
+describe('What’s new by taste (owner, 4 November 2026)', () => {
+  it('puts what shares most of the reader’s saved aesthetics first, keeping the order otherwise; nothing shared keeps it', () => {
+    const items = [
+      { id: 'plain', shared: 0 },
+      { id: 'poet', shared: 1 },
+      { id: 'other', shared: 0 },
+      { id: 'poetBrown', shared: 2 },
+      { id: 'poetToo', shared: 1 },
+    ]
+    expect(byTaste(items, ({ shared }) => shared).map(({ id }) => id)).toEqual([
+      'poetBrown',
+      'poet',
+      'poetToo',
+      'plain',
+      'other',
+    ])
+    expect(byTaste(items, () => 0).map(({ id }) => id)).toEqual(items.map(({ id }) => id))
   })
 })
 

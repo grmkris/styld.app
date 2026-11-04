@@ -6,6 +6,7 @@ import { Array, DateTime, Effect, Option } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
 import { Checks } from '../safety/Checks.ts'
 import { PublicPages, summaryOf } from './Public.ts'
+import { savedAestheticsOf } from '../taste/Taste.ts'
 import { otherAudience, preferencesOf } from './ShowMe.ts'
 import { SocialStore } from './SocialStore.ts'
 import { visibleAt } from './Visibility.ts'
@@ -60,6 +61,32 @@ export const followedFirst = <A>(
   const others = items.filter((item) => !followed.has(personOf(item)))
   return [...interleaved(theirs, personOf), ...interleaved(others, personOf)]
 }
+
+/** Items most like what the reader saved first: by how many of their board's aesthetics the reader's saved boards
+ * share, keeping the order otherwise (owner, 4 November 2026). Nothing saved, or nothing shared, keeps the order.
+ * @internal Exported for its tests. */
+export const byTaste = <A>(items: ReadonlyArray<A>, shared: (item: A) => number): Array<A> =>
+  items
+    .map((item, at) => ({ item, at, score: shared(item) }))
+    .toSorted((a, b) => b.score - a.score || a.at - b.at)
+    .map(({ item }) => item)
+
+/** How many of each board's aesthetics the reader's saved boards share, for the page's boards: one bounded read. */
+const sharedAesthetics = (db: Database['Service'], viewer: string, boardIds: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    if (boardIds.length === 0) return new Map<string, number>()
+    const saved = yield* savedAestheticsOf(db, viewer)
+    if (saved.size === 0) return new Map<string, number>()
+    const tags = yield* read(() =>
+      db
+        .select({ boardId: boardTags.boardId, value: boardTags.value })
+        .from(boardTags)
+        .where(and(eq(boardTags.kind, 'aesthetic'), inArray(boardTags.boardId, [...boardIds]))),
+    )
+    const shared = new Map<string, number>()
+    for (const { boardId, value } of tags) if (saved.has(value)) shared.set(boardId, (shared.get(boardId) ?? 0) + 1)
+    return shared
+  })
 
 /** Where a page of What's new starts: in a band of the reader's Show me (one band when nothing was chosen), after the
  * item at `at` with `id`. */
@@ -302,7 +329,7 @@ const shown = (pages: PublicPages['Service'], passed: ReadonlyArray<Candidate>, 
   })
 
 /** What's new for the account, from `cursor` on: the bands of their Show me in turn, each newest first, and on each
- * page the people they follow first within its band. */
+ * page the people they follow first within its band, then what is most like the boards they saved. */
 export const feedFor = (viewer: string, cursor: string | undefined) =>
   Effect.gen(function* () {
     const social = yield* SocialStore
@@ -312,12 +339,18 @@ export const feedFor = (viewer: string, cursor: string | undefined) =>
     const passed = yield* discoverable(yield* Checks, social, found)
     const items = yield* shown(yield* PublicPages, passed, viewer)
     const followed = new Set(yield* social.followees(viewer).pipe(Effect.mapError(unavailable)))
+    const shared = yield* sharedAesthetics(db, viewer, [
+      ...new Set(items.filter(({ candidate }) => candidate.kind !== 'look').map(({ candidate }) => candidate.boardId)),
+    ])
     const bandsOf = [...new Set(items.map(({ candidate }) => candidate.band))]
     return {
       items: bandsOf
         .flatMap((band) =>
           followedFirst(
-            items.filter(({ candidate }) => candidate.band === band),
+            byTaste(
+              items.filter(({ candidate }) => candidate.band === band),
+              ({ candidate }) => (candidate.kind === 'look' ? 0 : (shared.get(candidate.boardId) ?? 0)),
+            ),
             followed,
             ({ candidate }) => candidate.accountId,
           ),

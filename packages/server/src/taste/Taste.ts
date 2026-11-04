@@ -107,6 +107,17 @@ const signalsOf = Effect.fnUntraced(function* (db: Database['Service'], accountI
   }
 })
 
+/** The aesthetics of the boards the person saved, each once: What's new puts boards that share them first. */
+export const savedAestheticsOf = (db: Database['Service'], accountId: string) =>
+  read(() =>
+    db
+      .selectDistinct({ value: boardTags.value })
+      .from(saves)
+      .innerJoin(boardTags, and(eq(boardTags.boardId, saves.boardId), eq(boardTags.kind, 'aesthetic')))
+      .where(and(eq(saves.accountId, accountId), isNotNull(saves.boardId)))
+      .limit(mostRows),
+  ).pipe(Effect.map((rows) => new Set(rows.map(({ value }) => value))))
+
 /** The occasion a day's outfits are for, from the occasions the person dresses for: on a weekday smart when they dress
  * smart, else casual when they dress casual; at the weekend casual when they do. Formal, sport and lounge never set a
  * whole day: those are asked for. A day is the person's own (`2026-11-04`). */

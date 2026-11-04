@@ -4,7 +4,7 @@ import { Effect, Layer } from 'effect'
 import { TestClock } from 'effect/testing'
 import { Database } from '../src/kernel/Db.ts'
 import { learnedFrom } from '../src/taste/Learned.ts'
-import { occasionOfDay, Tastes } from '../src/taste/Taste.ts'
+import { occasionOfDay, savedAestheticsOf, Tastes } from '../src/taste/Taste.ts'
 import { localD1 } from './LocalD1.ts'
 
 // What Styld knows about how a person dresses (owner, 4 November 2026): what they told it, kept until they change or
@@ -163,6 +163,14 @@ describe('a person’s taste', () => {
       )
       expect(stranger).toMatchObject({ _tag: 'NotFound' })
     }).pipe(Effect.provide(as('ac_ana'))),
+  )
+
+  it.effect('reads the aesthetics of the boards a person saved, each once, for What’s new', () =>
+    Effect.gen(function* () {
+      const db = yield* Database
+      expect([...(yield* savedAestheticsOf(db, 'ac_ana'))]).toEqual(['poetcore'])
+      expect((yield* savedAestheticsOf(db, 'ac_luka')).size).toBe(0)
+    }).pipe(Effect.provide(Database.layer(seeded()))),
   )
 
   it('holds only a JSON list of occasions, and goes with the account', () => {
