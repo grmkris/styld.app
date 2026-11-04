@@ -16,6 +16,24 @@ Eva saw her shop-style pictures as plain cut-outs, and found swiping through thr
   testers' pieces. The comparison page is private, its harness in `~/code/meta-hackathon/out/styld-shop-picture/`.
   Text and logos stayed legible on all 12 printed pieces, and production's Clef check passed 22 of 23 drawings
   under every prompt; the boots always fail.
+- **No drawing check and no face gate (worktree track, `fc84b7b0`, `3ee38946`, not merged or deployed).**
+  - The owner's decision: Clef's compare rejected 24 of about 470 drawings on 4 November. Drawn again, 11 passed
+    (noise), and only about 5 of the rest were really wrong. A person can always swipe to the photo.
+  - Every drawing Muse returns that keys and frames cleanly is shown ('ready'), front and back. No compare call is
+    made, and `gateFor`, the reject bar and `GarmentVision.compare` are gone.
+  - A drawing left in 'checking' by an earlier release is shown when it is next processed.
+  - Clef's judgement no longer asks about a face. A fragment still asks for a retake. A back is drawn without a
+    judgement, and so is a paid redraw. The redraw's `face` refusal is gone from the API, the page and both catalogs.
+  - The `face` columns stay without a migration and are no longer written.
+  - Unchanged: Clef's reading of type, colours and sleeve; the whole-garment scrap bar; what Muse is given; the
+    capture's person routing; the camera's holding question; Muse's own safety filter.
+  - Evidence: unit `Drawing.test` (lifecycle over real SQLite: shown with no Clef call; a failed key stores nothing;
+    a legacy 'checking' row is shown) and `CleanPicture.test` (no face question; a cut-out Clef sees a face in is
+    drawn). Native `CleanPictureAcceptance` (Clef's stand-in sees a face everywhere and refuses compares) was
+    written for this but not run.
+  - Open: existing 'rejected' and face-kept 'kept-real' rows are not redrawn by this change. The operator's
+    `--redraw` backfill covers 'rejected' rows but not 'kept-real' ones. The coordinator still has to merge,
+    deploy and run native.
 - **Redraw of existing drawings (deployed, `42911477`).** `tools/backfill-pictures.ts <email> --redraw` draws again
   every drawing made before its start, a minute's worth at a time. The coordinator started it for Eva, Andraž and Ivona.
 - **Backs free (deployed at f7852a6f, `b4e8e768`).** A camera back shot and "Add the back" hold no credits; a front
