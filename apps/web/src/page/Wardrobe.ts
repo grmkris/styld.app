@@ -2,11 +2,12 @@ import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
 import { Array, Effect, Option, Order, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
+import * as WardrobeSelect from './WardrobeSelect.ts'
 import { drawOperationId } from '../OperationIds.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
@@ -103,6 +104,8 @@ export const Model = Schema.Struct({
   categoryEdit: CategoryEdit,
   filters: Filters,
   filterSheet: Dialog.Model,
+  /** Select mode on a type's pieces, to delete several at once (`WardrobeSelect.ts`). */
+  selection: WardrobeSelect.Model,
 })
 export type Model = typeof Model.Type
 
@@ -110,6 +113,7 @@ export const init = (query: BrowseQuery = {}): Model => ({
   ...browsing(query),
   categoryEdit: CategoryEdit.Idle(),
   filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
+  selection: WardrobeSelect.init(),
 })
 
 const browsing = (query: BrowseQuery) => ({
@@ -136,6 +140,7 @@ export const restore = (model: Model, query: BrowseQuery): Model => {
     category: () => restored.category,
     categoryEdit: () => CategoryEdit.Idle(),
     filters: () => restored.filters,
+    selection: () => WardrobeSelect.init(),
   })
 }
 
@@ -172,13 +177,15 @@ export const Message = defineMessageUnion({
   SucceededRenameCategory: { name: Schema.String },
   SucceededDeleteCategory: {},
   FailedCategoryEdit: {},
+  GotSelectMessage: { message: WardrobeSelect.Message },
 })
 export type Message = typeof Message.Type
 
-/** The pieces are the app's: the page asks for them again after a failure, and once a category it shows was renamed
- * or deleted (`reread`), with the address it now shows. */
+/** The pieces are the app's: the page asks for them again after a failure, once a category it shows was renamed or
+ * deleted (`reread`), with the address it now shows, and once some were deleted here, at once. */
 export const OutMessage = defineMessageUnion({
   RequestedPieces: {},
+  DeletedPieces: {},
   ChangedBrowse: { query: BrowseQuery, reread: Schema.optionalKey(Schema.Boolean) },
 })
 export type OutMessage = typeof OutMessage.Type
@@ -222,6 +229,18 @@ const foldFilterSheet = filterSheet.update
 const openFilterSheet = filterSheet.open
 const closeFilterSheet = filterSheet.close
 
+const foldSelection = Update.foldChild({
+  update: WardrobeSelect.update,
+  read: (model: Model) => Option.some(model.selection),
+  write: (model: Model, selection: WardrobeSelect.Model) => modifyFields(model, { selection: () => selection }),
+  toParentMessage: (message: WardrobeSelect.Message) => Message.GotSelectMessage({ message }),
+  foldOutMessage: WardrobeSelect.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+  >({
+    DeletedPieces: () => (stepModel) => ({ model: stepModel, outMessage: OutMessage.DeletedPieces() }),
+  }),
+})
+
 /** Choosing the chosen one again clears it. */
 const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
   Option.contains(chosen, value) ? Option.none() : Option.some(value)
@@ -256,6 +275,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedClearFilters: () => filtered(model, () => noFilters),
     ClickedShowPieces: () => closeFilterSheet(model),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
+    GotSelectMessage: ({ message: selectMessage }) => foldSelection(model, selectMessage),
     ...categoryUpdates(model),
   })
 

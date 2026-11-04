@@ -289,6 +289,14 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.showPieces':
     '{count, plural, one {Pokaži # kos} two {Pokaži # kosa} few {Pokaži # kose} other {Pokaži # kosov}}',
   'wardrobe.noneFiltered': 'Ni kosov s temi filtri.',
+  'wardrobe.select': 'Izberi',
+  'wardrobe.selectDone': 'Končano',
+  'wardrobe.selectPiece': 'Tapni kose, ki jih želiš izbrisati.',
+  'wardrobe.deleteSelected':
+    '{count, plural, one {Izbriši # kos} two {Izbriši # kosa} few {Izbriši # kose} other {Izbriši # kosov}}',
+  'wardrobe.deleteSelectedConfirm':
+    '{count, plural, one {Izbrišem # kos? Izginil bo iz tvojih zbirk, videzov in fotografij. Tega ni mogoče razveljaviti.} two {Izbrišem # kosa? Izginila bosta iz tvojih zbirk, videzov in fotografij. Tega ni mogoče razveljaviti.} few {Izbrišem # kose? Izginili bodo iz tvojih zbirk, videzov in fotografij. Tega ni mogoče razveljaviti.} other {Izbrišem # kosov? Izginili bodo iz tvojih zbirk, videzov in fotografij. Tega ni mogoče razveljaviti.}}',
+  'wardrobe.deleteSelectedFailed': 'Kosov ni bilo mogoče izbrisati. Poskusi znova.',
   'wardrobe.front': 'Spredaj',
   'wardrobe.back': 'Zadaj',
   'wardrobe.sides': 'Prikazana stran',

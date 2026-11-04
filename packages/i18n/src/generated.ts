@@ -691,6 +691,9 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.deleteItemConfirmTitle': Readonly<Record<string, never>>
   'wardrobe.deleteLabel': Readonly<Record<string, never>>
   'wardrobe.deletePieceConfirmBody': Readonly<Record<string, never>>
+  'wardrobe.deleteSelected': { readonly count: number }
+  'wardrobe.deleteSelectedConfirm': { readonly count: number }
+  'wardrobe.deleteSelectedFailed': Readonly<Record<string, never>>
   'wardrobe.deleting': Readonly<Record<string, never>>
   'wardrobe.emptyHint': Readonly<Record<string, never>>
   'wardrobe.failedDelete': Readonly<Record<string, never>>
@@ -757,6 +760,9 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.season.summer': Readonly<Record<string, never>>
   'wardrobe.season.winter': Readonly<Record<string, never>>
   'wardrobe.seasonLabel': Readonly<Record<string, never>>
+  'wardrobe.select': Readonly<Record<string, never>>
+  'wardrobe.selectDone': Readonly<Record<string, never>>
+  'wardrobe.selectPiece': Readonly<Record<string, never>>
   'wardrobe.shelves.loadFailed': Readonly<Record<string, never>>
   'wardrobe.shelves.loadingPieces': Readonly<Record<string, never>>
   'wardrobe.shelves.retry': Readonly<Record<string, never>>
@@ -901,4 +907,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b5b48742c48ddebacd83a7e51e5039e4d34d0da105e592adcc6adc100ffa99ae'
+export const catalogVersion = 'e9c0207eb42bdf0a608114b3663b6cd42f2278fae92d7c46a5d9431cb34adf27'

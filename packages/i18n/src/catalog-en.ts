@@ -285,6 +285,13 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.clearFilters': 'Clear',
   'wardrobe.showPieces': '{count, plural, one {Show # piece} other {Show # pieces}}',
   'wardrobe.noneFiltered': 'No pieces match these filters.',
+  'wardrobe.select': 'Select',
+  'wardrobe.selectDone': 'Done',
+  'wardrobe.selectPiece': 'Tap the pieces to delete.',
+  'wardrobe.deleteSelected': '{count, plural, one {Delete # piece} other {Delete # pieces}}',
+  'wardrobe.deleteSelectedConfirm':
+    "{count, plural, one {Delete # piece? It leaves your boards, looks and photos. This can't be undone.} other {Delete # pieces? They leave your boards, looks and photos. This can't be undone.}}",
+  'wardrobe.deleteSelectedFailed': "Couldn't delete the pieces. Try again.",
   'wardrobe.front': 'Front',
   'wardrobe.back': 'Back',
   'wardrobe.sides': 'Side shown',

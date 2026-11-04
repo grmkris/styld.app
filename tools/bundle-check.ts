@@ -75,7 +75,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 376,000 the same day for Eva's board layouts (B2/B3): the layouts and their arrows in the shared contract,
 // the arrows on the table, Another layout (its state, Command and control, and their words) add 2,004; measured
 // together at 375,823.
-if (initialGzip > 376000) throw new Error(`Initial browser assets exceed the 376,000-byte gzip budget: ${initialGzip}`)
+// Raised to 378,000 the same day for deleting several pieces from the wardrobe grid (T-24): main measured 375,823 at
+// c2a1d5f; the batch delete's endpoint in the client's contract and the grid's Select mode (its submodel with the
+// selection, the delete Command and its retry under the same id, the ticks, the bar and the question, their styles and
+// their words in both catalogs) add 2,164, for 377,987.
+if (initialGzip > 378000) throw new Error(`Initial browser assets exceed the 378,000-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

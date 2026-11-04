@@ -6,6 +6,22 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Delete from the wardrobe grid (T-24, Track D of `docs/PLAN-gallery-delete-2026-11-04.md`, 4 November, not deployed)
+
+- Server: `POST /api/pieces/delete` takes 1–50 piece ids (`piecesAtOnce`) under one operation id. Pieces already gone
+  are skipped; another account's piece refuses the whole delete (NotFound). Rows, content checks and uploads go in one
+  D1 batch with the receipt, ids chunked under the 100-parameter limit, then the objects nothing else shows.
+  `deletePiece` now runs through the same removal; a piece deleted by a concurrent request now answers 204 instead of 404. MCP has `pieces_delete` (destructive, asks the person first).
+- Web: a Select chip beside Filters on a type's grid. In Select mode the cards are ticks (`aria-pressed`), a sticky bar
+  above the tab bar says "Delete N pieces" and "Done", and one in-page question confirms. A failed delete is retried
+  under the same operation id; success ends Select mode and reads the pieces again at once, even with a read on its way.
+- Evidence: `Deletes.test.ts` (repeat answered once, conflict, the cascade to looks, pins, items, worn days, pictures
+  and checks, the photo's garment kept unmatched), `wardrobeSelect.story.test.ts`, `wardrobeSelect.scene.test.ts`.
+  Native `WardrobeAcceptance` (stranger refused, gone skipped, 204, GET 404, the upload's R2 key gone, repeat, conflict)
+  and `McpAcceptance` (`pieces_delete`) are written but not yet run; the coordinator runs the native suite and the full
+  gate on the merged result. Open: the deployed preview's readback and a phone-size check of Select mode in light and
+  dark.
+
 ## Dependencies and the lint backend (4 November, on main, not deployed)
 
 - Every pin `bun run deps:outdated` (`tools/outdated.ts`, new) found behind is current except Bun: effect-tsrs 0.2.3,

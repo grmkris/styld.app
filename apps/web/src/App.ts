@@ -175,6 +175,7 @@ type Step = Update.Step<Model, Message, Services>
 // LENS
 
 const revisitPieces = Update.foldChildStep({ update: ServerData.revisitPieces, ...data })
+const readPiecesAgain = Update.foldChildStep({ update: ServerData.readPiecesAgain, ...data })
 const revisitBoards = Update.foldChildStep({ update: ServerData.revisitBoards, ...data })
 
 const foldBoards = {
@@ -346,6 +347,7 @@ const foldWardrobe = Update.foldChild({
   ...at(lenses.wardrobe),
   foldOutMessage: Wardrobe.OutMessage.match<Step>({
     RequestedPieces: () => revisitPieces,
+    DeletedPieces: () => readPiecesAgain,
     ChangedBrowse: ({ query, reread }) => NavigationState.browsedTo(query, reread === true ? [revisitPieces] : []),
   }),
 })

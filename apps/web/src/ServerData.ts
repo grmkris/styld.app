@@ -85,6 +85,13 @@ export const revisitPieces = Update.combine<Model, Message, StyldClient>([
   piecesCache(AsyncData.revalidateOrLoad),
 ])
 
+/** The pieces read again after a change made here (pieces deleted), even with a read on its way: that read may predate
+ * the change. */
+export const readPiecesAgain = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, { pieces: (pieces) => Option.getOrElse(AsyncData.revalidate(pieces), () => pieces) }),
+  commands: [ListPieces()],
+})
+
 /** Asking again for pieces already here, after a change that touches them; a request on its way is not repeated. */
 const refreshPieces = piecesCache(AsyncData.revalidate)
 

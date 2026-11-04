@@ -21,6 +21,8 @@ import { backTo, backToWardrobe } from './PageBar.ts'
 import { categoriesOf, chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
+import * as WardrobeSelect from './WardrobeSelect.ts'
+import * as WardrobeSelectView from './WardrobeSelectView.ts'
 import { wardrobeMain } from './SectionMain.ts'
 import { chip } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
@@ -331,7 +333,25 @@ const categoryEditView = (model: Model, name: string, type: PieceType, locale: L
       ]),
   })
 
-/** The chosen type's pieces, label-free, with the one Filter button that narrows them (Eva's review, F-11). */
+/** Select mode's chip, and its ticks in place of the links while it is on (`WardrobeSelectView.ts`). */
+const selectSlot = (
+  slotId: string,
+  view: typeof WardrobeSelectView.ticks,
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.submodel({
+    slotId,
+    model: model.selection,
+    view,
+    viewInputs: { pieces, locale },
+    toParentMessage: (message) => Message.GotSelectMessage({ message }),
+  })
+
+/** The chosen type's pieces, label-free, with the one Filter button that narrows them (Eva's review, F-11), and Select
+ * to delete several (Eva, 4 November). */
 const typeView = (
   group: GarmentGroup,
   type: PieceType,
@@ -341,6 +361,8 @@ const typeView = (
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
   const shown = shownPieces(pieces, model)
+  const selecting = WardrobeSelect.Model.guards.On(model.selection)
+  const toggle = selectSlot('wardrobe-select', WardrobeSelectView.toggle, shown, model, locale, h)
   return [
     levelHead(
       backTo(
@@ -350,7 +372,7 @@ const typeView = (
       ),
       // A category of the person's own is named as they named it (T-12).
       Option.getOrElse(model.category, () => format(locale, typeName(type), {})),
-      [filtersButton(model, locale, h)],
+      selecting ? [toggle] : [filtersButton(model, locale, h), ...(shown.length === 0 ? [] : [toggle])],
       h,
     ),
     Option.match(model.category, {
@@ -359,10 +381,12 @@ const typeView = (
     }),
     shown.length === 0
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
-      : h.ul(
-          styled(h, styles.grid()),
-          shown.map((piece) => pieceTile(piece, model, locale, h)),
-        ),
+      : selecting
+        ? selectSlot('wardrobe-ticks', WardrobeSelectView.ticks, shown, model, locale, h)
+        : h.ul(
+            styled(h, styles.grid()),
+            shown.map((piece) => pieceTile(piece, model, locale, h)),
+          ),
     sheetShown(model.filterSheet) ? filterSheet(pieces, model, locale, h) : h.empty,
   ]
 }
