@@ -85,6 +85,7 @@ export default defineConfig({
       'packages/server/src/providers/Muse.ts': ['/[\\s\\S]*/'],
       // The prompts a generated picture is painted from and the mood board planner's instructions.
       'packages/server/src/generation/PaintPrompt.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/generation/TryOnPrompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/generation/Planner.ts': ['/[\\s\\S]*/'],
       // SQL fragments discovery orders and filters by.
       'packages/server/src/social/Discovery.ts': ['/json_each/', '/ is null$/'],
