@@ -9,16 +9,21 @@
  *
  * A pin is compared within its channel, unlike `bun outdated`, which reads only the `latest` tag: a stable pin against
  * stable releases, `0.1.0-beta.47` against later betas and stable releases even when `latest` names an older beta, and
- * never against a commit-tagged canary such as `0.169.0-canary.90746b32d2ca`. `held` keeps a pin on one major on
- * purpose, with the reason; a held pin is still reported when its own major moves on.
+ * never against a commit-tagged canary such as `0.169.0-canary.90746b32d2ca`. `held` keeps a pin below a version on
+ * purpose, with the reason: it is still reported when it falls behind below that version, and listed as held when a
+ * release beyond it is out.
  */
 import { Schema } from 'effect'
 import { readFile } from 'node:fs/promises'
 import { TSRS_LINT } from './tsrs-lint.ts'
 
-/** Pins kept on one major on purpose. */
-export const held: Readonly<Record<string, { readonly major: number; readonly reason: string }>> = {
-  '@types/node': { major: 24, reason: 'Node 24 LTS runs the tools on the box and in CI' },
+const tsrsLintOxlint = `the pinned tsrs-lint (${TSRS_LINT.tag}) knows Oxlint 1.89's type-aware rules; 1.91 asks it for no-unsafe-enum-assignment and every type-aware lint fails`
+
+/** Pins kept below a version on purpose. */
+export const held: Readonly<Record<string, { readonly below: string; readonly reason: string }>> = {
+  '@types/node': { below: '25.0.0', reason: 'Node 24 LTS runs the tools on the box and in CI' },
+  oxlint: { below: '1.90.0', reason: tsrsLintOxlint },
+  '@oxlint/plugins': { below: '1.90.0', reason: tsrsLintOxlint },
 }
 
 const versionPattern = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/u
@@ -73,16 +78,17 @@ const compareParsed = (left: Version, right: Version): number => {
   return left.prerelease.length < right.prerelease.length ? -1 : 0
 }
 
-/** The newest published version a pin could move to: later than it, in its channel or stable, and on the held major
- * when the pin is held. Undefined when the pin is current or is not a plain version. */
-export const newestFor = (current: string, published: ReadonlyArray<string>, major?: number): string | undefined => {
+/** The newest published version a pin could move to: later than it, in its channel or stable, and below the hold's
+ * version when the pin is held. Undefined when the pin is current or is not a plain version. */
+export const newestFor = (current: string, published: ReadonlyArray<string>, below?: string): string | undefined => {
   const pinned = parse(current)
   const channel = channelOf(current)
+  const ceiling = below === undefined ? undefined : parse(below)
   if (pinned === undefined) return undefined
   const newer = published.flatMap((version) => {
     const candidate = parse(version)
     if (candidate === undefined || compareParsed(candidate, pinned) <= 0) return []
-    if (major !== undefined && candidate.core[0] !== major) return []
+    if (ceiling !== undefined && compareParsed(candidate, ceiling) >= 0) return []
     const candidateChannel = channelOf(version)
     return candidateChannel === '' || candidateChannel === channel ? [{ version, candidate }] : []
   })
@@ -185,7 +191,7 @@ const report = async (strict: boolean) => {
         return {
           pin,
           hold,
-          inLine: newestFor(pin.version, versions, hold?.major),
+          inLine: newestFor(pin.version, versions, hold?.below),
           beyond: hold === undefined ? undefined : newestFor(pin.version, versions),
         }
       }),

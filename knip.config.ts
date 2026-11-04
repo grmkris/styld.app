@@ -51,8 +51,6 @@ export default {
     'packages/server': {
       entry: ['src/EdgeWorker.ts!', 'src/stylist/ThreadWorker.ts!', 'test/StylistThreadWorker.ts', 'test/**/*.test.ts'],
       project: ['src/**/*.ts!', 'test/**/*.ts'],
-      // `cloudflare:workers` is workerd's own module, which the Thread Worker's entrypoint extends.
-      ignoreDependencies: ['cloudflare'],
     },
     'packages/db': { project: ['src/**/*.ts!'] },
     'packages/imaging': { project: ['src/**/*.ts!'] },

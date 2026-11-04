@@ -26,10 +26,11 @@ test('a stable release is newer than its own prereleases and older than the next
   expect(newestFor('0.20.1-ts7.1.0-beta', ['0.20.1-ts7.1.0-beta', '0.21.0-ts7.1.0-beta'])).toBe('0.21.0-ts7.1.0-beta')
 })
 
-test('a held pin moves only within its major', () => {
-  const published = ['24.19.2', '24.20.0', '25.9.3', '26.6.6']
-  expect(newestFor('24.19.2', published, 24)).toBe('24.20.0')
+test('a held pin moves only below its hold', () => {
+  const published = ['24.19.2', '24.20.0', '25.0.0-rc.1', '25.9.3', '26.6.6']
+  expect(newestFor('24.19.2', published, '25.0.0')).toBe('24.20.0')
   expect(newestFor('24.19.2', published)).toBe('26.6.6')
+  expect(newestFor('1.89.0', ['1.89.0', '1.90.0', '1.91.0'], '1.90.0')).toBeUndefined()
 })
 
 test('specifiers that are not plain versions have no channel and no upgrade', () => {
