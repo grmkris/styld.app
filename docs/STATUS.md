@@ -253,38 +253,46 @@ beside the house boards, after reviewing the Grokbot inspiration-boards research
   now); no type preset on Add clothes (the capture types each piece); aesthetics show as the catalogue's slugs
   (`city break`) in both languages; a Discovery test of `challenges` over D1.
 
-## The landing that replaces v1 at styld.app (4 November, live on styld.app; the owner's phone review on main)
+## The landing that replaces v1 at styld.app (4 November: one screen per feature on main, not deployed)
 
-The signed-out Home is rebuilt from the landing-film prototypes (owner decisions of 4 November; DESIGN.md › Surfaces,
-› Motion). Production serves it from `b0af4f3c`.
+The signed-out Home is rebuilt from the landing-film prototypes and the owner's three phone reviews of 4 November
+(DESIGN.md › Type, › Surfaces, › Motion). The prototype the owner approved is
+`meta-hackathon/out/styld-landing-film/chapters/site` (tailnet page `styld-landing-chapters`).
 
 - **Built:**
-  - One hero for everyone, the wardrobe's film (owner's phone review, 4 November evening, which replaced the three
-    random heroes, their `styld_hero` cookie and the `landing.shown`/`signin.started` count; the edge's `METRICS`,
-    `STYLD_ENV` and `STYLD_RELEASE` bindings and the report's Landing heroes table went with them, and the privacy
-    policy no longer lists the cookie). It shows its poster first (tall on a phone held upright, wide elsewhere) and
-    plays its muted loop once the browser allows motion. There is no control: the films always play. With reduced
-    motion or Save-Data no video is requested, and a film the browser refuses to start (iOS Low Power) goes; the
-    poster stays. The words, Start free and Sign in are in en and sl.
-  - One page below: Add it once (the scan clip as a photo), Your wardrobe, as a shop (category chips filtering 13
-    cut-outs, each "Already yours"), One piece, many outfits (the coat's wide film cropped to its one board on a 4:5
-    table; the tall cut showed the boards above and below it, which read as a mirror on a phone), the price as a
-    `<dl>` (Free, 100 credits a day; Premium week, `premiumWeek`), four questions in `<details>` and Start free again.
-    The clips play only while half on screen.
-  - `GET /cdn/landing/:name` (`packages/server/src/LandingMedia.ts`, in Platform's routes) streams `landing/<name>` from
-    the stage's media bucket for the allowlisted names in `@styld/protocol` › `Landing.ts` (21 since the review). It
-    sends the content type, a year's immutable cache, an ETag and 304, and answers a single byte range with 206
-    (Safari) or 416. Nothing is bundled.
-- **Evidence:** `landing.scene` (the hero in en and sl with no control, reduced motion or a refused film leaving the
-  poster, the coat's board clip, the shop's chips, the price and the questions), `LandingMedia.test` (allowlist, 200,
-  206, open and suffix ranges, 416, 404, 304). Native, written and not run: `BrowserAcceptance` (the hero's words, no
-  film requested under reduced motion, Start free on the first 360×740 screen in sl, no sideways overflow at 360, 390,
-  768 and 1440).
-- **Open:** the review's build promoted to styld.app (styldappv2-0f), the full gate with native, and the visual walk on
-  phone and desktop. The media is uploaded to production's bucket only. Next, decided in the same review: each feature
-  its own full-screen chapter with its own film, under gentle snap (Add it once, the wardrobe as a shop with a film
-  instead of the chips, One piece many outfits with a new tall cut, Try with my wardrobe, Try it on, Ask Styld, and In
-  ChatGPT and Claude from the owner's screen recording), prototyped in the film workspace first.
+  - The hero: the wardrobe's film for everyone (no random heroes, no `styld_hero` cookie, no hero count since
+    `2e821de5`), its statement in Anton at the top and Start free and Sign in at the bottom. Its poster shows first
+    (tall on a phone held upright, wide elsewhere); the muted loop plays once the browser allows motion, with no
+    control. Under reduced motion or Save-Data no video is requested, and a film the browser refuses (iOS Low Power)
+    goes; the poster stays.
+  - One full screen per feature, each with its title in Anton and one line at the bottom: Your wardrobe, as a shop (a
+    heap that sorts itself, `pile-*`), One piece, many outfits (the coat's board: `coat-board-*` tall, one board on
+    the oak table, and the wide `coat-*`), See it on you (the mirror, `mirror-*`), Every side of it (the rail) and Ask
+    Styld. A film is fetched a screen and a half ahead and plays from the moment an eighth of it shows. The scanner
+    and Try with my wardrobe screens were dropped by the owner as implied by the others.
+  - The rail: five pieces (`landingRailPieces`) hang from an oak rod in a row that swipes; the one in front turns from
+    its side to its front through a 30-frame sprite in one row (`turn-<piece>.webp`, a stepped `background-position`
+    transition, `turnFrames`/`turn` tokens). It tours by itself while on screen (a Subscription ticks every 2.2 s and
+    a Command glides the row), a touch rests it for two beats, a swipe sets the front piece, and off screen every
+    piece goes back to its side. The turns are Wan 3.0 takes from Muse front and side views of the landing's own
+    pieces (`chapters/turn/`), keyed and packed the way the 30 October turn spike did.
+  - Ask Styld: a question and Styld's answer with four pieces (`landingAnswerPieces`), rising in when a third of the
+    chat shows and again each time it comes back; under reduced motion it is there at once.
+  - The ending: Start with one photo and Start free, the plans' lead and the four plans as a `<dl>`, and the four
+    questions in `<details>`. Start free rests at the bottom of the screen (bottom right on a wide one) while any
+    feature screen shows, as a sticky element, so it never covers the hero or the ending. Plain scrolling.
+  - `GET /cdn/landing/:name` serves the 24 allowlisted names in `@styld/protocol` › `Landing.ts` from the stage's
+    media bucket (a year's immutable cache, ETag, 206 for Safari's ranges). Nothing is bundled.
+  - The initial bundle grows by 3,156 gzip bytes (418,328 to 421,484 on a clean main; budget 421,600).
+- **Evidence:** `landing.scene` (the hero in en and sl with no control; reduced motion or a refused film leaving the
+  poster; each feature screen's film and poster, no scanner or try-with screen; the rail turning its front piece when
+  shown, touring a beat at a time, resting after a touch, following a swipe and turning back off screen; the chat
+  playing when shown; the ending's plans and questions), `legal.scene`, `LandingMedia.test`. Native, written and not
+  run: `BrowserAcceptance` (the hero's words, no film requested under reduced motion, Start free on the first 360×740
+  screen in sl, no sideways overflow at 360, 390, 768 and 1440).
+- **Open:** the new media (`pile-*`, `coat-board-*`, `turn-*`) uploaded to the preview's and production's buckets
+  (production already holds `wardrobe-*`, `coat-loop-wide`, `coat-poster-wide`, `mirror-*` and `shop-*`), the deploy,
+  the full gate with native, and the walk on a phone. In ChatGPT and Claude waits for the owner's screen recording.
 
 ## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
 

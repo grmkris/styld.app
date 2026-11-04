@@ -396,41 +396,31 @@
       "lede": "Photograph or film your clothes. Styld cuts out every piece, and you lay out outfits and boards, here or in ChatGPT and Claude.",
       "film": "Clothes float out of an open wardrobe and land flat on a paper board as an outfit, switch to another outfit, then float back."
     },
-    "add": {
-      "title": "Add it once",
-      "text": "Photograph or film your clothes. Styld cuts out every piece, and you check what it found before it joins your wardrobe."
-    },
     "shop": {
       "title": "Your wardrobe, as a shop",
-      "text": "Browse by category, like any shop. The price is always the same.",
-      "filter": "Category",
-      "all": "All",
-      "top": "Tops",
-      "bottom": "Bottoms",
-      "dress": "Dresses",
-      "outerwear": "Outerwear",
-      "shoes": "Shoes",
-      "accessory": "Accessories",
-      "price": "Already yours",
-      "pieces": {
-        "sweaterCream": "Cream cable knit",
-        "shirtWhite": "White shirt",
-        "topStripe": "Striped top",
-        "turtleneckBlack": "Black turtleneck",
-        "jeansLight": "Light straight jeans",
-        "trousersBrown": "Brown wide trousers",
-        "skirtIvory": "Ivory pleated skirt",
-        "dressSage": "Sage slip dress",
-        "coatCamel": "Camel wool coat",
-        "sneakersWhite": "White leather sneakers",
-        "bootsBlack": "Black ankle boots",
-        "loafersTan": "Tan loafers",
-        "bagCognac": "Cognac shoulder bag"
-      }
+      "text": "Styld sorts every piece by kind, season and occasion, so you browse your own clothes like a shop.",
+      "film": "A heap of clothes on paper sorts itself into a neat grid, one piece at a time."
     },
     "outfits": {
       "title": "One piece, many outfits",
-      "text": "Pick one piece. Styld lays out what you already own around it, outfit after outfit."
+      "text": "Pick one piece. Styld lays out what you already own around it, outfit after outfit.",
+      "film": "A camel coat lies in the middle of a paper board; around it, the other pieces swap through six outfits."
+    },
+    "tryOn": {
+      "title": "See it on you",
+      "text": "Add a photo of yourself, and Styld shows you in the outfit before you get dressed.",
+      "film": "A woman in a robe stands with her back to the camera before a tall mirror; her reflection, below the shoulders, wears one outfit after another."
+    },
+    "rail": {
+      "title": "Every side of it",
+      "text": "Styld draws each piece like a shop picture and turns it on its hanger. Swipe the rail.",
+      "film": "A coat, a knit, a slip dress, a shirt and a striped top hang on an oak rail, and each turns from its side to its front."
+    },
+    "ask": {
+      "title": "Ask Styld",
+      "text": "A stylist that knows your wardrobe. Ask what to wear, and it answers with your own pieces.",
+      "question": "What should I wear to dinner on Friday?",
+      "answer": "Your camel coat over the black turtleneck, with the brown trousers and the tan loafers."
     },
     "price": {
       "title": "What it costs",

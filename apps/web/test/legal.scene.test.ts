@@ -2,7 +2,7 @@ import { format } from '@styld/i18n'
 import { expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { Message as LandingMessage, PlayWhileSeen, StartFilm } from '../src/page/Landing.ts'
+import { Message as LandingMessage, PlayWhileSeen, StartFilm, WatchChat, WatchRail } from '../src/page/Landing.ts'
 import { privacyDocument, termsDocument } from '../src/page/LegalView.ts'
 import { view } from '../src/View.ts'
 import { at } from './AppFixtures.ts'
@@ -15,12 +15,18 @@ describe('the legal pages', () => {
         given(at('/', { signedIn })),
         expect(role('link', { name: 'Privacy' })).toHaveAttr('href', '/privacy'),
         expect(role('link', { name: 'Terms' })).toHaveAttr('href', '/terms'),
-        // Signed out, Home is the landing, whose film and clips wait for the browser.
+        // Signed out, Home is the landing, whose films, rail and chat wait for the browser.
         ...(signedIn
           ? []
           : [
               Mount.resolve(StartFilm, LandingMessage.CheckedMotion({ moving: false })),
-              Mount.resolveAll([PlayWhileSeen, LandingMessage.SawClip()], [PlayWhileSeen, LandingMessage.SawClip()]),
+              Mount.resolveAll(
+                [PlayWhileSeen, LandingMessage.SawClip()],
+                [PlayWhileSeen, LandingMessage.SawClip()],
+                [PlayWhileSeen, LandingMessage.SawClip()],
+                [WatchRail, LandingMessage.NearedRail()],
+                [WatchChat, LandingMessage.ShowedChat({ shown: false })],
+              ),
               Mount.expectEnded(StartFilm),
             ]),
       )

@@ -93,15 +93,17 @@ latin-ext). No serif. The document preloads it (latin-ext only for Slovenian), a
 `Hanken Grotesk Fallback`: the local Arial resized to Hanken's measured width, ascent and descent, so lines break
 where they will once it swaps in. Static files are named after their content and cached for good (`public/_headers`).
 
-The logo's voice is **Anton**, a condensed display face, self-hosted as one subset file. It is used in exactly two
+The logo's voice is **Anton**, a condensed display face, self-hosted as one subset file. It is used in exactly three
 places:
 
 - **The table's headline:** today's day and date on Home, e.g. `THU 30`.
 - **A headline label someone puts on their own board.**
+- **The landing's titles** (owner, 4 November 2026): the statement and each screen's title, in sentence case, at
+  Display size, weight 400, line-height 0.98. Over a film they carry a soft dark edge so they hold on any frame.
 
-Never on chrome, titles or buttons.
+Never on chrome, the app's own titles or buttons.
 
-- **Display** 46px and up, line-height 1, weight 700, tracking −0.035em: the landing statement only.
+- **Display** 46px and up: the landing's titles, in Anton (above).
 - **H1** 30px, line-height 1.08, weight 600, tracking −0.02em (26px inside a panel). **H2** 22px, 600, −0.01em. **H3**
   17px, 600.
 - **Body** 16px, line-height 1.5, weight 400. Lede 17px in ink-2. Small text 13–14px. Labels 14px, weight 600.
@@ -149,9 +151,11 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
 - **Signed out:** the top bar keeps the logo and "Sign in". Public pages (a profile, a public board, a shared look or
   piece) read the same as signed in; Sign in appears only when the visitor saves, follows or reports. Home is the
-  landing (owner, 4 November 2026): a full-screen film of the wardrobe, the same for everyone, with its words over it,
-  and one short page below: three feature screens (add it once, the wardrobe as a shop, one piece in many outfits),
-  the price as a `<dl>`, four questions in `<details>` and the call to action again.
+  landing (owner, 4 November 2026): the wardrobe's film for everyone, its statement at the top and Start free at the
+  bottom; then one full screen per feature, each with its words at the bottom: the wardrobe as a shop, one piece in many
+  outfits, try-on (films), the turning rail and Ask Styld (on paper); then a short ending: Start free, the plans as a
+  `<dl>` and four questions in `<details>`. Start free rests at the bottom of the screen (the bottom right on a wide one)
+  while any feature screen shows. Plain scrolling, no snapping.
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
   and under `prefers-reduced-transparency` they are solid stock.
 
@@ -224,9 +228,12 @@ Follow the prototype's `board`, `boards`, `person`, `pin`, `wishlist` and `ask-d
 - **The landing film** (owner, 4 November 2026) is the deliberate exception to "every motion answers something the
   person did" and "one reveal at most", and only on the signed-out Home: a full-screen, muted, looping film plays
   behind the hero's words (9:16 on a phone held upright, 16:9 elsewhere), and each feature screen's clip below loops
-  while most of it is on screen. There is no control: the films always play (owner, 4 November 2026). Under reduced
-  motion or Save-Data no video is requested, and a film the browser refuses to start goes: the posters stay. Nothing
-  else on the landing moves by itself.
+  from the moment an eighth of it shows. There is no control: the films always play (owner, 4 November 2026). Under
+  reduced motion or Save-Data no video is requested, and a film the browser refuses to start goes: the posters stay.
+  Two more exceptions on the same page: the rail tours by itself while it is on screen (the piece in front turns from
+  its side to its front through its sprite's frames, the next comes to the front every 2.2 s, a touch rests it for two
+  beats), and Ask Styld's question and answer rise in when its chat shows. Under reduced motion the rail stands still
+  with its front piece shown and the answer is there at once. Nothing else on the landing moves by itself.
 - **Reduced motion:** everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 - **Reduced transparency:** glass turns solid.
 
