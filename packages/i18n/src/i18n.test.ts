@@ -1,6 +1,7 @@
-import { describe, expect, expectTypeOf, test } from 'vitest'
+import { describe, expect, expectTypeOf, test, vi } from 'vitest'
 
 import { catalog as slovenian } from './catalog-sl.ts'
+import { catalog as slovenianLegal } from './legal-sl.ts'
 import { direction, format, normalizeLocale, text, type MessageValues } from './index.ts'
 
 describe('Styld locales', () => {
@@ -19,7 +20,9 @@ describe('Styld locales', () => {
     const formalIn = (words: string) =>
       [...words.matchAll(formal)].map(([word]) => word).filter((word) => !notImperatives.has(word.toLowerCase()))
     expect(formalIn('Ta koda je potekla. Počakajte minuto in poskusite znova.')).toEqual(['Počakajte', 'poskusite'])
-    expect(Object.entries(slovenian).filter(([, words]) => formalIn(words).length > 0)).toEqual([])
+    expect(
+      Object.entries({ ...slovenian, ...slovenianLegal }).filter(([, words]) => formalIn(words).length > 0),
+    ).toEqual([])
   })
 
   test('keeps locale state explicit and supports pseudolocales', () => {
@@ -58,5 +61,18 @@ describe('Styld locales', () => {
     expectTypeOf<MessageValues<'looks.pieceCount'>>().toEqualTypeOf<{ readonly count: number }>()
     expectTypeOf<{ count: string }>().not.toExtend<MessageValues<'looks.pieceCount'>>()
     expectTypeOf<{}>().not.toExtend<MessageValues<'looks.pieceCount'>>()
+  })
+
+  test('the browser loads the legal pages’ words only for them, and keeps them through a change of language', async () => {
+    // A fresh module, as a browser starts: nothing is provided until a page loads its language.
+    vi.resetModules()
+    const browser = await import('./index.ts')
+    await browser.loadCatalog('en')
+    expect(browser.format('en', 'legal.privacyLink', {})).toBe('Privacy')
+    expect(() => browser.format('en', 'legal.privacy.who', {})).toThrow('legal.privacy.who is not loaded in en')
+    await browser.loadCatalog('en', { legal: true })
+    expect(browser.format('en', 'legal.privacy.whoHeading', {})).toBe('Who we are')
+    await browser.loadCatalog('sl')
+    expect(browser.format('sl', 'legal.terms.changesHeading', {})).toBe('Spremembe')
   })
 })

@@ -15,8 +15,10 @@ import {
   stylistRouter,
   boardsRouter,
   homeRouter,
+  privacyRouter,
   signInHref,
   routeMeta,
+  termsRouter,
   type Section,
   tabOf,
   wardrobeRouter,
@@ -277,7 +279,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
       initial === undefined ? h.empty : appNavigation(model, initial, h),
       initial === undefined ? h.empty : wordmark(railLogo(), h),
       initial === undefined ? h.empty : h.div(styled(h, railLow()), [youLink(model, initial, h)]),
-      // The language, named, then Diagnostics and Contact together at the other end.
+      // The language, named, then Diagnostics, Privacy, Terms and Contact together at the other end.
       h.footer(styled(h, footer()), [
         languagePicker(model, h),
         h.div(styled(h, footerLinks()), [
@@ -289,6 +291,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
             },
             h,
           ),
+          h.a([h.Href(privacyRouter({})), ...styled(h, footerLink())], [format(locale, 'legal.privacyLink', {})]),
+          h.a([h.Href(termsRouter({})), ...styled(h, footerLink())], [format(locale, 'legal.termsLink', {})]),
           h.a([h.Href('mailto:hello@styld.app'), ...styled(h, footerLink())], [format(locale, 'landing.contact', {})]),
         ]),
       ]),

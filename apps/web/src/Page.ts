@@ -63,6 +63,8 @@ export const Page = defineTaggedUnion({
   Board: { board: BoardModel.Model },
   /** A person's public profile, or one of their pieces. */
   Visit: { visit: Visit.Model },
+  /** The privacy policy or the terms: words only, with no Model of their own. */
+  Legal: {},
   NotFound: {},
 })
 export type Page = typeof Page.Type
@@ -307,6 +309,7 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
       const visit = Visit.init(Visit.Target.Piece({ pieceId }), signedIn)
       return opened(lenses.visit, visit, Visit.load(visit))
     }),
+    Match.tag('Privacy', 'Terms', () => ({ model: Page.Legal() })),
     Match.tag('NotFound', () => ({ model: Page.NotFound() })),
     Match.exhaustive,
   )
