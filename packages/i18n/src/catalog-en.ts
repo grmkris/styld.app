@@ -704,6 +704,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.problem.slowDown': 'Too many at once. Try again in a minute.',
   'board.make.problem.failed': 'That didn’t go through. Try again.',
   'board.generated': 'Generated',
+  'board.generatedHint': 'Pieces generated with AI, for inspiration',
   'board.unpinAsk': 'Take it off the board? It comes off the collage too.',
   'board.unpinPictureAsk': 'Take the picture off? It is deleted.',
   'board.unpinConfirm': 'Take off',

@@ -64,6 +64,7 @@ describe('a profile', () => {
       occasion: null,
       pieces: [],
       sharedAt: '2026-10-30T08:00:00.000Z',
+      generated: false,
     }
     const onlyLooks = Schema.decodeUnknownSync(PublicProfile)({ ...profile(false), looks: [look] })
     const visiting = init(Target.Person({ handle: 'nika.kovac' }), false)

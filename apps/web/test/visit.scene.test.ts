@@ -114,6 +114,7 @@ describe('a public profile', () => {
         occasion: 'Office',
         pieces: [knit],
         sharedAt: '2026-10-30T08:00:00.000Z',
+        generated: false,
       },
       by,
     })

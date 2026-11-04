@@ -18,7 +18,7 @@ const savedTile = <Message>(thing: SavedThing, locale: Locale, h: HtmlBuilder<Me
       }),
       SavedLook: ({ look, by }) => ({
         id: `look:${look.id}`,
-        tile: h.div(styled(h, styles.item()), [lookTile(look, h), byline(by, locale, h)]),
+        tile: h.div(styled(h, styles.item()), [lookTile(look, locale, h), byline(by, locale, h)]),
       }),
       SavedBoard: ({ board, by }) => ({
         id: `board:${board.id}`,

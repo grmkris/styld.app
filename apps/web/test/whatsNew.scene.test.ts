@@ -9,13 +9,13 @@ import { FavouriteData, TrayData } from '../src/page/PickUp.ts'
 import { FeedData, Message, More, ReadFeed, ReadMore, WatchListEnd } from '../src/page/WhatsNew.ts'
 import { view } from '../src/View.ts'
 import { at, withPage } from './AppFixtures.ts'
-import { feedOf } from './WhatsNewFixtures.ts'
+import { feedOf, generatedFeedOf } from './WhatsNewFixtures.ts'
 
 // Home in Eva's order (4 November): the day, What's new along a strip, today's outfit, Challenges (coming soon),
 // Pick up, and the rest of What's new, which reads more as it nears the screen or on Show more.
 
-const home = (feed: FeedData) =>
-  withPage(at('/', { signedIn: true }), lenses.today, (today) =>
+const home = (feed: FeedData, locale: 'en' | 'sl' = 'en') =>
+  withPage(at('/', { signedIn: true, locale }), lenses.today, (today) =>
     modifyFields(today, {
       pickUp: () => ({
         tray: TrayData.Success({ data: { waiting: 0, pictures: [] } }),
@@ -97,6 +97,20 @@ describe("Home's What's new", () => {
         role('region', { name: 'What’s new, earlier' }),
         expectAll(all.role('link', { name: /^Board [bz]\d?.*By/ })).toHaveCount(2),
         expect(role('button', { name: 'Show more' })).not.toExist(),
+      ),
+    )
+  })
+
+  test.each([
+    ['en', 'Generated', 'Pieces generated with AI, for inspiration'],
+    ['sl', 'Ustvarjeno', 'Kosi, ustvarjeni z umetno inteligenco, za navdih'],
+  ] as const)('a house board of generated garments is marked so, always shown (%s)', (locale, mark, hint) => {
+    scene(
+      { update, view },
+      given(home(FeedData.Success({ data: generatedFeedOf(['h1']) }), locale)),
+      inside(
+        role('region', { name: locale === 'en' ? 'What’s new' : 'Novosti' }),
+        expect(selector(`[title="${hint}"]`)).toHaveText(mark),
       ),
     )
   })

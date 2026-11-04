@@ -13,6 +13,7 @@ export const knit = {
   name: 'Navy knit',
   type: 'shortSleeveTops',
   colours: [],
+  generated: false,
 }
 export const nika = Schema.decodeUnknownSync(PublicProfile)({
   handle: 'nika.kovac',
@@ -36,6 +37,7 @@ export const nika = Schema.decodeUnknownSync(PublicProfile)({
       ],
       pinCount: 1,
       publishedAt: '2026-10-30T08:00:00.000Z',
+      generated: false,
     },
   ],
   looks: [],

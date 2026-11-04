@@ -10,7 +10,7 @@ import { fromPublic, publicPicture, publicPieceImage } from './Board/Table.ts'
 import { boardFace, type CoverPicture } from './BoardFace.ts'
 import * as styles from './PublicTiles.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
-import { generatedMark } from './Board/MakeView.ts'
+import { generatedMark, generatedPiecesMark } from './Board/MakeView.ts'
 import { markedPicture } from './Board/MakeView.styles.ts'
 
 // What others see, tile by tile: a byline, pieces, looks, boards and a public board's pins. Every picture comes from
@@ -38,8 +38,8 @@ export const pieceTile = <Message>(piece: PublicPiece, locale: Locale, h: HtmlBu
     ],
   )
 
-/** A look: its first four pieces two by two, and its name. */
-export const lookTile = <Message>(look: PublicLook, h: HtmlBuilder<Message>): Html =>
+/** A look: its first four pieces two by two, and its name, marked when its garments were generated. */
+export const lookTile = <Message>(look: PublicLook, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
     [h.Href(lookRouter({ lookId: look.id })), ...styled(h, boardStyles.pinLink())],
     [
@@ -52,6 +52,7 @@ export const lookTile = <Message>(look: PublicLook, h: HtmlBuilder<Message>): Ht
         ),
       ]),
       h.span(styled(h, boardStyles.pinName()), [look.name]),
+      look.generated ? generatedPiecesMark(locale, h) : h.empty,
     ],
   )
 
@@ -72,7 +73,7 @@ export const pinTile = <Message>(pin: PublicPin, locale: Locale, h: HtmlBuilder<
           ]),
           generated ? generatedMark(locale, h) : h.empty,
         ]),
-      PublicLookPin: ({ look }) => lookTile(look, h),
+      PublicLookPin: ({ look }) => lookTile(look, locale, h),
     }),
   )
 
@@ -113,6 +114,7 @@ const card = <Message>(board: PublicBoardSummary, credit: Html, locale: Locale, 
       publicFace(board, locale, h),
       h.span(styled(h, styles.boardName()), [board.name]),
       h.span(styled(h, styles.meta()), [format(locale, 'saveToBoard.pins', { count: board.pinCount })]),
+      board.generated ? generatedPiecesMark(locale, h) : h.empty,
       credit,
     ],
   )

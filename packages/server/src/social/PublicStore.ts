@@ -2,6 +2,7 @@ import { boardImages, boardPins, boards, contentChecks, lookPieces, looks, piece
 import { and, desc, eq, exists, inArray, isNotNull } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { Database, first, inChunks, query } from '../kernel/Db.ts'
+import { generatedAmong } from '../wardrobe/Store.ts'
 import { shownToOthers } from './ProfileStore.ts'
 import { checkLets, piecesWithPictures } from './Visibility.ts'
 
@@ -62,6 +63,8 @@ export const reachedThrough = (db: Drizzle, accountId: string, pieceId: string, 
 
 /** What public pages read in D1. Visibility is decided by `Public.ts`; this only finds rows. */
 const publicStore = (db: Drizzle) => ({
+  /** Which of these pieces are house garments Styld generated: shown marked Generated. */
+  generatedAmong: (pieceIds: ReadonlyArray<string>) => generatedAmong(db, pieceIds),
   /** A published profile by its handle. */
   publishedProfile: (handle: string) =>
     query(() =>

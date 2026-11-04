@@ -68,12 +68,12 @@ const chosenOutfits = Effect.fnUntraced(function* (
   const seed = `${seedId}:${String(request.version)}`
   const season = board.season === undefined ? {} : { season: board.season }
   if (board.build === 'onePiece') {
-    if (Option.isNone(anchor) || board.layout === undefined) return yield* badEntry('onePiece needs anchor and layout')
-    if (board.labels.length > 0) return yield* badEntry('onePiece boards have no texts')
+    if (Option.isNone(anchor) || board.layout === undefined) return yield* badEntry('anchorAndLayoutNeeded')
+    if (board.labels.length > 0) return yield* badEntry('textsOnOnePiece')
   }
   const count =
     board.layout !== undefined && board.build === 'onePiece' ? outfitsIn(board.layout) : (board.outfits ?? 0)
-  if (count === 0) return yield* badEntry(`${board.build} needs outfits`)
+  if (count === 0) return yield* badEntry('outfitsNeeded')
   const outfits = Option.match(anchor, {
     onNone: () => outfitsOf(garments, count, seed, season),
     onSome: (fixed) => outfitsOf([fixed, ...garments], count, seed, { ...season, anchor: fixed }),
@@ -108,7 +108,8 @@ export const digestsOf = (request: SeedBoardRequest) =>
     whole: digestOf(JSON.stringify(request)),
   }).pipe(Effect.map(({ table, whole }) => `${table}.${whole}`))
 
-/** The table digest part of a stored digest. */
+/** The table digest part of a stored digest.
+ * @internal Exported for its tests. */
 export const tablePart = (digest: string) => digest.split('.')[0] ?? ''
 
 const labelsOf = (board: Board) => board.items.filter(isTextItem).toSorted((a, b) => a.z - b.z)
@@ -222,8 +223,7 @@ export const updatedBoard = Effect.fnUntraced(function* (
   const { accountId } = yield* CurrentAccount
   const boards = yield* Boards
   const tableChanged = tablePart(prior.digest) !== tablePart(digest)
-  if (tableChanged && request.board.build === 'onePiece')
-    return yield* badEntry(`${seedId}: a one-piece board's outfits change only by removing and seeding it again`)
+  if (tableChanged && request.board.build === 'onePiece') return yield* badEntry('onePieceOutfitsChanged')
   const boardId = BoardId.make(prior.boardId)
   const styled = yield* boards.updateBoard(boardId, {
     operationId: yield* stepOf(seedId, 'details', request.version, digest),

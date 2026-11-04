@@ -722,6 +722,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.problem.slowDown': 'Preveč naenkrat. Poskusi znova čez minuto.',
   'board.make.problem.failed': 'Ni uspelo. Poskusi znova.',
   'board.generated': 'Ustvarjeno',
+  'board.generatedHint': 'Kosi, ustvarjeni z umetno inteligenco, za navdih',
   'board.unpinAsk': 'Odstraniš iz zbirke? Umakne se tudi s kolaža.',
   'board.unpinPictureAsk': 'Odstraniš sliko? Izbrisala se bo.',
   'board.unpinConfirm': 'Odstrani',

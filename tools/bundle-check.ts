@@ -91,7 +91,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // worktree at 7fa62f2 and 384,580 with them.
 // Raised to 384,900 the same day for the backs track's carousel (M3, 36a1c027): angles first, the back's drawn slide
 // and its words add 291 over f7852a6f's 384,584, for 384,875.
-if (initialGzip > 384900) throw new Error(`Initial browser assets exceed the 384,900-byte gzip budget: ${initialGzip}`)
+// Raised to 385,000 the same day for the house boards' Generated mark (docs/PLAN-house-boards-2026-11-04.md, S2d):
+// `generated` on public pieces, looks and boards in the client's contract, the mark with its hint on board cards,
+// look tiles, the public board, the piece page and What's new, and the hint's words add 175: HEAD measured 384,772 in
+// a clean worktree at 3cdb7a61 and 384,947 with them.
+if (initialGzip > 385000) throw new Error(`Initial browser assets exceed the 385,000-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

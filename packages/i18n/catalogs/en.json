@@ -798,6 +798,7 @@
       }
     },
     "generated": "Generated",
+    "generatedHint": "Pieces generated with AI, for inspiration",
     "unpinAsk": "Take it off the board? It comes off the collage too.",
     "unpinPictureAsk": "Take the picture off? It is deleted.",
     "unpinConfirm": "Take off",

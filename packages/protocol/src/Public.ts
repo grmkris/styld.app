@@ -12,12 +12,14 @@ import { Colours, PieceId } from './Wardrobe.ts'
 export const Author = Schema.Struct({ handle: Handle, name: Schema.String, tone: Tone })
 export type Author = typeof Author.Type
 
-/** A piece as others see it: what it is, never its notes. Its picture is `/cdn/public/pieces/:id/:size`. */
+/** A piece as others see it: what it is, never its notes. Its picture is `/cdn/public/pieces/:id/:size`.
+ * `generated`: a house garment Styld generated (owner, 4 November 2026), always shown marked Generated. */
 export const PublicPiece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Schema.String),
   type: PieceType,
   colours: Colours,
+  generated: Schema.Boolean,
 })
 export type PublicPiece = typeof PublicPiece.Type
 
@@ -28,6 +30,8 @@ export const PublicLook = Schema.Struct({
   occasion: Schema.NullOr(Schema.String),
   pieces: Schema.Array(PublicPiece),
   sharedAt: Schema.String,
+  /** One of its pieces is generated: the look is shown marked Generated. */
+  generated: Schema.Boolean,
 })
 export type PublicLook = typeof PublicLook.Type
 
@@ -60,6 +64,8 @@ export const PublicBoard = Schema.Struct({
   pins: Schema.Array(PublicPin),
   by: Author,
   publishedAt: Schema.String,
+  /** A piece on it, pinned, on its table or in a look, is generated: the board is shown marked Generated. */
+  generated: Schema.Boolean,
 })
 export type PublicBoard = typeof PublicBoard.Type
 
@@ -72,6 +78,7 @@ export const PublicBoardSummary = Schema.Struct({
   cover: Schema.Array(PublicPin),
   pinCount: Schema.Int,
   publishedAt: Schema.String,
+  generated: Schema.Boolean,
 })
 export type PublicBoardSummary = typeof PublicBoardSummary.Type
 

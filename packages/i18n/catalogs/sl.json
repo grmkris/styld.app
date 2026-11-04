@@ -798,6 +798,7 @@
       }
     },
     "generated": "Ustvarjeno",
+    "generatedHint": "Kosi, ustvarjeni z umetno inteligenco, za navdih",
     "unpinAsk": "Odstraniš iz zbirke? Umakne se tudi s kolaža.",
     "unpinPictureAsk": "Odstraniš sliko? Izbrisala se bo.",
     "unpinConfirm": "Odstrani",

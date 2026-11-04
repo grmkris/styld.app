@@ -51,6 +51,14 @@ export const buttonView = Submodel.defineView<Model, Message, Inputs>((model, { 
 export const generatedMark = <Message>(locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.span(styled(h, styles.generated()), [format(locale, 'board.generated', {})])
 
+/** The mark on a house board, look or piece whose garments Styld generated (owner, 4 November 2026): always shown,
+ * its title saying what it means. */
+export const generatedPiecesMark = <Message>(locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.span(
+    [h.Title(format(locale, 'board.generatedHint', {})), ...styled(h, styles.generated())],
+    [format(locale, 'board.generated', {})],
+  )
+
 /** What a finished ask says: the board it laid out, the sticker it added, or why nothing came. */
 const finishedKey = (generation: Generation): MessageKey => {
   if (generation.status === 'done')

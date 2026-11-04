@@ -13,6 +13,7 @@ export const boardItem = (id: string, handle = 'nika.kovac') => ({
     items: [],
     cover: [],
     pinCount: 0,
+    generated: false,
     publishedAt: '2026-11-04T08:00:00.000Z',
   },
   by: { handle, name: handle, tone: 'clay' },
@@ -21,3 +22,13 @@ export const boardItem = (id: string, handle = 'nika.kovac') => ({
 
 export const feedOf = (ids: ReadonlyArray<string>, cursor: string | null) =>
   Schema.decodeUnknownSync(Feed)({ items: ids.map((id) => boardItem(id)), cursor })
+
+/** A house board of generated garments, gone public by the women's house account. */
+export const generatedFeedOf = (ids: ReadonlyArray<string>) =>
+  Schema.decodeUnknownSync(Feed)({
+    items: ids.map((id) => {
+      const item = boardItem(id, 'styld.women')
+      return { ...item, board: { ...item.board, generated: true } }
+    }),
+    cursor: null,
+  })

@@ -41,12 +41,13 @@ const decoded = <S extends Schema.Top>(schema: S, value: unknown) =>
   // Only Styld's own rows reach here, through the same schemas; a row that does not decode is a bug.
   Schema.decodeUnknownEffect(schema)(value).pipe(Effect.orDie)
 
-const publicPiece = (piece: PieceRow) =>
+const publicPiece = (piece: PieceRow, generated: boolean) =>
   decoded(PublicPiece, {
     id: piece.id,
     name: piece.name,
     type: piece.type,
     colours: piece.colours,
+    generated,
   })
 
 export const authorOf = (row: ProfileRow): Option.Option<Author> =>
@@ -63,6 +64,7 @@ export const summaryOf = (board: PublicBoard): PublicBoardSummary => ({
   cover: board.pins.slice(0, 4),
   pinCount: board.pins.length,
   publishedAt: board.publishedAt,
+  generated: board.generated,
 })
 
 /** What others may see of a board's pins and table, given which pieces and looks they may see. */
@@ -148,7 +150,8 @@ const shownPieces = (accountId: string, rows: ReadonlyArray<PieceWithPicture>) =
       ready.map(({ piece }) => piece.id),
     )
     const kept = ready.filter(({ piece }) => visibleAt('link', statuses.get(piece.id)))
-    const shown = yield* Effect.forEach(kept, ({ piece }) => publicPiece(piece))
+    const generated = yield* stored((yield* PublicStore).generatedAmong(kept.map(({ piece }) => piece.id)))
+    const shown = yield* Effect.forEach(kept, ({ piece }) => publicPiece(piece, generated.has(piece.id)))
     return new Map<string, PublicPiece>(shown.map((piece) => [piece.id, piece]))
   })
 const piecesById = (accountId: string, pieceIds: ReadonlyArray<string>) =>
@@ -172,18 +175,20 @@ const shownLooks = (accountId: string, rows: ReadonlyArray<LookRow>) =>
       accountId,
       found.map(({ piece }) => piece.id),
     )
-    return yield* Effect.forEach(kept, (row) =>
-      decoded(PublicLook, {
+    return yield* Effect.forEach(kept, (row) => {
+      const its = found.flatMap(({ lookId, piece }) => {
+        const shown = lookId === row.id ? pieces.get(piece.id) : undefined
+        return shown === undefined ? [] : [shown]
+      })
+      return decoded(PublicLook, {
         id: row.id,
         name: row.name,
         occasion: row.occasion,
-        pieces: found.flatMap(({ lookId, piece }) => {
-          const shown = lookId === row.id ? pieces.get(piece.id) : undefined
-          return shown === undefined ? [] : [shown]
-        }),
+        pieces: its,
         sharedAt: (row.sharedAt ?? row.createdAt).toISOString(),
-      }),
-    )
+        generated: its.some(({ generated }) => generated),
+      })
+    })
   })
 
 /** What others may see of these boards' pins and tables. */
@@ -202,6 +207,12 @@ const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyA
     }
     return seen
   })
+
+/** Whether others see a generated piece on the board: pinned, on its table, or in a look pinned on it. */
+const showsGenerated = (seen: Seen, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
+  [...pins.map(({ pin }) => pin.pieceId), ...items.map(({ pieceId }) => pieceId)].some(
+    (id) => id !== null && seen.pieces.get(id)?.generated === true,
+  ) || pins.some(({ pin }) => pin.lookId !== null && seen.looks.get(pin.lookId)?.generated === true)
 
 /** A public board and its owner, while others may see it. */
 const shownBoard = (viewer: Viewer, boardId: string) =>
@@ -259,6 +270,11 @@ const summaries = (accountId: string, rows: ReadonlyArray<BoardRow>) =>
         cover: shown.slice(0, 4),
         pinCount: shown.length,
         publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
+        generated: showsGenerated(
+          seen,
+          pins.filter(({ pin }) => pin.boardId === row.id),
+          items.filter(({ boardId }) => boardId === row.id),
+        ),
       })
     })
   })
@@ -340,6 +356,7 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
       pins: publicPins(seen, pins),
       by: owner.author,
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
+      generated: showsGenerated(seen, pins, items),
     })
   }, Effect.provide(context)),
   look: Effect.fn('Styld.Public.look')(function* (lookId: string, viewer: Option.Option<string> = Option.none()) {

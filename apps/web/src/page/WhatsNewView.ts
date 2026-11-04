@@ -13,6 +13,7 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { publicPicture, publicPieceImage } from './Board/Table.ts'
+import { generatedPiecesMark } from './Board/MakeView.ts'
 import { publicFace } from './PublicTiles.ts'
 import { itemKey, Message, type Model, More, stripLength, WatchListEnd } from './WhatsNew.ts'
 import * as styles from './WhatsNewView.styles.ts'
@@ -49,6 +50,7 @@ const partsOf = (item: FeedItem, locale: Locale, h: HtmlBuilder<Message>) =>
         href: boardRouter({ boardId: board.id }),
         name: board.name,
         picture: publicFace(board, locale, h),
+        generated: board.generated,
       }),
       PinnedOnBoard: ({ pin, boardId, boardName }) => ({
         href: Match.value(pin).pipe(
@@ -58,23 +60,31 @@ const partsOf = (item: FeedItem, locale: Locale, h: HtmlBuilder<Message>) =>
         ),
         name: boardName,
         picture: h.span(styled(h, styles.paper()), [pinPicture(pin, h)]),
+        generated: Match.value(pin).pipe(
+          Match.tag('PublicPiecePin', ({ piece }) => piece.generated),
+          Match.tag('PublicLookPin', ({ look }) => look.generated),
+          Match.tag('PublicPicturePin', ({ generated }) => generated),
+          Match.exhaustive,
+        ),
       }),
       SharedLook: ({ look }) => ({
         href: lookRouter({ lookId: look.id }),
         name: look.name,
         picture: h.span(styled(h, styles.paper()), [lookPicture(look, h)]),
+        generated: look.generated,
       }),
     }),
   )
 
 /** One thing someone made public: the card is the link, with whose it is as text inside it. */
 const itemCard = (item: FeedItem, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const { href, name, picture } = partsOf(item, locale, h)
+  const { href, name, picture, generated } = partsOf(item, locale, h)
   return h.a(
     [h.Href(href), ...styled(h, styles.card())],
     [
       h.span(styled(h, styles.picture()), [picture]),
       h.span(styled(h, styles.name()), [name]),
+      generated ? generatedPiecesMark(locale, h) : h.empty,
       h.span(styled(h, styles.by()), [
         avatar(item.by.name, item.by.tone, 'small', h),
         h.span(styled(h, styles.byName()), [format(locale, 'share.byline', { name: item.by.name })]),

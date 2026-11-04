@@ -319,22 +319,26 @@ const backQueries = (db: Database['Service']) => ({
     }).pipe(Effect.map(([updated]) => first(updated))),
 })
 
+/** Which of these pieces are house garments the seed generated (owner, 4 November 2026), for every module that reads
+ * it: the wardrobe never redraws them, and public reads mark them Generated. */
+export const generatedAmong = (db: Database['Service'], pieceIds: ReadonlyArray<string>) =>
+  Effect.map(
+    inChunks(pieceIds, (chunk) =>
+      db
+        .select({ id: pieceProvenance.pieceId })
+        .from(pieceProvenance)
+        .where(and(inArray(pieceProvenance.pieceId, chunk), eq(pieceProvenance.origin, 'generated'))),
+    ),
+    (rows): ReadonlySet<string> => new Set(rows.map(({ id }) => id)),
+  )
+
 /** Reads for the queue, which acts for no one in particular: pieces to process. */
 const queueQueries = (db: Database['Service']) => ({
   /** For the processing queue, which acts for no one in particular. */
   findPieceForProcessing: (pieceId: string) =>
     query(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
   /** Which of these pieces are house garments the seed generated: never redrawn, and shown marked Generated. */
-  generatedAmong: (pieceIds: ReadonlyArray<string>) =>
-    Effect.map(
-      inChunks(pieceIds, (chunk) =>
-        db
-          .select({ id: pieceProvenance.pieceId })
-          .from(pieceProvenance)
-          .where(and(inArray(pieceProvenance.pieceId, chunk), eq(pieceProvenance.origin, 'generated'))),
-      ),
-      (rows) => new Set(rows.map(({ id }) => id)),
-    ),
+  generatedAmong: (pieceIds: ReadonlyArray<string>) => generatedAmong(db, pieceIds),
   /** What Clef read from a generated piece's picture on import, kept for the operator's report. */
   describedGenerated: (pieceId: string, type: PieceType | null, whole: number, at: Date) =>
     query(() =>

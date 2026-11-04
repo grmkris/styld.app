@@ -3,6 +3,7 @@ import type { PublicBoard } from '@styld/protocol'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { styled } from '../../Styled.ts'
 import { byline, pinTile, tileGrid } from '../PublicTiles.ts'
+import { generatedPiecesMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
 import { fromPublic, stillTable } from './Table.ts'
 
@@ -14,7 +15,12 @@ export const visitingView = <Message>(
   h: HtmlBuilder<Message>,
 ): Html =>
   h.div(styled(h, styles.page()), [
-    h.header(styled(h, styles.head()), [h.h1([], [board.name]), byline(board.by, locale, h), actions]),
+    h.header(styled(h, styles.head()), [
+      h.h1([], [board.name]),
+      byline(board.by, locale, h),
+      board.generated ? generatedPiecesMark(locale, h) : h.empty,
+      actions,
+    ]),
     board.items.length === 0
       ? h.empty
       : h.div(styled(h, styles.collage()), [stillTable(board.items, board.paper, [], h, fromPublic)]),

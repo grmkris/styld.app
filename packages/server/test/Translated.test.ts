@@ -1,8 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Layer, Predicate } from 'effect'
-import { BoardStore } from '../src/boards/Store.ts'
-import { Database } from '../src/kernel/Db.ts'
-import { Media } from '../src/kernel/Media.ts'
+import { Effect, Predicate } from 'effect'
 import { PublicPages } from '../src/social/Public.ts'
 import {
   boardSourceDigest,
@@ -12,7 +9,7 @@ import {
   translatedItems,
 } from '../src/social/Translated.ts'
 import { localD1 } from './LocalD1.ts'
-import { passingChecks } from './PassingChecks.ts'
+import { publicPagesOver } from './PassingChecks.ts'
 
 // The same board and profile in Slovenian (owner, 4 November 2026): every public read picks the translation for the
 // reader's language while it still translates the original, and the original once the owner changed it.
@@ -41,17 +38,7 @@ const seeded = () =>
       INSERT INTO profile_translations (account_id, locale, name, bio, source_digest, updated_at)
         VALUES ('ac_1', 'sl', 'Ana SL', 'Plasti.', '${profile}', 0);
     `)
-    const layer = PublicPages.layer.pipe(
-      Layer.provide(BoardStore.layer),
-      Layer.provideMerge(passingChecks),
-      Layer.provideMerge(
-        Layer.mergeAll(
-          Database.layer(database),
-          // SAFETY: the media binding is an empty fake -- reading a public page's words reads no object
-          Layer.succeed(Media, Media.of({} as never)),
-        ),
-      ),
-    )
+    const layer = publicPagesOver(database)
     return { database, layer }
   })
 

@@ -19,6 +19,10 @@ const pinImage = (pin: PublicPin): ReadonlyArray<string> =>
 
 const firstOf = (images: ReadonlyArray<string>) => images[0] ?? null
 
+/** A link preview of a house board, look or piece whose garments Styld generated says so (owner, 4 November 2026). */
+const generatedNote = (generated: boolean, description: string, locale: Locale) =>
+  generated ? `${format(locale, 'board.generatedHint', {})}. ${description}` : description
+
 const profilePath = /^\/@([a-z0-9._]{3,30})$/u
 const pagePath = /^\/(boards|looks|pieces)\/([A-Za-z0-9_-]{1,40})$/u
 
@@ -40,7 +44,7 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
       const board = yield* pages.board(id, viewer)
       return {
         title: format(locale, 'share.board.metaTitle', { title: board.name }),
-        description: format(locale, 'share.board.metaDescription', {}),
+        description: generatedNote(board.generated, format(locale, 'share.board.metaDescription', {}), locale),
         image: firstOf(board.pins.flatMap(pinImage)),
       } satisfies PageMeta
     }
@@ -48,7 +52,7 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
       const { look } = yield* pages.look(id, viewer)
       return {
         title: format(locale, 'share.board.metaTitle', { title: look.name }),
-        description: format(locale, 'share.look.metaDescription', {}),
+        description: generatedNote(look.generated, format(locale, 'share.look.metaDescription', {}), locale),
         image: firstOf(look.pieces.map(pieceImage)),
       } satisfies PageMeta
     }
@@ -58,7 +62,7 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
         title: format(locale, 'share.board.metaTitle', {
           title: piece.name ?? format(locale, `wardrobe.typeOne.${piece.type}`, {}),
         }),
-        description: format(locale, 'share.piece.metaDescription', {}),
+        description: generatedNote(piece.generated, format(locale, 'share.piece.metaDescription', {}), locale),
         image: pieceImage(piece),
       } satisfies PageMeta
     }

@@ -11,6 +11,7 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
+import { generatedPiecesMark } from './Board/MakeView.ts'
 import { publicPieceImage } from './Board/Table.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import * as PeopleView from './PeopleView.ts'
@@ -49,7 +50,7 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
     )
   return emptyOr(
     tileGrid(
-      profile.looks.map((look) => ({ id: look.id, tile: lookTile(look, h) })),
+      profile.looks.map((look) => ({ id: look.id, tile: lookTile(look, locale, h) })),
       h,
     ),
     profile.looks.length === 0,
@@ -203,6 +204,7 @@ const pieceView = (
     h.div(styled(h, styles.pieceHead()), [
       h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
       piece.name === null ? h.empty : h.p(styled(h, styles.meta()), [format(locale, kindName(piece), {})]),
+      piece.generated ? generatedPiecesMark(locale, h) : h.empty,
     ]),
     // One's own piece needs no byline and has nothing to save or report: it opens in the wardrobe instead.
     ...(yours

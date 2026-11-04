@@ -123,8 +123,8 @@ const overlap = (proposal: OutfitProposal, worn: ReadonlySet<string>) =>
   proposal.pieceIds.filter((id) => worn.has(id)).length
 
 /** A complete batch (T-10): Clef's best first, then each time the best-ranked of those repeating the fewest pieces the
- * batch already wears, the fixed pieces aside, so six outfits do not all share one pair of shoes.
- * @internal Exported for its tests. */
+ * batch already wears, the fixed pieces aside, so six outfits do not all share one pair of shoes. The house boards'
+ * seed chooses its outfits the same way (`seed/Tables.ts`). */
 export const distinct = (
   byScore: ReadonlyArray<OutfitProposal>,
   count: number,
