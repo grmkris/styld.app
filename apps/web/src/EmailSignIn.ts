@@ -87,7 +87,7 @@ export const emailSignInLayer = (document: Document) =>
               returnTarget: googleReturn(forConnection),
             })
             yield* Effect.sync(() => window.location.assign(Redacted.value(authorizationUrl)))
-          }).pipe(Effect.mapError(refused)),
+          }).pipe(Effect.mapError(() => SignInRefused.make({ problem: 'google' }))),
       }
     }),
   )
