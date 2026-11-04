@@ -33,9 +33,9 @@ export interface Judge {
 }
 
 /** The brief's bar: one garment, the spec's type, its first colour among those seen, and nothing else in the picture. */
-/** Types that name a use rather than a shape: a judge reads sportswear joggers as trousers, and loungewear as a
- * jumper or trousers, and is right to. */
-const uses: ReadonlySet<string> = new Set(['sportswear', 'loungewear'])
+/** Types that name a use as well as a shape: a judge reads sports leggings or track trousers as trousers, a sports top
+ * as a t-shirt, and loungewear as a jumper or trousers, and is right to. */
+const uses: ReadonlySet<string> = new Set(['sportsBras', 'sportTops', 'sportBottoms', 'tracksuits', 'loungewear'])
 
 /** Whether the judge read the garment as the spec's type: the same, or any shape for a type that names a use. */
 const typeFits = (read: string | null, spec: Spec) => read === spec.type || (read !== null && uses.has(spec.type))

@@ -1,7 +1,7 @@
-import { Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import type { RunClef } from '../packages/server/src/providers/Clef.ts'
 
-// What the operator scripts that re-sort stored pieces (`retype-pieces.ts`, `retype-tops.ts`) reach through the
+// What the operator scripts that re-sort stored pieces (`retype-pieces.ts`, `retype-tops.ts`, `retype-sport.ts`) reach through the
 // Cloudflare REST API: a stage's D1 database by name, its R2 media bucket (in the EU jurisdiction) and Workers AI's
 // Clef-flash, so their answers are the ones the Worker gets. The token is sent only as the Authorization header and
 // never printed; a refusal names Cloudflare's own reasons.
@@ -80,3 +80,24 @@ export const stageOptions = {
   out: { type: 'string' },
   apply: { type: 'boolean', default: false },
 } as const
+
+/** Each stored piece read by `readOf`, six at a time; a piece that is not read is named and left as it is. */
+export const readEach = async <Piece extends { readonly id: string }, Read>(
+  pieces: ReadonlyArray<Piece>,
+  readOf: (piece: Piece) => Effect.Effect<Option.Option<Read>, unknown>,
+): Promise<ReadonlyArray<Read>> =>
+  (
+    await Effect.runPromise(
+      Effect.forEach(
+        pieces,
+        (piece) =>
+          readOf(piece).pipe(
+            Effect.orElseSucceed(() => {
+              console.error(`${piece.id}: not read; left as it is`)
+              return Option.none<Read>()
+            }),
+          ),
+        { concurrency: 6 },
+      ),
+    )
+  ).flatMap((read) => Option.toArray(read))

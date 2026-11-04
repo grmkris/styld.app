@@ -23,7 +23,7 @@ import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
 import { askClef, imageOf } from '../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, stageOptions } from './CloudflareRest.ts'
+import { cloudflareStage, readEach, stageOptions } from './CloudflareRest.ts'
 import { sleeveBar, type SleeveRead, sleeveQuestions, sleeveRead } from './Sleeves.ts'
 
 const { values } = parseArgs({ options: { ...stageOptions, before: { type: 'string' } } })
@@ -82,20 +82,7 @@ const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
   ),
 )
 
-const found = await Effect.runPromise(
-  Effect.forEach(
-    pieces,
-    (piece) =>
-      readOf(piece).pipe(
-        Effect.orElseSucceed(() => {
-          console.error(`${piece.id}: not read; left as it is`)
-          return Option.none<Read>()
-        }),
-      ),
-    { concurrency: 6 },
-  ),
-)
-const reads = found.flatMap((read) => Option.toArray(read))
+const reads = await readEach(pieces, readOf)
 const moves = reads.filter((read) => read.to !== undefined)
 const unsure = reads.filter(
   (read) => read.to === undefined && (read.sleeve !== 'short' || read.probability < sleeveBar),

@@ -793,7 +793,7 @@ boards:
         jackets:green,
         gilets:black,
         hoodies:grey,
-        sportswear:black,
+        sportBottoms:black,
         trousers:beige,
         outdoorShoes:brown,
         hats:green,
@@ -1053,8 +1053,8 @@ boards:
     paper: stock
     pieces:
       [
-        sportswear:black,
-        sportswear:red,
+        sportBottoms:black,
+        sportBottoms:red,
         knitwear:white:navy,
         hoodies:grey,
         jeans:blue,
@@ -1119,6 +1119,6 @@ boards:
     tags: { audience: all, season: [spring, autumn], template: look, occasion: [sport], aesthetic: [athleisure] }
     moods: [sport]
     paper: sage
-    pieces: [sportswear:grey, hoodies:grey, sportShoes:white, bags:black, hats:black]
+    pieces: [sportBottoms:grey, hoodies:grey, sportShoes:white, bags:black, hats:black]
     translations:
       sl: { name: 'Telovadnica, nato kava', review: pending }

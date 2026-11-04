@@ -58,7 +58,8 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
   shortSleeveTops: 'A t-shirt or casual top with short sleeves, not made for sport or swimming',
   longSleeveTops:
     'A t-shirt or casual top with long sleeves, not a shirt, a knit or a hoodie, not made for sport or swimming',
-  sleevelessTops: 'A tank top, camisole or other top without sleeves or with straps, not made for sport or swimming',
+  sleevelessTops:
+    'A tank top, camisole or other top without sleeves or with straps, not made for sport or swimming, not a sports bra or bikini top',
   shirts: 'A shirt or blouse, with a collar or buttons, or a dressy woven top',
   bodysuits: 'A bodysuit',
   knitwear: 'A knitted jumper, sweater or cardigan',
@@ -67,16 +68,25 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
   jackets: 'A jacket: denim, leather, bomber, puffer or rain jacket',
   coats: 'A coat or trench coat, longer than the hips',
   gilets: 'A gilet, waistcoat or padded vest, without sleeves',
-  dresses: 'A dress of any length',
+  dresses: 'A dress of any length: a top and a skirt in one piece',
   jumpsuits: 'A jumpsuit, playsuit or dungarees',
   jeans: 'Jeans: denim trousers',
-  trousers: 'Everyday trousers, chinos, joggers or leggings, not pyjama bottoms or ski trousers',
-  shorts: 'Shorts',
-  skirts: 'A skirt',
-  sportswear: 'Sportswear for exercise: sports top, sports bra, sports leggings, tracksuit or ski trousers',
+  // Sport against everyday (Eva, 4 November: leggings, sports bras and skirts sorted wrong most): plain leggings are
+  // sport bottoms, and every Sport type says what it is not.
+  trousers:
+    'Everyday trousers: chinos, tailored, wide-leg or cargo trousers or casual joggers, not jeans, leggings, pyjama bottoms or ski trousers',
+  shorts: 'Everyday shorts: denim, linen, tailored or casual shorts, not cycling, running or swim shorts',
+  skirts: 'A skirt of any length, a skort or a tennis skirt: worn from the waist down, not shorts and not a dress',
+  sportsBras:
+    'A sports bra or bra top for exercise: stretchy, wide straps or a racerback, not a bikini top or a camisole',
+  sportTops:
+    'A top made for exercise: a training t-shirt, tank top or long-sleeved top of stretchy, technical or mesh fabric, not a sports bra',
+  sportBottoms:
+    'Leggings, cycling shorts, running shorts or training joggers: close-fitting or stretchy bottoms for exercise',
+  tracksuits: 'A tracksuit, ski trousers or a ski suit',
   sportShoes: 'Shoes made for sport: running shoes, training shoes or indoor court shoes',
   outdoorShoes: 'Hiking boots, walking boots or snow boots',
-  swimwear: 'Swimwear: a swimsuit, a bikini top or bottom, or swim shorts',
+  swimwear: 'Swimwear: a swimsuit, a bikini top or bottom, or swim shorts, not a sports bra',
   loungewear:
     'Loungewear or nightwear: pyjama tops or bottoms, often striped or with a drawstring, a nightdress or a robe',
   trainers: 'Everyday trainers or sneakers, worn for style rather than sport',

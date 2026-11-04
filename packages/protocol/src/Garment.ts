@@ -30,7 +30,10 @@ export const PieceType = Schema.Literals([
   'trousers',
   'shorts',
   'skirts',
-  'sportswear',
+  'sportsBras',
+  'sportTops',
+  'sportBottoms',
+  'tracksuits',
   'sportShoes',
   'outdoorShoes',
   'swimwear',
@@ -54,7 +57,7 @@ export const PieceType = Schema.Literals([
 ])
 export type PieceType = typeof PieceType.Type
 
-/** Where a piece sits in an outfit. `set` holds what is worn on its own for one activity (sportswear, swimwear,
+/** Where a piece sits in an outfit. `set` holds what is worn on its own for one activity (a tracksuit, swimwear,
  * loungewear); outfits use it only when that activity is asked for. Never shown to people. */
 export const Slot = Schema.Literals(['top', 'bottom', 'onePiece', 'layer', 'shoes', 'accessory', 'set'])
 export type Slot = typeof Slot.Type
@@ -78,7 +81,12 @@ const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; rea
   trousers: { group: 'clothing', slot: 'bottom' },
   shorts: { group: 'clothing', slot: 'bottom' },
   skirts: { group: 'clothing', slot: 'bottom' },
-  sportswear: { group: 'sport', slot: 'set' },
+  // Sport by shape (owner, 4 November: Eva found leggings and sports bras sorted among everyday clothes): worn only
+  // when an outfit is for sport (outfits/Rules.ts › suits), as separates or as a tracksuit set.
+  sportsBras: { group: 'sport', slot: 'top' },
+  sportTops: { group: 'sport', slot: 'top' },
+  sportBottoms: { group: 'sport', slot: 'bottom' },
+  tracksuits: { group: 'sport', slot: 'set' },
   // Shoes made for sport: worn only when an outfit is for sport (outfits/Rules.ts › suits).
   sportShoes: { group: 'sport', slot: 'shoes' },
   outdoorShoes: { group: 'sport', slot: 'shoes' },

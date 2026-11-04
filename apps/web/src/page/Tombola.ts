@@ -58,8 +58,8 @@ export const init = (): Model => ({
   maybeSeason: Option.none(),
 })
 
-/** A piece the wheel may land on: ready with a picture, and something to build a day around (not sportswear, swimwear
- * or loungewear, not sport or outdoor shoes, not socks). */
+/** A piece the wheel may land on: ready with a picture, and something to build a day around (nothing made for sport,
+ * no swimwear or loungewear, no socks). */
 const drawable = (piece: Piece) =>
   piece.status === 'ready' &&
   piece.images !== undefined &&

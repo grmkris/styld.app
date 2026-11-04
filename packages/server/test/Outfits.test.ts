@@ -52,8 +52,8 @@ const trainers = piece('trainers')
 const sandals = piece('sandals', { seasons: ['spring', 'summer'] })
 const coat = piece('coats', { seasons: ['autumn', 'winter'] })
 const bag = piece('bags')
-const leggings = piece('sportswear', { occasions: ['sport'] })
-const wardrobe = [tee, shirt, knit, jeans, skirt, shorts, dress, trainers, sandals, coat, bag, leggings]
+const tracksuit = piece('tracksuits', { occasions: ['sport'] })
+const wardrobe = [tee, shirt, knit, jeans, skirt, shorts, dress, trainers, sandals, coat, bag, tracksuit]
 
 /** Every outfit the rules draw for a request over many seeds. */
 const drawnOver = (request: Brief) =>
@@ -172,7 +172,26 @@ describe('the outfit rules', () => {
       expect(outfit).not.toContain(sandals)
     }
     const sporty: OutfitBrief = { occasion: 'sport' }
-    expect(drawnOver(brief(wardrobe, { brief: sporty })).some((outfit) => outfit.includes(leggings))).toBe(true)
+    expect(drawnOver(brief(wardrobe, { brief: sporty })).some((outfit) => outfit.includes(tracksuit))).toBe(true)
+  })
+
+  test('sport clothes go with sport only: a sports bra or sport top with sport leggings is a whole outfit for it', () => {
+    const bra = piece('sportsBras')
+    const trainingTop = piece('sportTops')
+    const sportLeggings = piece('sportBottoms')
+    const runners = piece('sportShoes')
+    const sporting = [...wardrobe, bra, trainingTop, sportLeggings, runners]
+    const sportPieces = [bra, trainingTop, sportLeggings, runners, tracksuit]
+    for (const occasion of [undefined, 'casual'] as const)
+      for (const outfit of drawnOver(brief(sporting, { brief: occasion === undefined ? {} : { occasion } })))
+        for (const sportPiece of sportPieces) expect(outfit).not.toContain(sportPiece)
+    const sporty = drawnOver(brief(sporting, { brief: { occasion: 'sport' } }))
+    expect(
+      sporty.some((outfit) => outfit.includes(sportLeggings) && (outfit.includes(bra) || outfit.includes(trainingTop))),
+    ).toBe(true)
+    // A wardrobe with only sport tops still dresses a casual day in them rather than in nothing.
+    for (const outfit of drawnOver(brief([trainingTop, jeans, trainers], { brief: { occasion: 'casual' } })))
+      expect(outfit).toContain(trainingTop)
   })
 
   test('the combinations already shown never come back, and the draws say when the rules have run out', () => {

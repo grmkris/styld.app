@@ -14,6 +14,7 @@ export default {
         'tools/backfill-pictures.ts',
         'tools/grant-membership.ts',
         'tools/retype-tops.ts',
+        'tools/retype-sport.ts',
         'tools/refind-photos.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/seed/Run.ts',
