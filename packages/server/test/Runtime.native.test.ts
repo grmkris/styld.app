@@ -26,6 +26,7 @@ import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
 import { verifyPhotos } from './PhotosAcceptance.ts'
 import { verifyTryOn } from './TryOnAcceptance.ts'
+import { verifyTryOnJourney } from './TryOnBrowserAcceptance.ts'
 import { verifyImports } from './ImportAcceptance.ts'
 import { verifySeed } from './SeedAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
@@ -220,6 +221,12 @@ test(
   "lays out today's table (Spin, Wear this), a board by hand (move, pinch, label, picture, undo, save as a look), Ask, Styld and the Wardrobe's tabs",
   inBrowser(verifyGalleryJourney),
   { timeout: 120000 },
+)
+
+test(
+  'tries a Gallery photo on in the Lab: This is me, the cost, the drawing beside its photo, then Delete',
+  inBrowser(verifyTryOnJourney),
+  { timeout: 90000 },
 )
 
 test('hydrates the built website and persists locale changes in a browser', inBrowser(verifyBrowser), {
