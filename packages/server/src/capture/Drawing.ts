@@ -11,9 +11,9 @@ import {
   turned,
 } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
-import { readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
+import { readObject, readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
 import { opaqueShare } from './Pixels.ts'
-import { type GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
+import { type DrawRequest, type GarmentVision, ImageGenerator, type Picture, PictureWork } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
 import { isStale } from '../wardrobe/Shown.ts'
@@ -61,6 +61,8 @@ export interface Slot<Row extends Drawing, E, R> {
   ) => Effect.Effect<{ readonly subject: Option.Option<Rgba>; readonly other: Option.Option<Rgba> }, E, R>
   /** Whether to draw it from its cut-out, or ask for a retake. */
   readonly plan: (row: Row, subject: Rgba) => Effect.Effect<'draw' | 'retake', ProviderError, GarmentVision>
+  /** The photo the side's cut-out came from, asked for only once Muse refused the cut-out alone (`photoOf`). */
+  readonly photo: (piece: PieceRow) => Effect.Effect<Option.Option<Rgba>, never, R>
   readonly hint: (row: Row) => Option.Option<string>
   /** After each delivery, whatever it did: a redraw's credit settled. */
   readonly after: (pieceId: string) => Effect.Effect<void, E, R>
@@ -81,6 +83,26 @@ export const frontOf = (piece: Pick<PieceRow, 'imageKey' | 'rotation'>) =>
     cutoutAt(piece.imageKey),
     Option.map((front) => turned(front, piece.rotation)),
   )
+
+/** A piece's photo as Muse may see it once it refused the cut-out alone: Styld's working copy (orientation applied,
+ * metadata gone), turned as its cut-out is. None when the cut-out is the photo itself, or the photo cannot be read or
+ * re-encoded: the drawing then fails as a refusal does. */
+export const photoOf = (piece: Pick<PieceRow, 'originalKey' | 'imageKey' | 'rotation'>) =>
+  piece.originalKey === piece.imageKey
+    ? Effect.succeed(Option.none<Rgba>())
+    : readObject(piece.originalKey).pipe(
+        Effect.flatMap(
+          Option.match({
+            onNone: () => Effect.succeed(Option.none<Rgba>()),
+            onSome: (original) =>
+              Effect.map(
+                Effect.flatMap(PictureWork, (work) => work.workingCopies(original)),
+                ({ png }) => Option.map(readPng(png), (photo) => turned(photo, piece.rotation)),
+              ),
+          }),
+        ),
+        Effect.orElseSucceed(() => Option.none<Rgba>()),
+      )
 
 const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
 
@@ -125,28 +147,25 @@ const end = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row, from: P
 const showStored = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
   move(slot, row, ['checking'], { state: row.cleanKey === null ? 'failed' : 'ready' })
 
-/** Ask the image model for a claimed drawing. Muse refusing ends it; Muse busy hands it back to the queue; an answer
- * lost on the way ends it as unknown, never drawn again. The picture, or none when it ended. */
-const ask = <Row extends Drawing, E, R>(
-  slot: Slot<Row, E, R>,
-  claimed: Row,
-  piece: PieceRow,
-  subject: Rgba,
-  other: Option.Option<Rgba>,
-) =>
-  Effect.flatMap(ImageGenerator, (generator) =>
-    generator
-      .draw({
-        side: slot.side,
-        subject: modelPicture(subject, drawnFrom),
-        other: Option.map(other, (side) => modelPicture(side, drawnFrom)),
-        photo: Option.none(),
-        type: piece.type,
-        colours: piece.colours,
-        key: claimed.keyColour ?? 'green',
-        hint: slot.hint(claimed),
-      })
-      .pipe(
+/** A drawing claimed for drawing: its row, its piece, the cut-out it is drawn from and the piece's other side. */
+interface Claimed<Row extends Drawing> {
+  readonly claimed: Row
+  readonly piece: PieceRow
+  readonly subject: Rgba
+  readonly other: Option.Option<Rgba>
+}
+
+/** Ask the image model for a claimed drawing. Muse refusing the cut-out alone asks once more with the piece's photo
+ * first and the cut-out second, the garment to draw from it named (owner, 4 November: the spike's variant C drew a
+ * bodysuit Muse had refused from its cut-out); a second refusal, or no photo, ends it. Both asks are one drawing, so a
+ * redraw holds one credit. Muse busy hands it back to the queue; an answer lost on the way ends it as unknown, never
+ * drawn again. The picture, or none when it ended. */
+const ask = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, { claimed, piece, subject, other }: Claimed<Row>) =>
+  Effect.gen(function* () {
+    const generator = yield* ImageGenerator
+    const refused = () => Effect.as(end(slot, claimed, 'generating', 'refused'), Option.none<Picture>())
+    const asked = <E2, R2>(request: DrawRequest, onRefused: () => Effect.Effect<Option.Option<Picture>, E2, R2>) =>
+      generator.draw(request).pipe(
         Effect.map(Option.some),
         Effect.catchReasons('ProviderError', {
           OutcomeUnknown: () => Effect.as(end(slot, claimed, 'generating', 'unknown'), Option.none<Picture>()),
@@ -156,22 +175,36 @@ const ask = <Row extends Drawing, E, R>(
               move(slot, claimed, ['generating'], { state: 'queued', version: claimed.version - 1, claimedAt: null }),
               Effect.fail(ProviderError.make({ provider: 'meta-muse', reason })),
             ),
-          Refused: () => Effect.as(end(slot, claimed, 'generating', 'refused'), Option.none<Picture>()),
-          Broken: () => Effect.as(end(slot, claimed, 'generating', 'refused'), Option.none<Picture>()),
+          Refused: onRefused,
+          Broken: refused,
         }),
-      ),
-  )
+      )
+    const request: DrawRequest = {
+      side: slot.side,
+      subject: modelPicture(subject, drawnFrom),
+      other: Option.map(other, (side) => modelPicture(side, drawnFrom)),
+      photo: Option.none(),
+      type: piece.type,
+      colours: piece.colours,
+      key: claimed.keyColour ?? 'green',
+      hint: slot.hint(claimed),
+    }
+    return yield* asked(request, () =>
+      Effect.gen(function* () {
+        const photo = yield* slot.photo(piece)
+        if (Option.isNone(photo)) return yield* refused()
+        yield* Effect.annotateCurrentSpan('styld.picture.fromPhoto', true)
+        const fromPhoto = { ...request, other: Option.none(), photo: Option.some(modelPicture(photo.value, drawnFrom)) }
+        return yield* asked(fromPhoto, refused)
+      }),
+    )
+  })
 
 /** Draw a claimed drawing, key its background out, store it and show it. */
-const draw = <Row extends Drawing, E, R>(
-  slot: Slot<Row, E, R>,
-  claimed: Row,
-  piece: PieceRow,
-  subject: Rgba,
-  other: Option.Option<Rgba>,
-) =>
+const draw = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, job: Claimed<Row>) =>
   Effect.gen(function* () {
-    const answer = yield* ask(slot, claimed, piece, subject, other)
+    const { claimed } = job
+    const answer = yield* ask(slot, job)
     if (Option.isNone(answer)) return
     const key = claimed.keyColour ?? 'green'
     const keyed = Option.flatMap(readPng(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
@@ -207,7 +240,7 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
     }
     if (!(yield* move(slot, row, ['queued'], claim))) return
     yield* removeObject(row.cleanKey)
-    yield* draw(slot, { ...row, ...claim }, piece.value, subject.value, other)
+    yield* draw(slot, { claimed: { ...row, ...claim }, piece: piece.value, subject: subject.value, other })
   })
 
 /** A side's drawing, from its queued state to its end. */

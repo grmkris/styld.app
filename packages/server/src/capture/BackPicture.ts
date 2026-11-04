@@ -25,6 +25,8 @@ const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
   keyOf: (row, version) => backPictureKey(row.accountId, row.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: cutoutAt(piece.backImageKey), other: frontOf(piece) }),
   plan: () => Effect.succeed('draw'),
+  // A back is its own photo, with no wider one kept beside it: a refused back fails.
+  photo: () => Effect.succeed(Option.none()),
   hint: () => Option.none(),
   after: () => Effect.void,
 })

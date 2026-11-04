@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect'
 import { planFor } from './CleanPicture.ts'
-import { cutoutAt, drawingOf, frontOf, hasEnded } from './Drawing.ts'
+import { cutoutAt, drawingOf, frontOf, hasEnded, photoOf } from './Drawing.ts'
 import { pictureKey, storedAs } from './Shared.ts'
 import { judgedAt } from './Garments.ts'
 import { GarmentVision } from './Providers.ts'
@@ -52,6 +52,7 @@ const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: cutoutAt(piece.backImageKey) }),
   plan: planFront,
+  photo: photoOf,
   hint: (picture) => Option.fromNullishOr(picture.hint),
   after: settleHold,
 })
