@@ -58,12 +58,6 @@ export interface Judgement {
   readonly face: number
 }
 
-/** How a drawn picture compares with the real cut-out (0–1): the same garment, and faithful colour, print and logos. */
-export interface Comparison {
-  readonly same: number
-  readonly faithful: number
-}
-
 /** Cloudflare Clef-flash: typed questions about a picture, each answered with probabilities. */
 export class GarmentVision extends Context.Service<
   GarmentVision,
@@ -76,7 +70,6 @@ export class GarmentVision extends Context.Service<
       layout: 'held' | 'flat',
     ) => Effect.Effect<HeldCheck, ProviderError>
     readonly judge: (cutout: Picture) => Effect.Effect<Judgement, ProviderError>
-    readonly compare: (drawn: Picture, real: Picture) => Effect.Effect<Comparison, ProviderError>
     /** How likely two real pictures show the same garment (0–1): two sightings, or a sighting and a piece. */
     readonly sameGarment: (picture: Picture, other: Picture) => Effect.Effect<number, ProviderError>
     /** A frame of a turn beside the clean picture it ends on. */

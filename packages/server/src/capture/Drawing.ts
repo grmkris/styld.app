@@ -11,11 +11,9 @@ import {
   turned,
 } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
-import { gateFor } from './CleanPicture.ts'
 import { judgedAt } from './Garments.ts'
 import { readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
 import { opaqueShare } from './Pixels.ts'
-import { capturePolicy } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Judgement, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
@@ -27,8 +25,9 @@ import { CaptureMetrics, type PictureOutcome } from '../kernel/Metrics.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 
 // One drawing lifecycle for either side of a piece (owner, 4 November 2026: a pressed back, drawn only from a real
-// one, beside the front's clean picture): judge the cut-out, claim, draw with the image model, key the background out,
-// store, and check the drawing against the cut-out. `piece_pictures` and `piece_back_pictures` share the columns it
+// one, beside the front's clean picture): plan, claim, draw with the image model, key the background out, store and
+// show. A drawing is not checked against its cut-out (owner, 4 November: `Policy.ts` › `pictures`); the person's photo
+// is one swipe away. `piece_pictures` and `piece_back_pictures` share the columns it
 // reads and writes; what differs per side (its rows, its file, its cut-outs, when to draw, a redraw's credit) is its
 // `Slot`.
 
@@ -122,29 +121,10 @@ const move = <Row extends Drawing, E, R>(
 const end = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row, from: PictureState, why: string) =>
   Effect.andThen(Effect.annotateCurrentSpan('styld.picture.failed', why), move(slot, row, [from], { state: 'failed' }))
 
-/** A stored drawing that cannot be checked ends, and its file goes. */
-const endChecking = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row, why: string) =>
-  Effect.gen(function* () {
-    yield* Effect.annotateCurrentSpan('styld.picture.failed', why)
-    if (yield* move(slot, row, ['checking'], { state: 'failed', cleanKey: null })) yield* removeObject(row.cleanKey)
-  })
-
-/** Ask the decision model how like the real cut-out the drawing is, and show it or drop it. */
-const check = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row, drawn: Rgba, real: Rgba) =>
-  Effect.gen(function* () {
-    const comparison = yield* (yield* GarmentVision).compare(
-      modelPicture(drawn, judgedAt),
-      modelPicture(real, judgedAt),
-    )
-    yield* Effect.annotateCurrentSpan({
-      'styld.picture.same': comparison.same,
-      'styld.picture.faithful': comparison.faithful,
-    })
-    const gate = gateFor(comparison, capturePolicy.pictures)
-    if (gate !== 'rejected') return yield* move(slot, row, ['checking'], { state: gate })
-    if (yield* move(slot, row, ['checking'], { state: 'rejected', cleanKey: null })) yield* removeObject(row.cleanKey)
-    return true
-  })
+/** A drawing stored before 4 November's release, still waiting for the check it no longer gets: shown, as one stored
+ * now is. */
+const showStored = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
+  move(slot, row, ['checking'], { state: row.cleanKey === null ? 'failed' : 'ready' })
 
 /** Ask the image model for a claimed drawing. Muse refusing ends it; Muse busy hands it back to the queue; an answer
  * lost on the way ends it as unknown, never drawn again. The picture, or none when it ended. */
@@ -179,8 +159,7 @@ const ask = <Row extends Drawing, E, R>(
       ),
   )
 
-/** Draw a claimed drawing, key its background out and store it. The stored drawing and the row checking it, or none
- * when it ended. */
+/** Draw a claimed drawing, key its background out, store it and show it. */
 const draw = <Row extends Drawing, E, R>(
   slot: Slot<Row, E, R>,
   claimed: Row,
@@ -188,32 +167,20 @@ const draw = <Row extends Drawing, E, R>(
   other: Option.Option<Rgba>,
 ) =>
   Effect.gen(function* () {
-    const ended = Option.none<{ readonly clean: Rgba; readonly checking: Row }>()
     const answer = yield* ask(slot, claimed, subject, other)
-    if (Option.isNone(answer)) return ended
+    if (Option.isNone(answer)) return
     const key = claimed.keyColour ?? 'green'
     const keyed = Option.flatMap(readPng(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
-    if (Option.isNone(keyed)) {
-      yield* end(slot, claimed, 'generating', 'key')
-      return ended
-    }
-    const clean = framed(keyed.value, margin)
+    if (Option.isNone(keyed)) return yield* end(slot, claimed, 'generating', 'key')
     const cleanKey = slot.keyOf(claimed, claimed.version)
-    const written = yield* writeObject(cleanKey, encodePng(clean), 'image/png').pipe(
+    const written = yield* writeObject(cleanKey, encodePng(framed(keyed.value, margin)), 'image/png').pipe(
       Effect.retry({ times: 2, schedule: Schedule.exponential('200 millis') }),
       Effect.as(true),
       Effect.orElseSucceed(() => false),
     )
-    if (!written) {
-      yield* end(slot, claimed, 'generating', 'unavailable')
-      return ended
-    }
+    if (!written) return yield* end(slot, claimed, 'generating', 'unavailable')
     // A delivery that gave up on the drawing meanwhile has ended it; its drawing goes.
-    if (!(yield* move(slot, claimed, ['generating'], { state: 'checking', cleanKey }))) {
-      yield* removeObject(cleanKey)
-      return ended
-    }
-    return Option.some({ clean, checking: { ...claimed, state: 'checking' as const, cleanKey } })
+    if (!(yield* move(slot, claimed, ['generating'], { state: 'ready', cleanKey }))) yield* removeObject(cleanKey)
   })
 
 /** A queued drawing: judge the cut-out, then keep the photo (a face may show), ask for a retake (a fragment), or claim
@@ -240,18 +207,7 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
     }
     if (!(yield* move(slot, row, ['queued'], claim))) return
     yield* removeObject(row.cleanKey)
-    const drawn = yield* draw(slot, { ...row, ...claim }, subject.value, other)
-    if (Option.isSome(drawn)) yield* check(slot, drawn.value.checking, drawn.value.clean, subject.value)
-  })
-
-/** A drawing stored before its check finished: read both pictures back and check it. */
-const checkStored = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
-  Effect.gen(function* () {
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(row.accountId, row.pieceId))
-    const drawn = row.cleanKey === null ? Option.none<Rgba>() : yield* cutoutAt(row.cleanKey)
-    const real = Option.isNone(piece) ? Option.none<Rgba>() : (yield* slot.cutouts(piece.value)).subject
-    if (Option.isNone(drawn) || Option.isNone(real)) return yield* endChecking(slot, row, 'missing')
-    yield* check(slot, row, drawn.value, real.value)
+    yield* draw(slot, { ...row, ...claim }, subject.value, other)
   })
 
 /** A side's drawing, from its queued state to its end. */
@@ -265,7 +221,7 @@ export const drawingOf = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>) => (
       const row = found.value
       if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(row.accountId)))) return
       if (row.state === 'queued') yield* start(slot, row)
-      else if (row.state === 'checking') yield* checkStored(slot, row)
+      else if (row.state === 'checking') yield* showStored(slot, row)
       else if (isStale(row, yield* nowDate)) yield* end(slot, row, 'generating', 'unknown')
       yield* slot.after(pieceId)
     }),
@@ -277,7 +233,7 @@ export const drawingOf = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>) => (
       const row = found.value
       if (row.state === 'queued') yield* end(slot, row, 'queued', 'gave-up')
       else if (row.state === 'generating') yield* end(slot, row, 'generating', 'unknown')
-      else if (row.state === 'checking') yield* endChecking(slot, row, 'gave-up')
+      else if (row.state === 'checking') yield* showStored(slot, row)
       yield* slot.after(pieceId)
     }),
 })

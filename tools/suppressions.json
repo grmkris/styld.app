@@ -76,8 +76,8 @@
     "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
   },
   {
-    "file": "packages/server/test/PieceCutout.test.ts",
-    "comment": "SAFETY: the fake implements the bucket get and put a piece's cut-out calls -- the rest of R2 and Images is never called here"
+    "file": "packages/server/test/fakes/Bucket.ts",
+    "comment": "SAFETY: the fake implements the bucket get, put and delete that cut-outs and drawings call -- the rest of R2 and Images is never called by them"
   },
   {
     "file": "packages/server/src/providers/Text.ts",

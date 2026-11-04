@@ -113,7 +113,7 @@ const verdict = (choice: 'improve' | 'repair' | 'fragment') => ({
   probabilities: { ready: 0.02, improve: 0.02, repair: 0.02, fragment: 0.02, [choice]: 0.94 },
 })
 
-/** Clef as the picture job asks it: red is drawn and matches, green is drawn and is offered, blue is a fragment; and as
+/** Clef as the picture job asks it: red and green are drawn, blue is a fragment; and as
  * the outfit engine asks it, red goes best. Anything else it is asked answers as Workers AI does on the native stack:
  * unavailable. */
 const clef = Effect.gen(function* () {
@@ -146,17 +146,12 @@ const clef = Effect.gen(function* () {
       model: 'clef-flash',
       answers: { same: noul(0.9), colour: noul(0.9), print: noul(0.06), printed: noul(0.04) },
     })
-  // Two sightings, or a sighting and a piece: the same garment when they show the same colour.
+  // Two sightings, or a sighting and a piece: the same garment when they show the same colour. A drawing beside its
+  // cut-out is never asked about (owner, 4 November): such a question would be answered unavailable, and the drawing
+  // would fail rather than show.
   if ('same' in body.questions && !('faithful' in body.questions)) {
     const same = colourOf(body.images[0]?.base64 ?? '') === real ? 0.9 : 0.1
     return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { same: noul(same) } })
-  }
-  if ('same' in body.questions) {
-    const [same, faithful] = real === 'red' ? [0.93, 0.91] : [0.7, 0.75]
-    return yield* HttpServerResponse.json({
-      model: 'clef-flash',
-      answers: { same: noul(same), faithful: noul(faithful) },
-    })
   }
   return HttpServerResponse.empty({ status: 503 })
 }).pipe(Effect.orDie)

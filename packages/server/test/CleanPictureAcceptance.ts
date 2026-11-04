@@ -87,7 +87,7 @@ const backDrawn = async (call: Call, pieceId: string) => {
 }
 
 /** A back added on the piece's page is free and drawn pressed, as the back, with the front for reference (owner, 4
- * November): signed on the piece's page once it passes its check; removing the back forgets its drawing. */
+ * November): signed on the piece's page once it is drawn, never checked against its cut-out; removing the back forgets its drawing. */
 const verifyBackPicture = async (
   origin: string,
   fixtures: string,
@@ -117,7 +117,7 @@ const verifyBackPicture = async (
 }
 
 /** Kept cut-outs get clean pictures through the queue: Clef judges each, Muse draws the ones worth drawing on their
- * key colour, the drawing is keyed, stored and checked, then shown or dropped; the owner's choice of their photo sticks. A redraw costs a credit once,
+ * key colour, the drawing is keyed, stored and shown, never compared with its cut-out (owner, 4 November); the owner's choice of their photo sticks. A redraw costs a credit once,
  * however often it is asked; a photo is never sent; deleting a piece deletes its drawings. Clef and Muse are the
  * fixture's stand-ins (PictureFixture.ts). The pieces it leaves are what `verifyTurn` turns. */
 export const verifyCleanPictures = async (origin: string, fixtures: string) => {
@@ -137,9 +137,9 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   // Keeping the three cut-outs queues a clean picture for each; the piece kept as its photo has none.
   const kept = await keptPieces(origin, owner)
 
-  // The red tee is drawn and matches, so it shows; the green shirt is drawn on magenta and, less like its cut-out
-  // but past the reject bar, shows too (owner, 4 November); the scrap asks for a retake and is never drawn; the photo
-  // has no picture.
+  // The red tee is drawn and shows; the green shirt is drawn on magenta and shows too: no drawing is compared with its
+  // cut-out (owner, 4 November; Clef's stand-in answers such a question unavailable); the scrap asks for a retake and
+  // is never drawn; the photo has no picture.
   expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
   expect((await settled(owner, kept.green)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
   expect((await settled(owner, kept.blue)).picture).toEqual({ state: 'retake', shows: 'photo', version: 0 })

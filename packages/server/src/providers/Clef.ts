@@ -6,7 +6,6 @@ import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import {
-  type Comparison,
   type HeldCheck,
   type Judgement,
   type Picture,
@@ -225,12 +224,6 @@ const judgeQuestions = {
   face: { type: 'noul', instructions: "Is any part of a person's face visible?" },
 } as const
 
-/** What the decision model is asked about a drawn picture beside the real cut-out. */
-const compareQuestions = {
-  same: { type: 'noul', instructions: 'Is it the same garment as in the second image?' },
-  faithful: { type: 'noul', instructions: 'Are its colour, print, logos and details the same as in the second image?' },
-} as const
-
 /** What the decision model is asked about a frame of a turn beside the clean picture it ends on: three of the eight
  * dimensions the 30 October spike asked (`meta-hackathon/out/styld-clean-turn/gate2.ts`), the ones its gate kept. */
 const turnQuestions = {
@@ -321,8 +314,7 @@ const routeOf = (answer: ClefAnswer): Route => {
 }
 
 /** Clef-flash as Styld's decision model: route a photo, suggest a piece's details, confirm a held garment. */
-/** The decision model on clean pictures and turns: a kept cut-out, a drawing beside it, a turn's frame beside its
- * front. */
+/** The decision model on clean pictures and turns: a kept cut-out, and a turn's frame beside its front. */
 const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   judge: Effect.fn('Styld.Picture.judge')(function* (cutout: Picture) {
     const answer = yield* askClef(run, metrics, 'judge', {
@@ -332,15 +324,6 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
       questions: judgeQuestions,
     })
     return judgementOf(answer)
-  }),
-  compare: Effect.fn('Styld.Picture.compare')(function* (drawn: Picture, real: Picture) {
-    const answer = yield* askClef(run, metrics, 'compare', {
-      model: 'clef-flash',
-      state: 'The first image is a generated product picture; the second is a real photo of a garment.',
-      images: [imageOf(drawn), imageOf(real)],
-      questions: compareQuestions,
-    })
-    return { same: noulOf(answer, 'same'), faithful: noulOf(answer, 'faithful') } satisfies Comparison
   }),
   // The camera's `samePrevious` question: on two real videos' cut-outs, true pairs scored 0.68–0.89 and different
   // garments at most 0.76 (person-routing spike, 30 October).

@@ -39,14 +39,14 @@ export interface CapturePolicy {
     readonly worn: number
     readonly carried: number
   }
-  /** Clean pictures drawn from kept cut-outs (owner, 30 October): a drawing at least `reject` like the cut-out is
-   * shown, and below it is dropped. A cut-out at least `face` likely to show a face is never sent on. Until 4 November
-   * a drawing under 0.8 was only proposed, for the person to choose below the piece's facts; of a tester's 58
-   * drawings 8 were shown, 42 waited unseen, 4 were dropped and 4 failed, so to her Styld "only cuts them out". The
-   * owner chose to show every drawing that passes the reject bar, with the person's photo one swipe away (4 November):
-   * the middle is gone, and a drawing proposed before then shows as one that passed (`wardrobe/Shown.ts`). */
+  /** Clean pictures drawn from kept cut-outs (owner, 30 October). A cut-out at least `face` likely to show a face is
+   * never sent on. Every drawing Muse returns that keys and frames cleanly is shown, with the person's photo one swipe
+   * away; none is checked against its cut-out (owner, 4 November). Until then Clef compared each drawing with its
+   * cut-out and dropped it when the weaker of "the same garment?" and "faithful?" was under 0.5: it dropped 24 of
+   * about 470 drawings that day; drawn again, 11 of them passed (noise), and of the rest only about 5 were really
+   * wrong, the others judged against fragment cut-outs or too strictly. Before that, until the same day, a drawing
+   * under 0.8 was only proposed, and waited unseen (`wardrobe/Shown.ts`). */
   readonly pictures: {
-    readonly reject: number
     readonly face: number
   }
   /** How a garment seen more than once becomes one card (2026-10-31), and how a worn garment is matched with a piece:
@@ -87,7 +87,7 @@ export const capturePolicy: CapturePolicy = {
     worn: 0.5,
     carried: 0.25,
   },
-  pictures: { reject: 0.5, face: 0.3 },
+  pictures: { face: 0.3 },
   matching: { same: 0.8, sightings: 10, pieces: 6, photoPieces: 12 },
   turns: { colour: 0.8, print: 0.6 },
 }

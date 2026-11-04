@@ -231,14 +231,15 @@ const cutout = {
 } as const
 
 describe('the picture a piece shows', () => {
-  test('is a drawing that passed its check, and the photo when chosen or when there is no drawing', () => {
+  test('is its drawing, and the photo when chosen or when there is no drawing', () => {
     expect(shownImage(cutout, pictureRow('ready'))).toEqual({
       key: 'accounts/ac_1/pieces/pc_1/clean-2.png',
       contentType: 'image/png',
       rotation: 0,
     })
     expect(shownImage(cutout, pictureRow('ready', { shown: 'photo' })).key).toBe(cutout.imageKey)
-    // A drawing proposed before 4 November passed the reject bar, so it shows unless its owner chose the photo.
+    // A drawing proposed before 4 November shows unless its owner chose the photo; one dropped before then has no
+    // drawing to show.
     expect(shownImage(cutout, pictureRow('proposed')).contentType).toBe('image/png')
     expect(shownImage(cutout, pictureRow('proposed', { shown: 'photo' })).key).toBe(cutout.imageKey)
     expect(shownImage(cutout, pictureRow('rejected', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)

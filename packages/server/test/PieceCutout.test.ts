@@ -5,7 +5,7 @@ import { Effect, Layer, Option, Record } from 'effect'
 import { Garments } from '../src/capture/Garments.ts'
 import { pieceCutout } from '../src/capture/PieceCutout.ts'
 import { GarmentVision } from '../src/capture/Providers.ts'
-import { Media } from '../src/kernel/Media.ts'
+import { mediaOver } from './fakes/Bucket.ts'
 import { Pacing, paces } from '../src/kernel/Pacing.ts'
 import { cutOutPerson } from '../src/photos/Cutout.ts'
 import { type PhotoRow, PhotoStore } from '../src/photos/Store.ts'
@@ -38,16 +38,8 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
       return { success: asked.paces <= allowed }
     },
   }
-  const bucket = {
-    get: async (key: string) => {
-      const bytes = stored.get(key)
-      return bytes === undefined ? null : { arrayBuffer: async () => bytes.slice().buffer }
-    },
-    put: async (key: string, bytes: Uint8Array) => void stored.set(key, bytes),
-  }
   const services = Layer.mergeAll(
-    // SAFETY: the fake implements the bucket get and put a piece's cut-out calls -- the rest of R2 and Images is never called here
-    Layer.succeed(Media, Media.of({ bucket, images: {} } as never)),
+    mediaOver(stored),
     Layer.succeed(
       Garments,
       Garments.of({
@@ -75,7 +67,6 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
           }),
         checkHeld: unused,
         judge: unused,
-        compare: unused,
         sameGarment: unused,
         compareTurn: unused,
       }),

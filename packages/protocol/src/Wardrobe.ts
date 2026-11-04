@@ -53,7 +53,7 @@ export const PieceSource = Schema.Literals(['website', 'assistant', 'import'])
 
 /** A piece's clean picture (owner, 2026-10-30): an image model's drawing of the garment from its kept cut-out, shown
  * by default with the real photo one swipe away (owner, 2026-11-04) and marked as AI-cleaned. `drawing` while it is
- * made; `ready` once it passed its check; `retake` when the cut-out shows too little of the garment; `kept` when the
+ * made; `ready` once it is drawn (owner, 2026-11-04: never checked against the cut-out); `retake` when the cut-out shows too little of the garment; `kept` when the
  * photo was already clean or showed a face; `failed` when no drawing came of it. */
 export const PictureState = Schema.Literals(['drawing', 'ready', 'retake', 'kept', 'failed'])
 export type PictureState = typeof PictureState.Type
@@ -130,8 +130,7 @@ export const RedrawPicture = Schema.Struct({ operationId: OperationId, hint: Sch
 export type RedrawPicture = typeof RedrawPicture.Type
 
 /** Where the owner's browser loads a piece's pictures: signed addresses that need no session, each good for about a
- * day and the same for an hour at a time. `thumb` and `full` are the picture it shows; `clean` the drawing that passed
- * its check, `back` its back, when it has them. On the piece's own page (owner, 4 November 2026: the pictures swipe
+ * day and the same for an hour at a time. `thumb` and `full` are the picture it shows; `clean` its drawing, `back` its back, when it has them. On the piece's own page (owner, 4 November 2026: the pictures swipe
  * one to the next) also `photo`, the person's own photo it came from, and `cutout`, the plain cut-out, when it was cut
  * out. */
 export const PieceImages = Schema.Struct({

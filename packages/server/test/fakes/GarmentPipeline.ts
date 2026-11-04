@@ -42,7 +42,6 @@ export const scriptedGarments = ({ copies, suggestion, still, route }: Scripted)
             suggest: () => Effect.succeed(suggestion),
             checkHeld: unused,
             judge: unused,
-            compare: unused,
             sameGarment: unused,
             compareTurn: unused,
           }),

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { Effect, Exit, Option, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { makeGarmentVision } from '../src/providers/Clef.ts'
-import { gateFor, planFor } from '../src/capture/CleanPicture.ts'
+import { planFor } from '../src/capture/CleanPicture.ts'
 import { cleanPrompt } from '../src/capture/CleanPrompt.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { makeMuseGenerator } from '../src/providers/Muse.ts'
@@ -146,13 +146,6 @@ describe('the decision model on a kept cut-out', () => {
     expect(scrap.verdict).toBe('fragment')
   })
 
-  test('reads how like the cut-out a drawing is: Muse turned the flat drawn tee into a photographed one', async () => {
-    const compared = await Effect.runPromise(clef('clef-compare-red-tee.json').compare(cutout, cutout))
-    expect(compared.same).toBeCloseTo(0.2827)
-    expect(compared.faithful).toBeCloseTo(0.4404)
-    expect(gateFor(compared, policy)).toBe('rejected')
-  })
-
   test('assumes a face and a redraw when the answers are missing, so nothing unanswered is sent on', async () => {
     const blank = makeGarmentVision(
       () => Promise.resolve({ model: 'clef-flash', answers: {} }),
@@ -171,7 +164,7 @@ const judged = (verdict: 'ready' | 'improve' | 'repair' | 'fragment', face = 0.0
   face,
 })
 
-describe('what happens to a kept cut-out and to its drawing', () => {
+describe('what happens to a kept cut-out', () => {
   test('every whole one is drawn, clean or not, a fragment asks for a retake, a face sends nothing', () => {
     expect(planFor(judged('ready'), policy)).toEqual({ plan: 'draw' })
     expect(planFor(judged('ready', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
@@ -180,13 +173,5 @@ describe('what happens to a kept cut-out and to its drawing', () => {
     expect(planFor(judged('fragment'), policy)).toEqual({ plan: 'retake' })
     expect(planFor(judged('improve', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
     expect(planFor(judged('improve', 0.29), policy)).toEqual({ plan: 'draw' })
-  })
-
-  test('a drawing is shown from 0.5 and dropped below, by the weaker of its two answers', () => {
-    expect(gateFor({ same: 0.8, faithful: 0.95 }, policy)).toBe('ready')
-    expect(gateFor({ same: 0.95, faithful: 0.79 }, policy)).toBe('ready')
-    expect(gateFor({ same: 0.5, faithful: 0.9 }, policy)).toBe('ready')
-    expect(gateFor({ same: 0.49, faithful: 0.9 }, policy)).toBe('rejected')
-    expect(gateFor({ same: 0.9, faithful: 0.49 }, policy)).toBe('rejected')
   })
 })

@@ -70,7 +70,6 @@ describe('SAM on a photo of several pieces', () => {
       }),
     checkHeld: unused,
     judge: unused,
-    compare: unused,
     sameGarment: unused,
     compareTurn: unused,
   })

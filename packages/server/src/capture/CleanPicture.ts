@@ -1,5 +1,5 @@
 import type { CapturePolicy } from './Policy.ts'
-import type { Comparison, Judgement, TurnComparison } from './Providers.ts'
+import type { Judgement, TurnComparison } from './Providers.ts'
 
 type PicturePolicy = CapturePolicy['pictures']
 
@@ -14,11 +14,6 @@ export const planFor = (
   if (judgement.face >= policy.face) return { plan: 'kept-real', reason: 'face' }
   return judgement.verdict === 'fragment' ? { plan: 'retake' } : { plan: 'draw' }
 }
-
-/** Where a drawn picture goes, by how like the real cut-out it is (the weaker of the two answers): shown, or dropped
- * below the reject bar. */
-export const gateFor = (comparison: Comparison, policy: PicturePolicy): 'ready' | 'rejected' =>
-  Math.min(comparison.same, comparison.faithful) < policy.reject ? 'rejected' : 'ready'
 
 /** Whether a turn is kept, from its checked frames beside the clean picture: every frame keeps the colour, and keeps
  * the logo or print when the garment has one (most frames see one). A plain garment has no print to keep: on the
