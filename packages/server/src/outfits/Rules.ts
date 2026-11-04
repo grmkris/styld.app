@@ -15,7 +15,7 @@ import { Array, Option, Order } from 'effect'
 
 // The outfit rules (owner, 2026-10-31): the one validator of every proposal, whichever way made it, and Fast's
 // generator. One piece in each place (a knit or a hoodie may go over a shirt or a tee), a whole outfit when the wardrobe has one (a top and a bottom, a one-piece, or
-// for sport and lounging a set), shoes when there are any, every fixed piece kept, at most one statement piece
+// for sport and lounging a set), shoes whenever there are any, every fixed piece kept, at most one statement piece
 // besides them, and nothing for another season or occasion while something suitable is there. Pure.
 
 /** One of the person's ready pieces, as the rules read it. */
@@ -121,14 +121,23 @@ const suits = (piece: Wearable, brief: OutfitBrief) => {
 /** Places an outfit can do without: they are left empty rather than filled with something unsuitable. */
 const optionalSlots: ReadonlySet<Slot> = new Set(['layer', 'accessory'])
 
+/** The shoes an outfit chooses from when none suit the brief: every pair not made for sport, and sport shoes only when
+ * they are all there is, so an outfit is never left barefoot while the wardrobe holds shoes (Eva, 4 November 2026:
+ * "every outfit needs shoes"). */
+const fallbackShoes = (shoes: ReadonlyArray<Wearable>) => {
+  const everyday = shoes.filter((piece) => !isSportShoe(piece))
+  return everyday.length > 0 ? everyday : shoes
+}
+
 /** Each place's choices: the pieces there that suit the brief; where an outfit needs the place and none suits, every
- * piece there. */
+ * piece there, shoes not made for sport first. */
 const poolsOf = (request: Brief): ReadonlyMap<Slot, ReadonlyArray<Wearable>> =>
   new Map(
     wearingOrder.map((slot) => {
       const there = request.wardrobe.filter((piece) => slotOf(piece.type) === slot)
       const suiting = there.filter((piece) => suits(piece, request.brief))
-      return [slot, suiting.length > 0 || optionalSlots.has(slot) ? suiting : there] as const
+      if (suiting.length > 0 || optionalSlots.has(slot)) return [slot, suiting] as const
+      return [slot, slot === 'shoes' ? fallbackShoes(there) : there] as const
     }),
   )
 

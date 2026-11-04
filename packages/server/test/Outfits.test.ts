@@ -60,6 +60,7 @@ const drawnOver = (request: Brief) =>
   Array.from({ length: 12 }, (_, seed) => proposed(request, String(seed), 12).outfits).flat()
 
 const slotsOf = (outfit: ReadonlyArray<Wearable>) => outfit.map(({ type }) => slotOf(type))
+const shoesOf = (outfit: ReadonlyArray<Wearable>) => outfit.filter(({ type }) => slotOf(type) === 'shoes')
 
 describe('the outfit rules', () => {
   test('every drawn outfit stands on a top and a bottom or a one-piece, has shoes, one of each, one statement', () => {
@@ -129,6 +130,36 @@ describe('the outfit rules', () => {
     }
     const sporty = drawnOver(brief(shod, { brief: { occasion: 'sport' } }))
     expect(sporty.some((outfit) => outfit.includes(runners) || outfit.includes(hikers))).toBe(true)
+  })
+
+  test('an outfit always wears shoes: the pairs that suit first, then other everyday ones, sport shoes last (Eva)', () => {
+    const runners = piece('sportShoes')
+    const winterBoots = piece('boots', { seasons: ['winter'] })
+    const summerSandals = piece('sandals', { seasons: ['summer'] })
+    const loafers = piece('flats', { seasons: ['spring', 'autumn'], occasions: ['smart'] })
+    const base = [tee, jeans, knit]
+    // Suiting shoes first: in winter only the boots.
+    const winter = drawnOver(brief([...base, runners, winterBoots, summerSandals], { brief: { season: 'winter' } }))
+    expect(winter.length).toBeGreaterThan(0)
+    for (const outfit of winter) expect(shoesOf(outfit)).toEqual([winterBoots])
+    // None suits a formal summer evening: any everyday pair, never the running shoes.
+    for (const complete of [false, true]) {
+      const evening = brief([...base, runners, winterBoots, loafers], {
+        brief: { season: 'summer', occasion: 'formal' },
+        complete,
+      })
+      const outfits = drawnOver(evening)
+      expect(outfits.length).toBeGreaterThan(0)
+      for (const outfit of outfits) {
+        expect(shoesOf(outfit)).toHaveLength(1)
+        expect(shoesOf(outfit)).not.toContain(runners)
+      }
+      expect(new Set(outfits.flatMap(shoesOf))).toEqual(new Set([winterBoots, loafers]))
+      expect(missingOf(evening)).toEqual([])
+    }
+    // Running shoes only when they are the only pair the wardrobe holds.
+    for (const outfit of drawnOver(brief([...base, runners], { brief: { occasion: 'formal' }, complete: true })))
+      expect(shoesOf(outfit)).toEqual([runners])
   })
 
   test('nothing for the other season while something suits, and a set only for sport', () => {
