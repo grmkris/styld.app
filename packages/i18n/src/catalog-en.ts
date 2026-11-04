@@ -975,6 +975,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'stylist.problem.network': 'Not sent. Try again.',
   'stylist.chatToday': 'Today, {time}',
   'stylist.openTryOn': 'Open the try-on',
+  'stylist.tryOnOpening': 'Opening the try-on…',
+  'stylist.tryOnStopped': 'This try-on wasn’t drawn. Your credits are back.',
   'photos.back': 'Back to the gallery',
   'photos.add': 'Add a photo',
   'photos.addCost':

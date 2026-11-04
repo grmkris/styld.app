@@ -2,13 +2,14 @@ import { drawOperationId } from '../OperationIds.ts'
 import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Number, Option, Schema, Stream } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
-import { AsyncData, Command, Dom, Render, Subscription, type Update } from 'foldkit'
+import { AsyncData, Command, Dom, Render, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { hasStopped, Misses } from '../Polling.ts'
 import * as HttpClient from 'effect/http/HttpClient'
 import { StyldClient } from '../StyldClient.ts'
+import * as StylistTryOns from './StylistTryOns.ts'
 
 // MODEL
 
@@ -54,6 +55,8 @@ export const Model = Schema.Struct({
   settling: Schema.Int,
   /** Times in a row the reply's live words were lost; each loss reads the chat and listens again. */
   misses: Misses,
+  /** The try-ons the chat's replies name, read with the person's session. */
+  tryOnCards: StylistTryOns.Model,
 })
 export type Model = typeof Model.Type
 
@@ -66,6 +69,7 @@ export const init = (draft: Option.Option<string>): Model => ({
   refresh: Refresh.Idle(),
   settling: 0,
   misses: 0,
+  tryOnCards: StylistTryOns.init(),
 })
 
 // MESSAGE
@@ -91,6 +95,7 @@ export const Message = defineMessageUnion({
   CompletedScrollToLatest: {},
   CompletedStartAtTop: {},
   CompletedFocusThread: {},
+  GotTryOnCardsMessage: { message: StylistTryOns.Message },
 })
 export type Message = typeof Message.Type
 
@@ -229,10 +234,21 @@ export const FocusThread = Command.define('FocusThread', {
   ),
 })
 
-/** A chat read: shown when it is still the one open. While its reply is written its live words follow it. */
+/** The chat's try-on cards, as a child of the page. */
+const tryOnCards = {
+  read: (model: Model) => Option.some(model.tryOnCards),
+  write: (model: Model, cards: StylistTryOns.Model) => modifyFields(model, { tryOnCards: () => cards }),
+  toParentMessage: (message: StylistTryOns.Message) => Message.GotTryOnCardsMessage({ message }),
+}
+
+/** A chat read: shown when it is still the one open, with the try-ons its replies name read. While its reply is
+ * written its live words follow it. */
 const showChat = (model: Model, chat: Chat): UpdateReturn =>
   Option.exists(model.open, ({ id }) => id === chat.id)
-    ? { model: modifyFields(model, { open: () => Option.some(chat) }) }
+    ? Update.foldChildStep({
+        update: (cards: StylistTryOns.Model) => StylistTryOns.follow(cards, chat),
+        ...tryOnCards,
+      })(modifyFields(model, { open: () => Option.some(chat) }))
     : { model }
 
 /** The open chat whose reply Styld is writing, which the page reads again. */
@@ -399,6 +415,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     CompletedStartAtTop: () => ({ model }),
     CompletedFocusThread: () => ({ model }),
+    GotTryOnCardsMessage: (got) =>
+      Update.foldChild({ update: StylistTryOns.update, ...tryOnCards })(model, got.message),
     ClickedChat: ({ chatId }) => openChat(model, chatId, true),
     // Try again: the chat that did not open, the reply that stopped being followed, or the list of chats.
     ClickedRetryLoad: () => {
@@ -447,7 +465,7 @@ const liveReply = ({
       ).pipe(Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId }))))
 
 /** The open chat's reply, followed live while it is written: no polling. */
-export const subscriptions = Subscription.make<Model, Message, HttpClient.HttpClient>()((entry) => ({
+const replySubscriptions = Subscription.make<Model, Message, HttpClient.HttpClient>()((entry) => ({
   liveReply: entry(Following, {
     modelToDependencies: (model) =>
       Option.match(
@@ -460,3 +478,9 @@ export const subscriptions = Subscription.make<Model, Message, HttpClient.HttpCl
     dependenciesToStream: liveReply,
   }),
 }))
+
+/** The reply followed live, and the chat's try-ons read again while one is being drawn. */
+export const subscriptions = Subscription.aggregate(
+  replySubscriptions,
+  Subscription.lift(StylistTryOns.subscriptions)<Model, Message>(tryOnCards),
+)

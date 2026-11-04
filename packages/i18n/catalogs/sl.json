@@ -1108,7 +1108,9 @@
       "network": "Ni poslano. Poskusi znova."
     },
     "chatToday": "Danes ob {time}",
-    "openTryOn": "Odpri pomerjanje"
+    "openTryOn": "Odpri pomerjanje",
+    "tryOnOpening": "Odpiram pomerjanje …",
+    "tryOnStopped": "To pomerjanje ni narisano. Krediti so ti vrnjeni."
   },
   "photos": {
     "back": "Nazaj v galerijo",

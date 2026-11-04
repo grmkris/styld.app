@@ -157,9 +157,12 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // page, lens and folds), the start's problem kept as Spent, Refused or Lost with its operation id, the delete's id kept
 // for a retry, the Checkbox for This is me, the alertdialog, captions and piece states, and their words add 1,884 over
 // abcc104c's 405,539, for 407,423.
-// Raised to 416,200 the same evening for Try on merged with main's landing (408,104 at c2486ab0): the try-on page, its
-// fixes and the client's try-on contract add 8,082 together, for 416,186.
-if (initialGzip > 416200) throw new Error(`Initial browser assets exceed the 416,200-byte gzip budget: ${initialGzip}`)
+// Raised to 408,500 the same day for the try-on card in Styld's chat (track B, B4): the chat's try-ons read with the
+// person's session and followed while drawn (StylistTryOns.ts), the card with its picture and words, add 1,020, for
+// 408,443.
+// Raised to 417,300 the same evening for Try on merged with main's landing (408,104 at c2486ab0): the try-on page, its
+// fixes, its card in Styld's chat and the client's try-on contract add 9,108 together, for 417,212.
+if (initialGzip > 417300) throw new Error(`Initial browser assets exceed the 417,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
