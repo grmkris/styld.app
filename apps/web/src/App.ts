@@ -59,7 +59,7 @@ import {
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
 import type { PictureEncoder } from './Upload.ts'
-import { asksAtStart, TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
+import { askOnceDressed, TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 import { ReadTimeZone } from './TimeZone.ts'
 
 // MODEL
@@ -251,7 +251,7 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
       you: You.Unknown(),
       data: ServerData.init(),
       page: page.model,
-      telemetry: { consent: context.telemetryConsent, prompting: asksAtStart(context, route) },
+      telemetry: { consent: context.telemetryConsent, prompting: false },
     },
     entering(route, signedIn),
   )
@@ -582,7 +582,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         (stepModel) => foldPages.data(stepModel, got.message),
         (stepModel) =>
           Predicate.isTagged(got.message, 'SucceededListPieces')
-            ? NavigationState.restoreWardrobePosition(stepModel)
+            ? NavigationState.restoreWardrobePosition(askOnceDressed(stepModel))
             : { model: stepModel },
       ]),
     ClickedRetryLanding: () => retryLanding(model),
