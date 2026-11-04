@@ -37,7 +37,7 @@ went in before the demo.
   - The bad cut-out and the T-shirt typed as a bodysuit; automatic rotation (#7).
   - The crash after a mass upload (#8).
 
-## The wardrobe opens on a shop's sections: Tops, Bottoms and the rest (5 November, on a branch, not deployed)
+## The wardrobe opens on a shop's sections: Tops, Bottoms and the rest (5 November, live on styld.app at `c107a085`)
 
 Eva (5 November): "ko odpres main omaro bova nardila tops in pol k kliknes na tops mas kratke majce/majce brez
 rokavov/dolge majce/pullover/srajce… isto k kliknes na bottoms" ("bi bolj pregledno"). Clothing is split into the
@@ -175,7 +175,7 @@ an upside-down cut-out stayed upside down.
   - Eva's look at her top on her phone.
   - From 900 px up, a 90° or 270° turn overflows the non-square picture box, as the photo and cut-out already do.
 
-## Ask instead of guess: the review offers the type Clef was torn with (5 November, on main, not deployed)
+## Ask instead of guess: the review offers the type Clef was torn with (5 November, live on styld.app at `c107a085`)
 
 Owner (5 November), after Eva's leggings, sports bras and skirts: an audit of her 393 pieces showed Clef right on
 shape and torn on what a piece is for (sport or everyday, loungewear or everyday). Where it is torn, the review now
