@@ -4,7 +4,7 @@ import { CurrentAccount } from '@styld/protocol'
 import { Effect, Layer, Option, Record } from 'effect'
 import { Garments } from '../src/capture/Garments.ts'
 import { pieceCutout } from '../src/capture/PieceCutout.ts'
-import { GarmentVision } from '../src/capture/Providers.ts'
+import { GarmentVision, type Picture, PictureWork } from '../src/capture/Providers.ts'
 import { mediaOver } from './fakes/Bucket.ts'
 import { Pacing } from '../src/kernel/Pacing.ts'
 import { paces } from '../src/kernel/Paces.ts'
@@ -31,7 +31,7 @@ const cut = encodePng({ width: 4, height: 4, data: new Uint8Array(64).fill(200) 
  * times a minute. */
 const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10) => {
   const held: Array<string> = []
-  const asked = { sam: 0, paces: 0 }
+  const asked = { sam: 0, paces: 0, sources: new Array<Option.Option<Picture>>() }
   const stored = new Map<string, Uint8Array>([['photo.jpg', new Uint8Array([0xff, 0xd8, 0xff])]])
   const limiter = {
     limit: async () => {
@@ -52,19 +52,32 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
       }),
     ),
     Layer.succeed(
+      PictureWork,
+      PictureWork.of({
+        workingCopies: unused,
+        foreground: unused,
+        // The photo shrunk to the size the decision model reads beside a cut-out.
+        thumbnail: (_image, width) => Effect.succeed(new Uint8Array([width % 256])),
+        jpeg: unused,
+      }),
+    ),
+    Layer.succeed(
       GarmentVision,
       GarmentVision.of({
         route: unused,
-        suggest: () =>
-          Effect.succeed({
-            type: 'knitwear',
-            confidence: 0.9,
-            colours: ['beige'],
-            seasons: ['autumn', 'winter'],
-            rainproof: false,
-            occasions: ['casual'],
-            pattern: 'plain',
-            whole: 0.9,
+        suggest: (_picture, source) =>
+          Effect.sync(() => {
+            asked.sources.push(source)
+            return {
+              type: 'knitwear' as const,
+              confidence: 0.9,
+              colours: ['beige' as const],
+              seasons: ['autumn' as const, 'winter' as const],
+              rainproof: false,
+              occasions: ['casual' as const],
+              pattern: 'plain' as const,
+              whole: 0.9,
+            }
           }),
         checkHeld: unused,
         judge: unused,
@@ -143,12 +156,12 @@ describe("a piece's cut-out", () => {
     }).pipe(Effect.provide(layer))
   })
 
-  it.effect('is described by the decision model once stored, and a missing one is not', () => {
-    const { layer } = over()
+  it.effect('is described by the decision model once stored, beside its photo, and a missing one is not', () => {
+    const { layer, asked } = over()
     return Effect.gen(function* () {
       const cutout = yield* GarmentCutout
       const { imageKey } = yield* cutout.cut(input('styld'))
-      expect(yield* cutout.describe(imageKey)).toEqual(
+      expect(yield* cutout.describe(imageKey, 'photo.jpg')).toEqual(
         Option.some({
           type: 'knitwear',
           confidence: 0.9,
@@ -160,7 +173,13 @@ describe("a piece's cut-out", () => {
           whole: 0.9,
         }),
       )
-      expect(yield* cutout.describe('accounts/ac_1/pieces/pc_1/missing.png')).toEqual(Option.none())
+      // The photo it was cut from goes beside it at the decision model's size (768 px).
+      expect(asked.sources).toEqual([Option.some({ bytes: new Uint8Array([768 % 256]), contentType: 'image/webp' })])
+      // A photo that is gone leaves the cut-out to be read alone.
+      asked.sources.length = 0
+      yield* cutout.describe(imageKey, 'gone.jpg')
+      expect(asked.sources).toEqual([Option.none()])
+      expect(yield* cutout.describe('accounts/ac_1/pieces/pc_1/missing.png', 'photo.jpg')).toEqual(Option.none())
     }).pipe(Effect.provide(layer))
   })
 })

@@ -1316,5 +1316,21 @@
     "clothesTitle": "Now your own clothes",
     "clothesReason": "Home shows you how next: photograph a few pieces, or film your rail, and Styld cuts each one out and makes outfits from them.",
     "done": "Done"
+  },
+  "consent": {
+    "title": "Allow {client} into your Styld?",
+    "lede": "{client} will act for you in Styld when you ask it to.",
+    "signedInAs": "Account",
+    "canDo": "It can",
+    "readWardrobe": "see your pieces, looks, boards, photos and try-ons",
+    "changeWardrobe": "add and change them when you ask",
+    "credits": "spend your daily credits on paid things, such as a try-on",
+    "client": "Client: {host}",
+    "returnTo": "returns to {host}",
+    "local": "A program on this computer will get this access. Continue only if you started this connection yourself.",
+    "allow": "Allow",
+    "deny": "Deny",
+    "otherAccount": "Use another account",
+    "revoke": "You can disconnect {client} at any time on your Styld account page."
   }
 }

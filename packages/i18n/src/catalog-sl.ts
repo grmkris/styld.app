@@ -1132,4 +1132,18 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'firstRun.clothesReason':
     'Doma ti pokažemo, kako naprej: fotografiraj nekaj kosov ali posnemi obešalnik, Styld pa vsakega izreže in iz njih sestavi videze.',
   'firstRun.done': 'Končano',
+  'consent.title': 'Dovoliš, da {client} dostopa do tvojega Styld?',
+  'consent.lede': '{client} bo v Styldu deloval zate, kadar ga prosiš.',
+  'consent.signedInAs': 'Račun',
+  'consent.canDo': 'Lahko',
+  'consent.readWardrobe': 'vidi tvoje kose, videze, table, fotografije in pomerjanja',
+  'consent.changeWardrobe': 'jih doda in spremeni, ko ga prosiš',
+  'consent.credits': 'porabi tvoje dnevne kredite za plačljive stvari, na primer za pomerjanje',
+  'consent.client': 'Odjemalec: {host}',
+  'consent.returnTo': 'vrne se na {host}',
+  'consent.local': 'Ta dostop bo dobil program na tem računalniku. Nadaljuj le, če povezavo vzpostavljaš sam.',
+  'consent.allow': 'Dovoli',
+  'consent.deny': 'Zavrni',
+  'consent.otherAccount': 'Uporabi drug račun',
+  'consent.revoke': '{client} lahko kadar koli odklopiš na strani svojega računa v Styldu.',
 }

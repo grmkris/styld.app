@@ -1110,4 +1110,19 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'firstRun.clothesReason':
     'Home shows you how next: photograph a few pieces, or film your rail, and Styld cuts each one out and makes outfits from them.',
   'firstRun.done': 'Done',
+  'consent.title': 'Allow {client} into your Styld?',
+  'consent.lede': '{client} will act for you in Styld when you ask it to.',
+  'consent.signedInAs': 'Account',
+  'consent.canDo': 'It can',
+  'consent.readWardrobe': 'see your pieces, looks, boards, photos and try-ons',
+  'consent.changeWardrobe': 'add and change them when you ask',
+  'consent.credits': 'spend your daily credits on paid things, such as a try-on',
+  'consent.client': 'Client: {host}',
+  'consent.returnTo': 'returns to {host}',
+  'consent.local':
+    'A program on this computer will get this access. Continue only if you started this connection yourself.',
+  'consent.allow': 'Allow',
+  'consent.deny': 'Deny',
+  'consent.otherAccount': 'Use another account',
+  'consent.revoke': 'You can disconnect {client} at any time on your Styld account page.',
 }

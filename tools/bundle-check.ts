@@ -165,7 +165,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 417,600 the same evening for the plans (owner, pricing track): Account › Plans (four plans, Choose, Manage
 // subscription and the portal's command), the landing's four plans and their en/sl words, less the Premium week's
 // button and words, add 188 over 417,212, for 417,400.
-if (initialGzip > 417600) throw new Error(`Initial browser assets exceed the 417,600-byte gzip budget: ${initialGzip}`)
+// Raised to 417,800 the same night for the assistants' consent page in Styld's words: the page is rendered by the API
+// Worker, but its en/sl words live in the catalogs the browser loads whole, and add 168 (417,600 to 417,768).
+if (initialGzip > 417800) throw new Error(`Initial browser assets exceed the 417,800-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -353,6 +353,20 @@ export interface MessageArgumentsByKey<_T = string> {
   'connect.copied': Readonly<Record<string, never>>
   'connect.copy': Readonly<Record<string, never>>
   'connect.copyFailed': Readonly<Record<string, never>>
+  'consent.allow': Readonly<Record<string, never>>
+  'consent.canDo': Readonly<Record<string, never>>
+  'consent.changeWardrobe': Readonly<Record<string, never>>
+  'consent.client': { readonly host: string | number }
+  'consent.credits': Readonly<Record<string, never>>
+  'consent.deny': Readonly<Record<string, never>>
+  'consent.lede': { readonly client: string | number }
+  'consent.local': Readonly<Record<string, never>>
+  'consent.otherAccount': Readonly<Record<string, never>>
+  'consent.readWardrobe': Readonly<Record<string, never>>
+  'consent.returnTo': { readonly host: string | number }
+  'consent.revoke': { readonly client: string | number }
+  'consent.signedInAs': Readonly<Record<string, never>>
+  'consent.title': { readonly client: string | number }
   'feed.save': Readonly<Record<string, never>>
   'firstRun.boardsLoading': Readonly<Record<string, never>>
   'firstRun.boardsReason': Readonly<Record<string, never>>
@@ -1152,4 +1166,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '20d727bcc04b18a8a858128782e6a0527e9da90bf367df1f79b5f1120a2fc6de'
+export const catalogVersion = '142e8c2dafd5cf56dcec54a0ac40ab71aaebb1fdff0d02cc7e34465ef37d8794'

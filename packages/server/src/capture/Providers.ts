@@ -62,7 +62,9 @@ export class GarmentVision extends Context.Service<
   GarmentVision,
   {
     readonly route: (picture: Picture) => Effect.Effect<Route, ProviderError>
-    readonly suggest: (picture: Picture) => Effect.Effect<Suggestion, ProviderError>
+    /** What a cut-out piece is, read beside the photo it was cut from when there is one: the photo shows whether
+     * leggings are worn for sport or a skirt is a skirt, which the cut-out alone often does not (Eva, 4 November). */
+    readonly suggest: (picture: Picture, source: Option.Option<Picture>) => Effect.Effect<Suggestion, ProviderError>
     readonly checkHeld: (
       picture: Picture,
       previous: Option.Option<Picture>,
