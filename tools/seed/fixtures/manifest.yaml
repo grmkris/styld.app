@@ -1,0 +1,114 @@
+# The ten test-batch specs of the house manifest (owner, 4 November 2026), verbatim, for the seed's fixture runs.
+version: 1
+model: muse-image-1.0
+specs:
+  - {
+      id: w-bags-brown,
+      accounts: [women],
+      type: bags,
+      colours: [brown],
+      pattern: plain,
+      subcategory: structured shoulder bag,
+      material: leather,
+      look: 'brown',
+      name: 'Brown structured shoulder bag',
+    }
+  - {
+      id: w-dresses-black,
+      accounts: [women],
+      type: dresses,
+      colours: [black],
+      pattern: plain,
+      subcategory: midi slip dress,
+      material: satin,
+      look: 'black',
+      name: 'Black midi slip dress',
+    }
+  - {
+      id: w-knitwear-beige,
+      accounts: [women],
+      type: knitwear,
+      colours: [beige],
+      pattern: plain,
+      subcategory: crew-neck jumper,
+      material: wool knit,
+      look: 'beige, visible knit texture',
+      name: 'Beige crew-neck jumper',
+    }
+  - {
+      id: w-knitwear-white-navy,
+      accounts: [women],
+      type: knitwear,
+      colours: [white, navy],
+      pattern: striped,
+      subcategory: Breton striped jumper,
+      material: cotton knit,
+      look: 'white with navy horizontal Breton stripes, visible knit texture',
+      name: 'Breton stripe jumper, white and navy',
+    }
+  - {
+      id: w-scarves-purple-pink,
+      accounts: [women],
+      type: scarves,
+      colours: [purple, pink],
+      pattern: printed,
+      subcategory: printed silk square scarf,
+      material: silk,
+      look: 'purple and pink floral print',
+      name: 'Purple and pink floral silk scarf',
+    }
+  - {
+      id: u-trainers-white,
+      accounts: [women, men],
+      type: trainers,
+      colours: [white],
+      pattern: plain,
+      subcategory: low-top leather trainers,
+      material: leather,
+      look: 'white',
+      name: 'White low-top leather trainers',
+    }
+  - {
+      id: m-coats-navy,
+      accounts: [men],
+      type: coats,
+      colours: [navy],
+      pattern: plain,
+      subcategory: single-breasted overcoat,
+      material: wool,
+      look: 'navy, visible wool texture',
+      name: 'Navy single-breasted overcoat',
+    }
+  - {
+      id: m-jeans-blue,
+      accounts: [men],
+      type: jeans,
+      colours: [blue],
+      pattern: plain,
+      subcategory: straight-leg jeans,
+      material: denim,
+      look: 'blue, visible denim weave',
+      name: 'Blue straight-leg jeans',
+    }
+  - {
+      id: m-scarves-navy-red,
+      accounts: [men],
+      type: scarves,
+      colours: [navy, red],
+      pattern: printed,
+      subcategory: foulard-print silk scarf,
+      material: silk,
+      look: 'navy with small red foulard print',
+      name: 'Navy and red foulard silk scarf',
+    }
+  - {
+      id: m-shirts-blue-white,
+      accounts: [men],
+      type: shirts,
+      colours: [blue, white],
+      pattern: striped,
+      subcategory: striped button-down shirt,
+      material: cotton poplin,
+      look: 'blue and white fine vertical stripes',
+      name: 'Blue and white striped shirt',
+    }

@@ -12,3 +12,6 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+
+# The house seed's generated pictures, verdicts and ledger (tools/seed/Run.ts)
+tools/seed/.out/

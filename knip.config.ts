@@ -15,6 +15,7 @@ export default {
         'tools/retype-tops.ts',
         'tools/refind-photos.ts',
         'tools/import-v1/{Import,Export}.ts',
+        'tools/seed/Run.ts',
         'tools/**/*.test.ts',
         '*.config.ts',
       ],
