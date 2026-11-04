@@ -597,7 +597,27 @@
     "ignore": "If you didn't ask for this code, ignore this email. Never share the code with anyone."
   },
   "assistantView": {
-    "openInStyld": "Open in Styld"
+    "openInStyld": "Open in Styld",
+    "tryOn": {
+      "title": "Try on",
+      "before": "Before",
+      "after": "After",
+      "drawing": "Styld is still drawing this one. Ask again in a moment.",
+      "stopped": "Styld couldn’t draw this one. Your credits are back.",
+      "wearing": "Wearing"
+    },
+    "gallery": {
+      "title": "Your Gallery",
+      "empty": "There are no photos in your Gallery yet."
+    },
+    "pieces": {
+      "title": "Your pieces",
+      "outfit": "Outfit",
+      "empty": "None of these are in your wardrobe."
+    },
+    "piece": {
+      "backClean": "The back, shop-style"
+    }
   },
   "capture": {
     "addTitle": "Add clothes",

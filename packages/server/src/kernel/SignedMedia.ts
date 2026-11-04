@@ -51,17 +51,23 @@ class ViewThumbnails extends Context.Service<
   { readonly add: (grant: MediaGrant) => Effect.Effect<void> }
 >()('@styld/server/kernel/ViewThumbnails') {}
 
+/** Run a read with the collector installed: `images` holds each entity's first thumbnail grant (the picture it shows),
+ * `every` each entity's grants of every object, once per object, in the order they were signed (a piece's page: the
+ * picture it shows, its drawing, its back, its photo). */
 export const withViewThumbnails = <A, E, R>(load: Effect.Effect<A, E, R>) =>
   Effect.suspend(() => {
     const images = new Map<string, MediaGrant>()
+    const every = new Map<string, ReadonlyArray<MediaGrant>>()
     return load.pipe(
       Effect.provideService(ViewThumbnails, {
         add: (grant) =>
           Effect.sync(() => {
             if (grant.variant === 'thumb' && !images.has(grant.entityId)) images.set(grant.entityId, grant)
+            const known = every.get(grant.entityId) ?? []
+            if (!known.some(({ key }) => key === grant.key)) every.set(grant.entityId, [...known, grant])
           }),
       }),
-      Effect.map((value) => ({ value, images })),
+      Effect.map((value) => ({ value, images, every })),
     )
   })
 

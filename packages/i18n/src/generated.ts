@@ -47,7 +47,19 @@ export interface MessageArgumentsByKey<_T = string> {
   'ask.stylistTitle': Readonly<Record<string, never>>
   'ask.suggestions': Readonly<Record<string, never>>
   'ask.title': Readonly<Record<string, never>>
+  'assistantView.gallery.empty': Readonly<Record<string, never>>
+  'assistantView.gallery.title': Readonly<Record<string, never>>
   'assistantView.openInStyld': Readonly<Record<string, never>>
+  'assistantView.piece.backClean': Readonly<Record<string, never>>
+  'assistantView.pieces.empty': Readonly<Record<string, never>>
+  'assistantView.pieces.outfit': Readonly<Record<string, never>>
+  'assistantView.pieces.title': Readonly<Record<string, never>>
+  'assistantView.tryOn.after': Readonly<Record<string, never>>
+  'assistantView.tryOn.before': Readonly<Record<string, never>>
+  'assistantView.tryOn.drawing': Readonly<Record<string, never>>
+  'assistantView.tryOn.stopped': Readonly<Record<string, never>>
+  'assistantView.tryOn.title': Readonly<Record<string, never>>
+  'assistantView.tryOn.wearing': Readonly<Record<string, never>>
   'auth.autoCreateNote': Readonly<Record<string, never>>
   'auth.checkYourEmail': Readonly<Record<string, never>>
   'auth.codeSentToEmail': Readonly<Record<string, never>>
@@ -1064,4 +1076,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4456a31e1c34b3c2262f5eb7d65b0529b0990b6fb91e2ec38aee0848e3e84ab8'
+export const catalogVersion = '96e20183b0464089d5b47bde0cdc546f13c83af4c60363b5230596cd4a573807'

@@ -29,7 +29,7 @@ export const lookList = toolSpec({
 export const lookGet = toolSpec({
   name: 'look_get',
   title: 'One look',
-  description: 'One saved look by its id, with its pieces.',
+  description: 'One saved look by its id, with its pieces; pieces_show shows them as pictures.',
   parameters: Schema.Struct({ lookId: LookId }),
   annotations: { readOnlyHint: true, openWorldHint: false },
 })

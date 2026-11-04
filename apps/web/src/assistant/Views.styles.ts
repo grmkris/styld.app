@@ -50,3 +50,13 @@ export const open = style({
 export const subheading = style({ marginBlockEnd: '8px', fontSize: 'subheading', fontWeight: 600 })
 /** A board's collage inside the host's frame: no wider than a phone's. */
 export const table = style({ maxInlineSize: '420px' })
+/** Two pictures side by side, one above the other when the host's frame is narrow: a try-on's before and after, or a
+ * piece's pictures. */
+export const compare = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
+  gap: 'grid',
+})
+export const figure = style({ display: 'grid', gap: 'snug', margin: '0' })
+/** A photo's frame: portrait, as phones take them. */
+export const photoFrame = style({ aspectRatio: '3 / 4', borderRadius: 'photo', backgroundColor: 'paper2' })
