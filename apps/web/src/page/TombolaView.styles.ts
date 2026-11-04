@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { cutoutGlow, style, vars } from '../zyzz.config.ts'
+import { cutoutGlow, style, vars, wheelWedges } from '../zyzz.config.ts'
 
 // What to wear today: the button under the day, and the screen it opens. The wheel turns several times round and
 // slows onto the drawn piece at its top (`--land`, set in the browser); the piece then grows into the middle. Under
@@ -75,6 +75,7 @@ export const wheel = style({
   containerType: 'size',
   borderRadius: 'pill',
   backgroundColor: 'stock',
+  backgroundImage: wheelWedges,
   boxShadow: 'lift1',
   animationName: turn,
   animationDuration: vars.transitionDuration.wheel,

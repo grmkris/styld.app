@@ -221,3 +221,9 @@ export const landingVeilTall =
   'linear-gradient(to bottom, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.7), oklch(0.18 0.01 50 / 0.66)) 30%, transparent 52%, transparent 64%, light-dark(oklch(0.951 0.009 85 / 0.9), oklch(0.18 0.01 50 / 0.88)) 100%)'
 export const landingVeilWide =
   'linear-gradient(to right, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.8), oklch(0.18 0.01 50 / 0.76)) 34%, transparent 62%)'
+
+/** The tombola's wheel in twelve wedges of the board paper tints, sand, sage, slate and clay in turn, each piece in the
+ * middle of its own (Eva's report of 4 November 2026: the plain wheel read as too basic). Gradients take no token, so
+ * the tints' pairs repeat here; change them with `tintSand`, `tintSage`, `tintSlate` and `tintClay`. */
+export const wheelWedges =
+  'repeating-conic-gradient(from -15deg, light-dark(#e0d3b8, #3d3426) 0 30deg, light-dark(#c3cbb7, #2e3529) 0 60deg, light-dark(#bec8d4, #2a313b) 0 90deg, light-dark(#dcc0ad, #3e2f26) 0 120deg)'
