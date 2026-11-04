@@ -95,7 +95,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // `generated` on public pieces, looks and boards in the client's contract, the mark with its hint on board cards,
 // look tiles, the public board, the piece page and What's new, and the hint's words add 175: HEAD measured 384,772 in
 // a clean worktree at 3cdb7a61 and 384,947 with them.
-if (initialGzip > 385000) throw new Error(`Initial browser assets exceed the 385,000-byte gzip budget: ${initialGzip}`)
+// Raised to 387,300 the same day for Show me (the house boards' plan, S3): Home's card above What's new, the Account
+// page's choice, their shared program (the preferences read, the answer and its save), their styles and the en/sl
+// words add 2,284: HEAD measured 384,947 in a clean worktree at 376edb41 and 387,231 with them.
+if (initialGzip > 387300) throw new Error(`Initial browser assets exceed the 387,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

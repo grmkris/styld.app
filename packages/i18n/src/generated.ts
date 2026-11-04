@@ -541,6 +541,14 @@ export interface MessageArgumentsByKey<_T = string> {
   'share.piece.metaDescription': Readonly<Record<string, never>>
   'share.publicTitle': Readonly<Record<string, never>>
   'share.publishFirst': Readonly<Record<string, never>>
+  'showMe.accountReason': Readonly<Record<string, never>>
+  'showMe.all': Readonly<Record<string, never>>
+  'showMe.failed': Readonly<Record<string, never>>
+  'showMe.men': Readonly<Record<string, never>>
+  'showMe.notNow': Readonly<Record<string, never>>
+  'showMe.reason': Readonly<Record<string, never>>
+  'showMe.title': Readonly<Record<string, never>>
+  'showMe.women': Readonly<Record<string, never>>
   'studio.add': Readonly<Record<string, never>>
   'studio.addFailed': Readonly<Record<string, never>>
   'studio.addMenuLooks': Readonly<Record<string, never>>
@@ -919,4 +927,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'cce3bc3735c6379fe71de87f3ba290d26892d83f21790156a5da29ba447afd2f'
+export const catalogVersion = '288180806ba8e6a3ec807a39ae8ace5c78cfe1238d2dd219d09d0f7285b14fad'

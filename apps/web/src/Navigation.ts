@@ -3,7 +3,7 @@ import { Command, Dom, Render } from 'foldkit'
 import { back, load, pushUrl, replaceUrl, UrlRequest } from 'foldkit/navigation'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
-import { accountRouter, AppRoute, isSameTab, parentReturn, returnPath, routeFromUrl, tabOf } from './route.ts'
+import { AppRoute, homeRouter, isSameTab, parentReturn, returnPath, routeFromUrl, tabOf } from './route.ts'
 import { noteReturn } from './SignInReturn.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
@@ -28,9 +28,10 @@ export const SignInToFollow = Command.define('SignInToFollow', {
     noteReturn(returnTo).pipe(Effect.andThen(load(href)), Effect.as(Message.CompletedNavigate())),
 })
 
-/** Where sign-in hands over to: the page it was asked from (a Follow or a Save on a public page), else the account. */
+/** Where sign-in hands over to: the page it was asked from (a Follow or a Save on a public page), else Home, where
+ * What's new waits and Show me is asked (owner, 4 November 2026). */
 export const returnAfterSignIn = (next: Option.Option<string>) =>
-  Navigate({ href: Option.getOrElse(returnPath(next), () => accountRouter({})) })
+  Navigate({ href: Option.getOrElse(returnPath(next), () => homeRouter({})) })
 
 /** Another tab page in the same document: the address changes and `ChangedUrl` opens it.
  */

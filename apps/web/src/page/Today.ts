@@ -23,6 +23,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import * as PickUp from './PickUp.ts'
+import * as ShowMe from './ShowMe.ts'
 import * as Tombola from './Tombola.ts'
 import * as WhatsNew from './WhatsNew.ts'
 
@@ -80,6 +81,8 @@ export const Model = Schema.Struct({
   swap: Swap,
   worn: Worn,
   pickUp: PickUp.Model,
+  /** What What's new starts with: asked once, above it. */
+  showMe: ShowMe.Model,
   whatsNew: WhatsNew.Model,
   /** What to wear today: the wheel that draws one piece. */
   tombola: Tombola.Model,
@@ -98,6 +101,7 @@ export const init = (): Model => ({
   swap: Swap.Idle(),
   worn: Worn.NotYet(),
   pickUp: PickUp.init(),
+  showMe: ShowMe.init(),
   whatsNew: WhatsNew.init(),
   tombola: Tombola.init(),
   maybeAnchor: Option.none(),
@@ -110,6 +114,7 @@ export const Message = defineMessageUnion({
   SucceededReadWorn: { pieceIds: Schema.Array(PieceId) },
   FailedReadWorn: {},
   GotPickUpMessage: { message: PickUp.Message },
+  GotShowMeMessage: { message: ShowMe.Message },
   GotWhatsNewMessage: { message: WhatsNew.Message },
   GotTombolaMessage: { message: Tombola.Message },
   SucceededMakeOutfits: { batch: OutfitProposals },
@@ -291,6 +296,16 @@ const foldTombola = Update.foldChild({
   }),
 })
 const enterWhatsNew = Update.foldChildStep({ update: WhatsNew.enter, ...whatsNewFold })
+const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
+const enterShowMe = Update.foldChildStep({ update: ShowMe.enter, ...showMeFold })
+/** A new Show me reads What's new again, in its order. */
+const foldShowMe = Update.foldChild({
+  update: ShowMe.update,
+  ...showMeFold,
+  foldOutMessage: ShowMe.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+  >({ ChangedShowMe: () => enterWhatsNew }),
+})
 
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
@@ -300,6 +315,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       commands: [DetermineDay()],
     }),
     enterPickUp,
+    enterShowMe,
     enterWhatsNew,
   ])
 
@@ -527,6 +543,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotWhatsNewMessage: (got) => foldWhatsNew(model, got.message),
     GotTombolaMessage: (got) => foldTombola(model, got.message),
     GotPickUpMessage: (got) => foldPickUp(model, got.message),
+    GotShowMeMessage: (got) => foldShowMe(model, got.message),
     SucceededMakeOutfits: ({ batch }) => ({
       model: modifyFields(model, { outfits: (outfits) => OutfitsData.Success({ data: withBatch(outfits, batch) }) }),
     }),

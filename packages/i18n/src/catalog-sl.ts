@@ -955,4 +955,12 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'piecePicker.noneFound': 'Noben kos se ne ujema. Poskusi Vse ali drugo besedo.',
   'piecePicker.emptyWardrobe': 'V tvoji garderobi še ni kosov.',
   'piecePicker.failed': 'Tvoji kosi se niso naložili.',
+  'showMe.title': 'Kaj naj ti pokažemo najprej?',
+  'showMe.women': 'Ženska oblačila',
+  'showMe.men': 'Moška oblačila',
+  'showMe.all': 'Vse',
+  'showMe.reason': 'Novosti se začnejo s tem. Nič ni skrito in kadar koli lahko spremeniš na strani Račun.',
+  'showMe.accountReason': 'Novosti se začnejo s tem. Nič ni skrito.',
+  'showMe.notNow': 'Ne zdaj',
+  'showMe.failed': 'Ni se shranilo. Poskusi znova.',
 }

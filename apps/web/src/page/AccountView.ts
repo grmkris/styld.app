@@ -38,6 +38,8 @@ import {
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { Message as ShowMeMessage, type Model as ShowMeModel } from './ShowMe.ts'
+import { choiceButtons, failure as showMeFailure } from './ShowMeView.ts'
 import { assistantsSection, personRouter, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -210,6 +212,35 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     ]),
   ])
 
+/** What What's new starts with: the three choices Home's card asks once, the saved one pressed. */
+const showMeSection = Submodel.defineView<ShowMeModel, ShowMeMessage, { readonly locale: Locale }>(
+  (model, { locale }, h) =>
+    h.section(
+      [h.AriaLabelledBy('show-me-setting'), ...styled(h, section())],
+      [
+        h.h2([h.Id('show-me-setting'), ...styled(h, sectionTitle())], [format(locale, 'showMe.title', {})]),
+        h.p(styled(h, sectionText()), [format(locale, 'showMe.accountReason', {})]),
+        ...AsyncData.matchData(model.preferences, {
+          onEmpty: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
+          onFailure: () => [
+            h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'common.error', {})]),
+            h.div(styled(h, rowActions()), [
+              actionButton(
+                {
+                  label: format(locale, 'common.tryAgain', {}),
+                  style: linkAction(),
+                  onClick: ShowMeMessage.ClickedRetry(),
+                },
+                h,
+              ),
+            ]),
+          ],
+          onData: () => [choiceButtons(model, 'show-me-setting', locale, h), showMeFailure(model, locale, h)],
+        }),
+      ],
+    ),
+)
+
 /** Signing out, under who they are: on a phone it is in the first screen, never below the assistants' setup (browser
  * review, 2 November 2026). */
 const signOut = ({ locale, signingOut }: Inputs, h: HtmlBuilder<Message>): Html =>
@@ -236,6 +267,13 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
       identityView(model, inputs, h),
       signOut(inputs, h),
       profileSection(model, inputs.locale, h),
+      h.submodel({
+        slotId: 'account-show-me',
+        model: model.showMe,
+        view: showMeSection,
+        viewInputs: { locale: inputs.locale },
+        toParentMessage: (message) => Message.GotShowMeMessage({ message }),
+      }),
       assistants(model, inputs, h),
       deletion(model, inputs, h),
     ],

@@ -1055,5 +1055,15 @@
     "noneFound": "No piece matches. Try All, or another word.",
     "emptyWardrobe": "Your wardrobe has no pieces yet.",
     "failed": "Your pieces didn’t load."
+  },
+  "showMe": {
+    "title": "What should we show you first?",
+    "women": "Women's",
+    "men": "Men's",
+    "all": "Everything",
+    "reason": "What's new starts with these. Nothing is hidden, and you can change it any time on your Account page.",
+    "accountReason": "What's new starts with these. Nothing is hidden.",
+    "notNow": "Not now",
+    "failed": "That didn't save. Try again."
   }
 }

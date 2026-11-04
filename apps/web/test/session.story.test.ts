@@ -10,6 +10,7 @@ import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as PickUp from '../src/page/PickUp.ts'
+import * as ShowMe from '../src/page/ShowMe.ts'
 import * as Today from '../src/page/Today.ts'
 import * as WhatsNew from '../src/page/WhatsNew.ts'
 import { AppRoute } from '../src/route.ts'
@@ -37,14 +38,14 @@ describe('the session decides where a visitor belongs', () => {
       )
   })
 
-  test('a signed-in visitor who opens sign-in goes straight to their account', () => {
+  test('a signed-in visitor who opens sign-in goes straight Home', () => {
     story(
       update,
       given(page('/login')),
       message(Message.ReceivedSession({ claims })),
       model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
-      Command.expectExact(Navigate({ href: '/account' })),
-      Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
+      Command.expectExact(Navigate({ href: '/' })),
+      Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
     )
   })
 
@@ -61,11 +62,11 @@ describe('the session decides where a visitor belongs', () => {
       '/login/connect',
       '/no/such/page',
     ]
-    // Back to the page; anywhere else, the account. Only a Follow pressed in this tab follows there (SignInReturn).
+    // Back to the page; anywhere else, Home. Only a Follow pressed in this tab follows there (SignInReturn).
     const cases = [
       ['/@nika.kovac#follow', '/@nika.kovac#follow'],
       ['/boards/bd_1?from=explore#pins', '/boards/bd_1?from=explore#pins'],
-      ...elsewhere.map((next) => [next, '/account']),
+      ...elsewhere.map((next) => [next, '/']),
     ] as const
     for (const [next, href] of cases)
       story(
@@ -109,6 +110,7 @@ describe('the session decides where a visitor belongs', () => {
         Today.DetermineDay,
         PickUp.ReadFavourite,
         PickUp.ReadTray,
+        ShowMe.ReadPreferences,
         WhatsNew.ReadFeed,
         ListPieces,
         ListBoards,
@@ -119,6 +121,7 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(ListBoards, DataMessage.FailedListBoards()),
       Command.resolve(PickUp.ReadFavourite, PickUp.Message.FailedReadFavourite()),
       Command.resolve(PickUp.ReadTray, PickUp.Message.FailedReadTray()),
+      Command.resolve(ShowMe.ReadPreferences, ShowMe.Message.FailedReadPreferences()),
       Command.resolve(WhatsNew.ReadFeed, WhatsNew.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
       // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.

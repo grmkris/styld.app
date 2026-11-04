@@ -62,7 +62,10 @@ export const verifyBrowserIdentity = async (browser: Browser, origin: string): P
     await page.getByRole('alert').getByText("That code isn't right.").waitFor({ state: 'visible' })
     expect(await page.getByLabel('Enter verification code').inputValue()).toBe('')
     await enterCode(page, code)
-    await page.waitForURL(new URL('/account', origin).toString())
+    // A new account lands on Home, where What's new waits and Show me is asked once (owner, 4 November 2026).
+    await page.waitForURL(new URL('/', origin).toString())
+    await page.getByRole('heading', { name: 'What should we show you first?' }).waitFor({ state: 'visible' })
+    await page.goto(new URL('/account', origin).toString(), { waitUntil: 'networkidle' })
     await signOut(page).waitFor({ state: 'visible' })
     // The new account is named after the email until the person names it.
     expect(await page.getByRole('main').textContent()).toContain(email)
@@ -90,7 +93,8 @@ export const verifyBrowserIdentity = async (browser: Browser, origin: string): P
     await enterCode(page, code)
     await page.getByRole('alert').waitFor({ state: 'visible' })
     await enterCode(page, again)
-    await page.waitForURL(new URL('/account', origin).toString())
+    await page.waitForURL(new URL('/', origin).toString())
+    await page.goto(new URL('/account', origin).toString(), { waitUntil: 'networkidle' })
     await signOut(page).waitFor({ state: 'visible' })
     expect(await page.getByRole('main').textContent()).toContain(email)
 

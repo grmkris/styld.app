@@ -71,7 +71,7 @@ describe('email code sign-in', () => {
     )
   })
 
-  test('a person signs in with the code from their email and lands on their account', () => {
+  test('a person signs in with the code from their email and lands on Home', () => {
     scene(
       { update, view },
       given(page('/login')),
@@ -100,8 +100,8 @@ describe('email code sign-in', () => {
       submit(selector('#email-code')),
       Command.expectExact(VerifyCode({ email: 'ana@example.com', sent })),
       Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
-      Command.expectExact(Navigate({ href: '/account' })),
-      Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
+      Command.expectExact(Navigate({ href: '/' })),
+      Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
       expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })

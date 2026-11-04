@@ -2,13 +2,14 @@ import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { Profile } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
-import { AsyncData, Command, type Update } from 'foldkit'
+import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { ProfileData, readProfile } from './ProfileRead.ts'
+import * as ShowMe from './ShowMe.ts'
 
 // MODEL
 
@@ -18,10 +19,21 @@ export { Deletion }
 /** Copying the assistants' server address. */
 export const Copy = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
 
-export const Model = Schema.Struct({ deletion: Deletion, copy: Copy, profile: ProfileData.schema })
+export const Model = Schema.Struct({
+  deletion: Deletion,
+  copy: Copy,
+  profile: ProfileData.schema,
+  /** What What's new starts with, as Home's card asked. */
+  showMe: ShowMe.Model,
+})
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ deletion: Deletion.Idle(), copy: Copy.Idle(), profile: AsyncData.Loading() })
+export const init = (): Model => ({
+  deletion: Deletion.Idle(),
+  copy: Copy.Idle(),
+  profile: AsyncData.Loading(),
+  showMe: ShowMe.init(),
+})
 
 // MESSAGE
 
@@ -38,6 +50,7 @@ export const Message = defineMessageUnion({
   SucceededReadProfile: { profile: Profile },
   FailedReadProfile: {},
   ClickedRetryProfile: {},
+  GotShowMeMessage: { message: ShowMe.Message },
 })
 export type Message = typeof Message.Type
 
@@ -73,15 +86,27 @@ export const ReadProfile = Command.define('ReadProfile', {
   ),
 })
 
-/** Opening the page: the profile as it is now; one already shown stays while it is read again. */
-export const enter = (model: Model): Update.Return<Model, Message, StyldClient> => ({
-  model,
-  commands: [ReadProfile()],
-})
+const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
+
+/** Opening the page: the profile and Show me as they are now; what is already shown stays while it is read again. */
+export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
+  Update.combine<Model, Message, StyldClient>(model, [
+    (current) => ({ model: current, commands: [ReadProfile()] }),
+    Update.foldChildStep({ update: ShowMe.enter, ...showMeFold }),
+  ])
 
 // UPDATE
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+
+/** What's new is read when Home opens, so a new Show me needs nothing more here. */
+const foldShowMe = Update.foldChild({
+  update: ShowMe.update,
+  ...showMeFold,
+  foldOutMessage: ShowMe.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+  >({ ChangedShowMe: () => (stepModel) => ({ model: stepModel }) }),
+})
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -111,4 +136,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onNone: () => ({ model }),
         onSome: (profile) => ({ model: modifyFields(model, { profile: () => profile }), commands: [ReadProfile()] }),
       }),
+    GotShowMeMessage: (got) => foldShowMe(model, got.message),
   })

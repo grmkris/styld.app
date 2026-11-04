@@ -34,6 +34,7 @@ import * as styles from './TodayView.styles.ts'
 import { pieceDescription, pieceLabel } from './WardrobeWords.ts'
 import { challengesView } from './ChallengesView.ts'
 import { type HomeData, pickUpView } from './PickUpView.ts'
+import * as ShowMeView from './ShowMeView.ts'
 import { earlierView, stripView } from './WhatsNewView.ts'
 import * as TombolaView from './TombolaView.ts'
 
@@ -341,6 +342,13 @@ export const view = Submodel.defineView<Model, Message, HomeData & { readonly lo
           }),
         ]),
         h.div(styled(h, styles.news()), [
+          h.submodel({
+            slotId: 'show-me',
+            model: model.showMe,
+            view: ShowMeView.card,
+            viewInputs: { locale },
+            toParentMessage: (message) => Message.GotShowMeMessage({ message }),
+          }),
           h.submodel({
             slotId: 'whats-new-strip',
             model: model.whatsNew,

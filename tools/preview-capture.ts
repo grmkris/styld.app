@@ -50,7 +50,7 @@ const signIn = async (context: BrowserContext) => {
   console.log(`code requested; write it to ${codeFile}`)
   await page.getByLabel('Enter verification code').fill(await awaitCode())
   await page.getByRole('button', { name: 'Verify code' }).click()
-  await page.waitForURL(`${origin}/account`)
+  await page.waitForURL(`${origin}/`)
   await context.storageState({ path: stateFile })
   await chmod(stateFile, 0o600)
   await page.close()

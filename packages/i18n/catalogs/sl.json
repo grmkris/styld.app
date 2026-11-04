@@ -1055,5 +1055,15 @@
     "noneFound": "Noben kos se ne ujema. Poskusi Vse ali drugo besedo.",
     "emptyWardrobe": "V tvoji garderobi še ni kosov.",
     "failed": "Tvoji kosi se niso naložili."
+  },
+  "showMe": {
+    "title": "Kaj naj ti pokažemo najprej?",
+    "women": "Ženska oblačila",
+    "men": "Moška oblačila",
+    "all": "Vse",
+    "reason": "Novosti se začnejo s tem. Nič ni skrito in kadar koli lahko spremeniš na strani Račun.",
+    "accountReason": "Novosti se začnejo s tem. Nič ni skrito.",
+    "notNow": "Ne zdaj",
+    "failed": "Ni se shranilo. Poskusi znova."
   }
 }
