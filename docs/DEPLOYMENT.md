@@ -43,11 +43,19 @@ random bytes, made with `openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'`).
 and binds them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, and `STYLD_OPERATOR_TOKEN` unset means no
 operator, so no imports. The Worker keeps only the token's digest, and the operator's routes answer 404 to anything
 but that token. `STYLD_DODO_API_KEY` and `STYLD_DODO_WEBHOOK_SECRET` (`whsec_<base64>`, the
-webhook endpoint's signing secret) switch on Styld Premium Week through Dodo Payments: test-mode values on the preview,
-live-mode ones in production's file; with either unset the stage sells nothing (no button, `/api/billing/*` answers
-404). Which Dodo mode and product a stage uses is a stage fact (`Resources.ts` `stages`, `billing`), passed as
-`STYLD_DODO_BASE` and `STYLD_DODO_PRODUCT` only when both secrets are set. Each mode's webhook endpoint is
-`<origin>/api/billing/dodo/webhook` (payment.succeeded, payment.failed, refund.succeeded, dispute.opened, dispute.lost). `STYLD_RELEASE` (the commit) is
+webhook endpoint's signing secret) switch on the plans through Dodo Payments: test-mode values on the preview,
+live-mode ones in production's file; with either unset the stage sells nothing (no plans, `/api/billing/*` answers
+404). Which Dodo mode and products a stage uses are stage facts (`Resources.ts` `stages`, `billing.products`), passed
+as `STYLD_DODO_BASE` and `STYLD_DODO_PRODUCT_WEEK`, `_MONTHLY`, `_YEARLY`, `_LIFETIME` only when both secrets are set:
+test mode (local, local-native, preview) Week `pdt_0NrETRIgUh3xrUyRjyEj0`, Monthly `pdt_0NrEz2liX1IgFSWZolE8z`, Yearly
+`pdt_0NrEz2tkNtmO0PD0FD5eQ`, Lifetime `pdt_0NrEz39MvC8AKJKfCaH5i`; live mode (production) Week
+`pdt_0NrETRRmmoZUYS2pDknTg`, Monthly `pdt_0NrEz3KQr0QYLXvSL1brd`, Yearly `pdt_0NrEz3TWTGOn7dusahZie`, Lifetime
+`pdt_0NrEz3c8ZxFnlKjVg0T7F`. Each mode's webhook endpoint is `<origin>/api/billing/dodo/webhook` and needs
+payment.succeeded, refund.succeeded, dispute.lost and subscription.active, .renewed, .plan_changed, .cancelled,
+.expired, .failed and .on_hold. The operator grants a lifetime membership by email (the owner, testers, the house
+accounts, v1's hand-granted members; the list is the operator's, never the repository's):
+`STYLD_URL=https://… bun --env-file=.env.<stage>.local tools/grant-membership.ts <email>`; granting again changes
+nothing. `STYLD_RELEASE` (the commit) is
 passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`
 of `{ id, material }`, material at least 32 random bytes as unpadded base64url. Never print the file, commit it, or use
 v1 or production secrets in it. `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` come from the environment (both:
