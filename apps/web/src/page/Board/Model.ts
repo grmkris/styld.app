@@ -4,8 +4,6 @@ import {
   BoardItem,
   BoardItemId,
   CheckStatus,
-  GarmentGroup,
-  PieceType,
   Look,
   LookId,
   Mood,
@@ -15,6 +13,7 @@ import {
   Visibility,
 } from '@styld/protocol'
 import * as People from '../People.ts'
+import { initPicker, PiecePicker } from '../PiecePicker.ts'
 import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
@@ -180,9 +179,8 @@ export const Model = Schema.Struct({
   sharing: Share.Model,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
-  piecePicker: Dialog.Model,
-  maybePickerGroup: Schema.Option(GarmentGroup),
-  maybePickerType: Schema.Option(PieceType),
+  /** "Add your piece": the sheet of the wardrobe's pieces. */
+  piecePicker: PiecePicker,
   picks: Schema.Array(Schema.String),
   looks: LooksData.schema,
   /** Items on their way out, kept on the page until their exit animation ends. */
@@ -235,9 +233,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   people: People.init(People.Subject.Board({ boardId })),
   sharing: Share.init,
   picker: Dialog.init({ id: 'board-picker', isAnimated: true }),
-  piecePicker: Dialog.init({ id: 'board-piece-picker', isAnimated: true }),
-  maybePickerGroup: Option.none(),
-  maybePickerType: Option.none(),
+  piecePicker: initPicker('board-piece-picker'),
   picks: [],
   looks: AsyncData.Idle(),
   leaving: [],

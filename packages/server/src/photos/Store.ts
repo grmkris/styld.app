@@ -1,5 +1,5 @@
 import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
-import { and, asc, desc, eq, inArray, exists } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, exists, ne } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { OfferedRows } from '../capture/Rows.ts'
@@ -126,7 +126,8 @@ const writes = (db: Db) => ({
     query(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
       Effect.asVoid,
     ),
-  /** A garment confirmed as a piece, or found in none: only the account's own, on its own photo. */
+  /** A garment confirmed as a piece, or found in none: only the account's own, on its own photo, and never one offered
+   * to the review tray, whose card keeping it is what confirms it (`Rows.ts`). */
   matchGarment: (accountId: string, photoId: string, garmentId: string, pieceId: string | null) =>
     query(() =>
       db
@@ -137,6 +138,7 @@ const writes = (db: Db) => ({
             eq(photoGarments.id, garmentId),
             eq(photoGarments.photoId, photoId),
             eq(photoGarments.accountId, accountId),
+            ne(photoGarments.state, 'offered'),
           ),
         )
         .returning({ id: photoGarments.id }),

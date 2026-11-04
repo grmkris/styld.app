@@ -675,7 +675,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.dropHere': 'Drop pictures to add them to the board',
   'board.addPiece': 'Put {name} on the table',
   'board.wardrobeEmpty': 'Add clothes to your wardrobe to lay them here.',
-  'board.wardrobeFailed': 'Your pieces didn’t load.',
   'board.pieceFallback': 'A piece',
   'board.picture': 'A picture',
   'board.textItem': 'Text: {text}',
@@ -907,4 +906,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.cutOutSlowDown': 'Many cut-outs at once. Try again in a minute.',
   'photo.cutoutOf': 'Outfit cut out of the photo from {date}',
   'lab.title': 'Laboratory',
+  'piecePicker.search': 'Search your pieces',
+  'piecePicker.noneFound': 'No piece matches. Try All, or another word.',
+  'piecePicker.emptyWardrobe': 'Your wardrobe has no pieces yet.',
+  'piecePicker.failed': 'Your pieces didn’t load.',
 }

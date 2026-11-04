@@ -171,6 +171,24 @@ describe('an outfit photo', () => {
     )
   })
 
+  test('the wardrobe’s sheet opens for a garment on the kind Styld read, fresh each time, and a new group frees the type', () => {
+    const sheet = Photo.update(loaded, Photo.Message.ClickedChoose({ garmentId })).model
+    expect(sheet.choosing).toEqual(Option.some(garmentId))
+    expect(sheet.picker).toMatchObject({
+      group: Option.some('clothing'),
+      type: Option.some('shortSleeveTops'),
+      query: '',
+    })
+    const typed = Photo.update(sheet, Photo.Message.UpdatedPickerQuery({ query: 'grey' })).model
+    const widened = Photo.update(typed, Photo.Message.SelectedPickerGroup({ group: Option.some('shoes') })).model
+    expect(widened.picker).toMatchObject({ group: Option.some('shoes'), type: Option.none(), query: 'grey' })
+    expect(Photo.update(widened, Photo.Message.ClickedChoose({ garmentId })).model.picker).toMatchObject({
+      group: Option.some('clothing'),
+      type: Option.some('shortSleeveTops'),
+      query: '',
+    })
+  })
+
   test('Cut out the outfit asks once, and says so when Styld found no one in the photo', () => {
     story(
       Photo.update,

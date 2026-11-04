@@ -1,6 +1,6 @@
 import { cdn } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
-import { type Photo, type PhotoGarment, type Piece, slotOf } from '@styld/protocol'
+import type { Photo, PhotoGarment, Piece } from '@styld/protocol'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -9,66 +9,31 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { formError } from '../Fields.styles.ts'
 import { favouriteIcon, favouriteOnIcon, loader } from '../Icon.ts'
-import { chip, chosen } from '../Controls.styles.ts'
 import { lookRouter, photoRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { backToGallery } from './PageBar.ts'
 import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
-import type { BoardsData } from '../ServerData.ts'
+import type { BoardsData, PiecesData } from '../ServerData.ts'
+import { piecePickerSheet } from './PiecePickerView.ts'
 import { Deletion, Message, type Model, Work } from './Photo.ts'
 import { photoDate } from './PhotosView.ts'
 import * as styles from './PhotosView.styles.ts'
+import { chip, chosen } from '../Controls.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 
 interface Inputs {
   readonly locale: Locale
   readonly timeZone: string
   readonly pieces: ReadonlyArray<Piece>
+  /** The same pieces as the app holds them, loading or not, for the wardrobe's sheet. */
+  readonly wardrobe: PiecesData
   readonly boards: BoardsData
 }
 
 const pieceThumb = (piece: Piece, h: HtmlBuilder<Message>): Html =>
   h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.smallThumb())])
-
-/** The wardrobe's pieces that sit where the garment does, or all of them when Styld could not tell what it is. */
-const candidates = (garment: PhotoGarment, pieces: ReadonlyArray<Piece>) => {
-  const ready = pieces.filter(({ status }) => status === 'ready')
-  return garment.type === null ? ready : ready.filter(({ type }) => slotOf(type) === slotOf(garment.type ?? type))
-}
-
-const picker = (garment: PhotoGarment, { locale, pieces }: Inputs, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.match()), [
-    h.div(
-      [h.Role('group'), h.AriaLabel(format(locale, 'photo.pick', {})), ...styled(h, styles.picker())],
-      candidates(garment, pieces).map((piece) =>
-        actionButton(
-          {
-            label: pieceLabel(piece, locale),
-            leading: pieceThumb(piece, h),
-            style: styles.pick(),
-            onClick: Message.ClickedMatch({ garmentId: garment.id, pieceId: piece.id }),
-          },
-          h,
-        ),
-      ),
-    ),
-    h.div(styled(h, styles.actions()), [
-      actionButton(
-        {
-          label: format(locale, 'photo.noneOfThese', {}),
-          style: secondaryAction(),
-          onClick: Message.ClickedMatch({ garmentId: garment.id, pieceId: null }),
-        },
-        h,
-      ),
-      actionButton(
-        { label: format(locale, 'common.cancel', {}), style: linkAction(), onClick: Message.ClickedCancelChoose() },
-        h,
-      ),
-    ]),
-  ])
 
 const choose = (
   garment: PhotoGarment,
@@ -136,10 +101,52 @@ const matchView = (garment: PhotoGarment, photoId: string, inputs: Inputs, h: Ht
 const garmentRow = (model: Model, garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(garment.id, styled(h, styles.garment()), [
     h.img([h.Src(cdn.photoGarment(garment)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.thumb())]),
-    Option.contains(model.choosing, garment.id)
-      ? picker(garment, inputs, h)
-      : matchView(garment, model.photoId, inputs, h),
+    matchView(garment, model.photoId, inputs, h),
   ])
+
+/** The wardrobe's sheet for the garment being matched: every piece, opened on the kind Styld read it as, the piece it
+ * is now ticked, then "None of my pieces". */
+const pickerView = (model: Model, photo: Photo, { locale, wardrobe }: Inputs, h: HtmlBuilder<Message>): Html =>
+  Option.match(
+    Option.flatMap(model.choosing, (garmentId) =>
+      Option.fromNullishOr(photo.garments.find(({ id }) => id === garmentId)),
+    ),
+    {
+      onNone: () => h.empty,
+      onSome: (garment) =>
+        piecePickerSheet(
+          {
+            picker: model.picker,
+            pieces: wardrobe,
+            locale,
+            title: format(locale, 'photo.pick', {}),
+            emptyWardrobe: format(locale, 'piecePicker.emptyWardrobe', {}),
+            messages: {
+              sheet: (message) => Message.GotPiecePickerMessage({ message }),
+              group: (group) => Message.SelectedPickerGroup({ group }),
+              type: (type) => Message.SelectedPickerType({ type }),
+              query: (query) => Message.UpdatedPickerQuery({ query }),
+              piece: ({ id }) => Message.ClickedMatch({ garmentId: garment.id, pieceId: id }),
+            },
+            isChosen: (piece) => garment.match === 'confirmed' && garment.pieceId === piece.id,
+            pieceLabel: (name) => name,
+            after: [
+              h.div(styled(h, styles.actions()), [
+                actionButton(
+                  {
+                    label: format(locale, 'photo.noneOfThese', {}),
+                    style: secondaryAction(),
+                    onClick: Message.ClickedMatch({ garmentId: garment.id, pieceId: null }),
+                  },
+                  h,
+                ),
+              ]),
+            ],
+          },
+          h,
+        ),
+    },
+  )
 
 /** Favourite, Wear it again (or the look it made), and Delete. */
 const actionsView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
@@ -328,6 +335,7 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
                 styled(h, styles.garments()),
                 photo.garments.map((garment) => garmentRow(model, garment, inputs, h)),
               ),
+              pickerView(model, photo, inputs, h),
             ],
           ),
   ]

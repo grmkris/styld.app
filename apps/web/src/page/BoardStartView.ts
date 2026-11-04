@@ -16,8 +16,8 @@ import { bottomSheet, sheetShown } from './Sheet.ts'
 import { pieceDescription, pieceLabel } from './WardrobeWords.ts'
 import * as askStyles from './AskView.styles.ts'
 import * as boardStyles from './Board/PageView.styles.ts'
-import { filterButton, groupFilters } from './Board/PiecePickerView.ts'
-import * as pickerStyles from './Board/PiecePickerView.styles.ts'
+import { filterButton, groupFilters } from './PiecePickerView.ts'
+import * as pickerStyles from './PiecePickerView.styles.ts'
 import * as styles from './BoardStartView.styles.ts'
 
 export interface Inputs {

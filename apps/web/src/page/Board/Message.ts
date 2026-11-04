@@ -130,6 +130,7 @@ export const Message = defineMessageUnion({
   GotPiecePickerMessage: { message: Dialog.Message },
   SelectedPickerGroup: { group: Schema.Option(GarmentGroup) },
   SelectedPickerType: { type: Schema.Option(PieceType) },
+  UpdatedPickerQuery: { query: Schema.String },
   GotPickerMessage: { message: Dialog.Message },
   ToggledPick: { pick: Schema.String },
   SubmittedPicks: {},

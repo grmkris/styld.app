@@ -139,23 +139,6 @@ export const smallThumb = style({
   objectFit: 'contain',
   borderRadius: 'inset',
 })
-/** The wardrobe picker under a garment: its pieces of that kind, then none of them. */
-export const picker = style({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
-  gap: 'actions',
-  inlineSize: '100%',
-})
-export const pick = style({
-  display: 'grid',
-  gap: 'tight',
-  justifyItems: 'center',
-  padding: '4px',
-  borderRadius: 'inset',
-  backgroundColor: 'paper',
-  fontSize: 'micro',
-  color: 'ink2',
-})
 export const confirm = style({
   display: 'grid',
   gap: 'related',

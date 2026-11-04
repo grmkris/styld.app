@@ -241,7 +241,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.photo, photo),
             view: PhotoView.view,
-            viewInputs: { locale, timeZone, pieces, boards: model.data.boards },
+            viewInputs: { locale, timeZone, pieces, wardrobe: model.data.pieces, boards: model.data.boards },
           }),
         h,
       ),

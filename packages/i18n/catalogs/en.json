@@ -772,7 +772,6 @@
     "dropHere": "Drop pictures to add them to the board",
     "addPiece": "Put {name} on the table",
     "wardrobeEmpty": "Add clothes to your wardrobe to lay them here.",
-    "wardrobeFailed": "Your pieces didn’t load.",
     "pieceFallback": "A piece",
     "picture": "A picture",
     "textItem": "Text: {text}",
@@ -1026,5 +1025,11 @@
   },
   "lab": {
     "title": "Laboratory"
+  },
+  "piecePicker": {
+    "search": "Search your pieces",
+    "noneFound": "No piece matches. Try All, or another word.",
+    "emptyWardrobe": "Your wardrobe has no pieces yet.",
+    "failed": "Your pieces didn’t load."
   }
 }

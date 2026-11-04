@@ -119,6 +119,10 @@ const verifyOffering = async (origin: string, owner: Call) => {
   expect((await photoOf(await send(owner, path, 'POST'))).garments[0]?.match).toBe('offered')
   expect((await photoOf(await send(owner, path, 'POST'))).garments[0]?.match).toBe('offered')
   expect(await remaining(owner)).toBe(before)
+  // A garment waiting in the review tray stays there: a match sent for it answers the photo as it is.
+  const unmatch = { operationId: 'native-photo-unmatch-offered', pieceId: null }
+  const kept = await send(owner, `/api/photos/${photo.id}/garments/${garment.id}`, 'PUT', unmatch)
+  expect((await photoOf(kept)).garments[0]?.match).toBe('offered')
   const wear = { operationId: 'native-photo-look-1', name: 'Outfit from Saturday' }
   expect((await send(owner, `/api/photos/${photo.id}/look`, 'POST', wear)).status).toBe(409)
   const tray = Schema.decodeUnknownSync(TrayCaptures)(await (await owner('/api/captures/tray')).json())

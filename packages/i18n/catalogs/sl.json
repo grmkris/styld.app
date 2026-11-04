@@ -772,7 +772,6 @@
     "dropHere": "Spusti slike, da jih dodaš v zbirko",
     "addPiece": "Položi na mizo: {name}",
     "wardrobeEmpty": "Dodaj oblačila v garderobo, da jih položiš sem.",
-    "wardrobeFailed": "Tvoji kosi se niso naložili.",
     "pieceFallback": "Kos",
     "picture": "Slika",
     "textItem": "Besedilo: {text}",
@@ -1026,5 +1025,11 @@
   },
   "lab": {
     "title": "Laboratorij"
+  },
+  "piecePicker": {
+    "search": "Išči med svojimi kosi",
+    "noneFound": "Noben kos se ne ujema. Poskusi Vse ali drugo besedo.",
+    "emptyWardrobe": "V tvoji garderobi še ni kosov.",
+    "failed": "Tvoji kosi se niso naložili."
   }
 }

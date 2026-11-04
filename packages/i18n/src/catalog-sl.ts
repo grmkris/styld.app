@@ -690,7 +690,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.dropHere': 'Spusti slike, da jih dodaš v zbirko',
   'board.addPiece': 'Položi na mizo: {name}',
   'board.wardrobeEmpty': 'Dodaj oblačila v garderobo, da jih položiš sem.',
-  'board.wardrobeFailed': 'Tvoji kosi se niso naložili.',
   'board.pieceFallback': 'Kos',
   'board.picture': 'Slika',
   'board.textItem': 'Besedilo: {text}',
@@ -927,4 +926,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.cutOutSlowDown': 'Naenkrat je bilo preveč izrezov. Poskusi znova čez minuto.',
   'photo.cutoutOf': 'Oprava, izrezana iz fotografije z dne {date}',
   'lab.title': 'Laboratorij',
+  'piecePicker.search': 'Išči med svojimi kosi',
+  'piecePicker.noneFound': 'Noben kos se ne ujema. Poskusi Vse ali drugo besedo.',
+  'piecePicker.emptyWardrobe': 'V tvoji garderobi še ni kosov.',
+  'piecePicker.failed': 'Tvoji kosi se niso naložili.',
 }

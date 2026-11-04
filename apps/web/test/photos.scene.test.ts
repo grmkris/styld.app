@@ -1,6 +1,7 @@
 import { Photo as PhotoContract, PhotoGarmentId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { Command, click, expect, given, inside, role, scene, text } from 'foldkit/scene'
+import { Dialog } from '@foldkit/ui'
+import { Command, click, expect, given, inside, Mount, role, scene, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -8,22 +9,25 @@ import * as Photo from '../src/page/Photo.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
+import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const tee = pieceFixture('tee', { type: 'shortSleeveTops', name: 'White tee' })
 const shirt = pieceFixture('shirt', { type: 'shirts', name: 'Oxford shirt' })
 const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Blue jeans' })
+const cardigan = pieceFixture('cardigan', { type: 'jackets', name: 'Grey cardigan', colours: ['grey'] })
 const garment = (id: string, fields: object) => ({
   id: PhotoGarmentId.make(`pg_${id.padEnd(22, 'x')}`),
   colours: [],
   ...fields,
 })
+const topGarment = garment('top', { type: 'shortSleeveTops', match: 'suggested', pieceId: tee.id })
 const photo = Schema.decodeUnknownSync(PhotoContract)({
   id: `ph_${'beach'.padEnd(22, 'x')}`,
   status: 'ready',
   favourite: false,
   garments: [
-    garment('top', { type: 'shortSleeveTops', match: 'suggested', pieceId: tee.id }),
+    topGarment,
     garment('bottom', { type: 'jeans', match: 'confirmed', pieceId: jeans.id }),
     garment('shoes', { type: 'trainers', match: 'unmatched', pieceId: null }),
   ],
@@ -32,14 +36,32 @@ const photo = Schema.decodeUnknownSync(PhotoContract)({
   createdAt: '2026-10-31T10:00:00.000Z',
 })
 
+/** The photo with one of its garments changed, as the server would answer. */
+const withGarment = (garmentId: string, fields: object) =>
+  Schema.decodeUnknownSync(PhotoContract)({
+    ...photo,
+    garments: photo.garments.map((found) => (found.id === garmentId ? { ...found, ...fields } : found)),
+  })
+
 /** The photo's page with the wardrobe read. */
 const onPhoto = () =>
-  withPage(withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
-    modifyFields(Photo.init(photo.id), {
-      photo: () => Photo.PhotoData.Success({ data: photo }),
-      choosing: () => Option.none(),
-    }),
+  withPage(
+    withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans, cardigan]),
+    lenses.photo,
+    () =>
+      modifyFields(Photo.init(photo.id), {
+        photo: () => Photo.PhotoData.Success({ data: photo }),
+        choosing: () => Option.none(),
+      }),
   )
+
+/** The wardrobe's sheet opened from a garment's button, as a scene's steps. */
+const choosingFor = (button: string) => [
+  click(role('button', { name: button })),
+  Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+  Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+  ...sceneSheetOpened,
+]
 
 describe('an outfit photo’s page', () => {
   test('asks about Styld’s guess, names a confirmed piece, and offers what the wardrobe lacks', () => {
@@ -66,8 +88,10 @@ describe('an outfit photo’s page', () => {
     scene(
       { update, view },
       given(
-        withPage(withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
-          modifyFields(Photo.init(photo.id), { photo: () => Photo.PhotoData.Success({ data: cut }) }),
+        withPage(
+          withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans, cardigan]),
+          lenses.photo,
+          () => modifyFields(Photo.init(photo.id), { photo: () => Photo.PhotoData.Success({ data: cut }) }),
         ),
       ),
       expect(role('button', { name: 'Favourite' })).toHaveAttr('aria-pressed', 'true'),
@@ -95,18 +119,52 @@ describe('an outfit photo’s page', () => {
     )
   })
 
-  test('Not this one opens the wardrobe’s pieces of that kind, and none of them', () => {
+  test('Not this one opens the whole wardrobe on the kind Styld read, and none of them', () => {
     scene(
       { update, view },
       given(onPhoto()),
-      click(role('button', { name: 'Not this one' })),
+      ...choosingFor('Not this one'),
       inside(
-        role('group', { name: 'Choose from your wardrobe' }),
+        role('dialog', { name: 'Choose from your wardrobe' }),
+        // The sheet opens on what Styld read the garment as, a top.
+        expect(role('button', { name: 'T-shirts & short-sleeve tops' })).toHaveAttr('aria-pressed', 'true'),
         expect(role('button', { name: 'White tee' })).toExist(),
-        expect(role('button', { name: 'Oxford shirt' })).toExist(),
-        expect(role('button', { name: 'Blue jeans' })).not.toExist(),
+        expect(role('button', { name: 'Grey cardigan' })).not.toExist(),
+        expect(role('button', { name: 'None of my pieces' })).toExist(),
       ),
-      expect(role('button', { name: 'None of my pieces' })).toExist(),
+    )
+  })
+
+  test('a piece kept under another kind is one tap or one word away (Eva, 4 November)', () => {
+    // Her cardigan is kept under jackets, and Styld read it in the photo as a top: before, it could never be chosen.
+    scene(
+      { update, view },
+      given(onPhoto()),
+      ...choosingFor('Not this one'),
+      inside(role('group', { name: 'Categories' }), click(role('button', { name: 'All' }))),
+      expect(role('button', { name: 'Grey cardigan' })).toExist(),
+      expect(role('button', { name: 'Blue jeans' })).toExist(),
+    )
+    scene(
+      { update, view },
+      given(onPhoto()),
+      ...choosingFor('Not this one'),
+      type(role('searchbox', { name: 'Search your pieces' }), 'grey'),
+      expect(role('button', { name: 'Grey cardigan' })).toExist(),
+      expect(role('button', { name: 'White tee' })).not.toExist(),
+      expect(role('group', { name: 'Categories' })).not.toExist(),
+      click(role('button', { name: 'Grey cardigan' })),
+      // The sheet closes and the garment is sent as the cardigan; the row then names it.
+      ...sceneSheetMoved(2),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Mount.expectEnded(Dialog.AcquireResources),
+      Command.resolve(
+        Photo.MatchGarment({ photoId: photo.id, garmentId: topGarment.id, pieceId: cardigan.id }),
+        Photo.Message.SucceededChange({
+          photo: withGarment(topGarment.id, { match: 'confirmed', pieceId: cardigan.id }),
+        }),
+      ),
+      inside(role('region', { name: 'What you’re wearing' }), expect(text('Grey cardigan')).toExist()),
     )
   })
 

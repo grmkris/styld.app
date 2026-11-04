@@ -171,7 +171,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.unpinPicture': Readonly<Record<string, never>>
   'board.unpinPictureAsk': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
-  'board.wardrobeFailed': Readonly<Record<string, never>>
   'boards.addTop': Readonly<Record<string, never>>
   'boards.chooserTitle': Readonly<Record<string, never>>
   'boards.createFailed': Readonly<Record<string, never>>
@@ -427,6 +426,10 @@ export interface MessageArgumentsByKey<_T = string> {
   'photos.open': { readonly date: string | number }
   'photos.sending': Readonly<Record<string, never>>
   'photos.spent': Readonly<Record<string, never>>
+  'piecePicker.emptyWardrobe': Readonly<Record<string, never>>
+  'piecePicker.failed': Readonly<Record<string, never>>
+  'piecePicker.noneFound': Readonly<Record<string, never>>
+  'piecePicker.search': Readonly<Record<string, never>>
   'profile.card.loadFailed': Readonly<Record<string, never>>
   'profile.card.private': { readonly username: string | number }
   'profile.card.public': { readonly username: string | number }
@@ -892,4 +895,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'fe6e4a9e89daca6296d57da895dd4a9b60be4530402300600ae0fc9b2bf24515'
+export const catalogVersion = '9837c62cfab73a404959ba94a59c5757f69af86b3854777684e4672e0d0cad30'

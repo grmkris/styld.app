@@ -2,6 +2,7 @@ import { type Board, type Look, maximumMoods, type Mood } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
+import { pickerFolds } from '../PiecePicker.ts'
 import { sheetFolds } from '../Sheet.ts'
 import type { UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
@@ -52,7 +53,7 @@ const pickerSheet = sheetFolds<Model, Message>({
   toParentMessage: (message) => Message.GotPickerMessage({ message }),
 })
 
-const piecePickerSheet = sheetFolds<Model, Message>({
+const piecePickerSheet = pickerFolds<Model, Message>({
   read: (model) => model.piecePicker,
   write: (model, nextPiecePicker) => modifyFields(model, { piecePicker: () => nextPiecePicker }),
   toParentMessage: (message) => Message.GotPiecePickerMessage({ message }),
@@ -263,6 +264,7 @@ type PageTag =
   | 'GotPiecePickerMessage'
   | 'SelectedPickerGroup'
   | 'SelectedPickerType'
+  | 'UpdatedPickerQuery'
   | 'ClickedAddPins'
   | 'GotPickerMessage'
   | 'ToggledPick'
@@ -307,13 +309,9 @@ export const pageSteps = (
   CompletedFocusPin: () => ({ model }),
   ClickedAddYourPiece: () => piecePickerSheet.open(model),
   GotPiecePickerMessage: ({ message }) => piecePickerSheet.update(model, message),
-  SelectedPickerGroup: ({ group }) => ({
-    model: modifyFields(model, {
-      maybePickerGroup: () => group,
-      maybePickerType: () => Option.none(),
-    }),
-  }),
-  SelectedPickerType: ({ type }) => ({ model: modifyFields(model, { maybePickerType: () => type }) }),
+  SelectedPickerGroup: ({ group }) => piecePickerSheet.selectedGroup(model, group),
+  SelectedPickerType: ({ type }) => piecePickerSheet.selectedType(model, type),
+  UpdatedPickerQuery: ({ query }) => piecePickerSheet.updatedQuery(model, query),
   ClickedAddPins: () => pickerOpened(model),
   GotPickerMessage: (got) => foldPicker(model, got.message),
   ToggledPick: ({ pick }) => pickToggled(model, pick),

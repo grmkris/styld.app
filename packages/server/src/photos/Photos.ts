@@ -351,8 +351,11 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const change = Effect.gen(function* () {
       yield* ownPhoto(accountId, photoId)
       if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
-      if (!(yield* storedAs((yield* PhotoStore).matchGarment(accountId, photoId, garmentId, input.pieceId))))
-        return yield* NotFound.make({})
+      const store = yield* PhotoStore
+      if (yield* storedAs(store.matchGarment(accountId, photoId, garmentId, input.pieceId))) return
+      // A garment waiting in the review tray stays there: the photo is answered as it is.
+      const garment = (yield* storedAs(store.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      if (garment?.state !== 'offered') return yield* NotFound.make({})
     })
     const operation = {
       operationId: input.operationId,

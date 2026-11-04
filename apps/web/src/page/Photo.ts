@@ -1,5 +1,15 @@
 import { drawOperationId } from '../OperationIds.ts'
-import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PhotoPicture, PieceId } from '@styld/protocol'
+import {
+  GarmentGroup,
+  Look,
+  Photo as PhotoContract,
+  PhotoGarmentId,
+  PhotoId,
+  PhotoPicture,
+  PieceId,
+  PieceType,
+} from '@styld/protocol'
+import { Dialog } from '@foldkit/ui'
 import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
@@ -10,6 +20,7 @@ import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { Misses, pollWhilePending } from '../Polling.ts'
 import { LoadError } from '../ServerData.ts'
+import { initPicker, PiecePicker, pickerFolds, startingAt } from './PiecePicker.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 
 // One outfit photo of My Gallery (owner, 2026-10-31): the garments Styld found, each confirmed as one of the person's
@@ -42,8 +53,9 @@ export const Model = Schema.Struct({
   photo: PhotoData.schema,
   work: Work,
   deletion: Deletion,
-  /** The garment whose wardrobe picker is open. */
+  /** The garment the wardrobe's sheet chooses a piece for, while it is open. */
   choosing: Schema.Option(PhotoGarmentId),
+  picker: PiecePicker,
   saveToBoard: SaveToBoard.Model,
   misses: Misses,
   /** The picture the page shows: the photo, or the person cut out of it once there is one. */
@@ -64,6 +76,7 @@ export const init = (photoId: string): Model => ({
   work: Work.Idle(),
   deletion: Deletion.Idle(),
   choosing: Option.none(),
+  picker: initPicker('photo-piece-picker'),
   saveToBoard: SaveToBoard.init({ kind: 'photo', id: photoId }),
   showing: 'photo',
   press: Option.none(),
@@ -79,8 +92,12 @@ export const Message = defineMessageUnion({
   ClickedFavourite: { favourite: Schema.Boolean },
   /** A garment confirmed as a piece, or none of them. */
   ClickedMatch: { garmentId: PhotoGarmentId, pieceId: Schema.NullOr(PieceId) },
+  /** The wardrobe's sheet opened for a garment, on the kind Styld read it as. */
   ClickedChoose: { garmentId: PhotoGarmentId },
-  ClickedCancelChoose: {},
+  GotPiecePickerMessage: { message: Dialog.Message },
+  SelectedPickerGroup: { group: Schema.Option(GarmentGroup) },
+  SelectedPickerType: { type: Schema.Option(PieceType) },
+  UpdatedPickerQuery: { query: Schema.String },
   ClickedOffer: { garmentId: PhotoGarmentId },
   /** "Wear it again", with the look's name in the person's language. */
   ClickedWearAgain: { name: Schema.String },
@@ -279,6 +296,28 @@ const changed = (model: Model, photo: PhotoContract): UpdateReturn => {
   return { model: Work.guards.CuttingOut(model.work) && photo.hasCutout ? show(answered, 'cutout') : answered }
 }
 
+const picker = pickerFolds<Model, Message>({
+  read: (model) => model.picker,
+  write: (model, nextPicker) => modifyFields(model, { picker: () => nextPicker }),
+  toParentMessage: (message) => Message.GotPiecePickerMessage({ message }),
+})
+
+/** The sheet opens on the kind Styld read the garment as; every other piece is one tap on All away. */
+const openedFor = (model: Model, garmentId: PhotoGarmentId): UpdateReturn => {
+  const garment = Option.flatMap(AsyncData.getData(model.photo), (photo) =>
+    Option.fromNullishOr(photo.garments.find(({ id }) => id === garmentId)),
+  )
+  const read = Option.flatMap(garment, ({ type }) => Option.fromNullishOr(type))
+  return picker.openAt(startingAt(read))(modifyFields(model, { choosing: () => Option.some(garmentId) }))
+}
+
+/** A piece chosen in the sheet, or none of them: the sheet closes and the match is sent. */
+const matched = (model: Model, garmentId: PhotoGarmentId, pieceId: PieceId | null): UpdateReturn => {
+  const closed = picker.close(model)
+  const sent = sending(closed.model, MatchGarment({ photoId: model.photoId, garmentId, pieceId }))
+  return { ...sent, commands: [...(closed.commands ?? []), ...(sent.commands ?? [])] }
+}
+
 const cutOutFailures = { noPerson: Work.NoPerson(), slowDown: Work.SlowDown(), failed: Work.Failed() } as const
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
@@ -316,10 +355,12 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedRetry: () => photoCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
     TickedFindingRefresh: () => photoCache(AsyncData.revalidate)(model),
     ClickedFavourite: ({ favourite }) => sending(model, SetFavourite({ photoId: model.photoId, favourite })),
-    ClickedMatch: ({ garmentId, pieceId }) =>
-      sending(model, MatchGarment({ photoId: model.photoId, garmentId, pieceId })),
-    ClickedChoose: ({ garmentId }) => ({ model: modifyFields(model, { choosing: () => Option.some(garmentId) }) }),
-    ClickedCancelChoose: () => ({ model: modifyFields(model, { choosing: () => Option.none() }) }),
+    ClickedMatch: ({ garmentId, pieceId }) => matched(model, garmentId, pieceId),
+    ClickedChoose: ({ garmentId }) => openedFor(model, garmentId),
+    GotPiecePickerMessage: (got) => picker.update(model, got.message),
+    SelectedPickerGroup: ({ group }) => picker.selectedGroup(model, group),
+    SelectedPickerType: ({ type }) => picker.selectedType(model, type),
+    UpdatedPickerQuery: ({ query }) => picker.updatedQuery(model, query),
     ClickedOffer: ({ garmentId }) => sending(model, OfferGarment({ photoId: model.photoId, garmentId })),
     ClickedWearAgain: ({ name }) => sending(model, WearAgain({ photoId: model.photoId, name })),
     ClickedCutOut: () => sending(model, CutOut({ photoId: model.photoId }), Work.CuttingOut()),
