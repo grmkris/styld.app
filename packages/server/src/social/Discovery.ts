@@ -1,21 +1,21 @@
-import { boards, follows, profiles, reports } from '@styld/db'
+import { boards, follows, profiles } from '@styld/db'
 import {
   type Author,
   type Explore,
   type FoundBoard,
   Mood,
-  reportsToHide,
   type SearchResults,
   stem,
   type SuggestedPerson,
   Unavailable,
   wordsIn,
 } from '@styld/protocol'
-import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
 import { shownToOthers } from './ProfileStore.ts'
 import { PublicPages } from './Public.ts'
+import { SocialStore } from './SocialStore.ts'
 
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
 // for discovery: passed checks only, and no profile three people reported.
@@ -120,41 +120,30 @@ const makeQueries = (db: Database['Service']) => {
           .orderBy(desc(profiles.publishedAt))
           .limit(peopleLimit * 2),
       ),
-    /** Of these accounts, those three or more people reported: they leave discovery. */
-    reported: (accountIds: ReadonlyArray<string>) =>
-      accountIds.length === 0
-        ? Effect.succeed(new Set<string>())
-        : Effect.map(
-            read(() =>
-              db
-                .select({ accountId: reports.targetId, total: count() })
-                .from(reports)
-                .where(and(eq(reports.targetKind, 'profile'), inArray(reports.targetId, [...accountIds])))
-                .groupBy(reports.targetId),
-            ),
-            (rows) => new Set(rows.filter(({ total }) => total >= reportsToHide).map(({ accountId }) => accountId)),
-          ),
   }
 }
 
 const make = Effect.gen(function* () {
   const queries = makeQueries(yield* Database)
   const pages = yield* PublicPages
+  const social = yield* SocialStore
+  const reported = (accountIds: ReadonlyArray<string>) =>
+    social.reportedProfiles(accountIds).pipe(Effect.mapError(unavailable))
   /** Boards for discovery, without any of a reported profile, each with its moods as the protocol names them. */
   const found = (rows: ReadonlyArray<typeof boards.$inferSelect>, viewer: Option.Option<string>) =>
     Effect.gen(function* () {
-      const reported = yield* queries.reported([...new Set(rows.map(({ accountId }) => accountId))])
+      const hidden = yield* reported([...new Set(rows.map(({ accountId }) => accountId))])
       const shown = yield* pages.discover(
-        rows.filter(({ accountId }) => !reported.has(accountId)),
+        rows.filter(({ accountId }) => !hidden.has(accountId)),
         viewer,
       )
       return shown.map((entry): FoundBoard => ({ ...entry, moods: moodsOf(entry.moods) }))
     })
   const findable = (accountIds: ReadonlyArray<string>, viewer: Option.Option<string>) =>
     Effect.gen(function* () {
-      const reported = yield* queries.reported(accountIds)
+      const hidden = yield* reported(accountIds)
       const viewerId = Option.getOrNull(viewer)
-      const candidates = accountIds.filter((accountId) => !reported.has(accountId) && accountId !== viewerId)
+      const candidates = accountIds.filter((accountId) => !hidden.has(accountId) && accountId !== viewerId)
       const people = yield* Effect.forEach(candidates, (accountId) => pages.findable(accountId, viewer))
       return people.flatMap(Option.toArray).slice(0, peopleLimit)
     })
@@ -204,5 +193,5 @@ export class Discovery extends Context.Service<Discovery, Effect.Success<typeof 
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => Discovery.of(service)),
-  )
+  ).pipe(Layer.provide(SocialStore.layer))
 }

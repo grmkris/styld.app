@@ -87,7 +87,7 @@ export const reportsPerHour = 10
  * discovery). */
 export const reportsToHide = 3
 
-/** Something someone the person follows did, newest first. */
+/** Something someone made public: What's new on Home, newest first, the people the reader follows first. */
 export const FeedItem = Schema.Union([
   Schema.TaggedStruct('BoardWentPublic', { board: PublicBoardSummary, by: Author, at: Schema.String }),
   Schema.TaggedStruct('PinnedOnBoard', {

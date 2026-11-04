@@ -1,6 +1,7 @@
 import { receiptRows } from '../kernel/Receipts.ts'
 import { blocks, follows, reports, saves } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
+import { reportsToHide } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
 
@@ -148,6 +149,22 @@ const reportRows = (db: Drizzle) => ({
       )
       return { filed: filed.length > 0, reporters: reporters[0]?.total ?? 0 }
     }),
+  /** Of these accounts, those `reportsToHide` or more people reported: they leave discovery (the landing's boards,
+   * search, What's new and the assistants' Explore). */
+  reportedProfiles: (accountIds: ReadonlyArray<string>) =>
+    accountIds.length === 0
+      ? Effect.succeed(new Set<string>())
+      : query(() =>
+          db
+            .select({ accountId: reports.targetId, total: count() })
+            .from(reports)
+            .where(and(eq(reports.targetKind, 'profile'), inArray(reports.targetId, [...accountIds])))
+            .groupBy(reports.targetId),
+        ).pipe(
+          Effect.map(
+            (rows) => new Set(rows.filter(({ total }) => total >= reportsToHide).map(({ accountId }) => accountId)),
+          ),
+        ),
 })
 
 /** Saves, follows, blocks and reports in D1. Every read and write names the account it is for. */

@@ -200,7 +200,33 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect((await anyone('/api/public/profiles/nika.kovac')).status).toBe(404)
 }
 
-const Feed = Schema.Struct({ items: Schema.Array(Schema.Struct({ _tag: Schema.String })) })
+const Feed = Schema.Struct({
+  items: Schema.Array(Schema.Struct({ _tag: Schema.String, by: Schema.Struct({ handle: Schema.String }) })),
+})
+
+/** Whose things What's new shows the reader, in its order. */
+const feedHandles = async (read: Promise<Response>) =>
+  Schema.decodeUnknownSync(Feed)(await (await read).json()).items.map(({ by }) => by.handle)
+
+/** What's new is everyone's (Eva's Home, owner 4 November): Luka sees Nika's and Mia's public boards before he follows
+ * anyone, newest first, and nobody sees their own; once he follows Nika, hers come first. */
+const verifyWhatsNew = async (owner: Call, other: Call, fourth: Call) => {
+  await send(fourth, '/api/profile', 'PATCH', { handle: 'mia.fourth', name: 'Mia' })
+  await send(fourth, '/api/profile/published', 'PUT', { published: true })
+  const linen = await idOf(
+    await send(fourth, '/api/boards', 'POST', { operationId: 'native-social-11', name: 'Linen' }),
+  )
+  await send(fourth, `/api/boards/${linen}/visibility`, 'PUT', { visibility: 'public' })
+  const unfollowed = await feedHandles(other('/api/feed'))
+  expect(unfollowed.indexOf('mia.fourth')).toBeGreaterThanOrEqual(0)
+  expect(unfollowed.indexOf('mia.fourth')).toBeLessThan(unfollowed.indexOf('nika.kovac'))
+  expect(unfollowed).not.toContain('luka.other')
+  expect(await feedHandles(owner('/api/feed'))).not.toContain('nika.kovac')
+  await send(other, '/api/people/nika.kovac/following', 'PUT', { following: true })
+  const following = await feedHandles(other('/api/feed'))
+  expect(following.indexOf('nika.kovac')).toBeLessThan(following.indexOf('mia.fourth'))
+  await send(other, '/api/people/nika.kovac/following', 'PUT', { following: false })
+}
 
 /** Saves, follows, the feed, blocks both ways and reports: what one person does with another's public things. */
 const verifyPeople = async (origin: string, owner: Call, other: Call, reporters: ReadonlyArray<Call>) => {
@@ -211,6 +237,9 @@ const verifyPeople = async (origin: string, owner: Call, other: Call, reporters:
   await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
   await send(other, '/api/profile', 'PATCH', { handle: 'luka.other', name: 'Luka' })
   await send(other, '/api/profile/published', 'PUT', { published: true })
+  const [, fourth] = reporters
+  if (fourth === undefined) throw new Error('a fourth account is needed')
+  await verifyWhatsNew(owner, other, fourth)
   const board = { _tag: 'SavedBoard', boardId }
   await refusal(await send(owner, '/api/saved', 'PUT', { target: board, saved: true }), 422, 'NotWithYourself')
   expect(await (await send(other, '/api/saved', 'PUT', { target: board, saved: true })).json()).toEqual({ saved: true })
@@ -235,6 +264,7 @@ const verifyPeople = async (origin: string, owner: Call, other: Call, reporters:
   expect((await fetch(`${origin}${preview}`)).status).toBe(200)
   expect(await (await other('/api/following')).json()).toEqual({ people: [] })
   expect(await (await other('/api/saved')).json()).toEqual({ saved: [] })
+  expect(await feedHandles(other('/api/feed'))).not.toContain('nika.kovac')
   await send(owner, '/api/people/luka.other/blocked', 'PUT', { blocked: false })
   expect(await (await other('/api/saved')).json()).toMatchObject({ saved: [{ _tag: 'SavedBoard' }] })
   // Someone who never published can be blocked by their handle, stays listed while blocked, and can be unblocked.
@@ -264,7 +294,7 @@ const Newest = Schema.Struct({ newest: Schema.Array(Schema.Struct({ board: Schem
 
 /** Search and Explore, signed out: people by name and handle, boards by name; a board the check is unsure of stays
  * on its link and leaves discovery. */
-const verifyDiscovery = async (origin: string, owner: Call) => {
+const verifyDiscovery = async (origin: string, owner: Call, other: Call) => {
   const boardId = await idOf(
     await send(owner, '/api/boards', 'POST', { operationId: 'native-social-10', name: 'Rainy walks' }),
   )
@@ -290,6 +320,8 @@ const verifyDiscovery = async (origin: string, owner: Call) => {
   await send(owner, `/api/boards/${boardId}`, 'PATCH', { name: 'Rainy walks [[unsure]]' })
   await settled(() => owner(`/api/boards/${boardId}`), 'unsure')
   expect((await search('rainy')).boards).toEqual([])
+  // An unsure check keeps a board at its link and out of What's new.
+  expect(JSON.stringify(await (await other('/api/feed')).json())).not.toContain(boardId)
   expect((await fetch(`${origin}/api/public/boards/${boardId}`)).status).toBe(200)
 }
 
@@ -344,7 +376,7 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   const third = client(origin, await signIn(origin, 'native-social-third'))
   const reporters = [third, client(origin, await signIn(origin, 'native-social-fourth'))]
   await verifyPeople(origin, owner, other, reporters)
-  await verifyDiscovery(origin, owner)
+  await verifyDiscovery(origin, owner, other)
   await verifyPeopleToFollow(origin, other)
   await verifyLinks(origin, other)
 }

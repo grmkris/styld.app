@@ -62,8 +62,8 @@ export const socialTools = (social: Social['Service']) => [
   }),
   tool({
     name: 'feed_get',
-    title: 'From people you follow',
-    description: `What the people the person follows made public lately, newest first; pass \`cursor\` for the next page. ${others}`,
+    title: "What's new",
+    description: `What's new on Styld: everyone's public boards, pins added to them and shared looks that passed Styld's check, newest first, with the people the person follows first on each page; pass \`cursor\` for the next page. ${others}`,
     parameters: FeedQuery,
     annotations: { readOnlyHint: true, openWorldHint: true },
     handler: ({ cursor }) => social.feed(cursor),

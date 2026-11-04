@@ -265,7 +265,8 @@ const relations = Effect.map(Effect.context<SocialServices>(), (context) => ({
     )
     return { people }
   }, Effect.provide(context)),
-  /** What people the account follows made public lately, from `cursor` back. */
+  /** What's new: everyone's public things lately, the people the account follows first on each page, from `cursor`
+   * back. */
   feed: Effect.fn('Styld.Social.feed')(function* (cursor: string | undefined) {
     const { accountId } = yield* CurrentAccount
     return yield* feedFor(accountId, cursor)
