@@ -89,7 +89,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 384,600 the same day for the tombola's boards (M8): Make outfits with it and Build my own (their state,
 // the two mapped requests, the board opening, the actions and their words) add 888: HEAD measured 383,692 in a clean
 // worktree at 7fa62f2 and 384,580 with them.
-if (initialGzip > 384600) throw new Error(`Initial browser assets exceed the 384,600-byte gzip budget: ${initialGzip}`)
+// Raised to 384,900 the same day for the backs track's carousel (M3, 36a1c027): angles first, the back's drawn slide
+// and its words add 291 over f7852a6f's 384,584, for 384,875.
+if (initialGzip > 384900) throw new Error(`Initial browser assets exceed the 384,900-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
