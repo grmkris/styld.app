@@ -1,7 +1,11 @@
 import {
   AssistantView,
   BoardView,
+  GalleryView,
   PieceItem,
+  PiecesView,
+  PieceView,
+  TryOnView,
   ViewImages,
   type ViewLabels,
   type ViewPiece,
@@ -19,10 +23,13 @@ import { type ImageSource, stillTable } from '../page/Board/Table.ts'
 import { styled } from '../Styled.ts'
 import {
   caption,
+  compare,
   empty,
+  figure,
   grid,
   heading,
   open,
+  photoFrame,
   picture,
   pictureFrame,
   subheading,
@@ -52,6 +59,10 @@ export const Showing = defineTaggedUnion({
   Waiting: {},
   Wardrobe: { view: WardrobeView },
   Board: { view: BoardView },
+  TryOn: { view: TryOnView },
+  Gallery: { view: GalleryView },
+  Pieces: { view: PiecesView },
+  Piece: { view: PieceView },
 })
 
 const Model = Schema.Struct({
@@ -97,6 +108,10 @@ const receive = (model: Model, input: HostInput): UpdateReturn =>
               Match.tagsExhaustive({
                 WardrobeView: (shown) => Showing.Wardrobe({ view: shown }),
                 BoardView: (shown) => Showing.Board({ view: shown }),
+                TryOnView: (shown) => Showing.TryOn({ view: shown }),
+                GalleryView: (shown) => Showing.Gallery({ view: shown }),
+                PiecesView: (shown) => Showing.Pieces({ view: shown }),
+                PieceView: (shown) => Showing.Piece({ view: shown }),
               }),
             ),
           images: (known) => Record.union(known, images, (_known, incoming) => incoming),
@@ -133,17 +148,38 @@ const tileContent = (image: Option.Option<string>, text: string, h: HtmlBuilder<
   h.span(styled(h, caption()), [text]),
 ]
 
-const pieceTile = (piece: ViewPiece, image: Option.Option<string>, labels: ViewLabels, h: HtmlBuilder<Message>) =>
+const pieceTile = (
+  piece: ViewPiece,
+  image: Option.Option<string>,
+  groups: ViewLabels['groups'],
+  h: HtmlBuilder<Message>,
+) =>
   h.keyed('li')(
     piece.id,
     [],
     [
       h.button(
         [h.Type('button'), h.OnClick(Message.ClickedOpen({ url: piece.url })), ...styled(h, tile())],
-        tileContent(image, piece.name ?? labels.groups[piece.group], h),
+        tileContent(image, piece.name ?? groups[piece.group], h),
       ),
     ],
   )
+
+/** A grid of pieces, each with its picture when the result carried one. */
+const pieceGrid = (
+  pieces: ReadonlyArray<ViewPiece>,
+  model: Model,
+  groups: ViewLabels['groups'],
+  h: HtmlBuilder<Message>,
+) =>
+  h.ul(
+    styled(h, grid()),
+    pieces.map((piece) => pieceTile(piece, Record.get(model.images, piece.id), groups, h)),
+  )
+
+/** The button that opens the view's page on the Styld website, through the host. */
+const openButton = (url: string, label: string, h: HtmlBuilder<Message>) =>
+  h.button([h.Type('button'), h.OnClick(Message.ClickedOpen({ url })), ...styled(h, open())], [label])
 
 const wardrobe = (view: WardrobeView, model: Model, h: HtmlBuilder<Message>): Html => {
   const labels = view.labels[model.language]
@@ -153,7 +189,7 @@ const wardrobe = (view: WardrobeView, model: Model, h: HtmlBuilder<Message>): Ht
       ? h.p(styled(h, empty()), [labels.empty])
       : h.ul(
           styled(h, grid()),
-          view.pieces.map((piece) => pieceTile(piece, Record.get(model.images, piece.id), labels, h)),
+          view.pieces.map((piece) => pieceTile(piece, Record.get(model.images, piece.id), labels.groups, h)),
         ),
     h.button(
       [h.Type('button'), h.OnClick(Message.ClickedOpen({ url: view.url })), ...styled(h, open())],
@@ -210,11 +246,108 @@ const board = (shown: BoardView, model: Model, h: HtmlBuilder<Message>): Html =>
   ])
 }
 
+/** A picture with its caption, shown in full: a photo, a try-on, one of a piece's pictures. */
+const captioned = (image: Option.Option<string>, text: string, h: HtmlBuilder<Message>): Html =>
+  h.figure(styled(h, figure()), [
+    h.div(
+      styled(h, photoFrame()),
+      Option.match(image, {
+        onNone: () => [],
+        onSome: (source) => [h.img([h.Src(source), h.Alt(text), ...styled(h, picture())])],
+      }),
+    ),
+    h.figcaption(styled(h, caption()), [text]),
+  ])
+
+const tryOn = (shown: TryOnView, model: Model, h: HtmlBuilder<Message>): Html => {
+  const labels = shown.labels[model.language]
+  const pictures =
+    shown.status === 'done'
+      ? h.div(styled(h, compare()), [
+          captioned(Record.get(model.images, shown.before), labels.before, h),
+          captioned(Record.get(model.images, shown.after), labels.after, h),
+        ])
+      : h.p(styled(h, empty()), [shown.status === 'drawing' ? labels.drawing : labels.stopped])
+  return h.section(styled(h, viewRoot()), [
+    h.h1(styled(h, heading()), [labels.title]),
+    pictures,
+    ...(shown.pieces.length === 0
+      ? []
+      : [h.h2(styled(h, subheading()), [labels.wearing]), pieceGrid(shown.pieces, model, labels.groups, h)]),
+    openButton(shown.url, labels.openInStyld, h),
+  ])
+}
+
+/** A photo's number for the person to say, and the day it was added in the host's language. */
+const photoCaption = (number: number, day: string, language: Language) =>
+  `${String(number)} · ${new Intl.DateTimeFormat(language, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(day))}`
+
+const gallery = (shown: GalleryView, model: Model, h: HtmlBuilder<Message>): Html => {
+  const labels = shown.labels[model.language]
+  return h.section(styled(h, viewRoot()), [
+    h.h1(styled(h, heading()), [labels.title]),
+    shown.photos.length === 0
+      ? h.p(styled(h, empty()), [labels.empty])
+      : h.ul(
+          styled(h, grid()),
+          shown.photos.map((photo) =>
+            h.keyed('li')(
+              photo.id,
+              [],
+              [
+                h.button(
+                  [h.Type('button'), h.OnClick(Message.ClickedOpen({ url: photo.url })), ...styled(h, tile())],
+                  [
+                    captioned(
+                      Record.get(model.images, `photo:${photo.id}`),
+                      photoCaption(photo.number, photo.day, model.language),
+                      h,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+    openButton(shown.url, labels.openInStyld, h),
+  ])
+}
+
+const pieces = (shown: PiecesView, model: Model, h: HtmlBuilder<Message>): Html => {
+  const labels = shown.labels[model.language]
+  const rows = shown.rows.flatMap((row, at) => [
+    ...(shown.outfits ? [h.h2(styled(h, subheading()), [`${labels.outfit} ${String(at + 1)}`])] : []),
+    pieceGrid(row, model, labels.groups, h),
+  ])
+  return h.section(styled(h, viewRoot()), [
+    h.h1(styled(h, heading()), [shown.title ?? labels.title]),
+    ...(rows.length === 0 ? [h.p(styled(h, empty()), [labels.empty])] : rows),
+    openButton(shown.url, labels.openInStyld, h),
+  ])
+}
+
+const piece = (shown: PieceView, model: Model, h: HtmlBuilder<Message>): Html => {
+  const labels = shown.labels[model.language]
+  return h.section(styled(h, viewRoot()), [
+    h.h1(styled(h, heading()), [shown.piece.name ?? labels.groups[shown.piece.group]]),
+    h.p(styled(h, empty()), [shown.details.join(' · ')]),
+    h.div(
+      styled(h, compare()),
+      shown.pictures.map(({ kind, image }) => captioned(Record.get(model.images, image), labels.pictures[kind], h)),
+    ),
+    openButton(shown.piece.url, labels.openInStyld, h),
+  ])
+}
+
 const view = (model: Model, h: HtmlBuilder<Message>): Html =>
   Showing.match(model.showing, {
     Waiting: () => h.div(styled(h, viewRoot())),
     Wardrobe: ({ view: shown }) => wardrobe(shown, model, h),
     Board: ({ view: shown }) => board(shown, model, h),
+    TryOn: ({ view: shown }) => tryOn(shown, model, h),
+    Gallery: ({ view: shown }) => gallery(shown, model, h),
+    Pieces: ({ view: shown }) => pieces(shown, model, h),
+    Piece: ({ view: shown }) => piece(shown, model, h),
   })
 
 // PROGRAM
