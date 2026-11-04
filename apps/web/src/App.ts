@@ -224,8 +224,8 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
       Update.foldChildStep({ update: Boards.revisit, ...foldBoards }),
     ]),
     // The account needs a session; signed out the page sends the visitor to sign in.
-    Match.tag('Account', () =>
-      signedIn ? [Update.foldChildStep({ update: Account.enter, ...at(lenses.account) })] : [],
+    Match.tag('Account', ({ premium }) =>
+      signedIn ? [Update.foldChildStep({ update: Account.enter(premium === '1'), ...at(lenses.account) })] : [],
     ),
     // Styld's answers name the person's pieces, and a photo's garments are matched to them.
     Match.tag('Stylist', 'Photo', () => [revisitPieces]),

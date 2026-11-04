@@ -5,6 +5,16 @@ export type RichTextValue<T = string> = FormatXMLElementFn<T>
 export interface MessageArgumentsByKey<_T = string> {
   'account.assistants.description': Readonly<Record<string, never>>
   'account.assistants.title': Readonly<Record<string, never>>
+  'account.credits.checkoutFailed': Readonly<Record<string, never>>
+  'account.credits.loadFailed': Readonly<Record<string, never>>
+  'account.credits.more': Readonly<Record<string, never>>
+  'account.credits.paid': Readonly<Record<string, never>>
+  'account.credits.paidSlow': Readonly<Record<string, never>>
+  'account.credits.premiumAbout': { readonly daily: string | number; readonly days: string | number }
+  'account.credits.premiumUntil': { readonly date: string | number }
+  'account.credits.premiumWeek': { readonly price: string | number }
+  'account.credits.title': Readonly<Record<string, never>>
+  'account.credits.today': { readonly remaining: string | number; readonly daily: string | number }
   'account.deleteAccount': Readonly<Record<string, never>>
   'account.deleteAccountConfirm': Readonly<Record<string, never>>
   'account.deleteAccountConfirmBody': Readonly<Record<string, never>>
@@ -946,4 +956,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5cab58ac8e1b63578d3badaff07494383ad20be908b30cc2b844beafaf5e22e9'
+export const catalogVersion = 'e442041c7c858c9b5883f78553967ba096ecc0742cddbb48b6b8d88272742eec'

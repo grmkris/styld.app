@@ -23,7 +23,8 @@ export const AppRoute = defineRouteUnion({
   Login: { next: Schema.Option(Schema.String), problem: Schema.Option(Schema.Literal('google')) },
   /** Sign-in for an assistant's connection: success returns to the OAuth authorization. */
   LoginForConnection: {},
-  Account: {},
+  /** `premium=1`: back from the premium week's checkout. */
+  Account: { premium: Schema.optionalKey(Schema.String) },
   /** The person's public profile, edited. */
   Profile: {},
   /** What the wardrobe shows: the address is its only copy (`WardrobeBrowse.ts`). */
@@ -68,7 +69,11 @@ const loginRouter = pipe(
   mapTo(AppRoute.Login),
 )
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
-export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
+export const accountRouter = pipe(
+  literal('account'),
+  query(Schema.Struct({ premium: Schema.optionalKey(Schema.String) })),
+  mapTo(AppRoute.Account),
+)
 export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
 export const browseRouter = pipe(literal('wardrobe'), query(BrowseQuery), mapTo(AppRoute.Wardrobe))
 /** The wardrobe at a browse given in part: what is left out is the groups' and unfiltered. */
@@ -293,6 +298,9 @@ export const isSameTab = (left: AppRoute, right: AppRoute) =>
 
 /** The section of the account page about connecting an assistant, linked from Ask. */
 export const assistantsSection = 'assistants'
+
+/** The account's Credits section, which the day's refusals link to. */
+export const creditsSection = 'credits'
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */

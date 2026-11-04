@@ -63,7 +63,19 @@
     "deleteAccountConfirmTitle": "Želiš izbrisati račun?",
     "deleteAccountConfirmBody": "S tem trajno izbrišeš svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.",
     "deleteAccountConfirm": "Izbriši moj račun",
-    "deleteAccountFailed": "Styld tvojega računa trenutno ni mogel izbrisati. Poskusi znova čez trenutek."
+    "deleteAccountFailed": "Styld tvojega računa trenutno ni mogel izbrisati. Poskusi znova čez trenutek.",
+    "credits": {
+      "title": "Krediti",
+      "today": "Danes še {remaining} od {daily} kreditov",
+      "premiumUntil": "Premium do {date}",
+      "premiumWeek": "Teden Premium · {price}",
+      "premiumAbout": "{daily} kreditov na dan {days} dni, od trenutka plačila. Eno plačilo, brez naročnine.",
+      "paid": "Plačilo je prejeto. Premium se začne v trenutku.",
+      "paidSlow": "Plačilo je prejeto. Tvoj teden Premium se tu pokaže v nekaj minutah.",
+      "checkoutFailed": "Styld trenutno ni mogel odpreti strani za plačilo. Poskusi znova čez trenutek.",
+      "loadFailed": "Styld trenutno ni mogel prebrati tvojih kreditov.",
+      "more": "Več kreditov"
+    }
   },
   "telemetryConsent": {
     "message": "Ali lahko Styld v tem brskalniku beleži anonimne podatke o napakah in hitrosti, da hitreje odpravimo težave? Nikoli ne vključujejo tega, kar vpišeš, tvojih fotografij ali podatkov o računu.",
@@ -601,14 +613,14 @@
     "preparingVideo": "Berem video …",
     "sent": "Poslano",
     "problem": {
-      "dailyLimit": "Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.",
+      "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
       "videoTooLong": "Video je lahko dolg največ 15 minut",
       "videoUnreadable": "Tega videa tukaj ni mogoče prebrati",
       "refused": "Te datoteke ni mogoče uporabiti",
       "uploadsWaiting": "Preveč tvojih nalaganj še čaka. Najprej jih dodaj v garderobo ali poskusi znova jutri.",
       "slowDown": "Preveč fotografij naenkrat. Poskusi znova čez minuto.",
       "network": "Ni poslano",
-      "videoPartial": "Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri."
+      "videoPartial": "Današnji krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri."
     },
     "seeFound": "{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}",
     "sightings": "V dodanem se pojavi {count}-krat in bo shranjen kot en kos.",
@@ -620,7 +632,7 @@
     "betterLookHint": "Viden je le del. Dvigni ga ali ga položi in ga dodaj znova.",
     "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",
     "reviewHint": "Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.",
-    "allowance": "Danes še {remaining} od {daily} brezplačnih kreditov",
+    "allowance": "Danes še {remaining} od {daily} kreditov",
     "finding": "Iščem kose …",
     "failed": "{source, select, video {Dela videa, dodanega ob {time}, ni bilo mogoče obdelati.} link {Slike s strani trgovine, dodane ob {time}, ni bilo mogoče obdelati.} other {Fotografije, dodane ob {time}, ni bilo mogoče obdelati.}} Kredit je vrnjen.",
     "unknown": "{source, select, video {Obdelava dela videa} link {Obdelava slike s strani trgovine} other {Obdelava fotografije}} se je ustavila na pol poti. Nov poskus ne stane nič.",
@@ -795,7 +807,7 @@
       "nothing": "Tokrat nalepka ni nastala, kredit je vrnjen.",
       "dismiss": "V redu",
       "problem": {
-        "dailyLimit": "Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.",
+        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
         "refused": "Styld tega ne ustvarja.",
         "slowDown": "Preveč naenkrat. Poskusi znova čez minuto.",
         "failed": "Ni uspelo. Poskusi znova."
@@ -1003,7 +1015,7 @@
     "openLook": "Odpri videz {name}",
     "problem": {
       "busy": "Styld še odgovarja na tvoje zadnje sporočilo.",
-      "dailyLimit": "Današnja brezplačna kvota je porabljena. Vprašaj znova jutri.",
+      "dailyLimit": "Današnji krediti so porabljeni. Vprašaj znova jutri.",
       "unavailable": "Styld trenutno ne more odgovoriti. Poskusi pozneje.",
       "network": "Ni poslano. Poskusi znova."
     },
@@ -1014,7 +1026,7 @@
     "add": "Dodaj fotografijo",
     "addCost": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih, za iskanje oblačil na njej.",
     "sending": "Pošiljam …",
-    "spent": "Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.",
+    "spent": "Današnji krediti so porabljeni. Poskusi znova jutri.",
     "addFailed": "Fotografija ni šla skozi. Poskusi znova.",
     "emptyTitle": "Zapomni si oprave, ki so ti všeč",
     "emptyHint": "Dodaj fotografije sebe v opravah, ki so se obnesle. Styld najde oblačila in jih poveže s tvojimi kosi. Vidiš jih samo ti.",

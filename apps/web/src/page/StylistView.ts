@@ -33,6 +33,7 @@ import { Button } from '@foldkit/ui'
 import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
 import * as styles from './StylistView.styles.ts'
+import { spentWords } from './MoreCredits.ts'
 
 const composerId = 'stylist-message'
 
@@ -348,7 +349,10 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
       onNone: () =>
         h.p(styled(h, styles.price()), [format(locale, 'stylist.price', { credits: prices.stylistMessage })]),
       onSome: (failed) =>
-        h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, problemKey[failed], {})]),
+        h.p(
+          [h.Role('alert'), ...styled(h, styles.problem())],
+          spentWords(format(locale, problemKey[failed], {}), failed === 'dailyLimit', locale, h),
+        ),
     }),
   ])
 }
