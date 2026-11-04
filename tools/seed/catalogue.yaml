@@ -1,0 +1,1114 @@
+version: 3
+accounts:
+  - id: women
+    email: styld-women.kris@myinbox.lol
+    handle: styld.women
+    displayName: 'Styld Women'
+    bio: 'Outfit formulas, packing lists and one piece worn many ways. The pieces are AI-generated for inspiration. Save a board and try it with your wardrobe.'
+    translations:
+      sl:
+        {
+          displayName: 'Styld Ženske',
+          bio: 'Formule za videze, seznami za na pot in en kos na več načinov. Kosi so ustvarjeni z UI za navdih. Shrani tablo in jo preizkusi s svojo omaro.',
+          review: pending,
+        }
+  - id: men
+    email: styld-men.kris@myinbox.lol
+    handle: styld.men
+    displayName: 'Styld Men'
+    bio: 'Menswear formulas: the uniform, the three-shoe rotation, palettes that just work. AI-generated pieces, for ideas. Try a board with your own wardrobe.'
+    translations:
+      sl:
+        {
+          displayName: 'Styld Moški',
+          bio: 'Moške formule: uniforma, trije pari čevljev, barvne palete, ki delujejo. Kosi so ustvarjeni z UI za navdih. Tablo preizkusi s svojo omaro.',
+          review: pending,
+        }
+
+boards:
+  # ── WOMEN'S (26) ──────────────────────────────────────────────────
+  - id: w-lisbon-5d
+    featured: true
+    owner: women
+    name: 'Lisbon, 5 days'
+    label: '12 pieces · 8 outfits · one carry-on'
+    template: pack
+    pairsWith: w-lisbon-5d-outfits
+    tags: { audience: women, season: [spring, autumn], template: pack, occasion: [casual], aesthetic: [city-break] }
+    moods: [weekend]
+    paper: sand
+    pieces:
+      [
+        shirts:white,
+        shortSleeveTops:black,
+        knitwear:beige,
+        trousers:beige,
+        jeans:blue,
+        skirts:brown,
+        jackets:navy,
+        trainers:white,
+        loafers:black,
+        sandals:brown,
+        bags:brown,
+        scarves:blue:white,
+      ]
+    translations:
+      sl: { name: 'Lizbona, 5 dni', label: '12 kosov · 8 videzov · en ročni kovček', review: pending }
+  - id: w-lisbon-5d-outfits
+    owner: women
+    name: 'Lisbon, 8 outfits'
+    template: outfits
+    piecesFrom: w-lisbon-5d
+    outfits: 8
+    tags: { audience: women, season: [spring, autumn], template: outfits, occasion: [casual], aesthetic: [city-break] }
+    moods: [weekend]
+    translations:
+      sl: { name: 'Lizbona, 8 videzov', review: pending }
+  - id: w-carry-on-7d
+    owner: women
+    name: 'Carry-on only, 7 days'
+    template: pack
+    tags: { audience: women, season: [summer], template: pack, occasion: [casual], aesthetic: [minimal] }
+    moods: [weekend]
+    paper: stock
+    pieces:
+      [
+        shortSleeveTops:white×2,
+        sleevelessTops:black,
+        shirts:blue,
+        trousers:black,
+        shorts:beige,
+        dresses:navy,
+        flats:black,
+        sandals:beige,
+        trainers:white,
+        bags:black,
+        eyewear:black,
+      ]
+    translations:
+      sl: { name: 'Samo ročna prtljaga, 7 dni', review: pending }
+  - id: w-white-shirt-8
+    featured: true
+    owner: women
+    name: 'One white shirt, 8 ways'
+    template: onePiece
+    outfits: 8
+    layout: around
+    anchor: shirts:white
+    tags:
+      { audience: women, season: [spring, autumn], template: onePiece, occasion: [casual, smart], aesthetic: [classic] }
+    moods: [office, weekend]
+    pieces:
+      [
+        jeans:blue,
+        trousers:black,
+        skirts:beige,
+        knitwear:grey,
+        blazers:black,
+        coats:beige,
+        loafers:black,
+        trainers:white,
+        heels:black,
+        bags:brown,
+        belts:brown,
+        jewellery:yellow,
+      ]
+    translations:
+      sl: { name: 'Ena bela srajca, 8 načinov', review: pending }
+  - id: w-black-blazer-6
+    owner: women
+    name: 'The black blazer, 6 outfits'
+    template: onePiece
+    outfits: 6
+    layout: flanking
+    anchor: blazers:black
+    tags:
+      { audience: women, season: [autumn, winter], template: onePiece, occasion: [smart], aesthetic: [updated-lady] }
+    moods: [office, evening]
+    pieces:
+      [
+        shortSleeveTops:white,
+        knitwear:beige,
+        dresses:black,
+        jeans:blue,
+        trousers:grey,
+        skirts:red,
+        loafers:black,
+        heels:black,
+        boots:brown,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Črn blazer, 6 videzov', review: pending }
+  - id: w-silk-scarf-6
+    owner: women
+    name: 'One silk scarf, 6 ways'
+    template: onePiece
+    outfits: 6
+    layout: ring
+    anchor: scarves:blue:white
+    tags:
+      {
+        audience: women,
+        season: [spring, autumn],
+        template: onePiece,
+        occasion: [casual, smart],
+        aesthetic: [parisian],
+      }
+    moods: [weekend, evening]
+    pieces:
+      [
+        shirts:white,
+        knitwear:navy,
+        coats:beige,
+        jeans:blue,
+        trousers:black,
+        dresses:black,
+        loafers:brown,
+        flats:black,
+        bags:brown,
+      ]
+    translations:
+      sl: { name: 'Ena svilena ruta, 6 načinov', review: pending }
+  - id: w-barn-jacket
+    owner: women
+    name: 'Barn jacket weekend'
+    template: outfits
+    outfits: 4
+    tags:
+      {
+        audience: women,
+        season: [autumn],
+        template: outfits,
+        occasion: [casual],
+        aesthetic: [weekend-equestrian, countryside],
+      }
+    moods: [weekend, rain]
+    note: "Pinterest Fall 2026: 'barn jacket outfit women' +1,109%"
+    pieces:
+      [
+        jackets:green:brown,
+        knitwear:beige,
+        shirts:blue:white,
+        jeans:blue,
+        trousers:brown,
+        boots:brown,
+        outdoorShoes:green,
+        scarves:red,
+        bags:brown,
+      ]
+    translations:
+      sl: { name: 'Vikend v podeželski jakni', review: pending }
+  - id: w-equestrian
+    owner: women
+    name: 'Weekend equestrian'
+    template: look
+    tags: { audience: women, season: [autumn], template: look, occasion: [casual], aesthetic: [weekend-equestrian] }
+    moods: [weekend]
+    paper: sand
+    note: 'riding boots, breech-style trousers, heritage blazer'
+    pieces: [blazers:brown, knitwear:white, trousers:beige, boots:black, belts:brown, bags:brown]
+    translations:
+      sl: { name: 'Konjeniški vikend', review: pending }
+  - id: w-poetcore
+    owner: women
+    name: 'Poet season'
+    template: outfits
+    outfits: 3
+    tags:
+      {
+        audience: women,
+        season: [autumn, winter],
+        template: outfits,
+        occasion: [casual],
+        aesthetic: [poetcore, dark-academia],
+      }
+    moods: [knitwear]
+    note: "Pinterest Predicts 2026 'Poetcore': oversized turtlenecks, vintage blazers, messenger satchels"
+    pieces:
+      [
+        knitwear:black,
+        knitwear:beige,
+        blazers:brown,
+        shirts:white,
+        skirts:grey,
+        trousers:black,
+        loafers:black,
+        bags:brown,
+        scarves:red,
+      ]
+    translations:
+      sl: { name: 'Pesniška sezona', review: pending }
+  - id: w-all-brown
+    owner: women
+    name: 'Doubling down on brown'
+    template: pieceCollage
+    tags:
+      {
+        audience: women,
+        season: [autumn, winter],
+        template: pieceCollage,
+        occasion: [casual],
+        aesthetic: [chocolate-brown],
+      }
+    moods: [knitwear]
+    paper: clay
+    note: 'Bustle on X, Oct 2026: fall 2026 chocolate brown'
+    pieces:
+      [
+        coats:brown,
+        knitwear:brown,
+        trousers:brown,
+        skirts:brown,
+        boots:brown,
+        bags:brown,
+        belts:brown,
+        scarves:beige,
+        shirts:beige,
+        jewellery:yellow,
+      ]
+    translations:
+      sl: { name: 'Vse v rjavem', review: pending }
+  - id: w-burgundy-grey
+    owner: women
+    name: 'Burgundy with grey'
+    template: outfits
+    outfits: 3
+    tags:
+      { audience: women, season: [autumn, winter], template: outfits, occasion: [smart], aesthetic: [burgundy-grey] }
+    moods: [office]
+    note: 'Fashion Clinic FW26: burgundy bag with grey tailoring'
+    pieces: [blazers:grey, trousers:grey, knitwear:grey, bags:red, loafers:red, knitwear:red, shirts:white, boots:black]
+    translations:
+      sl: { name: 'Bordo s sivo', review: pending }
+  - id: w-berry
+    owner: women
+    name: 'Berry season'
+    template: pieceCollage
+    tags:
+      { audience: women, season: [autumn, winter], template: pieceCollage, occasion: [smart], aesthetic: [berry-tones] }
+    moods: [evening]
+    paper: stock
+    note: 'grape/raspberry/cranberry (unverified Elle attribution); NET-A-PORTER FW26: rich purple, deep red'
+    pieces:
+      [
+        knitwear:purple,
+        dresses:red,
+        skirts:pink,
+        bags:purple,
+        heels:red,
+        scarves:purple:pink,
+        coats:grey,
+        jewellery:yellow,
+      ]
+    translations:
+      sl: { name: 'Sezona jagodičja', review: pending }
+  - id: w-updated-lady
+    owner: women
+    name: 'The updated lady'
+    template: look
+    tags: { audience: women, season: [autumn], template: look, occasion: [smart], aesthetic: [updated-lady] }
+    moods: [office]
+    paper: slate
+    note: 'Vogue FW26: softened suiting'
+    pieces: [blazers:beige, trousers:beige, knitwear:white, heels:brown, bags:black, jewellery:yellow]
+    translations:
+      sl: { name: 'Sodobna dama', review: pending }
+  - id: w-big-shoulders
+    owner: women
+    name: 'Big shoulders, gold jewellery'
+    template: look
+    tags: { audience: women, season: [winter], template: look, occasion: [smart], aesthetic: [glamoratti] }
+    moods: [evening]
+    paper: slate
+    note: "Pinterest Predicts 2026 'Glamoratti'; 'baggy suit' +90%"
+    pieces: [blazers:black, bodysuits:black, trousers:black, heels:black, jewellery:yellow, belts:yellow, bags:black]
+    translations:
+      sl: { name: 'Velika ramena, zlat nakit', review: pending }
+  - id: w-laced-up
+    owner: women
+    name: 'A little lace'
+    template: outfits
+    outfits: 3
+    tags: { audience: women, season: [autumn, winter], template: outfits, occasion: [smart], aesthetic: [laced-up] }
+    moods: [evening]
+    pieces:
+      [
+        sleevelessTops:black,
+        skirts:black,
+        knitwear:grey,
+        jeans:blue,
+        socks:white,
+        flats:black,
+        boots:black,
+        hairAccessories:black,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Malo čipke', review: pending }
+  - id: w-witch-october
+    owner: women
+    name: 'Practical magic, October'
+    template: pieceCollage
+    tags:
+      {
+        audience: women,
+        season: [autumn],
+        template: pieceCollage,
+        occasion: [casual, smart],
+        aesthetic: [kitchen-witch],
+      }
+    moods: [knitwear, evening]
+    paper: slate
+    note: "Pinterest Fall 2026 'Kitchen Witch' (Practical Magic 2 tie-in). Don't use the film's name in copy"
+    pieces:
+      [dresses:black, knitwear:black, coats:black, boots:black, scarves:purple, hats:black, jewellery:grey, bags:brown]
+    translations:
+      sl: { name: 'Praktična čarovnija, oktober', review: pending }
+  - id: w-10x10
+    featured: true
+    owner: women
+    name: '10 pieces, 10 days'
+    label: 'Pick 10. Wear only those for 10 days.'
+    credit: 'After the 10×10 challenge (Lee Vosburgh, Style Bee)'
+    template: challenge
+    outfits: 8
+    tags: { audience: women, season: [autumn], template: challenge, occasion: [casual, smart], aesthetic: [] }
+    moods: [weekend, office]
+    pieces:
+      [
+        shirts:white,
+        knitwear:grey,
+        shortSleeveTops:black,
+        jeans:blue,
+        trousers:black,
+        skirts:brown,
+        coats:beige,
+        trainers:white,
+        boots:black,
+        bags:black,
+      ]
+    translations:
+      sl:
+        {
+          name: '10 kosov, 10 dni',
+          label: 'Izberi 10. Nosi samo te 10 dni.',
+          credit: 'Po izzivu 10×10 (Lee Vosburgh, Style Bee)',
+          review: pending,
+        }
+  - id: w-33-winter
+    owner: women
+    name: '33 pieces for winter'
+    credit: "The 33-piece idea is Courtney Carver's Project 333"
+    template: pack
+    tags: { audience: women, season: [winter], template: pack, occasion: [casual], aesthetic: [] }
+    moods: [knitwear]
+    paper: stock
+    pieces:
+      [
+        knitwear:beige,
+        knitwear:grey,
+        knitwear:black,
+        longSleeveTops:white×2,
+        shirts:blue,
+        jeans:blue,
+        jeans:black,
+        trousers:grey,
+        skirts:black,
+        dresses:navy,
+        coats:beige,
+        coats:black,
+        jackets:brown,
+        boots:black,
+        boots:brown,
+        trainers:white,
+        flats:black,
+        bags:black,
+        bags:brown,
+        scarves:red,
+        hats:grey,
+        gloves:black,
+        belts:black,
+        jewellery:yellow,
+        eyewear:black,
+        socks:grey,
+        hoodies:grey,
+        loungewear:grey,
+        gilets:beige,
+        sportShoes:black,
+        hairAccessories:black,
+        sleevelessTops:black,
+      ]
+    translations:
+      sl: { name: '33 kosov za zimo', credit: 'Zamisel o 33 kosih je Project 333 Courtney Carver', review: pending }
+  - id: w-office-week
+    featured: true
+    owner: women
+    name: 'Office, Monday to Friday'
+    template: outfits
+    outfits: 5
+    tags: { audience: women, season: [autumn], template: outfits, occasion: [smart], aesthetic: [] }
+    moods: [office]
+    pieces:
+      [
+        shirts:white,
+        knitwear:navy,
+        knitwear:beige,
+        trousers:black,
+        trousers:grey,
+        skirts:beige,
+        blazers:navy,
+        loafers:black,
+        flats:beige,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Pisarna, od ponedeljka do petka', review: pending }
+  - id: w-first-date
+    owner: women
+    name: 'First date, three ways'
+    template: outfits
+    outfits: 3
+    tags: { audience: women, season: [autumn], template: outfits, occasion: [smart], aesthetic: [] }
+    moods: [evening]
+    pieces:
+      [
+        dresses:black,
+        knitwear:red,
+        jeans:blue,
+        skirts:black,
+        jackets:black,
+        boots:black,
+        heels:red,
+        bags:black,
+        jewellery:yellow,
+      ]
+    translations:
+      sl: { name: 'Prvi zmenek, trikrat drugače', review: pending }
+  - id: w-sunday
+    featured: true
+    owner: women
+    name: 'Sunday, no plans'
+    template: look
+    tags: { audience: women, season: [autumn], template: look, occasion: [casual], aesthetic: [cosy] }
+    moods: [weekend, knitwear]
+    paper: sage
+    pieces: [knitwear:beige, loungewear:grey, socks:white, trainers:white, bags:beige, hairAccessories:brown]
+    translations:
+      sl: { name: 'Nedelja brez načrtov', review: pending }
+  - id: w-evening-trainers
+    owner: women
+    name: 'Evening, in trainers'
+    template: look
+    tags: { audience: women, season: [spring, autumn], template: look, occasion: [smart], aesthetic: [minimal] }
+    moods: [evening]
+    paper: stock
+    pieces: [dresses:black, blazers:black, trainers:white, bags:black, jewellery:grey]
+    translations:
+      sl: { name: 'Večer v supergah', review: pending }
+  - id: w-denim-skirt-4
+    owner: women
+    name: 'Denim skirt, four seasons'
+    template: outfits
+    outfits: 4
+    tags:
+      {
+        audience: women,
+        season: [spring, summer, autumn, winter],
+        template: outfits,
+        occasion: [casual],
+        aesthetic: [],
+      }
+    moods: [weekend]
+    pieces:
+      [
+        skirts:blue,
+        shortSleeveTops:white,
+        knitwear:grey,
+        coats:beige,
+        socks:black,
+        sandals:brown,
+        trainers:white,
+        boots:black,
+        bags:brown,
+      ]
+    translations:
+      sl: { name: 'Jeans krilo, štirje letni časi', review: pending }
+  - id: w-red-knit-6
+    featured: true
+    owner: women
+    name: 'The red knit, 6 outfits'
+    template: onePiece
+    outfits: 6
+    layout: flanking
+    anchor: knitwear:red
+    tags: { audience: women, season: [autumn, winter], template: onePiece, occasion: [casual], aesthetic: [red] }
+    moods: [knitwear]
+    pieces:
+      [
+        jeans:blue,
+        trousers:grey,
+        skirts:black,
+        coats:beige,
+        boots:brown,
+        loafers:black,
+        trainers:white,
+        bags:black,
+        scarves:beige,
+      ]
+    translations:
+      sl: { name: 'Rdeč pulover, 6 videzov', review: pending }
+  - id: w-secondhand
+    owner: women
+    name: 'Secondhand sidequest'
+    label: 'Every outfit has one thrifted piece.'
+    template: challenge
+    outfits: 4
+    tags: { audience: women, season: [autumn], template: challenge, occasion: [casual], aesthetic: [secondhand] }
+    moods: [weekend]
+    note: "Pinterest Fall 2026 'Secondhand Sidequest' (pleated skirts, crochet). Mark which pieces are thrifted in their names"
+    pieces:
+      [skirts:grey, knitwear:green, jackets:blue, blazers:brown, jeans:blue, boots:brown, bags:red, scarves:yellow]
+    translations:
+      sl: { name: 'Iz druge roke', label: 'Vsak videz ima en kos iz druge roke.', review: pending }
+  - id: w-one-base-4
+    owner: women
+    name: 'One base, four ways'
+    template: outfits
+    outfits: 4
+    tags: { audience: women, season: [autumn], template: outfits, occasion: [casual, smart], aesthetic: [] }
+    moods: [office, weekend]
+    note: "Format seen on X ('One Base, Four Ways', Oct 2026)"
+    pieces:
+      [
+        longSleeveTops:black,
+        trousers:black,
+        blazers:beige,
+        coats:brown,
+        knitwear:grey,
+        loafers:black,
+        boots:black,
+        bags:brown,
+        belts:black,
+        jewellery:yellow,
+      ]
+    translations:
+      sl: { name: 'Ena osnova, štirje videzi', review: pending }
+  # ── MEN'S (16) ──────────────────────────────────────────────────
+  - id: m-grey-navy-olive
+    featured: true
+    owner: men
+    name: 'Grey, navy, olive'
+    template: pack
+    pairsWith: m-grey-navy-olive-outfits
+    tags: { audience: men, season: [autumn], template: pack, occasion: [casual, smart], aesthetic: [formula] }
+    moods: [weekend, office]
+    paper: stock
+    note: 'The r/malefashionadvice core palette: navy/grey/white/tan/olive'
+    pieces:
+      [
+        shortSleeveTops:grey,
+        shortSleeveTops:navy,
+        knitwear:navy,
+        shirts:green,
+        jackets:green,
+        trousers:grey,
+        jeans:blue,
+        trousers:beige,
+        trainers:white,
+        boots:brown,
+        belts:brown,
+      ]
+    translations:
+      sl: { name: 'Siva, temno modra, olivna', review: pending }
+  - id: m-grey-navy-olive-outfits
+    owner: men
+    name: 'Grey, navy, olive: 6 outfits'
+    template: outfits
+    piecesFrom: m-grey-navy-olive
+    outfits: 6
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [casual, smart], aesthetic: [formula] }
+    moods: [weekend, office]
+    translations:
+      sl: { name: 'Siva, temno modra, olivna: 6 videzov', review: pending }
+  - id: m-uniform-5d
+    featured: true
+    owner: men
+    name: 'The uniform, 5 days'
+    label: 'Tee + chinos + overshirt. Change one thing a day.'
+    template: outfits
+    outfits: 5
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [smart], aesthetic: [uniform] }
+    moods: [office]
+    note: "Reddit 'uniform approach': three of everything (dark, light, green)"
+    pieces:
+      [
+        shortSleeveTops:white,
+        shortSleeveTops:grey,
+        shortSleeveTops:navy,
+        trousers:beige,
+        trousers:navy,
+        jackets:green,
+        jackets:navy,
+        trainers:white,
+        loafers:brown,
+      ]
+    translations:
+      sl:
+        {
+          name: 'Uniforma, 5 dni',
+          label: 'Majica + chino hlače + srajčna jakna. Vsak dan zamenjaj eno stvar.',
+          review: pending,
+        }
+  - id: m-three-shoes
+    featured: true
+    owner: men
+    name: 'Three pairs for everything'
+    label: 'Work · Everyday · Moving'
+    template: pack
+    tags:
+      {
+        audience: men,
+        season: [spring, autumn],
+        template: pack,
+        occasion: [casual, smart, sport],
+        aesthetic: [minimal],
+      }
+    moods: [office, weekend, sport]
+    paper: sand
+    note: "r/malefashionadvice, Aug 2026: 'professional, personal, performance' (71 pts)"
+    pieces: [laceUps:brown, trainers:white, sportShoes:grey]
+    translations:
+      sl: { name: 'Trije pari za vse', label: 'Delo · Vsak dan · Gibanje', review: pending }
+  - id: m-overshirt-6
+    owner: men
+    name: 'One overshirt, 6 outfits'
+    template: onePiece
+    outfits: 6
+    layout: ring
+    anchor: jackets:green
+    tags: { audience: men, season: [autumn, spring], template: onePiece, occasion: [casual], aesthetic: [] }
+    moods: [weekend]
+    pieces:
+      [
+        shortSleeveTops:white,
+        shortSleeveTops:black,
+        knitwear:grey,
+        hoodies:grey,
+        jeans:blue,
+        trousers:beige,
+        trousers:black,
+        trainers:white,
+        boots:brown,
+      ]
+    translations:
+      sl: { name: 'Ena srajčna jakna, 6 videzov', review: pending }
+  - id: m-navy-blazer-6
+    featured: true
+    owner: men
+    name: 'Navy blazer, 6 ways'
+    template: onePiece
+    outfits: 6
+    layout: flanking
+    anchor: blazers:navy
+    tags: { audience: men, season: [autumn], template: onePiece, occasion: [smart], aesthetic: [relaxed-tailoring] }
+    moods: [office, evening]
+    pieces:
+      [
+        shirts:white,
+        shirts:blue,
+        knitwear:grey,
+        shortSleeveTops:white,
+        trousers:grey,
+        jeans:blue,
+        loafers:brown,
+        trainers:white,
+        belts:brown,
+      ]
+    translations:
+      sl: { name: 'Temno modri blazer, 6 načinov', review: pending }
+  - id: m-prep-3
+    owner: men
+    name: 'Prep, the third time round'
+    template: outfits
+    outfits: 3
+    tags: { audience: men, season: [autumn, winter], template: outfits, occasion: [casual], aesthetic: [prep] }
+    moods: [knitwear]
+    note: "Vogue fall 2026 men's 'Prep 3.0': corduroy, toggle coats, printed foulard"
+    pieces:
+      [coats:beige, knitwear:red, shirts:blue, trousers:brown, jeans:blue, loafers:brown, scarves:navy:red, socks:red]
+    translations:
+      sl: { name: 'Prep, tretjič', review: pending }
+  - id: m-ski-knit
+    owner: men
+    name: 'Ski-lodge knit'
+    template: look
+    tags: { audience: men, season: [winter], template: look, occasion: [casual], aesthetic: [ski-sweater] }
+    moods: [knitwear]
+    paper: stock
+    note: "Vogue fall 2026 men's: Cortina-ready sweaters"
+    pieces: [knitwear:white:navy, trousers:brown, boots:brown, hats:grey, gloves:brown]
+    translations:
+      sl: { name: 'Pulover za smučarsko kočo', review: pending }
+  - id: m-bomber
+    owner: men
+    name: 'Bomber, wide trousers'
+    template: outfits
+    outfits: 3
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [casual, smart], aesthetic: [bomber] }
+    moods: [weekend, evening]
+    note: 'Fashion Clinic FW26 men: bombers and blousons over relaxed trousers'
+    pieces:
+      [
+        jackets:black,
+        jackets:brown,
+        shortSleeveTops:white,
+        knitwear:grey,
+        trousers:grey,
+        trousers:black,
+        loafers:black,
+        trainers:white,
+      ]
+    translations:
+      sl: { name: 'Bomber in široke hlače', review: pending }
+  - id: m-quiet-outdoors
+    owner: men
+    name: 'Quiet outdoors'
+    template: outfits
+    outfits: 3
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [casual, sport], aesthetic: [quiet-outdoors] }
+    moods: [rain, weekend, sport]
+    pieces:
+      [
+        jackets:green,
+        gilets:black,
+        hoodies:grey,
+        sportswear:black,
+        trousers:beige,
+        outdoorShoes:brown,
+        hats:green,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Tiho v naravo', review: pending }
+  - id: m-khaki-coded
+    owner: men
+    name: 'Khaki, pockets on pockets'
+    template: look
+    tags: { audience: men, season: [spring, summer], template: look, occasion: [casual], aesthetic: [khaki-coded] }
+    moods: [weekend]
+    paper: sand
+    note: "Pinterest Predicts 2026 'Khaki Coded'"
+    pieces: [gilets:beige, shirts:brown, shorts:beige, sandals:brown, hats:beige, bags:green]
+    translations:
+      sl: { name: 'Kaki, žep na žepu', review: pending }
+  - id: m-workwear
+    owner: men
+    name: 'Workwear, off duty'
+    template: outfits
+    outfits: 3
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [casual], aesthetic: [workwear] }
+    moods: [weekend]
+    pieces:
+      [
+        jackets:blue,
+        jackets:brown,
+        shirts:blue:white,
+        shortSleeveTops:white,
+        jeans:blue,
+        trousers:beige,
+        boots:brown,
+        hats:grey,
+      ]
+    translations:
+      sl: { name: 'Delovna oblačila, prost dan', review: pending }
+  - id: m-office-week
+    featured: true
+    owner: men
+    name: 'Office, Monday to Friday'
+    template: outfits
+    outfits: 5
+    tags: { audience: men, season: [autumn], template: outfits, occasion: [smart], aesthetic: [] }
+    moods: [office]
+    pieces:
+      [
+        shirts:white,
+        shirts:blue,
+        knitwear:navy,
+        knitwear:grey,
+        trousers:grey,
+        trousers:navy,
+        blazers:navy,
+        loafers:brown,
+        laceUps:black,
+        belts:brown,
+      ]
+    translations:
+      sl: { name: 'Pisarna, od ponedeljka do petka', review: pending }
+  - id: m-20-winter
+    featured: true
+    owner: men
+    name: '20 pieces for winter'
+    template: pack
+    tags: { audience: men, season: [winter], template: pack, occasion: [casual], aesthetic: [] }
+    moods: [knitwear]
+    paper: stock
+    note: 'Reddit rule of thumb: 3–4 pants, 6+ shirts, two everyday shoes'
+    pieces:
+      [
+        longSleeveTops:white,
+        longSleeveTops:grey,
+        shirts:blue,
+        knitwear:navy,
+        knitwear:grey,
+        knitwear:green,
+        hoodies:grey,
+        jeans:blue,
+        jeans:black,
+        trousers:grey,
+        trousers:brown,
+        coats:navy,
+        jackets:green,
+        gilets:black,
+        boots:brown,
+        trainers:white,
+        scarves:grey,
+        gloves:brown,
+        hats:navy,
+        belts:brown,
+      ]
+    translations:
+      sl: { name: '20 kosov za zimo', review: pending }
+  - id: m-autumn-swap
+    owner: men
+    name: 'The autumn swap'
+    label: 'Linen out. Corduroy, wool and boots in.'
+    template: pieceCollage
+    tags: { audience: men, season: [autumn], template: pieceCollage, occasion: [casual], aesthetic: [] }
+    moods: [knitwear]
+    note: 'Reddit seasonal-swap thread (Finland table)'
+    pieces:
+      [trousers:brown, knitwear:green, knitwear:grey, shirts:blue, jackets:brown, boots:brown, socks:grey, scarves:navy]
+    translations:
+      sl: { name: 'Jesenska menjava', label: 'Lan ven. Žamet, volna in škornji noter.', review: pending }
+  - id: m-carry-on-5d
+    owner: men
+    name: 'Carry-on, 5 days'
+    template: pack
+    tags: { audience: men, season: [spring, autumn], template: pack, occasion: [casual], aesthetic: [] }
+    moods: [weekend]
+    paper: sand
+    pieces:
+      [
+        shortSleeveTops:white×2,
+        shortSleeveTops:navy,
+        shirts:blue,
+        knitwear:grey,
+        trousers:beige,
+        jeans:blue,
+        jackets:navy,
+        trainers:white,
+        loafers:brown,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Ročna prtljaga, 5 dni', review: pending }
+  # ── EVERYONE (11) ──────────────────────────────────────────────────
+  - id: u-cool-blue
+    owner: women
+    name: 'Cool blue'
+    template: pieceCollage
+    tags: { audience: all, season: [winter], template: pieceCollage, occasion: [casual], aesthetic: [cool-blue] }
+    moods: [knitwear]
+    paper: slate
+    note: "Pinterest Predicts 2026 'Cool Blue'"
+    pieces: [coats:blue, knitwear:blue, shirts:blue, jeans:blue, scarves:blue, bags:blue, trainers:white, hats:grey]
+    translations:
+      sl: { name: 'Hladna modra', review: pending }
+  - id: u-ljubljana
+    featured: true
+    owner: men
+    name: 'A weekend in Ljubljana'
+    template: pack
+    pairsWith: u-ljubljana-outfits
+    tags: { audience: all, season: [autumn], template: pack, occasion: [casual], aesthetic: [city-break] }
+    moods: [weekend, rain]
+    paper: sage
+    pieces:
+      [
+        coats:navy,
+        knitwear:grey,
+        shortSleeveTops:white,
+        jeans:blue,
+        trousers:black,
+        boots:black,
+        trainers:white,
+        scarves:red,
+        bags:black,
+      ]
+    translations:
+      sl: { name: 'Vikend v Ljubljani', review: pending }
+  - id: u-ljubljana-outfits
+    owner: men
+    name: 'Ljubljana, 4 outfits'
+    template: outfits
+    piecesFrom: u-ljubljana
+    outfits: 4
+    tags: { audience: all, season: [autumn], template: outfits, occasion: [casual], aesthetic: [] }
+    moods: [weekend, rain]
+    translations:
+      sl: { name: 'Ljubljana, 4 videzi', review: pending }
+  - id: u-rainy-formula
+    featured: true
+    owner: women
+    name: 'The rainy-day formula'
+    label: 'Shell + knit + dark trousers + boots'
+    template: outfits
+    outfits: 3
+    tags: { audience: all, season: [autumn, spring], template: outfits, occasion: [casual], aesthetic: [formula] }
+    moods: [rain]
+    pieces:
+      [jackets:black, coats:beige, knitwear:grey, knitwear:navy, trousers:black, jeans:blue, boots:black, hats:black]
+    translations:
+      sl: { name: 'Formula za deževen dan', label: 'Vetrovka + pulover + temne hlače + škornji', review: pending }
+  - id: u-shop-your-closet
+    owner: men
+    name: 'Shop your closet: November'
+    label: "No new buys for 30 days. Find 6 outfits you haven't worn."
+    template: challenge
+    outfits: 6
+    tags: { audience: all, season: [autumn], template: challenge, occasion: [casual], aesthetic: [] }
+    moods: [weekend]
+    pieces:
+      [knitwear:grey, shirts:white, jeans:blue, trousers:black, coats:beige, boots:brown, trainers:white, scarves:green]
+    translations:
+      sl:
+        {
+          name: 'Nakupuj v svoji omari: november',
+          label: '30 dni brez novih nakupov. Najdi 6 novih videzov iz kosov, ki jih že imaš.',
+          review: pending,
+        }
+  - id: u-30-days-red
+    featured: true
+    owner: women
+    name: '30 days, one red thing'
+    template: challenge
+    outfits: 6
+    tags: { audience: all, season: [autumn, winter], template: challenge, occasion: [casual, smart], aesthetic: [red] }
+    moods: [weekend, evening]
+    pieces:
+      [
+        knitwear:red,
+        scarves:red,
+        socks:red,
+        bags:red,
+        shortSleeveTops:white,
+        jeans:blue,
+        trousers:black,
+        coats:navy,
+        trainers:white,
+      ]
+    translations:
+      sl: { name: '30 dni, ena rdeča stvar', review: pending }
+  - id: u-one-coat-6
+    featured: true
+    owner: men
+    name: 'One coat, six days'
+    template: onePiece
+    outfits: 6
+    layout: ring
+    anchor: coats:beige
+    tags: { audience: all, season: [autumn, winter], template: onePiece, occasion: [casual, smart], aesthetic: [] }
+    moods: [office, weekend]
+    pieces:
+      [
+        knitwear:black,
+        knitwear:grey,
+        shirts:white,
+        jeans:blue,
+        trousers:black,
+        trousers:grey,
+        boots:black,
+        trainers:white,
+        scarves:brown,
+      ]
+    translations:
+      sl: { name: 'En plašč, šest dni', review: pending }
+  - id: u-ski-week
+    owner: women
+    name: 'Ski week'
+    template: pack
+    tags: { audience: all, season: [winter], template: pack, occasion: [casual, sport], aesthetic: [] }
+    moods: [sport, knitwear]
+    paper: stock
+    pieces:
+      [
+        sportswear:black,
+        sportswear:red,
+        knitwear:white:navy,
+        hoodies:grey,
+        jeans:blue,
+        boots:black,
+        gloves:black,
+        hats:red,
+        socks:grey,
+      ]
+    translations:
+      sl: { name: 'Smučarski teden', review: pending }
+  - id: u-white-trainers-8
+    featured: true
+    owner: men
+    name: 'White trainers, 8 outfits'
+    template: onePiece
+    outfits: 8
+    layout: around
+    anchor: trainers:white
+    tags: { audience: all, season: [spring, summer, autumn], template: onePiece, occasion: [casual], aesthetic: [] }
+    moods: [weekend]
+    pieces:
+      [
+        shortSleeveTops:white,
+        shortSleeveTops:black,
+        knitwear:grey,
+        shirts:blue,
+        jeans:blue,
+        trousers:beige,
+        trousers:black,
+        jackets:navy,
+        coats:beige,
+      ]
+    translations:
+      sl: { name: 'Bele superge, 8 videzov', review: pending }
+  - id: u-black-white
+    featured: true
+    owner: women
+    name: 'Black and white'
+    template: pieceCollage
+    tags:
+      { audience: all, season: [spring, autumn], template: pieceCollage, occasion: [smart], aesthetic: [monochrome] }
+    moods: [evening]
+    paper: paper
+    pieces:
+      [
+        shirts:white,
+        shortSleeveTops:black,
+        trousers:black,
+        jeans:black,
+        coats:black,
+        trainers:white,
+        laceUps:black,
+        bags:black,
+        eyewear:black,
+      ]
+    translations:
+      sl: { name: 'Črno-belo', review: pending }
+  - id: u-gym-to-coffee
+    owner: men
+    name: 'Gym, then coffee'
+    template: look
+    tags: { audience: all, season: [spring, autumn], template: look, occasion: [sport], aesthetic: [athleisure] }
+    moods: [sport]
+    paper: sage
+    pieces: [sportswear:grey, hoodies:grey, sportShoes:white, bags:black, hats:black]
+    translations:
+      sl: { name: 'Telovadnica, nato kava', review: pending }

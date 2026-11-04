@@ -19,7 +19,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 ## The API Worker: a list of modules over one kernel
 
 - **Modules** (`server/src/Modules.ts`): platform, account, social, wardrobe, capture, photos, generation, outfits,
-  links, stylist, mcp, imports. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
+  links, stylist, mcp, imports, seed. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
   `StyldWorker.ts` builds the kernel once per runtime from the Worker's bindings and every module over it, and checks
   at the type level that no module needs a service nobody provides. Adding a module is one entry in that list. A
   module provides the layers of the modules it uses by reference; Effect builds each layer once.
@@ -125,6 +125,12 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **The real photo is the source.** Generated pictures (clean pictures, turns, stickers) are presentation beside it
   and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld (try-on's
   exception in ROADMAP is not built).
+- **The house accounts' exception** (owner, 4 November; ROADMAP `#house-boards`): `@styld.women` and `@styld.men`
+  show garments generated with Muse Image, one picture per piece, imported with `piece_provenance` marking them
+  generated. They are never redrawn, are shown marked Generated wherever others see them, and never touch a person's
+  own wardrobe, captures or pictures. The `seed` module (operator only, `STYLD_HOUSE_EMAILS` only) builds their
+  profiles and boards through the app's own services, once per catalogue entry (`seeded_boards`). Try with my
+  wardrobe (`boards/Try.ts`) lays a house board out again as a private board of the person's own pieces.
 
 ## Authentication and MCP
 

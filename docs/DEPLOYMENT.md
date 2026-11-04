@@ -33,7 +33,8 @@ The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STY
 `STYLD_AUTH_SESSION_KEYS`, `STYLD_AUTH_PROOF_KEYS`, `STYLD_AUTH_REQUEST_BINDING_KEYS`, `META_MUSE_API_KEY`,
 `STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`), `STYLD_LITELLM_URL`, `STYLD_LITELLM_KEY` and
 `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
-comma-separated: their assistants get the curation tools), and `STYLD_OPERATOR_TOKEN`, the operator's token for
+comma-separated: their assistants get the curation tools), `STYLD_HOUSE_EMAILS` (the house accounts' sign-in emails,
+comma-separated; only they can be seeded, and unset means none can), and `STYLD_OPERATOR_TOKEN`, the operator's token for
 administrative tasks from the operator's own tools, such as the v1 importer (`@styld/protocol` › Operator; at least 32
 random bytes, made with `openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'`). `alchemy.run.ts` reads them at deploy
 and binds them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, and `STYLD_OPERATOR_TOKEN` unset means no
@@ -70,6 +71,47 @@ Cloudflare bot controls may answer Error 1010 to ad-hoc non-browser clients; use
 validating the public URL. The native suite (`heavy --wait bun run test:native`) runs the production Foldkit artifact in
 workerd and includes Chromium acceptance; install the pinned browser with `heavy --wait bunx playwright install chromium`
 if needed.
+
+## House inspiration boards (the seed)
+
+The house boards on `@styld.women` and `@styld.men` (`docs/PLAN-house-boards-2026-11-04.md`) come from
+`tools/seed/catalogue.yaml` and `tools/seed/manifest.yaml`, and are run by the operator with `tools/seed/Run.ts`. The
+garments are generated with Meta Muse Image and judged by Muse Spark. Meta answers this box over IPv6 only, which the
+tool's fetch uses. Every paid call is charged to `tools/seed/.out/ledger.json` before it is made, and a run stops
+before the call that would pass `--max-usd` (default 5, across runs). The tool prints counts and ids, never keys.
+
+1. **Dry run** (no network): counts, cached pictures, the cost of the rest, every board's garments and operation,
+   the publish order, and the first of What's new under each Show me.
+
+   ```sh
+   bun tools/seed/Run.ts --manifest tools/seed/manifest.yaml --catalogue tools/seed/catalogue.yaml
+   ```
+
+2. **Test batch**: the manifest's ten test specs are generated and judged, with no import. Share
+   `tools/seed/.out/test-batch.html` with `preview` and **wait for the owner's approval before `--full`**.
+
+   ```sh
+   bun --env-file=.env.preview.local tools/seed/Run.ts --manifest tools/seed/manifest.yaml --test-batch
+   ```
+
+3. **Full run**: generates what the catalogue needs and imports it into the house accounts as generated garments.
+   Their provenance is written by the import, and they are never redrawn. Then it seeds the profiles and the boards
+   in publish order, each pinned and laid out before it goes public. It waits for their checks and writes
+   `tools/seed/.out/report.md`. A second run of the same catalogue generates, imports and changes nothing. The
+   stage's `STYLD_HOUSE_EMAILS` must name the catalogue's emails.
+
+   ```sh
+   STYLD_URL="<edge url>" CLOUDFLARE_ACCOUNT_ID=<the stage's account> CLOUDFLARE_API_TOKEN=… R2_BUCKET="<mediaBucket>" \
+     bun --env-file=.env.preview.local tools/seed/Run.ts --manifest tools/seed/manifest.yaml \
+     --catalogue tools/seed/catalogue.yaml --full
+   ```
+
+4. **Curation**, signed in as an admin through the assistant's curation tools: `curation_house` for both handles,
+   and the `curation_feature` calls the report lists for the featured boards.
+5. **Taking boards down**: `--prune <seed id,…>` (with `--catalogue`) removes seeded boards, such as a fixture's or
+   an entry the catalogue dropped.
+
+Replacing a generated garment with a real photo (by manifest id) is planned and not built yet.
 
 ## Rebuild and import (C5, and the production cutover)
 

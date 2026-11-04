@@ -99,6 +99,62 @@ coordinator (`styldappv2-51`).
   of What's new again (known); What's new pages by an instant, so items sharing the cursor's exact millisecond can be
   skipped at a page boundary.
 
+## House inspiration boards, Show me and Try with my wardrobe (4 November)
+
+Built from `docs/PLAN-house-boards-2026-11-04.md` (owner-approved 4 November). About 50 boards from day one on two
+house accounts, `@styld.women` and `@styld.men`, made of garments generated with Meta Muse Image (one image per piece,
+always marked Generated). Every board has an English original and a Slovenian translation, pending Eva's review. This
+session builds; `styldappv2-51` deploys and runs the native suite after each deploy.
+
+- **Tables** (1ddba67e): `board_tags`, `board_translations`, `profile_translations`, `viewer_preferences`,
+  `piece_provenance` (with Clef's type and `whole`) and `seeded_boards`. The migration only creates tables.
+- **Generation tooling** (24cf917f, 1ee905bb, 7c11e517, 6f5003f3): `tools/seed/` generates each garment with Muse
+  Image and judges it with Muse Spark (Clef optional), with at most two retries and a $5 cap charged before each
+  call. It imports the garments as house garments, then sets the profiles, then the boards in publish order. It
+  waits for the checks and writes a report. The real test batch passed 10 of 10 first try for $0.16 (private page
+  `styld-seed-test-batch`).
+- **Seed endpoint** (162c6388, d67cdf22): `/operator/seed/*` works only for configured house emails
+  (`STYLD_HOUSE_EMAILS`) and runs through the app's own services. A board's table is pinned and laid out before it
+  goes public. The same entry twice changes nothing. Generated imports keep the catalogue's type and are never
+  redrawn.
+- **Slovenian reads** (3cdb7a61): the `styld_locale` cookie, then `Accept-Language`, picks the language. A translation
+  is shown only while it still translates the current original. Checks judge the Slovenian texts too.
+- **Generated** (bd63adbd, 92fd6953): public pieces, looks and boards carry `generated`. A board is generated when
+  any piece on it has generated provenance. The mark has an accessible hint in en and sl.
+- **Show me** (a94a8d01, d7110d69): `GET /me/preferences` and `PUT /me/preferences/show-me`. What's new reads in
+  rank bands carried in its cursor (`band~instant~id`): followed people first, then the choice, then boards for
+  everyone or untagged, then the other audience. It interleaves within a band and never hides anything. The house
+  boards on the landing are ordered the same way. Home's card asks once; the Account page changes the choice.
+  Sign-in with nowhere to return to lands on Home.
+- **Try with my wardrobe** (42da42aa): `POST /boards/:boardId/try` works on a public board with generated pieces.
+  It makes a private board of the caller's own ready pieces where the generated ones lay: same type, most shared
+  colours, then the first colour, then most recently worn, then newest added, each used once. A piece with no match
+  becomes a label: "No brown loafers yet" / "Še manjka: mokasini, rjava". The board keeps its paper and words, pins
+  no house piece and writes nothing to the wardrobe. The whole try runs once per operation id, and the website
+  retries under the same id. The button says "5 of 7 from your wardrobe" and links to the new board. Signed out, it
+  leads to sign-in and back.
+- **Content** (S4): `tools/seed/catalogue.yaml` is the brief's catalogue with the myinbox house emails and 18 featured
+  picks, six per audience, published last; Kris can change them. `tools/seed/manifest.yaml` is the brief's manifest.
+  `Content.test.ts` holds the brief's numbers: 166 garments (7 shared) for 173 pieces (106 women's, 67 men's) and 53
+  boards (26 women's, 16 men's, 11 everyone's; 31 and 22 by account). It also checks that every garment is used and
+  that the Slovenian addresses one person. The dry run expects $2.89 to generate the remaining 156 garments; the worst
+  case is above the $5 cap, which stops the run there.
+- **Runbook:** `docs/DEPLOYMENT.md` › House inspiration boards.
+- **Bundle budget** 388,000: Show me +2,284 and Try +808, each measured in a clean worktree.
+- **Evidence:**
+  - Unit: `HouseSeedTables`, `SeedPlans`, `Translated`, `Checks`, `PublicGenerated`, `Feed`, `ShowMe`, `TryBoard`,
+    and the `tools/seed` tests.
+  - Story and scene: `showMe.story/scene`, `tryBoard.scene`, `whatsNew.scene`.
+  - Native: `SeedAcceptance` (operator only, house only, once, sl, Generated, What's new once, Try) and
+    `IdentityBrowserAcceptance` (a new account lands on Home and sees the card).
+  - Preview: the fixture run of two boards passed its checks and read back in en and sl, a rerun changed nothing,
+    and the boards were pruned.
+- **Open:**
+  - `--full`, which waits for Kris's approval of the test batch.
+  - The photo swap endpoint (`PUT /operator/seed/pieces/:manifestId/picture`), not built yet.
+  - Eva's review of the Slovenian copy, and her call on the sl chip ("Ustvarjeno" or "Ustvarjeno z UI").
+  - On the preview: a readback of Show me's order and of a try with a test account.
+
 ## Open from Eva's 2 November review
 
 The tracker's tickets T-01 to T-21 are built and deployed except where a gap is named here. Each still needs Eva's
