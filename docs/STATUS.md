@@ -7,6 +7,23 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## A piece is sorted beside the photo it was cut from (4 November, on main, not deployed)
+
+Eva (4 November): leggings, sports bras, skirts and "a bit of everything" were sorted into the wrong type. Clef's
+`suggest` read the cut-out alone, which cannot tell sport leggings from everyday ones. Owner: send the cut-out and the
+original by default.
+
+- `GarmentVision.suggest(picture, source)`: with a source, Clef gets the cut-out first and the photo second, and its
+  `state` says the questions are about the piece in the first image. Without a source the request is unchanged.
+- The tray, My Gallery and video stills pass the photo's small working copy (768 px JPEG, already made for `route`). A
+  v1 import's `describe` reads the piece's original and shrinks it to 768 px with one Cloudflare Images transform; an
+  original that cannot be read leaves the cut-out to be read alone. `tools/retype-pieces.ts` sends the stored original
+  (at most 2048 px WebP from the browser) beside each cut-out. The seed gate's generated garments have no photo.
+- Cost: each suggest carries a second image, roughly doubling its Clef input tokens (counted by `clefCost` in the
+  provider metrics), plus one Images transform per imported piece.
+- Not measured (owner: "just build it"). Open: whether the photo moves Eva's leggings, sports bras and skirts into the
+  right types, read on the preview with her next captures; the four Sport types are a separate track.
+
 ## Styld learns the person: taste, memory, first run (4 November, on main)
 
 Kris's plan of 4 November (`~/.claude/plans/okay-so-please-look-sprightly-brook.md`), built as a track of its own

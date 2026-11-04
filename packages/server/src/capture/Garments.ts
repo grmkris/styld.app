@@ -24,6 +24,7 @@ import { capturePolicy } from './Policy.ts'
 import {
   GarmentSegmenter,
   GarmentVision,
+  type Picture,
   PictureWork,
   type Route,
   type StoredVideo,
@@ -38,6 +39,9 @@ import {
 
 /** The size of the copy the decision model judges a cut-out from (and compares, and checks a turn's frames at). */
 export const judgedAt = 512
+
+/** The size of the photo the decision model reads beside a cut-out, as large as a working copy's small JPEG. */
+export const sourceAt = 768
 
 /** One garment found in a picture: its cut-out, how SAM tracked it, what the decision model suggests it is, and
  * whether it is offered ticked (a whole garment of a known kind, and the one held up when a photo is about one). */
@@ -168,9 +172,12 @@ const foregroundOf = Effect.fnUntraced(function* (original: Uint8Array) {
   return foregroundCut(foreground, opaqueBounds(foreground))
 })
 
-/** A cut described by the decision model, from the copy it judges; a scrap is none. */
-const described = Effect.fnUntraced(function* (cut: Cut) {
-  const suggestion = yield* (yield* GarmentVision).suggest(modelPicture(cut.picture, judgedAt))
+/** The photo a cut was taken from, as the decision model reads it beside the cut: its small working copy. */
+const sourceOf = (copies: WorkingCopies): Picture => ({ bytes: copies.small, contentType: 'image/jpeg' })
+
+/** A cut described by the decision model, from the copy it judges beside the photo it was cut from; a scrap is none. */
+const described = Effect.fnUntraced(function* (cut: Cut, source: Picture) {
+  const suggestion = yield* (yield* GarmentVision).suggest(modelPicture(cut.picture, judgedAt), Option.some(source))
   return verdictOf(suggestion.whole) === 'drop' ? Option.none() : Option.some({ ...cut, suggestion })
 })
 
@@ -183,8 +190,9 @@ const pairKind = ({ suggestion }: Described) =>
   )
 
 /** Each cut described, scraps dropped, a pair joined into one piece (whole as its surer half). */
-const describedPieces = Effect.fnUntraced(function* (cuts: ReadonlyArray<Cut>, most: number) {
-  const found = yield* Effect.forEach(cuts.slice(0, most), described, { concurrency: 4 })
+const describedPieces = Effect.fnUntraced(function* (cuts: ReadonlyArray<Cut>, most: number, copies: WorkingCopies) {
+  const source = sourceOf(copies)
+  const found = yield* Effect.forEach(cuts.slice(0, most), (cut) => described(cut, source), { concurrency: 4 })
   const pieces = found.flatMap(Option.toArray)
   return withPairsJoined(pieces, pairKind).map((piece) => {
     const halves = pieces.filter(({ track }) => piece.track.split('+').includes(track))
@@ -213,7 +221,7 @@ const forTray = Effect.fnUntraced(function* (original: Uint8Array, camera: boole
   const cuts = Option.isSome(foreground)
     ? [foreground.value]
     : yield* samCuts(copies, promptsFor({ for: 'tray', route }))
-  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.tray)
+  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.tray, copies)
   const held = holding(camera, route) ? heldOf(pieces, copies) : undefined
   return {
     garments: pieces.map((piece) => garmentOf(piece, held === undefined || piece === held)),
@@ -238,7 +246,7 @@ const forGallery = Effect.fnUntraced(function* (original: Uint8Array) {
     person === undefined || worn.length === 0
       ? cutsOf(picture, masks, picture)
       : cutsOf(picture, worn, picture, person.bounds)
-  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.gallery)
+  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.gallery, copies)
   return {
     garments: pieces.map((piece) => garmentOf(piece, true)),
     route: Option.none(),
@@ -306,7 +314,8 @@ const inVideo = Effect.fnUntraced(function* (video: VideoToTrack) {
       Effect.gen(function* () {
         const bytes = yield* video.read(key)
         if (Option.isNone(bytes)) return []
-        const picture = yield* decodedPng((yield* (yield* PictureWork).workingCopies(bytes.value)).png)
+        const copies = yield* (yield* PictureWork).workingCopies(bytes.value)
+        const picture = yield* decodedPng(copies.png)
         const cuts = cutsOf(
           picture,
           inStill.flatMap(({ sighting }) =>
@@ -320,7 +329,7 @@ const inVideo = Effect.fnUntraced(function* (video: VideoToTrack) {
           ),
           frameSize,
         )
-        const pieces = yield* describedPieces(cuts, cuts.length)
+        const pieces = yield* describedPieces(cuts, cuts.length, copies)
         return pieces.map((piece) => ({ ...garmentOf(piece, true), still: key }))
       }),
     { concurrency: 2 },

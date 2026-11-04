@@ -47,7 +47,7 @@ const finished = Effect.fnUntraced(function* (row: PieceRow, imageKey: string) {
   const store = yield* WardrobeStore
   const imported = row.source === 'import'
   const cutOut = imported && imageKey !== row.originalKey
-  const described = cutOut ? yield* (yield* GarmentCutout).describe(imageKey) : Option.none()
+  const described = cutOut ? yield* (yield* GarmentCutout).describe(imageKey, row.originalKey) : Option.none()
   const generated = imported && (yield* stored(store.generatedAmong([row.id]))).has(row.id)
   const at = yield* nowDate
   const details = Option.match(described, {

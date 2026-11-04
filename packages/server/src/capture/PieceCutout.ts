@@ -5,8 +5,8 @@ import { Effect, Layer, Option, Schedule, Schema } from 'effect'
 import { piecePrefix } from '../wardrobe/Media.ts'
 import { type CutSide, CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
 import { Media } from '../kernel/Media.ts'
-import { Garments, judgedAt } from './Garments.ts'
-import { GarmentVision } from './Providers.ts'
+import { Garments, judgedAt, sourceAt } from './Garments.ts'
+import { GarmentVision, type Picture, PictureWork } from './Providers.ts'
 import { holdId } from '../usage/Holds.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
 
@@ -50,6 +50,7 @@ export const pieceCutout = Layer.effect(
     const { bucket } = yield* Media
     const garments = yield* Garments
     const vision = yield* GarmentVision
+    const pictures = yield* PictureWork
     const attempts = yield* PaidAttempts
     const read = (key: string) =>
       Effect.tryPromise({
@@ -94,12 +95,26 @@ export const pieceCutout = Layer.effect(
         )
         return cut.imageKey === null ? kept : { imageKey: cut.imageKey }
       }),
-      describe: Effect.fn('Styld.Capture.describePiece')(function* (storedKey: string) {
+      describe: Effect.fn('Styld.Capture.describePiece')(function* (storedKey: string, originalKey: string) {
         const stored = yield* read(storedKey).pipe(Effect.option)
         const picture = Option.flatMap(Option.flatten(stored), readPng)
         if (Option.isNone(picture)) return Option.none()
+        // The photo it was cut from, read beside it at the decision model's size; one that cannot be read or shrunk
+        // leaves the cut-out to be read alone.
+        const source = yield* read(originalKey).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () => Effect.succeedNone,
+              onSome: (original) =>
+                pictures
+                  .thumbnail(original, sourceAt)
+                  .pipe(Effect.map((bytes) => Option.some<Picture>({ bytes, contentType: 'image/webp' }))),
+            }),
+          ),
+          Effect.orElseSucceed(() => Option.none<Picture>()),
+        )
         // A model that does not answer leaves the piece as it was mapped; the import does not wait on it.
-        return yield* vision.suggest(modelPicture(picture.value, judgedAt)).pipe(Effect.option)
+        return yield* vision.suggest(modelPicture(picture.value, judgedAt), source).pipe(Effect.option)
       }),
     })
   }),

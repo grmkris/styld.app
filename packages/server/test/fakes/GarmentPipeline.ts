@@ -1,8 +1,9 @@
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, type Option } from 'effect'
 import { Garments } from '../../src/capture/Garments.ts'
 import {
   GarmentSegmenter,
   GarmentVision,
+  type Picture,
   PictureWork,
   type Route,
   type Suggestion,
@@ -19,10 +20,12 @@ export interface Scripted {
   readonly suggestion: Suggestion
   readonly still: GarmentSegmenter['Service']['still']
   readonly route?: Route
+  /** Each photo a cut-out was read beside, in the order asked. */
+  readonly sources?: Array<Option.Option<Picture>>
 }
 
 /** The real `Garments` layer over the scripted providers. */
-export const scriptedGarments = ({ copies, suggestion, still, route }: Scripted) =>
+export const scriptedGarments = ({ copies, suggestion, still, route, sources }: Scripted) =>
   Garments.layer.pipe(
     Layer.provide(
       Layer.mergeAll(
@@ -39,7 +42,11 @@ export const scriptedGarments = ({ copies, suggestion, still, route }: Scripted)
           GarmentVision,
           GarmentVision.of({
             route: route === undefined ? unused : () => Effect.succeed(route),
-            suggest: () => Effect.succeed(suggestion),
+            suggest: (_picture, source) =>
+              Effect.sync(() => {
+                sources?.push(source)
+                return suggestion
+              }),
             checkHeld: unused,
             judge: unused,
             sameGarment: unused,

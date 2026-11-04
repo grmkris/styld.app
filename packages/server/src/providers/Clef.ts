@@ -345,6 +345,26 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   }),
 })
 
+/** The suggest request: the cut-out alone, or the cut-out first and the photo it was cut from second, so every question
+ * stays about the one piece while the photo shows how and for what it is worn (owner, 4 November: Eva's leggings,
+ * sports bras and skirts were sorted wrong from their cut-outs alone). */
+const suggestRequest = (picture: Picture, source: Option.Option<Picture>): ClefRequest =>
+  Option.match(source, {
+    onNone: (): ClefRequest => ({
+      model: 'clef-flash',
+      state: 'One piece cut out of a photo of clothes.',
+      images: [imageOf(picture)],
+      questions: suggestQuestions,
+    }),
+    onSome: (photo): ClefRequest => ({
+      model: 'clef-flash',
+      state:
+        'The first image is one piece cut out of the second image, a photo that may show a person wearing it or other clothes. Every question is about the piece in the first image; the photo shows how and for what it is worn.',
+      images: [imageOf(picture), imageOf(photo)],
+      questions: suggestQuestions,
+    }),
+  })
+
 export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   route: Effect.fn('Styld.Capture.route')(function* (picture: Picture) {
     const answer = yield* askClef(run, metrics, 'route', {
@@ -355,13 +375,8 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
     })
     return routeOf(answer)
   }),
-  suggest: Effect.fn('Styld.Capture.suggest')(function* (picture: Picture) {
-    const answer = yield* askClef(run, metrics, 'suggest', {
-      model: 'clef-flash',
-      state: 'One piece cut out of a photo of clothes.',
-      images: [imageOf(picture)],
-      questions: suggestQuestions,
-    })
+  suggest: Effect.fn('Styld.Capture.suggest')(function* (picture: Picture, source: Option.Option<Picture>) {
+    const answer = yield* askClef(run, metrics, 'suggest', suggestRequest(picture, source))
     return suggestionOf(answer)
   }),
   checkHeld: Effect.fn('Styld.Capture.checkHeld')(function* (

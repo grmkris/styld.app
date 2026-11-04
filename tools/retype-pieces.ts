@@ -22,6 +22,7 @@ import { modelPicture, readPng } from '@styld/imaging'
 import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
+import type { Picture } from '../packages/server/src/capture/Providers.ts'
 import { makeGarmentVision } from '../packages/server/src/providers/Clef.ts'
 import { cloudflareStage, stageOptions } from './CloudflareRest.ts'
 
@@ -61,8 +62,25 @@ const Stored = Schema.Struct({
   type: PieceType,
   colours: Schema.fromJsonString(Schema.Array(Colour)),
   image_key: Schema.String,
+  original_key: Schema.String,
+  content_type: Schema.String,
 })
 type Stored = typeof Stored.Type
+
+/** The picture types Clef reads. */
+const Readable = Schema.Literals(['image/jpeg', 'image/png', 'image/webp'])
+
+/** The photo a piece was cut from, read beside its cut-out as the Worker reads a new one; the browser stores it at
+ * most 2048 px, so it is sent as stored. A type Clef cannot read leaves the cut-out to be read alone. */
+const sourceOf = (piece: Stored) =>
+  Option.match(Schema.decodeUnknownOption(Readable)(piece.content_type), {
+    onNone: () => Effect.succeed(Option.none<Picture>()),
+    onSome: (contentType) =>
+      Effect.tryPromise(() => object(piece.original_key)).pipe(
+        Effect.map((bytes) => Option.some<Picture>({ bytes, contentType })),
+        Effect.orElseSucceed(() => Option.none<Picture>()),
+      ),
+  })
 
 const { query, object, runClef } = await cloudflareStage({ token, cloudflareAccount, database, bucket })
 const vision = makeGarmentVision(runClef, CaptureMetrics.discarding)
@@ -83,7 +101,7 @@ const changeOf = (piece: Stored) =>
   Effect.gen(function* () {
     const decoded = readPng(yield* Effect.tryPromise(() => object(piece.image_key)))
     if (Option.isNone(decoded)) return Option.none<Change>()
-    const suggestion = yield* vision.suggest(modelPicture(decoded.value, judgedAt))
+    const suggestion = yield* vision.suggest(modelPicture(decoded.value, judgedAt), yield* sourceOf(piece))
     const type =
       suggestion.type !== undefined &&
       suggestion.confidence >= retypeBar &&
@@ -112,7 +130,7 @@ const changeOf = (piece: Stored) =>
 
 const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
   await query(
-    `SELECT id, type, colours, image_key FROM pieces
+    `SELECT id, type, colours, image_key, original_key, content_type FROM pieces
        WHERE account_id = ? AND status = 'ready' AND image_key IS NOT NULL AND image_key <> original_key
        ORDER BY created_at`,
     [account],
