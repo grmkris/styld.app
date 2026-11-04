@@ -284,7 +284,7 @@ describe('account', () => {
 })
 
 test('a failed language change describes the picker with its error', () => {
-  const failed = modifyFields(page('/'), { localeSave: () => LocaleSave.Failed() })
+  const failed = modifyFields(page('/privacy'), { localeSave: () => LocaleSave.Failed() })
   scene(
     { update, view },
     given(failed),

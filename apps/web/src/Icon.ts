@@ -8,6 +8,8 @@ import {
   ArrowUpRegular,
   BookmarkSimpleRegular,
   HeartFill,
+  PauseFill,
+  PlayFill,
   HeartRegular,
   BroomRegular,
   ChatCircleRegular,
@@ -108,6 +110,9 @@ export const saveIcon = control(BookmarkSimpleRegular)
 /** A favourite: the outline while it is not one, filled once it is (DESIGN.md › Icons). */
 export const favouriteIcon = control(HeartRegular)
 export const favouriteOnIcon = control(HeartFill)
+/** The landing film's one control: pause the motion, or play it again. */
+export const pauseIcon = control(PauseFill)
+export const playIcon = control(PlayFill)
 /** Google's mark, on Continue with Google. */
 export const googleIcon = control(GoogleLogoRegular)
 

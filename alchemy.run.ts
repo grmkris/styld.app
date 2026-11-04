@@ -82,7 +82,15 @@ export default Alchemy.Stack(
     const edge = yield* Cloudflare.Worker('StyldEdge', {
       main: 'packages/server/src/EdgeWorker.ts',
       // Every stage but production stays out of search engines; link previews still read its pages.
-      env: { API: api, WEBSITE: website, ROBOTS: stage.robots },
+      env: {
+        API: api,
+        WEBSITE: website,
+        ROBOTS: stage.robots,
+        // Each landing shown and sign-in begun, by hero (`EdgeWorker.ts` › countLanding), beside the provider calls.
+        METRICS: yield* StyldAiCalls,
+        STYLD_ENV: stage.environment,
+        STYLD_RELEASE: release,
+      },
       // Service-binding fetch enters the SSR handler without the website's
       // public asset router. Serve the same build's files at the public edge.
       assets: { directory: 'apps/web/dist/client' },

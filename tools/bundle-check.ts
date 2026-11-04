@@ -142,7 +142,12 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // boards, four steps and their saves, the modal Mount), its screen with the boards to pick and the occasions, its styles
 // and the en/sl words add 3,010: main measured 399,850 in a clean worktree at cbcf9b58 (9daa3422 adds no browser code)
 // and 402,860 with them.
-if (initialGzip > 402900) throw new Error(`Initial browser assets exceed the 402,900-byte gzip budget: ${initialGzip}`)
+// Raised to 408,200 on 4 November for the landing that replaces v1 at styld.app (owner): three heroes, each a film with
+// its poster and words, the one control that follows the film, the three feature screens with the shop's chips, the
+// price and the questions, and their en/sl words (the largest catalog 15,842 to 16,899) add 5,178, less the public
+// boards the old landing read: main measured 399,851 in a clean worktree at 0f92c2ca and 405,029 with them; on top of
+// the first run (402,860) it measures 408,104. No media is bundled; every film and picture loads from /cdn/landing/.
+if (initialGzip > 408200) throw new Error(`Initial browser assets exceed the 408,200-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

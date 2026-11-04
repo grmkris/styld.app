@@ -33,5 +33,5 @@
     "video-camera",
     "x"
   ],
-  "fill": ["heart"]
+  "fill": ["heart", "pause", "play"]
 }

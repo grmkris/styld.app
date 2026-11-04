@@ -22,7 +22,7 @@ import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
-import * as LandingBoards from './page/LandingBoards.ts'
+import * as Landing from './page/Landing.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute } from './route.ts'
@@ -45,7 +45,7 @@ const Tabs = Schema.Struct({
   ask: Ask.Model,
   boards: Boards.Model,
   account: Account.Model,
-  landing: LandingBoards.Model,
+  landing: Landing.Model,
 })
 type Tabs = typeof Tabs.Type
 
@@ -148,8 +148,8 @@ export const lenses = {
   landing: tab(
     'landing',
     (tabs) => tabs.landing,
-    (tabs, landing: LandingBoards.Model) => modifyFields(tabs, { landing: () => landing }),
-    (message: LandingBoards.Message) => Message.GotLandingMessage({ message }),
+    (tabs, landing: Landing.Model) => modifyFields(tabs, { landing: () => landing }),
+    (message: Landing.Message) => Message.GotLandingMessage({ message }),
   ),
   login: onlyPage(
     'login',
@@ -256,7 +256,7 @@ const tabs = (): Page =>
       ask: Ask.init(),
       boards: Boards.init(),
       account: Account.init(),
-      landing: LandingBoards.init(),
+      landing: Landing.init(),
     },
   })
 

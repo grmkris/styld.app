@@ -3,7 +3,7 @@ import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { hasSession, Message, type Model } from './App.ts'
 import { piecesById } from './Cdn.ts'
-import { landingView } from './Landing.ts'
+import * as LandingView from './page/LandingView.ts'
 import { lenses, type PageLens } from './Page.ts'
 import * as AddPiecesView from './page/AddPieces/View.ts'
 import { accountView } from './page/AccountView.ts'
@@ -85,7 +85,17 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html => {
           }),
         h,
       )
-    : onPage(model, lenses.landing, (landing) => landingView(landing, locale, h), h)
+    : onPage(
+        model,
+        lenses.landing,
+        (landing) =>
+          h.submodel({
+            ...slot(lenses.landing, landing),
+            view: LandingView.view,
+            viewInputs: { locale, hero: model.context.landingHero ?? 'wardrobe' },
+          }),
+        h,
+      )
 }
 
 /** Someone's public profile or piece. */
