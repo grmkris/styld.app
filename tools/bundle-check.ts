@@ -80,8 +80,8 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // selection, the delete Command and its retry under the same id, the ticks, the bar and the question, their styles and
 // their words in both catalogs) add 2,164, for 377,987.
 // Raised to 379,600 the same day for the piece's picture carousel (P3): its slides, the swipe, the dots and "Use as
-// the main picture", and their words, add 1,583.
-if (initialGzip > 379600) throw new Error(`Initial browser assets exceed the 379,600-byte gzip budget: ${initialGzip}`)
+// the main picture", and their words, add 1,583; with the seated-person fallback beside it main measured 379,609.
+if (initialGzip > 379650) throw new Error(`Initial browser assets exceed the 379,650-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
