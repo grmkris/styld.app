@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { groupOf, OperationId, type SeedPiece } from '@styld/protocol'
-import { wholeEnough } from '../../packages/server/src/seed/Whole.ts'
+import { wholeEnough } from './Whole.ts'
 import { operatorStage, required } from '../OperatorStage.ts'
 import { r2Bucket } from '../R2Rest.ts'
 import type { Catalogue } from './Catalogue.ts'

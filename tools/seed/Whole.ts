@@ -1,5 +1,5 @@
 import type { PieceType } from '@styld/protocol'
-import { capturePolicy } from '../capture/Policy.ts'
+import { capturePolicy } from '../../packages/server/src/capture/Policy.ts'
 
 // Whether a house garment is whole enough for its boards (owner, 4 November 2026): Clef's whole-garment score must
 // reach the capture's own drop bar, except for small things (a belt, jewellery, a hair clip, sunglasses, gloves,
