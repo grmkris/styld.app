@@ -14,9 +14,6 @@ export interface Owned {
   readonly picture: { readonly key: string; readonly contentType: string; readonly version: string }
 }
 
-/** The most pieces one request reads, newest first. */
-const mostRead = 300
-
 /** A ready piece as the outfit rules read it, without whether it shows a drawing. */
 export const WearableRow = Schema.Struct({
   id: Piece.fields.id,
@@ -33,7 +30,9 @@ export const WearableRow = Schema.Struct({
  * bug. */
 export const wearablesOf = (store: Store, accountId: string) =>
   Effect.gen(function* () {
-    const rows = (yield* store.listPieces(accountId)).filter(({ status }) => status === 'ready').slice(0, mostRead)
+    // Every ready piece: the rules choose from the whole wardrobe. A newest-first cap of 300 once hid all of a tester's
+    // shoes, her first pieces, so no outfit wore any (Eva, 4 November 2026).
+    const rows = (yield* store.listPieces(accountId)).filter(({ status }) => status === 'ready')
     const pictures = new Map((yield* store.picturesOf(accountId)).map((row) => [row.pieceId, row]))
     return yield* Effect.forEach(rows, (row) =>
       Schema.decodeUnknownEffect(WearableRow)(row).pipe(

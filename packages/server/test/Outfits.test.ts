@@ -10,7 +10,7 @@ import {
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { distinct } from '../src/outfits/Outfits.ts'
-import { keptProposals, proposalMessages } from '../src/outfits/Proposer.ts'
+import { keptProposals, proposalMessages, sentFrom } from '../src/outfits/Proposer.ts'
 import { type Brief, missingOf, proposed, validated, type Wearable } from '../src/outfits/Rules.ts'
 
 let pieces = 0
@@ -331,5 +331,17 @@ describe('complete outfits (T-10)', () => {
     expect(distinct(ranked, 2, new Set([tee.id]))).toEqual([best, fresh])
     expect(distinct(ranked, 3, new Set([tee.id]))).toEqual([best, fresh, sameShoes])
     expect(distinct(ranked, 9, new Set([tee.id]))).toHaveLength(4)
+  })
+})
+
+describe("Thinking's share of a large wardrobe", () => {
+  test('deals every place in turn, so old shoes and bags are sent with two hundred newer tops', () => {
+    const tops = Array.from({ length: 200 }, () => piece('tops'))
+    const oldShoes = [piece('trainers'), piece('boots')]
+    const oldBag = piece('bags')
+    const sent = sentFrom([...tops, ...oldShoes, oldBag], 150)
+    expect(sent).toHaveLength(150)
+    expect(sent).toEqual(expect.arrayContaining([...oldShoes, oldBag]))
+    expect(sentFrom(tops.slice(0, 3), 150)).toEqual(tops.slice(0, 3))
   })
 })

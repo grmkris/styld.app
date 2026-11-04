@@ -88,3 +88,26 @@ describe('a Thinking request', () => {
     )
   })
 })
+
+describe('a wardrobe of more than three hundred pieces', () => {
+  it.effect('still wears its oldest shoes: the rules choose from every ready piece', () => {
+    // Eva's shape (4 November 2026): her shoes were her first pieces, and 300 newer ones once hid them.
+    const database = localD1()
+    const shoes = `pc_${'s'.repeat(22)}`
+    const tops = Array.from({ length: 320 }, (_, at) => piece(`pc_${String(at).padStart(22, '0')}`, 'tops', at + 2))
+    database.sqlite.exec(`
+      INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
+      ${piece(shoes, 'trainers', 0)}
+      ${piece(`pc_${'j'.repeat(22)}`, 'jeans', 1)}
+      ${tops.join('\n')}
+    `)
+    return Effect.gen(function* () {
+      const batch = yield* (yield* Outfits).make({ ...ask('op_fast_oldest_shoes'), mode: 'fast', count: 3 })
+      expect(batch.proposals.length).toBeGreaterThan(0)
+      for (const proposal of batch.proposals) expect(proposal.pieceIds).toContain(shoes)
+    }).pipe(
+      Effect.provide(engine(database, [])),
+      Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' }),
+    )
+  })
+})

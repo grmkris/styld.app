@@ -1,5 +1,5 @@
 import { type ProviderError, refused } from '../providers/Errors.ts'
-import { outfitKeyOf } from '@styld/protocol'
+import { outfitKeyOf, slotOf } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { providerErrorOf, type TextTask, textModel } from '../ai/LanguageModel.ts'
@@ -66,11 +66,36 @@ const line = (ref: string, piece: Wearable) =>
     .filter((part) => part !== null)
     .join('; ')
 
+/** At most `most` of the wardrobe for the model, dealt across the places in turn (top, bottom, shoes, layer and so
+ * on), newest first within each, and listed in the wardrobe's order: every kind of piece is there to choose from,
+ * however long ago it was added. The
+ * newest `most` alone left out a tester's shoes, which were her first pieces (Eva, 4 November 2026).
+ * @internal Exported for its tests. */
+export const sentFrom = (wardrobe: ReadonlyArray<Wearable>, most: number): ReadonlyArray<Wearable> => {
+  const bySlot = new Map<string, Array<Wearable>>()
+  for (const piece of wardrobe) bySlot.set(slotOf(piece.type), [...(bySlot.get(slotOf(piece.type)) ?? []), piece])
+  const queues = [...bySlot.values()]
+  const chosen = new Set<Wearable>()
+  for (let round = 0; chosen.size < most && queues.some((queue) => queue.length > round); round++)
+    for (const queue of queues) {
+      const piece = queue[round]
+      if (piece !== undefined && chosen.size < most) chosen.add(piece)
+    }
+  // Listed as the wardrobe lists them, so a wardrobe that fits is sent exactly as it is.
+  return wardrobe.filter((piece) => chosen.has(piece))
+}
+
 /** The request's messages, and the refs they gave the pieces.
  * @internal Exported for its tests. */
 export const proposalMessages = (request: Brief, count: number) => {
   const fixedIds = new Set<string>(request.fixed.map(({ id }) => id))
-  const pieces = [...request.fixed, ...request.wardrobe.filter(({ id }) => !fixedIds.has(id))].slice(0, mostSent)
+  const pieces = [
+    ...request.fixed,
+    ...sentFrom(
+      request.wardrobe.filter(({ id }) => !fixedIds.has(id)),
+      mostSent - request.fixed.length,
+    ),
+  ]
   const refOf = new Map<string, string>(pieces.map((piece, at) => [piece.id, `p${String(at + 1)}`]))
   const pieceOf = new Map(pieces.map((piece, at) => [`p${String(at + 1)}`, piece]))
   const shown = [...request.seen].slice(-mostShownSent).map((key) =>
