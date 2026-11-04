@@ -4,6 +4,7 @@ import { Effect, Redacted } from 'effect'
 import { stylistThreadObjects, stylistThreadsOf, stylistThreadWorker } from '../src/Resources.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
+import { nativeOperatorToken } from './OperatorToken.ts'
 
 export const makeStack = (generation: string) =>
   Alchemy.Stack(
@@ -43,8 +44,8 @@ export const makeStack = (generation: string) =>
           AUTH_ORIGIN: edge.url,
           STYLD_ENV: 'local',
           STYLD_RELEASE: `native-${generation}`,
-          // The import journey's admin (`ImportAcceptance.ts`).
-          STYLD_ADMIN_EMAILS: 'native-import-admin@example.invalid',
+          // The import journey's operator (`ImportAcceptance.ts`).
+          STYLD_OPERATOR_TOKEN: Redacted.make(nativeOperatorToken),
           // The fakes' providers ask the fixture Worker in Meta's, Veo's and Clef's place (`test/fakes/`).
           TEST_FIXTURES: worker.url,
           META_API_KEY: Redacted.make('native-test-meta-key'),

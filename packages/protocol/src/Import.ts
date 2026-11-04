@@ -1,16 +1,16 @@
-import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { NotFound, OperationConflict, Unavailable } from './Errors.ts'
 import { PieceType } from './Garment.ts'
 import { Operation } from './Ids.ts'
-import { SessionAccount } from './Session.ts'
+import { OperatorAuth } from './Operator.ts'
 import { Name } from './Text.ts'
 import { Colours, ImageType, PieceId, PieceStatus } from './Wardrobe.ts'
 
 // Bringing a wardrobe over from the first Styld (v1) at the switch, run by the operator's importer (`tools/import-v1`).
 // The importer puts a bundle in the media bucket under `imports/<importId>/`: this manifest, and each piece's picture
-// beside it. Only Styld's admins (`STYLD_ADMIN_EMAILS`) may start or read an import; to anyone else it is not there.
+// beside it. Only the operator, by the stage's operator token (`Operator.ts`), may start or read an import; to anyone
+// else it is not there.
 
 /** An import's id: its bundle's folder under `imports/`. */
 export const ImportId = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{8,64}$/u))
@@ -58,10 +58,10 @@ export type ImportStatus = typeof ImportStatus.Type
 export const ImportStarted = Schema.Struct({ ...ImportStatus.fields, accountCreated: Schema.Boolean })
 export type ImportStarted = typeof ImportStarted.Type
 
-/** Imports, for Styld's admins. Starting one again sends only what is not imported yet. */
+/** Imports, for the operator. Starting one again sends only what is not imported yet. */
 export class ImportApi extends HttpApiGroup.make('import')
   .add(
-    HttpApiEndpoint.post('startImport', '/admin/imports/:importId', {
+    HttpApiEndpoint.post('startImport', '/operator/imports/:importId', {
       params: { importId: ImportId },
       payload: Operation,
       success: ImportStarted,
@@ -69,11 +69,10 @@ export class ImportApi extends HttpApiGroup.make('import')
     }),
   )
   .add(
-    HttpApiEndpoint.get('importStatus', '/admin/imports/:importId', {
+    HttpApiEndpoint.get('importStatus', '/operator/imports/:importId', {
       params: { importId: ImportId },
       success: ImportStatus,
       error: [NotFound, Unavailable],
     }),
   )
-  .middleware(SessionAccount)
-  .middleware(SessionHttp.RequireSession) {}
+  .middleware(OperatorAuth) {}

@@ -33,8 +33,12 @@ The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STY
 `STYLD_AUTH_SESSION_KEYS`, `STYLD_AUTH_PROOF_KEYS`, `STYLD_AUTH_REQUEST_BINDING_KEYS`, `META_MUSE_API_KEY`,
 `STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`), `STYLD_LITELLM_URL`, `STYLD_LITELLM_KEY` and
 `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
-comma-separated: they get the curation tools and may run imports). `alchemy.run.ts` reads them at deploy and binds
-them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, so no imports. `STYLD_RELEASE` (the commit) is
+comma-separated: their assistants get the curation tools), and `STYLD_OPERATOR_TOKEN`, the operator's token for
+administrative tasks from the operator's own tools, such as the v1 importer (`@styld/protocol` › Operator; at least 32
+random bytes, made with `openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'`). `alchemy.run.ts` reads them at deploy
+and binds them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, and `STYLD_OPERATOR_TOKEN` unset means no
+operator, so no imports. The Worker keeps only the token's digest, and the operator's routes answer 404 to anything
+but that token. `STYLD_RELEASE` (the commit) is
 passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`
 of `{ id, material }`, material at least 32 random bytes as unpadded base64url. Never print the file, commit it, or use
 v1 or production secrets in it. `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` come from the environment (both:
@@ -102,14 +106,13 @@ queues go with it; v1's wardrobes are brought back by the importer. The producti
 3. **Deploy** this commit as above (the first deploy also makes the state store). Note the new edge `url` and
    `mediaBucket`, and read `/api/health` (its release is HEAD).
 
-4. **Import each wardrobe by email**. An admin's session (sign in on the new URL with an address in
-   `STYLD_ADMIN_EMAILS` and copy the `Cookie` header of an `/api/` request); the bundle goes through the R2 REST API
-   with the API token that deploys:
+4. **Import each wardrobe by email**, as the operator: the importer reads `STYLD_OPERATOR_TOKEN` from the stage's
+   env file, so no one signs in or copies anything out of a browser. The bundle goes through the R2 REST API with the
+   API token that deploys:
 
    ```sh
-   STYLD_URL="<edge url>" STYLD_SESSION='<cookie header>' \
-   CLOUDFLARE_ACCOUNT_ID=bceaeae4788dce3493514fde194b4a7e CLOUDFLARE_API_TOKEN=… R2_BUCKET="<mediaBucket>" \
-     bun tools/import-v1/Import.ts ~/private/styld-v1/<person>
+   STYLD_URL="<edge url>" CLOUDFLARE_ACCOUNT_ID=<the stage's account> CLOUDFLARE_API_TOKEN=… R2_BUCKET="<mediaBucket>" \
+     bun --env-file=.env.preview.local tools/import-v1/Import.ts ~/private/styld-v1/<person>
    ```
 
    The importer refuses placeholders and pictures that are not pictures into the report, uploads the bundle under

@@ -1,6 +1,7 @@
 import { Environment } from '@styld/observability'
 import type { StylistThreadsApi } from './stylist/Agent.ts'
-import { Config, ConfigProvider, Context, Effect, Predicate, Schema } from 'effect'
+import { Config, ConfigProvider, Context, Effect, Option, Predicate, Redacted, Schema } from 'effect'
+import { operatorDigestOf } from './Operator.ts'
 import {
   decodeAuthSecret,
   decodeAuthSessionKeyring,
@@ -31,6 +32,8 @@ const deploymentConfig = Config.all({
   /** Styld's own paid text route; the key is restricted to its model and budget in LiteLLM. */
   textBase: Config.schema(Schema.NonEmptyString, 'STYLD_LITELLM_URL'),
   textKey: Config.Redacted('STYLD_LITELLM_KEY'),
+  /** The operator's token (`Operator.ts`); none switches the operator's routes off. */
+  operatorToken: Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option),
 })
 
 /** The deployment, from the Worker's bindings. */
@@ -49,6 +52,10 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
       requestBindingKeys: yield* decodeRequestBindingKeyring(raw.requestBindingKeys).pipe(Effect.orDie),
     },
     textBase: raw.textBase.replace(/\/$/u, ''),
+    // Only the token's digest is kept; a token too short to be a random secret stops the Worker.
+    operator: Option.isNone(raw.operatorToken)
+      ? Option.none<Uint8Array>()
+      : Option.some(yield* operatorDigestOf(Redacted.value(raw.operatorToken.value)).pipe(Effect.orDie)),
     secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey, textKey: raw.textKey },
   }
 })

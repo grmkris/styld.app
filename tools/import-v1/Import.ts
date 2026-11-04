@@ -1,21 +1,21 @@
 /**
  * Import one exported v1 wardrobe (`Export.ts`'s private folder) into a deployed stage: map it (`Mapping.ts`), upload
- * the bundle to the media bucket under `imports/<id>/`, start the import as an admin, wait until every piece settled,
+ * the bundle to the media bucket under `imports/<id>/`, start the import as the operator, wait until every piece settled,
  * and write the report (`Report.ts`) beside the export. The account is the one the export's email signs in to, made
  * for it if there is none. Running it again imports nothing twice. docs/DEPLOYMENT.md › Rebuild and import.
  *
- *   STYLD_URL=https://… STYLD_SESSION='<the admin's session cookie header>' \
- *   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… R2_BUCKET=<the stage's mediaBucket output> \
- *     bun tools/import-v1/Import.ts <private-folder> [--keep-bundle] [--retry-failed]
+ *   STYLD_URL=https://… CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… R2_BUCKET=<the stage's mediaBucket output> \
+ *     bun --env-file=.env.preview.local tools/import-v1/Import.ts <private-folder> [--keep-bundle] [--retry-failed]
  *
- * Credentials come from the environment only and are never printed. The bundle goes through Cloudflare's R2 REST API
+ * The import is started as the operator, with the stage's `STYLD_OPERATOR_TOKEN` from its private env file (the same
+ * value the deploy binds), so no browser session is needed. Credentials come from the environment only and are never
+ * printed. The bundle goes through Cloudflare's R2 REST API
  * with the operator's API token (the one that deploys), so no separate S3 key is made; the bucket is the stage's media
  * bucket (EU jurisdiction); `--keep-bundle` leaves the uploaded bundle in it, which is deleted once the import settled otherwise.
  * Prints counts, never names or pictures.
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { csrf } from '@styld/auth/config'
 import { ImportStarted, ImportStatus, type ImportManifest, type ImportPiece } from '@styld/protocol'
 import { Match, Schema } from 'effect'
 import { mapPiece, V1Export } from './Mapping.ts'
@@ -32,7 +32,7 @@ const required = (name: string) => {
 }
 
 const origin = new URL(required('STYLD_URL')).origin
-const session = required('STYLD_SESSION')
+const operatorToken = required('STYLD_OPERATOR_TOKEN')
 /** The stage's media bucket through the R2 REST API: write and delete one object. */
 const objects = `https://api.cloudflare.com/client/v4/accounts/${required('CLOUDFLARE_ACCOUNT_ID')}/r2/buckets/${required('R2_BUCKET')}/objects`
 const r2 = { authorization: `Bearer ${required('CLOUDFLARE_API_TOKEN')}`, 'cf-r2-jurisdiction': 'eu' }
@@ -85,19 +85,20 @@ for (const { piece, bytes } of mapped)
 await bucket.write(`${prefix}manifest.json`, JSON.stringify(manifest), { type: 'application/json' })
 console.log(`Uploaded bundle ${importId}: ${mapped.length} pieces, ${refusals.length} refused`)
 
-/** A request as the admin, through the public edge. */
-const admin = async (method: 'GET' | 'POST', body?: unknown) => {
-  const response = await fetch(`${origin}/api/admin/imports/${importId}`, {
+/** A request as the operator, through the public edge. */
+const asOperator = async (method: 'GET' | 'POST', body?: unknown) => {
+  const response = await fetch(`${origin}/api/operator/imports/${importId}`, {
     method,
-    headers: { origin, cookie: session, [csrf.header]: csrf.value, 'content-type': 'application/json' },
+    headers: { origin, authorization: `Bearer ${operatorToken}`, 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
-  if (!response.ok) throw new Error(`The import answered ${response.status}: is the session an admin's?`)
+  if (!response.ok)
+    throw new Error(`The import answered ${response.status}: is STYLD_OPERATOR_TOKEN the stage's operator token?`)
   return response.json()
 }
 
 const started = Schema.decodeUnknownSync(ImportStarted)(
-  await admin('POST', {
+  await asOperator('POST', {
     operationId: flags.includes('--retry-failed') ? `retry-${crypto.randomUUID()}` : `start-${importId}`,
   }),
 )
@@ -106,13 +107,13 @@ console.log(`Started into ${started.accountCreated ? 'a new account' : 'an exist
 /** How long an import may take: Cloudflare Images keeps it to a few pieces a minute at most. */
 const patience = 3 * 60 * 60 * 1000
 const startedAt = Date.now()
-let status = Schema.decodeUnknownSync(ImportStatus)(await admin('GET'))
+let status = Schema.decodeUnknownSync(ImportStatus)(await asOperator('GET'))
 const unsettled = (current: ImportStatus) =>
   current.pieces.filter(({ status: now }) => now === 'waiting' || now === 'processing').length
 while (unsettled(status) > 0 && Date.now() - startedAt < patience) {
   console.log(`${status.pieces.length - unsettled(status)} of ${status.pieces.length} settled`)
   await Bun.sleep(15_000)
-  status = Schema.decodeUnknownSync(ImportStatus)(await admin('GET'))
+  status = Schema.decodeUnknownSync(ImportStatus)(await asOperator('GET'))
 }
 
 const report = reportOf(exported.pieces.length, refusals, started, status)

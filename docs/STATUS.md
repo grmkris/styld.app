@@ -476,7 +476,7 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
 - **Credits:** 100 a day per account (`protocol/Prices.ts`), held before paid work and settled once; a lost provider
   answer refunds.
 - **Languages and telemetry:** English and Slovenian everywhere; browser telemetry only after consent.
-- **Operator tools:** the v1 importer (`tools/import-v1/`, admin `POST|GET /api/admin/imports/:id`), the AI usage
+- **Operator tools:** the v1 importer (`tools/import-v1/`, operator-token `POST|GET /api/operator/imports/:id`), the AI usage
   report, the live provider probe.
 
 ## C8 review fixes (safety, contracts, deletion, privacy, gates)

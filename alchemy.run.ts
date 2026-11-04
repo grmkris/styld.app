@@ -1,6 +1,6 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
-import { Config, Effect } from 'effect'
+import { Config, Effect, Option } from 'effect'
 import {
   currentStage,
   StyldAiCalls,
@@ -91,6 +91,12 @@ export default Alchemy.Stack(
         VIDEO_GATEWAY_API_KEY: yield* Config.Redacted('STYLD_AI_GATEWAY_API_KEY').pipe(
           Config.orElse(() => Config.Redacted('AI_GATEWAY_API_KEY')),
         ),
+        // The operator's token, for administrative tasks from the operator's own tools such as the v1 importer
+        // (`@styld/protocol` › Operator); without one the stage has no operator.
+        ...Option.match(yield* Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option), {
+          onNone: () => ({}),
+          onSome: (token) => ({ STYLD_OPERATOR_TOKEN: token }),
+        }),
       },
     })
     return { url: edge.url.as<string>(), mediaBucket: media.bucketName.as<string>() }
