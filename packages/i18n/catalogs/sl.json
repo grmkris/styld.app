@@ -400,41 +400,31 @@
       "lede": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa sestavljaš videze in zbirke, tukaj ali v ChatGPT in Claudu.",
       "film": "Oblačila odplavajo iz odprte omare in pristanejo na papirni tabli kot videz, se zamenjajo za drugega, nato odplavajo nazaj."
     },
-    "add": {
-      "title": "Dodaj enkrat",
-      "text": "Fotografiraj ali posnemi svoja oblačila. Styld izreže vsak kos, ti pa pregledaš, kaj je našel, preden se pridruži tvoji garderobi."
-    },
     "shop": {
       "title": "Tvoja garderoba kot trgovina",
-      "text": "Brskaj po kategorijah kot v vsaki trgovini. Cena je vedno enaka.",
-      "filter": "Kategorija",
-      "all": "Vse",
-      "top": "Zgornji deli",
-      "bottom": "Spodnji deli",
-      "dress": "Obleke",
-      "outerwear": "Vrhnja oblačila",
-      "shoes": "Obutev",
-      "accessory": "Dodatki",
-      "price": "Že tvoje",
-      "pieces": {
-        "sweaterCream": "Kremni pleteni pulover",
-        "shirtWhite": "Bela srajca",
-        "topStripe": "Črtasta majica",
-        "turtleneckBlack": "Črn pulover z visokim ovratnikom",
-        "jeansLight": "Svetle ravne kavbojke",
-        "trousersBrown": "Rjave široke hlače",
-        "skirtIvory": "Slonokoščeno plisirano krilo",
-        "dressSage": "Žajbljeva satenasta obleka",
-        "coatCamel": "Kamelji volneni plašč",
-        "sneakersWhite": "Bele usnjene superge",
-        "bootsBlack": "Črni gležnjarji",
-        "loafersTan": "Rjavi mokasini",
-        "bagCognac": "Konjak torba čez ramo"
-      }
+      "text": "Styld vsak kos razvrsti po vrsti, sezoni in priložnosti, zato po svojih oblačilih brskaš kot po trgovini.",
+      "film": "Kup oblačil na papirju se sam razvrsti v urejeno mrežo, kos za kosom."
     },
     "outfits": {
       "title": "En kos, veliko videzov",
-      "text": "Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom."
+      "text": "Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom.",
+      "film": "Kamelji plašč leži sredi papirne table; okoli njega se drugi kosi menjajo v šest videzov."
+    },
+    "tryOn": {
+      "title": "Poglej se v njem",
+      "text": "Dodaj svojo fotografijo in Styld ti pokaže videz na tebi, še preden se oblečeš.",
+      "film": "Ženska v kopalnem plašču stoji s hrbtom proti kameri pred visokim ogledalom; njen odsev pod rameni nosi videz za videzom."
+    },
+    "rail": {
+      "title": "Z vseh strani",
+      "text": "Styld vsak kos nariše kot v trgovini in ga obrne na obešalniku. Podrsaj po obešalniku.",
+      "film": "Plašč, pulover, oblekica na naramnice, srajca in črtasta majica visijo na hrastovem drogu in vsak se obrne s strani na sprednjo stran."
+    },
+    "ask": {
+      "title": "Vprašaj Styld",
+      "text": "Stilist, ki pozna tvojo garderobo. Vprašaj, kaj obleči, in odgovori s tvojimi kosi.",
+      "question": "Kaj naj oblečem na večerjo v petek?",
+      "answer": "Kamelji plašč čez črn puli, zraven rjave hlače in rjavi mokasini."
     },
     "price": {
       "title": "Koliko stane",

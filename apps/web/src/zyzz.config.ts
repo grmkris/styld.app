@@ -90,7 +90,7 @@ export const { style, vars } = defineConfig({
     fontFamily: {
       // The fallback is Arial sized to Hanken's metrics (GlobalStyles.ts), so text keeps its place when the face lands.
       body: "'Hanken Grotesk Variable', 'Hanken Grotesk Fallback', system-ui, sans-serif",
-      // The logo's condensed voice: the table's headline and headline labels on a board, nowhere else.
+      // The logo's condensed voice: the table's headline, headline labels on a board and the landing's titles.
       voice: "'Anton', 'Hanken Grotesk Variable', sans-serif",
     },
     // The type scale (DESIGN.md › Type), named by role.
@@ -152,6 +152,8 @@ export const { style, vars } = defineConfig({
         'linear(0, 0.0491, 0.1629, 0.3039, 0.4479, 0.5806, 0.6949, 0.7883, 0.8613, 0.9159, 0.9549, 0.9815, 0.9985, 1.0085, 1.0134, 1.0151, 1.0147, 1.0132, 1.0111, 1.0089, 1.0068, 1.005, 1.0035, 1.0023, 1.0014, 1.0008, 1.0004, 1.0001, 0.9999, 0.9998, 0.9998, 0.9998, 1)',
       // The tombola's wheel: fast at once, then a long slowing onto the drawn piece.
       wheel: 'cubic-bezier(0.12, 0.62, 0.14, 1)',
+      // The landing rail's turn: a piece's 30 frames stepped through, one at a time (`turn-<piece>.webp`).
+      turnFrames: 'steps(29, jump-none)',
     },
     // How long a motion takes (DESIGN.md › Motion).
     transitionDuration: {
@@ -171,6 +173,8 @@ export const { style, vars } = defineConfig({
       spin: '0.9s',
       // The tombola's wheel turning to the drawn piece, the one long motion, only on request.
       wheel: '2500ms',
+      // A rail piece on the landing turning from its side to its front.
+      turn: '800ms',
       instant: '0ms',
     },
     // inset: a table inside a card with 8px padding, so its corner is the card's 16px less the padding.
@@ -213,14 +217,6 @@ export const cutoutGlow = 'drop-shadow(0 0 8px oklch(0.9 0.03 70 / 0.16))'
 /** A press and a hover on one element (`transform` then a colour or `translate`): a duration token holds one time, so
  * the pair of the press and hover tokens is written here, where every other motion value lives. */
 export const pressThenHover = '140ms, 180ms !custom'
-
-/** The landing film's veil (DESIGN.md › Motion, the landing film): paper over the film where the words sit, so they read
- * on any frame in either scheme. On a phone held upright the words are at the top and the actions at the bottom; on a
- * wider screen the words are on the left. Gradients take no token, so the paper's colours repeat here. */
-export const landingVeilTall =
-  'linear-gradient(to bottom, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.7), oklch(0.18 0.01 50 / 0.66)) 30%, transparent 52%, transparent 64%, light-dark(oklch(0.951 0.009 85 / 0.9), oklch(0.18 0.01 50 / 0.88)) 100%)'
-export const landingVeilWide =
-  'linear-gradient(to right, light-dark(oklch(0.951 0.009 85 / 0.94), oklch(0.18 0.01 50 / 0.9)) 0%, light-dark(oklch(0.951 0.009 85 / 0.8), oklch(0.18 0.01 50 / 0.76)) 34%, transparent 62%)'
 
 /** The tombola's wheel in twelve wedges of the board paper tints, sand, sage, slate and clay in turn, each piece in the
  * middle of its own (Eva's report of 4 November 2026: the plain wheel read as too basic). Gradients take no token, so

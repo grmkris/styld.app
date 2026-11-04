@@ -1,47 +1,57 @@
-// The signed-out Home's films and pictures (owner, 4 November 2026): the wardrobe's film for every visitor, and the page
-// below it. The files are never bundled or committed; the operator uploads each to the media bucket as
+// The signed-out Home's films and pictures (owner, 4 November 2026): the wardrobe's film for every visitor, then one
+// screen per feature. The files are never bundled or committed; the operator uploads each to the media bucket as
 // `landing/<name>` and the API Worker serves exactly these names at `/cdn/landing/<name>` (`LandingMedia.ts`).
 
-/** The cut-outs the shop grid shows, by the category the grid sorts them under. */
-export const landingShopPieces = [
-  // The first six are what All shows, one of each kind; a chip finds the rest.
-  { piece: 'coat-camel', category: 'outerwear' },
-  { piece: 'sweater-cream', category: 'top' },
-  { piece: 'jeans-light', category: 'bottom' },
-  { piece: 'dress-sage', category: 'dress' },
-  { piece: 'boots-black', category: 'shoes' },
-  { piece: 'bag-cognac', category: 'accessory' },
-  { piece: 'shirt-white', category: 'top' },
-  { piece: 'top-stripe', category: 'top' },
-  { piece: 'turtleneck-black', category: 'top' },
-  { piece: 'trousers-brown', category: 'bottom' },
-  { piece: 'skirt-ivory', category: 'bottom' },
-  { piece: 'sneakers-white', category: 'shoes' },
-  { piece: 'loafers-tan', category: 'shoes' },
-] as const
+/** A film's four files: a tall (9:16) loop for a phone held upright, a wide (16:9) one elsewhere, each with its first
+ * frame as a poster. */
+export interface LandingFilm {
+  readonly tall: string
+  readonly wide: string
+  readonly posterTall: string
+  readonly posterWide: string
+}
 
-export type LandingShopPiece = (typeof landingShopPieces)[number]['piece']
+const film = (tall: string, wide: string): LandingFilm => ({
+  tall: `${tall}-loop-tall.mp4`,
+  wide: `${wide}-loop-wide.mp4`,
+  posterTall: `${tall}-poster-tall.webp`,
+  posterWide: `${wide}-poster-wide.webp`,
+})
 
-/** The hero's four files, the wardrobe's film (owner, 4 November 2026: one hero for everyone): a tall (9:16) and a wide
- * (16:9) loop, each with its first frame as a poster. */
-const heroFiles = [
-  'wardrobe-loop-tall.mp4',
-  'wardrobe-loop-wide.mp4',
-  'wardrobe-poster-tall.webp',
-  'wardrobe-poster-wide.webp',
-] as const
-export type HeroFile = (typeof heroFiles)[number]
+/** The films, by the screen they play on. The coat's tall cut is its one board on the oak table (`coat-board`); the
+ * earlier tall cut showed the boards beside it, which read as a mirror on a phone. */
+export const landingFilms = {
+  hero: film('wardrobe', 'wardrobe'),
+  shop: film('pile', 'pile'),
+  outfits: film('coat-board', 'coat'),
+  tryOn: film('mirror', 'mirror'),
+} as const satisfies Record<string, LandingFilm>
 
-/** The feature screens' clips, each with a poster: adding a piece (tall), and the coat's six outfits, whose wide film
- * the page crops to its one board (the tall cut showed the boards beside it, which read as a mirror). */
-const clipFiles = ['scan-tall.mp4', 'scan-tall.webp', 'coat-loop-wide.mp4', 'coat-poster-wide.webp'] as const
-export type ClipFile = (typeof clipFiles)[number]
+export type LandingFilmName = keyof typeof landingFilms
+
+/** The pieces on the rail, left to right: each turns on its hanger from its side to its front, from a sprite of 30
+ * frames in one row (`turn-<piece>.webp`, 384x448 a frame). */
+export const landingRailPieces = ['coat-camel', 'sweater-cream', 'dress-sage', 'shirt-white', 'top-stripe'] as const
+export type LandingRailPiece = (typeof landingRailPieces)[number]
+
+/** The frames in a rail piece's sprite. */
+export const landingTurnFrames = 30
+
+/** The pieces in Styld's answer on the Ask Styld screen: the camel coat over the black turtleneck, the brown trousers
+ * and the tan loafers. */
+export const landingAnswerPieces = ['coat-camel', 'turtleneck-black', 'trousers-brown', 'loafers-tan'] as const
+export type LandingAnswerPiece = (typeof landingAnswerPieces)[number]
 
 /** Every name the landing reads, and the only names `/cdn/landing/:name` serves. */
 export const landingMediaNames: ReadonlyArray<string> = [
-  ...heroFiles,
-  ...clipFiles,
-  ...landingShopPieces.map(({ piece }) => `shop-${piece}.webp`),
+  ...Object.values(landingFilms).flatMap(({ tall, wide, posterTall, posterWide }) => [
+    tall,
+    wide,
+    posterTall,
+    posterWide,
+  ]),
+  ...landingRailPieces.map((piece) => `turn-${piece}.webp`),
+  ...landingAnswerPieces.map((piece) => `shop-${piece}.webp`),
 ]
 
 /** Where the browser reads a landing file. */

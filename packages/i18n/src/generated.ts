@@ -384,8 +384,10 @@ export interface MessageArgumentsByKey<_T = string> {
   'follow.follow': Readonly<Record<string, never>>
   'follow.following': Readonly<Record<string, never>>
   'lab.title': Readonly<Record<string, never>>
-  'landing.add.text': Readonly<Record<string, never>>
-  'landing.add.title': Readonly<Record<string, never>>
+  'landing.ask.answer': Readonly<Record<string, never>>
+  'landing.ask.question': Readonly<Record<string, never>>
+  'landing.ask.text': Readonly<Record<string, never>>
+  'landing.ask.title': Readonly<Record<string, never>>
   'landing.contact': Readonly<Record<string, never>>
   'landing.faq.app': Readonly<Record<string, never>>
   'landing.faq.appAnswer': Readonly<Record<string, never>>
@@ -407,6 +409,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'landing.hero.film': Readonly<Record<string, never>>
   'landing.hero.lede': Readonly<Record<string, never>>
   'landing.hero.title': Readonly<Record<string, never>>
+  'landing.outfits.film': Readonly<Record<string, never>>
   'landing.outfits.text': Readonly<Record<string, never>>
   'landing.outfits.title': Readonly<Record<string, never>>
   'landing.price.lead': {
@@ -415,33 +418,18 @@ export interface MessageArgumentsByKey<_T = string> {
     readonly daily: string | number
   }
   'landing.price.title': Readonly<Record<string, never>>
-  'landing.shop.accessory': Readonly<Record<string, never>>
-  'landing.shop.all': Readonly<Record<string, never>>
-  'landing.shop.bottom': Readonly<Record<string, never>>
-  'landing.shop.dress': Readonly<Record<string, never>>
-  'landing.shop.filter': Readonly<Record<string, never>>
-  'landing.shop.outerwear': Readonly<Record<string, never>>
-  'landing.shop.pieces.bagCognac': Readonly<Record<string, never>>
-  'landing.shop.pieces.bootsBlack': Readonly<Record<string, never>>
-  'landing.shop.pieces.coatCamel': Readonly<Record<string, never>>
-  'landing.shop.pieces.dressSage': Readonly<Record<string, never>>
-  'landing.shop.pieces.jeansLight': Readonly<Record<string, never>>
-  'landing.shop.pieces.loafersTan': Readonly<Record<string, never>>
-  'landing.shop.pieces.shirtWhite': Readonly<Record<string, never>>
-  'landing.shop.pieces.skirtIvory': Readonly<Record<string, never>>
-  'landing.shop.pieces.sneakersWhite': Readonly<Record<string, never>>
-  'landing.shop.pieces.sweaterCream': Readonly<Record<string, never>>
-  'landing.shop.pieces.topStripe': Readonly<Record<string, never>>
-  'landing.shop.pieces.trousersBrown': Readonly<Record<string, never>>
-  'landing.shop.pieces.turtleneckBlack': Readonly<Record<string, never>>
-  'landing.shop.price': Readonly<Record<string, never>>
-  'landing.shop.shoes': Readonly<Record<string, never>>
+  'landing.rail.film': Readonly<Record<string, never>>
+  'landing.rail.text': Readonly<Record<string, never>>
+  'landing.rail.title': Readonly<Record<string, never>>
+  'landing.shop.film': Readonly<Record<string, never>>
   'landing.shop.text': Readonly<Record<string, never>>
   'landing.shop.title': Readonly<Record<string, never>>
-  'landing.shop.top': Readonly<Record<string, never>>
   'landing.signIn': Readonly<Record<string, never>>
   'landing.start': Readonly<Record<string, never>>
   'landing.title': Readonly<Record<string, never>>
+  'landing.tryOn.film': Readonly<Record<string, never>>
+  'landing.tryOn.text': Readonly<Record<string, never>>
+  'landing.tryOn.title': Readonly<Record<string, never>>
   'legal.privacy.ai': Readonly<Record<string, never>>
   'legal.privacy.aiHeading': Readonly<Record<string, never>>
   'legal.privacy.aiProviders': Readonly<Record<string, never>>
@@ -1180,4 +1168,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5f05e002345d62e9a88c29717aa24a9205d4e50b5f3dc5465a5451cdd5084f5e'
+export const catalogVersion = '4cd85aa6be863dab07813e5cceb825b66a7ed23aef2225be4f37d89bcc1f4ffb'
