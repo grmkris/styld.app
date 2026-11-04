@@ -18,6 +18,9 @@ export const PictureBackfill = Schema.Struct({
   operationId: OperationId,
   email: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(320)),
   redrawBefore: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))),
+  /** With `redrawBefore`, draw again only the drawings that ended dropped or failed before that moment, leaving every
+   * shown one alone (owner, 4 November: the fixed prompt and the refusal fallback). */
+  ended: Schema.optionalKey(Schema.Boolean),
   /** Draw the backs instead (owner, 4 November): each piece with a photographed back and no drawing of it yet. */
   backs: Schema.optionalKey(Schema.Boolean),
 })

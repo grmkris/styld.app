@@ -23,14 +23,20 @@ const batchedPieces = <A>(db: Database, items: ReadonlyArray<A>, statement: (ite
     (results) => results.flat(2).map(({ pieceId }) => pieceId),
   )
 
-/** The drawings a changed prompt draws again: shown, dropped by the check, or failed. A retake and a piece kept as its
- * photo were the judge's call on the cut-out, not the prompt's, and stay; a picture on its way is left to its job. */
-const redrawable = ['ready', 'proposed', 'rejected', 'failed'] as const
+/** The drawings a run draws again. `every`, after a changed prompt: shown, dropped by the check, or failed. `ended`
+ * only those that ended without a picture shown, dropped or failed (owner, 4 November: the fixed prompt and the
+ * refusal fallback draw those again and leave every shown drawing alone). A retake and a piece kept as its photo were
+ * the judge's call on the cut-out, not the prompt's, and stay; a picture on its way is left to its job. */
+const redrawable = {
+  every: ['ready', 'proposed', 'rejected', 'failed'],
+  ended: ['rejected', 'failed'],
+} as const
+export type Redrawn = keyof typeof redrawable
 
 /** Drawings made before a prompt changed, queued again (owner, 4 November: the pressed prompt). */
 const redrawRows = (db: Database) => ({
-  /** The account's ready pieces whose drawing ended before `before`, newest piece first. */
-  staleDrawings: (accountId: string, before: Date) =>
+  /** The account's ready pieces whose drawing ended `which` way before `before`, newest piece first. */
+  staleDrawings: (accountId: string, before: Date, which: Redrawn) =>
     query(() =>
       db
         .select({ pieceId: piecePictures.pieceId })
@@ -40,16 +46,20 @@ const redrawRows = (db: Database) => ({
           and(
             eq(piecePictures.accountId, accountId),
             eq(pieces.status, 'ready'),
-            inArray(piecePictures.state, [...redrawable]),
+            inArray(piecePictures.state, [...redrawable[which]]),
             lt(piecePictures.updatedAt, before),
           ),
         )
         .orderBy(desc(pieces.createdAt)),
     ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
-  /** Queue these drawings again at their turn, paid by Styld, each only while it still ended before `before`, so a
-   * picture moved meanwhile keeps its own way; the pieces queued. Until the new drawing passes its check the piece shows
-   * its cut-out, so a run queues only a minute's worth (`Backfill.ts`). */
-  requeueDrawings: (pictures: ReadonlyArray<{ readonly pieceId: string; readonly turn: Date }>, before: Date) =>
+  /** Queue these drawings again at their turn, paid by Styld, each only while it still ended `which` way before
+   * `before`, so a picture moved meanwhile keeps its own way; the pieces queued. Until the new drawing is made the
+   * piece shows its cut-out, so a run queues only a minute's worth (`Backfill.ts`). */
+  requeueDrawings: (
+    pictures: ReadonlyArray<{ readonly pieceId: string; readonly turn: Date }>,
+    before: Date,
+    which: Redrawn,
+  ) =>
     batchedPieces(db, pictures, ({ pieceId, turn }) =>
       db
         .update(piecePictures)
@@ -57,7 +67,7 @@ const redrawRows = (db: Database) => ({
         .where(
           and(
             eq(piecePictures.pieceId, pieceId),
-            inArray(piecePictures.state, [...redrawable]),
+            inArray(piecePictures.state, [...redrawable[which]]),
             lt(piecePictures.updatedAt, before),
           ),
         )

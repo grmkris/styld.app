@@ -284,6 +284,13 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
     await asOperator(origin, nativeOperatorToken, { ...email, redrawBefore: moment }),
   )
   expect(repeated).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
+  // Only the ended ones (4 November, the fixed prompt and the refusal fallback): every drawing here is shown, so a
+  // later moment queues none of them.
+  const ended = await decoded(
+    PictureBackfilled,
+    await asOperator(origin, nativeOperatorToken, { ...email, redrawBefore: Date.now(), ended: true }),
+  )
+  expect(ended).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
   expect(
     (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.slice(earlier),
   ).toHaveLength(3)

@@ -2,6 +2,7 @@ import { CurrentOperator, type PictureBackfilled } from '@styld/protocol'
 import { Array, DateTime, Duration, Effect, Option } from 'effect'
 import { PieceQueue, type WorkMessage } from '../wardrobe/Processing.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
+import type { Redrawn } from './BackfillStore.ts'
 import { storedAs, unavailable } from './Shared.ts'
 import { CaptureStore } from './Store.ts'
 import type { CaptureServices } from './Shared.ts'
@@ -11,7 +12,9 @@ import type { CaptureServices } from './Shared.ts'
 // with none gets a picture queued as if it had just been kept: drawn on the piece queue by the same job, at the same
 // bars (`Policy.ts`), and paid by Styld (a backfilled picture is not `paid`, so it holds none of the person's credits).
 // A piece is drawn once: its picture row is the receipt, so running again queues nothing twice. When the prompt changes
-// (owner, 4 November: the pressed prompt), a run given a moment draws again the drawings that ended before it.
+// (owner, 4 November: the pressed prompt), a run given a moment draws again the drawings that ended before it; asked
+// for the ended ones only (owner, 4 November: the fixed prompt and the refusal fallback), it draws again those dropped
+// or failed before it and leaves every shown drawing alone.
 
 /** How many backfilled pictures reach the queue a minute: one delivery batch of the piece queue, so a whole wardrobe
  * never lands on Muse at once beside the pictures of new captures. */
@@ -62,11 +65,12 @@ const backfillBacks = (accountId: string) =>
 /** The operator's backfill of clean pictures. */
 export const backfilling = Effect.map(Effect.context<CaptureServices>(), (context) => ({
   /** Queue a clean picture for each of the account's ready cut-outs that has none, newest first and at most `perRun`,
-   * or, given `redrawBefore`, draw again at most `perRedraw` of its drawings that ended before then (a changed prompt);
-   * show the drawings it was proposed before 4 November; and send again any of its pictures whose message was lost. */
+   * or, given `redraw`, draw again at most `perRedraw` of its drawings that ended `which` way before `before` (every
+   * one after a changed prompt, or only the dropped and failed ones); show the drawings it was proposed before 4
+   * November; and send again any of its pictures whose message was lost. */
   backfillPictures: Effect.fn('Styld.Picture.backfill')(function* (
     accountId: string,
-    redrawBefore: Option.Option<Date> = Option.none(),
+    redraw: Option.Option<{ readonly before: Date; readonly which: Redrawn }> = Option.none(),
     backs = false,
   ) {
     yield* CurrentOperator
@@ -83,17 +87,20 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
     )
     const turnOf = (index: number) =>
       DateTime.toDateUtc(DateTime.addDuration(now, Duration.seconds(delayOf(overdue.length + index))))
-    if (Option.isSome(redrawBefore)) {
-      const stale = yield* storedAs(store.staleDrawings(accountId, redrawBefore.value))
+    if (Option.isSome(redraw)) {
+      const { before, which } = redraw.value
+      const stale = yield* storedAs(store.staleDrawings(accountId, before, which))
       const again = stale.slice(0, perRedraw)
       const requeued = yield* storedAs(
         store.requeueDrawings(
           again.map((pieceId, index) => ({ pieceId, turn: turnOf(index) })),
-          redrawBefore.value,
+          before,
+          which,
         ),
       )
       yield* send([...overdue, ...requeued])
       yield* Effect.annotateCurrentSpan({
+        'styld.backfill.redraw': which,
         'styld.backfill.redrawn': requeued.length,
         'styld.backfill.shown': shown.length,
         'styld.backfill.overdue': overdue.length,
