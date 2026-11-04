@@ -209,7 +209,7 @@ const heldQuestions = (withPrevious: boolean) => ({
 })
 
 /** What the decision model is asked about a kept cut-out before a clean picture is drawn from it (owner's
- * decision, 30 October: keep it, draw it, or ask for a retake). A face is asked about so none is ever sent on. */
+ * decision, 30 October: draw it, or ask for a retake). Whether a face shows is not asked (owner, 4 November). */
 const judgeQuestions = {
   picture: {
     type: 'choice',
@@ -221,7 +221,6 @@ const judgeQuestions = {
       fragment: 'Only a small part of the garment shows: too little to tell what it looks like',
     },
   },
-  face: { type: 'noul', instructions: "Is any part of a person's face visible?" },
 } as const
 
 /** What the decision model is asked about a frame of a turn beside the clean picture it ends on: three of the eight
@@ -239,22 +238,15 @@ const turnQuestions = {
 
 const verdicts: ReadonlyArray<Verdict> = ['ready', 'improve', 'repair', 'fragment']
 
-/** The judgement in an answer. Without a readable verdict the cut-out is treated as needing a redraw, and a face is
- * assumed without an answer about it, so nothing unanswered is sent on. */
-const judgementOf = (answer: ClefAnswer): Judgement => {
-  const face = Option.match(Option.fromNullishOr(answer.answers['face']), {
-    onNone: () => 1,
-    onSome: () => noulOf(answer, 'face'),
-  })
-  return Option.match(choiceOf(answer, 'picture'), {
-    onNone: () => ({ verdict: 'improve', confidence: 0, face }),
+/** The judgement in an answer. Without a readable verdict the cut-out is treated as needing a redraw. */
+const judgementOf = (answer: ClefAnswer): Judgement =>
+  Option.match(choiceOf(answer, 'picture'), {
+    onNone: () => ({ verdict: 'improve', confidence: 0 }),
     onSome: ({ choice, probabilities }) => ({
       verdict: verdicts.find((verdict) => verdict === choice) ?? 'improve',
       confidence: probabilities[choice] ?? 0,
-      face,
     }),
   })
-}
 
 /** How many garments a photo shows, and whether a person does: the route's questions. */
 const routeQuestions = {

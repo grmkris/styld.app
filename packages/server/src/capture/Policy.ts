@@ -39,16 +39,14 @@ export interface CapturePolicy {
     readonly worn: number
     readonly carried: number
   }
-  /** Clean pictures drawn from kept cut-outs (owner, 30 October). A cut-out at least `face` likely to show a face is
-   * never sent on. Every drawing Muse returns that keys and frames cleanly is shown, with the person's photo one swipe
-   * away; none is checked against its cut-out (owner, 4 November). Until then Clef compared each drawing with its
-   * cut-out and dropped it when the weaker of "the same garment?" and "faithful?" was under 0.5: it dropped 24 of
-   * about 470 drawings that day; drawn again, 11 of them passed (noise), and of the rest only about 5 were really
-   * wrong, the others judged against fragment cut-outs or too strictly. Before that, until the same day, a drawing
-   * under 0.8 was only proposed, and waited unseen (`wardrobe/Shown.ts`). */
-  readonly pictures: {
-    readonly face: number
-  }
+  // Clean pictures drawn from kept cut-outs (owner, 30 October) hold no bar here (owner, 4 November): every drawing
+  // Muse returns that keys and frames cleanly is shown, with the person's photo or cut-out one swipe away, and a
+  // cut-out is sent to be drawn without asking whether a face shows. Until then Clef compared each drawing with its
+  // cut-out and dropped it when the weaker of "the same garment?" and "faithful?" was under 0.5: that day it dropped
+  // 24 of about 470 drawings; drawn again, 11 of them passed (noise), and of the rest only about 5 were really wrong,
+  // the others judged against fragment cut-outs or too strictly. A cut-out at least 0.3 likely to show a face was
+  // kept as the piece's picture and never sent. Before that, until the same day, a drawing under 0.8 was only
+  // proposed, and waited unseen (`wardrobe/Shown.ts`). Only a fragment still asks for a retake (`CleanPicture.ts`).
   /** How a garment seen more than once becomes one card (2026-10-31), and how a worn garment is matched with a piece:
    * Clef's answer to "the same garment?" at or above `same` joins a sighting to another of the import, takes it for a
    * piece already in the wardrobe, or suggests the piece an outfit photo shows. A sighting is compared with at most
@@ -87,7 +85,6 @@ export const capturePolicy: CapturePolicy = {
     worn: 0.5,
     carried: 0.25,
   },
-  pictures: { face: 0.3 },
   matching: { same: 0.8, sightings: 10, pieces: 6, photoPieces: 12 },
   turns: { colour: 0.8, print: 0.6 },
 }

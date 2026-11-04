@@ -354,9 +354,9 @@ describe('the piece page', () => {
       expect(role('button', { name: 'Redraw' })).toBeDisabled(),
       Command.resolve(
         RedrawPicture({ pieceId: shown.id, hint: 'a navy wool scarf', maybeOperationId: Option.none() }),
-        PieceMessage.FailedRedrawPicture({ problem: 'face', operationId: OperationId.make('redraw-0001') }),
+        PieceMessage.FailedRedrawPicture({ problem: 'busy', operationId: OperationId.make('redraw-0001') }),
       ),
-      expect(role('alert')).toHaveText('A face may show in this cut-out, so it is not sent to be drawn.'),
+      expect(role('alert')).toHaveText('A clean picture of this piece is already being drawn.'),
     )
   })
 

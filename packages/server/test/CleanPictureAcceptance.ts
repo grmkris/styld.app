@@ -137,9 +137,9 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   // Keeping the three cut-outs queues a clean picture for each; the piece kept as its photo has none.
   const kept = await keptPieces(origin, owner)
 
-  // The red tee is drawn and shows; the green shirt is drawn on magenta and shows too: no drawing is compared with its
-  // cut-out (owner, 4 November; Clef's stand-in answers such a question unavailable); the scrap asks for a retake and
-  // is never drawn; the photo has no picture.
+  // The red tee is drawn and shows; the green shirt is drawn on magenta and shows too. Clef's stand-in sees a face in
+  // every cut-out and answers a drawing beside its cut-out unavailable: neither is asked any more (owner, 4
+  // November). The scrap asks for a retake and is never drawn; the photo has no picture.
   expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
   expect((await settled(owner, kept.green)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
   expect((await settled(owner, kept.blue)).picture).toEqual({ state: 'retake', shows: 'photo', version: 0 })

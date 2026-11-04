@@ -3,7 +3,6 @@ import { Effect, Option } from 'effect'
 import type { BackPictureRow } from './BackPictureStore.ts'
 import { cutoutAt, drawingOf, frontOf, removeObject } from './Drawing.ts'
 import { backPictureKey, storedAs } from './Shared.ts'
-import { capturePolicy } from './Policy.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -15,8 +14,8 @@ import type { CaptureServices } from './Shared.ts'
 // the row in line with the piece (`DrawBackPicture`), so a lost message is made up by the next one or the operator's
 // backfill.
 
-/** The back's drawing: from the back cut-out, with the front cut-out for colour and identity. A cut-out that may show
- * a face is never sent; a back kept as its uncut photo is not drawn. */
+/** The back's drawing: from the back cut-out, with the front cut-out for colour and identity, always drawn and never
+ * judged first (owner, 4 November: the face gate is gone, `Policy.ts`); a back kept as its uncut photo is not drawn. */
 const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
   side: 'back',
   kind: () => 'back',
@@ -25,7 +24,7 @@ const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
     Effect.flatMap(CaptureStore, (store) => storedAs(store.moveBackPicture(pieceId, from, changes))),
   keyOf: (row, version) => backPictureKey(row.accountId, row.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: cutoutAt(piece.backImageKey), other: frontOf(piece) }),
-  plan: (_row, judgement) => (judgement.face >= capturePolicy.pictures.face ? 'kept-real' : 'draw'),
+  plan: () => Effect.succeed('draw'),
   hint: () => Option.none(),
   after: () => Effect.void,
 })

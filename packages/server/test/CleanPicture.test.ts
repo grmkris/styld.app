@@ -7,7 +7,6 @@ import { cleanPrompt } from '../src/capture/CleanPrompt.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { makeMuseGenerator } from '../src/providers/Muse.ts'
 import { decodePng } from '@styld/imaging'
-import { capturePolicy } from '../src/capture/Policy.ts'
 import type { DrawRequest } from '../src/capture/Providers.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
@@ -135,43 +134,50 @@ describe('Meta Muse Image', () => {
 const clef = (name: string) =>
   makeGarmentVision(() => Promise.resolve(JSON.parse(fixture(name).toString('utf8'))), CaptureMetrics.discarding)
 
-const policy = capturePolicy.pictures
-
 describe('the decision model on a kept cut-out', () => {
-  test('reads a clean drawn tee as ready, a scrap of a dress as a fragment, and no face in either', async () => {
+  test('reads a clean drawn tee as ready and a scrap of a dress as a fragment', async () => {
     const ready = await Effect.runPromise(clef('clef-judge-red-tee.json').judge(cutout))
     expect(ready).toMatchObject({ verdict: 'ready' })
-    expect(ready.face).toBeLessThan(0.05)
     const scrap = await Effect.runPromise(clef('clef-judge-dress-fragment.json').judge(cutout))
     expect(scrap.verdict).toBe('fragment')
   })
 
-  test('assumes a face and a redraw when the answers are missing, so nothing unanswered is sent on', async () => {
+  test('is not asked whether a face shows, and a cut-out it would have seen one in is drawn (owner, 4 November)', async () => {
+    const asked: Array<ReadonlyArray<string>> = []
+    const seeing = makeGarmentVision((asking) => {
+      asked.push(Object.keys(asking.questions))
+      return Promise.resolve({
+        model: 'clef-flash',
+        answers: {
+          picture: { type: 'choice', choice: 'improve', probabilities: { improve: 0.9, fragment: 0.1 } },
+          face: { type: 'noul', noul: 0.97 },
+        },
+      })
+    }, CaptureMetrics.discarding)
+    const judged = await Effect.runPromise(seeing.judge(cutout))
+    expect(asked).toEqual([['picture']])
+    expect(planFor(judged)).toBe('draw')
+  })
+
+  test('takes a missing answer for a cut-out to redraw, so it is drawn', async () => {
     const blank = makeGarmentVision(
       () => Promise.resolve({ model: 'clef-flash', answers: {} }),
       CaptureMetrics.discarding,
     )
     const judged = await Effect.runPromise(blank.judge(cutout))
-    expect(judged).toEqual({ verdict: 'improve', confidence: 0, face: 1 })
-    expect(planFor(judged, policy)).toEqual({ plan: 'kept-real', reason: 'face' })
+    expect(judged).toEqual({ verdict: 'improve', confidence: 0 })
+    expect(planFor(judged)).toBe('draw')
   })
 })
 
 /** A judgement of a kept cut-out, sure of `verdict`. */
-const judged = (verdict: 'ready' | 'improve' | 'repair' | 'fragment', face = 0.01) => ({
-  verdict,
-  confidence: 0.9,
-  face,
-})
+const judged = (verdict: 'ready' | 'improve' | 'repair' | 'fragment') => ({ verdict, confidence: 0.9 })
 
 describe('what happens to a kept cut-out', () => {
-  test('every whole one is drawn, clean or not, a fragment asks for a retake, a face sends nothing', () => {
-    expect(planFor(judged('ready'), policy)).toEqual({ plan: 'draw' })
-    expect(planFor(judged('ready', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
-    expect(planFor(judged('improve'), policy)).toEqual({ plan: 'draw' })
-    expect(planFor(judged('repair'), policy)).toEqual({ plan: 'draw' })
-    expect(planFor(judged('fragment'), policy)).toEqual({ plan: 'retake' })
-    expect(planFor(judged('improve', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
-    expect(planFor(judged('improve', 0.29), policy)).toEqual({ plan: 'draw' })
+  test('every whole one is drawn, clean or not, and a fragment asks for a retake', () => {
+    expect(planFor(judged('ready'))).toBe('draw')
+    expect(planFor(judged('improve'))).toBe('draw')
+    expect(planFor(judged('repair'))).toBe('draw')
+    expect(planFor(judged('fragment'))).toBe('retake')
   })
 })

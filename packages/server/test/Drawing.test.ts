@@ -26,7 +26,7 @@ const museTee = Schema.decodeUnknownSync(
 )(fixture('muse-edit-red-tee.json').toString('utf8'))
 const drawnTee = Uint8Array.from(atob(museTee.data[0].b64_json), (character) => character.charCodeAt(0))
 
-/** A provider call a drawing never makes: the decision model is asked only to judge the cut-out. */
+/** A call a drawing never makes: the decision model is asked nothing about a drawing or a face. */
 const unasked = () => Effect.die(new Error('the decision model was asked about a drawing'))
 
 /** Ana's red tee with its picture `state`, and the services a drawing runs on: Muse answers `answer`. */
@@ -62,7 +62,7 @@ const over = (state: PictureRow['state'], answer: Uint8Array, cleanKey: string |
         route: unasked,
         suggest: unasked,
         checkHeld: unasked,
-        judge: () => Effect.succeed({ verdict: 'improve', confidence: 0.9, face: 0.01 }),
+        judge: unasked,
         sameGarment: unasked,
         compareTurn: unasked,
       }),
@@ -80,7 +80,7 @@ const front = drawingOf({
     Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   cutouts: () => Effect.succeed({ subject: Option.some(cutout), other: Option.none() }),
-  plan: () => 'draw',
+  plan: () => Effect.succeed('draw'),
   hint: () => Option.none(),
   after: () => Effect.void,
 })

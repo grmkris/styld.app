@@ -195,8 +195,8 @@ const pictureStates = [
 ] as const
 const keyColours = ['green', 'magenta'] as const
 
-/** A piece's clean picture: an image model's drawing of the garment from its kept cut-out, checked against it
- * (owner, 2026-10-30). One row per piece, written only by the picture job and the person's choice; the real
+/** A piece's clean picture: an image model's drawing of the garment from its kept cut-out (owner, 2026-10-30), shown
+ * without a check against it (owner, 2026-11-04; `rejected` and `checking` rows are from before). One row per piece, written only by the picture job and the person's choice; the real
  * photo on the piece is never replaced. `state` moves only from the state it was read in. */
 export const piecePictures = sqliteTable(
   'piece_pictures',
@@ -212,7 +212,8 @@ export const piecePictures = sqliteTable(
     keyColour: text('key_colour', { enum: keyColours }),
     /** Who drew it, for the pictures' metrics. */
     provider: text('provider'),
-    /** How likely a face shows in the cut-out (0–1): a redraw is refused when one does. */
+    /** How likely a face showed in the cut-out (0–1), from when a face kept it from being drawn; not written or read
+     * since 4 November 2026, when the owner dropped that gate. */
     face: real('face'),
     /** The person's own words on a redraw, sent with the prompt; never logged. */
     hint: text('hint'),
@@ -251,6 +252,7 @@ export const pieceBackPictures = sqliteTable(
     version: integer('version').notNull(),
     keyColour: text('key_colour', { enum: keyColours }),
     provider: text('provider'),
+    /** Not written or read since 4 November 2026, when the owner dropped the face gate. */
     face: real('face'),
     claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),

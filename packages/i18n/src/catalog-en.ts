@@ -120,7 +120,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.redrawCost':
     'Costs {credits, plural, one {# credit} other {# credits}}, refunded if no picture comes of it.',
   'wardrobe.picture.problem.busy': 'A clean picture of this piece is already being drawn.',
-  'wardrobe.picture.problem.face': 'A face may show in this cut-out, so it is not sent to be drawn.',
   'wardrobe.picture.problem.photo': 'This piece shows your original photo, which is never sent to be drawn.',
   'wardrobe.picture.problem.dailyLimit': "Today's credits are used up. Try again tomorrow.",
   'wardrobe.picture.problem.network': 'The drawing could not be asked for. Try again.',

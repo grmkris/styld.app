@@ -11,10 +11,9 @@ import {
   turned,
 } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
-import { judgedAt } from './Garments.ts'
 import { readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
 import { opaqueShare } from './Pixels.ts'
-import { GarmentVision, ImageGenerator, type Judgement, type Picture } from './Providers.ts'
+import { type GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
 import { isStale } from '../wardrobe/Shown.ts'
@@ -31,7 +30,7 @@ import { PieceChanged } from '../safety/PieceChanged.ts'
 // reads and writes; what differs per side (its rows, its file, its cut-outs, when to draw, a redraw's credit) is its
 // `Slot`.
 
-// What each provider sees: the decision model a 512 px copy (`judgedAt`), Muse a 1024 px one; the drawing is keyed at
+// What Muse sees: a 1024 px copy; the drawing is keyed at
 // 1280 px, enough for the piece page at twice the pixel density, and about a million pixels of CPU.
 const drawnFrom = 1024
 const keyedAt = 1280
@@ -41,7 +40,7 @@ const margin = 0.03
 /** The columns a drawing of either side shares. */
 export type Drawing = Pick<
   PictureRow,
-  'pieceId' | 'accountId' | 'state' | 'cleanKey' | 'version' | 'keyColour' | 'provider' | 'face' | 'claimedAt'
+  'pieceId' | 'accountId' | 'state' | 'cleanKey' | 'version' | 'keyColour' | 'provider' | 'claimedAt'
 >
 type Changes = Partial<Omit<Drawing, 'pieceId' | 'accountId'>> & { readonly updatedAt?: Date }
 
@@ -56,12 +55,12 @@ export interface Slot<Row extends Drawing, E, R> {
   readonly write: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Changes) => Effect.Effect<boolean, E, R>
   /** Where a version of its drawing is stored. */
   readonly keyOf: (row: Row, version: number) => string
-  /** The cut-out it is drawn from and checked against, and the piece's other side, for reference. */
+  /** The cut-out it is drawn from, and the piece's other side, for reference. */
   readonly cutouts: (
     piece: PieceRow,
   ) => Effect.Effect<{ readonly subject: Option.Option<Rgba>; readonly other: Option.Option<Rgba> }, E, R>
-  /** Whether to draw it, from the decision model's judgement of the cut-out: or keep the photo, or ask for a retake. */
-  readonly plan: (row: Row, judgement: Judgement) => 'draw' | 'kept-real' | 'retake'
+  /** Whether to draw it from its cut-out, or ask for a retake. */
+  readonly plan: (row: Row, subject: Rgba) => Effect.Effect<'draw' | 'retake', ProviderError, GarmentVision>
   readonly hint: (row: Row) => Option.Option<string>
   /** After each delivery, whatever it did: a redraw's credit settled. */
   readonly after: (pieceId: string) => Effect.Effect<void, E, R>
@@ -183,7 +182,7 @@ const draw = <Row extends Drawing, E, R>(
     if (!(yield* move(slot, claimed, ['generating'], { state: 'ready', cleanKey }))) yield* removeObject(cleanKey)
   })
 
-/** A queued drawing: judge the cut-out, then keep the photo (a face may show), ask for a retake (a fragment), or claim
+/** A queued drawing: keep the photo when there is no cut-out, ask for a retake when the side's plan says so, or claim
  * and draw it. The claim drops the last drawing: a redraw replaces it. */
 const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
   Effect.gen(function* () {
@@ -191,13 +190,9 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
     if (Option.isNone(piece)) return
     const { subject, other } = yield* slot.cutouts(piece.value)
     if (Option.isNone(subject)) return yield* move(slot, row, ['queued'], { state: 'kept-real' })
-    const judgement = yield* (yield* GarmentVision).judge(modelPicture(subject.value, judgedAt))
-    yield* Effect.annotateCurrentSpan('styld.picture.verdict', judgement.verdict)
-    const judged = { face: judgement.face }
-    const plan = slot.plan(row, judgement)
-    if (plan !== 'draw') return yield* move(slot, row, ['queued'], { ...judged, state: plan })
+    if ((yield* slot.plan(row, subject.value)) === 'retake')
+      return yield* move(slot, row, ['queued'], { state: 'retake' })
     const claim = {
-      ...judged,
       state: 'generating' as const,
       version: row.version + 1,
       keyColour: keyColourFor(subject.value),

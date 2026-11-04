@@ -51,11 +51,10 @@ export interface HeldCheck {
  * too little of the garment to draw from. */
 export type Verdict = 'ready' | 'improve' | 'repair' | 'fragment'
 
-/** The decision model's judgement of a kept cut-out, and how likely a face shows in it (0–1). */
+/** The decision model's judgement of a kept cut-out. */
 export interface Judgement {
   readonly verdict: Verdict
   readonly confidence: number
-  readonly face: number
 }
 
 /** Cloudflare Clef-flash: typed questions about a picture, each answered with probabilities. */

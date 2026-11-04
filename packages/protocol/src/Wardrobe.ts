@@ -53,8 +53,8 @@ export const PieceSource = Schema.Literals(['website', 'assistant', 'import'])
 
 /** A piece's clean picture (owner, 2026-10-30): an image model's drawing of the garment from its kept cut-out, shown
  * by default with the real photo one swipe away (owner, 2026-11-04) and marked as AI-cleaned. `drawing` while it is
- * made; `ready` once it is drawn (owner, 2026-11-04: never checked against the cut-out); `retake` when the cut-out shows too little of the garment; `kept` when the
- * photo was already clean or showed a face; `failed` when no drawing came of it. */
+ * made; `ready` once it is drawn (owner, 2026-11-04: never checked against the cut-out); `retake` when the cut-out shows too little of the garment; `kept` when its
+ * photo stays (no cut-out to draw from, or, before 4 November, a face may have shown); `failed` when no drawing came of it. */
 export const PictureState = Schema.Literals(['drawing', 'ready', 'retake', 'kept', 'failed'])
 export type PictureState = typeof PictureState.Type
 
@@ -308,10 +308,10 @@ export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
   },
 ) {}
 
-const PictureRefusal = Schema.Literals(['photo', 'face', 'busy'])
+const PictureRefusal = Schema.Literals(['photo', 'busy'])
 
-/** Why a piece cannot be drawn now: it shows its original photo, which never leaves Styld (`photo`); a face may show
- * in it (`face`); or a drawing is already being made (`busy`). */
+/** Why a piece cannot be drawn now: it shows its original photo, which never leaves Styld (`photo`); or a drawing is
+ * already being made (`busy`). */
 export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
   'PictureRefused',
   { reason: PictureRefusal },
@@ -322,11 +322,6 @@ export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
         'picture_refused',
         'That piece shows its original photo, which Styld never sends to an image model.',
         'Tell the person; a new capture of the piece gives it a cut-out that can be drawn.',
-      ),
-      face: refusal(
-        'picture_refused',
-        'A face may show in that piece’s cut-out, so Styld does not send it to an image model.',
-        'Tell the person; a new capture without a face in view can be drawn.',
       ),
       busy: passing(
         'picture_refused',

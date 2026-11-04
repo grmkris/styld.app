@@ -121,7 +121,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.redrawCost':
     'Stane {credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# kredite, ki jih} other {# kreditov, ki jih}} vrnemo, če slika ne nastane.',
   'wardrobe.picture.problem.busy': 'Čista slika tega kosa se že riše.',
-  'wardrobe.picture.problem.face': 'Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.',
   'wardrobe.picture.problem.photo': 'Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.',
   'wardrobe.picture.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
   'wardrobe.picture.problem.network': 'Risanja ni bilo mogoče naročiti. Poskusi znova.',

@@ -3,7 +3,6 @@ import { Effect, Option } from 'effect'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture, storedAs } from './Shared.ts'
 import { redrawHold, settleHold } from './Pictures.ts'
-import { capturePolicy } from './Policy.ts'
 import type { PictureRow } from './Store.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -34,10 +33,8 @@ const settledPicture = (pieceId: string, at: Date) =>
   })
 
 /** Why the piece's picture cannot be redrawn nowDate, if it cannot. */
-const refusal = (picture: PictureRow, face: number): Option.Option<PictureRefused['reason']> => {
-  if ((picture.face ?? 0) >= face) return Option.some('face')
-  return ['queued', 'generating', 'checking'].includes(picture.state) ? Option.some('busy') : Option.none()
-}
+const refusal = (picture: PictureRow): Option.Option<PictureRefused['reason']> =>
+  ['queued', 'generating', 'checking'].includes(picture.state) ? Option.some('busy') : Option.none()
 
 /** The owner's piece, if it can be drawn: clean pictures are on and it shows a cut-out. */
 const drawablePiece = (accountId: string, pieceId: string) =>
@@ -117,8 +114,7 @@ export const redrawing = Effect.map(Effect.context<CaptureServices>(), (context)
     yield* drawablePiece(accountId, pieceId)
     const ask = Effect.gen(function* () {
       const current = yield* settledPicture(pieceId, yield* nowDate)
-      const face = capturePolicy.pictures.face
-      const refused = Option.flatMap(current, (picture) => refusal(picture, face))
+      const refused = Option.flatMap(current, refusal)
       if (Option.isSome(refused)) return yield* PictureRefused.make({ reason: refused.value })
       yield* queueRedraw({ accountId, pieceId }, current, input.hint)
       const version = Option.match(current, { onNone: () => 0, onSome: (picture) => picture.version })

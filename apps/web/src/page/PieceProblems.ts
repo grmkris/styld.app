@@ -8,7 +8,7 @@ export const TurnProblem = Schema.Literals(['busy', 'picture', 'dailyLimit', 'ne
 export type TurnProblem = typeof TurnProblem.Type
 
 /** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
-export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'dailyLimit', 'network'])
+export const RedrawProblem = Schema.Literals(['busy', 'photo', 'dailyLimit', 'network'])
 export type RedrawProblem = typeof RedrawProblem.Type
 
 /** What a refused redraw means for the owner. */

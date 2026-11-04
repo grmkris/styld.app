@@ -137,7 +137,9 @@ const clef = Effect.gen(function* () {
   const real = colourOf(body.images.at(-1)?.base64 ?? '')
   if ('picture' in body.questions) {
     const judged = { red: verdict('improve'), green: verdict('repair'), blue: verdict('fragment') }[real]
-    return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { picture: judged, face: noul(0.01) } })
+    // A face is answered as seen in every cut-out, asked or not: until 4 November it kept the photo; now every whole
+    // cut-out is drawn all the same.
+    return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { picture: judged, face: noul(0.9) } })
   }
   // A turn's frame beside its clean front: the recorded take keeps the garment and its colour; the shirt is plain, so
   // there is no print to keep, and its print is answered low, as Clef answered plain trousers on the preview.

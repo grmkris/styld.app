@@ -2,7 +2,9 @@ import { Effect, Option } from 'effect'
 import { planFor } from './CleanPicture.ts'
 import { cutoutAt, drawingOf, frontOf, hasEnded } from './Drawing.ts'
 import { pictureKey, storedAs } from './Shared.ts'
-import { capturePolicy } from './Policy.ts'
+import { judgedAt } from './Garments.ts'
+import { GarmentVision } from './Providers.ts'
+import { modelPicture, type Rgba } from '@styld/imaging'
 import type { PictureRow } from './Store.ts'
 import { holdId } from '../usage/Holds.ts'
 import { CaptureStore } from './Store.ts'
@@ -28,8 +30,19 @@ export const settleHold = (pieceId: string) =>
     )
   })
 
-/** A piece's clean picture, its front drawn shop-style (`Drawing.ts`). A redraw the owner asked for (it holds a
- * credit) is drawn whatever the verdict, unless a face may show; their words go with it. */
+/** Whether to draw a front from its cut-out: a redraw the owner asked for (it holds a credit) is drawn whatever the
+ * cut-out shows, so the decision model is not asked; otherwise it judges the cut-out, and a fragment asks for a
+ * retake. */
+const planFront = (picture: PictureRow, subject: Rgba) =>
+  picture.paid
+    ? Effect.succeed('draw' as const)
+    : Effect.gen(function* () {
+        const judgement = yield* (yield* GarmentVision).judge(modelPicture(subject, judgedAt))
+        yield* Effect.annotateCurrentSpan('styld.picture.verdict', judgement.verdict)
+        return planFor(judgement)
+      })
+
+/** A piece's clean picture, its front drawn shop-style (`Drawing.ts`); the owner's words on a redraw go with it. */
 const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
   side: 'front',
   kind: (picture: PictureRow) => (picture.paid ? 'redraw' : 'first'),
@@ -38,10 +51,7 @@ const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
     Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: cutoutAt(piece.backImageKey) }),
-  plan: (picture, judgement) =>
-    picture.paid && judgement.face < capturePolicy.pictures.face
-      ? 'draw'
-      : planFor(judgement, capturePolicy.pictures).plan,
+  plan: planFront,
   hint: (picture) => Option.fromNullishOr(picture.hint),
   after: settleHold,
 })

@@ -123,7 +123,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The
   MCP SDK's older protocol era stays served for external assistant hosts.
 - **The real photo is the source.** Generated pictures (clean pictures, turns, stickers) are presentation beside it
-  and marked. A picture where a face may show is never sent to Muse; original photos never leave Styld (try-on's
+  and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld (try-on's
   exception in ROADMAP is not built).
 
 ## Authentication and MCP
