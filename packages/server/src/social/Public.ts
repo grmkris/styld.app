@@ -71,6 +71,8 @@ export const summaryOf = (board: PublicBoard): PublicBoardSummary => ({
 interface Seen {
   readonly pieces: ReadonlyMap<string, PublicPiece>
   readonly looks: ReadonlyMap<string, PublicLook>
+  /** Which of the pieces on the boards, seen or not yet, are house garments Styld generated. */
+  readonly generated: ReadonlySet<string>
 }
 
 /** A pin as others see it, to be decoded with its board. */
@@ -204,14 +206,16 @@ const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyA
     const seen: Seen = {
       pieces: yield* piecesById(accountId, pieceIds),
       looks: new Map<string, PublicLook>(looks.map((look) => [look.id, look])),
+      generated: yield* stored((yield* PublicStore).generatedAmong([...new Set(pieceIds)])),
     }
     return seen
   })
 
-/** Whether others see a generated piece on the board: pinned, on its table, or in a look pinned on it. */
+/** Whether the board holds a generated piece: pinned, on its table, or in a look pinned on it. It is marked so
+ * whatever others may see of the piece yet: a piece still being checked is generated all the same. */
 const showsGenerated = (seen: Seen, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
   [...pins.map(({ pin }) => pin.pieceId), ...items.map(({ pieceId }) => pieceId)].some(
-    (id) => id !== null && seen.pieces.get(id)?.generated === true,
+    (id) => id !== null && seen.generated.has(id),
   ) || pins.some(({ pin }) => pin.lookId !== null && seen.looks.get(pin.lookId)?.generated === true)
 
 /** A public board and its owner, while others may see it. */

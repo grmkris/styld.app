@@ -189,7 +189,8 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   const page = Schema.decodeUnknownSync(Schema.Struct({ piece: Schema.Record(Schema.String, Schema.Unknown) }))(
     await (await anyone(`/api/public/pieces/${pieceId}`)).json(),
   )
-  expect(Object.keys(page.piece).toSorted()).toEqual(['colours', 'id', 'name', 'type'])
+  expect(Object.keys(page.piece).toSorted()).toEqual(['colours', 'generated', 'id', 'name', 'type'])
+  expect(page.piece['generated']).toBe(false)
   await send(owner, visibility, 'PUT', { visibility: 'private' })
   expect((await anyone(`/api/public/boards/${boardId}`)).status).toBe(404)
   expect(await previewOf(origin, `/boards/${boardId}`)).not.toContain('og:title')
