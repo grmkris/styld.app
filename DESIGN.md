@@ -209,6 +209,9 @@ Follow the prototype's `board`, `boards`, `person`, `pin`, `wishlist` and `ask-d
   the slightly bouncy `springBounce`. These are pieces settling on a table, Spin shuffling the outfit, the + sheet
   growing out of its button, an item leaving the board, and a saved thing flying into Boards.
 - **Spin** staggers its pieces by 40ms, the one stagger in the app. One reveal at most on a public page.
+- **The tombola** (What to wear today, owner 4 November 2026) is the one long motion, and only on request: the wheel
+  of the person's pieces turns about 2.5 s on one long ease-out (`wheel`) and stops with the drawn piece at the top,
+  which grows into the middle on `springBounce`. Under reduced motion the piece shows at once.
 - **Tab changes** happen inside the page and cross-fade in 180ms through Foldkit's `viewTransition`. The navigation
   keeps its place (`view-transition-name: styld-nav`), a page seen before shows at once, and the runtime skips the
   fade under reduced motion. Every other page loads whole, without a transition. Cross-document View Transitions stay

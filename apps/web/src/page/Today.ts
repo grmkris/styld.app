@@ -23,6 +23,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import * as PickUp from './PickUp.ts'
+import * as Tombola from './Tombola.ts'
 import * as WhatsNew from './WhatsNew.ts'
 
 // MODEL
@@ -80,6 +81,8 @@ export const Model = Schema.Struct({
   worn: Worn,
   pickUp: PickUp.Model,
   whatsNew: WhatsNew.Model,
+  /** What to wear today: the wheel that draws one piece. */
+  tombola: Tombola.Model,
 })
 export type Model = typeof Model.Type
 
@@ -93,6 +96,7 @@ export const init = (): Model => ({
   worn: Worn.NotYet(),
   pickUp: PickUp.init(),
   whatsNew: WhatsNew.init(),
+  tombola: Tombola.init(),
 })
 
 // MESSAGE
@@ -103,6 +107,7 @@ export const Message = defineMessageUnion({
   FailedReadWorn: {},
   GotPickUpMessage: { message: PickUp.Message },
   GotWhatsNewMessage: { message: WhatsNew.Message },
+  GotTombolaMessage: { message: Tombola.Message },
   SucceededMakeOutfits: { batch: OutfitProposals },
   FailedMakeOutfits: {},
   ClickedSpin: {},
@@ -240,13 +245,19 @@ const whatsNewFold = {
   toParentMessage: (message: WhatsNew.Message) => Message.GotWhatsNewMessage({ message }),
 }
 const foldWhatsNew = Update.foldChild({ update: WhatsNew.update, ...whatsNewFold })
+const foldTombola = Update.foldChild({
+  update: Tombola.update,
+  read: (model: Model) => Option.some(model.tombola),
+  write: (model: Model, tombola: Tombola.Model) => modifyFields(model, { tombola: () => tombola }),
+  toParentMessage: (message: Tombola.Message) => Message.GotTombolaMessage({ message }),
+})
 const enterWhatsNew = Update.foldChildStep({ update: WhatsNew.enter, ...whatsNewFold })
 
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Update.combine<Model, Message, StyldClient>(model, [
     (current) => ({
-      model: modifyFields(current, { motion: () => TableMotion.Still() }),
+      model: modifyFields(current, { motion: () => TableMotion.Still(), tombola: Tombola.shut }),
       commands: [DetermineDay()],
     }),
     enterPickUp,
@@ -464,6 +475,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
     GotWhatsNewMessage: (got) => foldWhatsNew(model, got.message),
+    GotTombolaMessage: (got) => foldTombola(model, got.message),
     GotPickUpMessage: (got) => foldPickUp(model, got.message),
     SucceededMakeOutfits: ({ batch }) => ({
       model: modifyFields(model, { outfits: (outfits) => OutfitsData.Success({ data: withBatch(outfits, batch) }) }),

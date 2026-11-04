@@ -72,6 +72,7 @@ global({
   },
   // The camera covers the page edge to edge: no scrollbar gutter beside it while it is open.
   'html:has(#camera-screen)': { scrollbarGutter: 'auto' },
+  'html:has(#tombola[open])': { scrollbarGutter: 'auto' },
   body: { margin: '0' },
   'h1, h2, h3, p, dl, dd': { margin: '0' },
   'h1, h2, h3': { textWrap: 'balance', overflowWrap: 'break-word', minInlineSize: '0' },

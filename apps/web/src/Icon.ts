@@ -18,6 +18,7 @@ import {
   SparkleLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
+  DiceFiveRegular,
   SlidersHorizontalRegular,
   SquaresFourLight,
   TextTRegular,
@@ -94,6 +95,8 @@ export const moreIcon = control(DotsThreeRegular)
 export const forwardIcon = control(ArrowUpRegular)
 export const backwardIcon = control(ArrowDownRegular)
 export const spinIcon = control(ShuffleRegular)
+/** What to wear today: the tombola's dice. */
+export const diceIcon = control(DiceFiveRegular)
 /** The wardrobe's filters: a control, not a category. */
 export const filtersIcon = control(SlidersHorizontalRegular)
 export const searchIcon = control(MagnifyingGlassRegular)

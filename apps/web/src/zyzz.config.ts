@@ -150,6 +150,8 @@ export const { style, vars } = defineConfig({
         'linear(0, 0.0357, 0.1183, 0.2215, 0.3294, 0.433, 0.5273, 0.6104, 0.6819, 0.7423, 0.7925, 0.8339, 0.8677, 0.895, 0.9171, 0.9347, 0.9487, 0.9598, 0.9686, 0.9755, 0.9809, 0.9852, 0.9885, 0.9911, 0.9931, 0.9947, 0.9959, 0.9968, 0.9976, 0.9981, 0.9986, 0.9989, 1)',
       springBounce:
         'linear(0, 0.0491, 0.1629, 0.3039, 0.4479, 0.5806, 0.6949, 0.7883, 0.8613, 0.9159, 0.9549, 0.9815, 0.9985, 1.0085, 1.0134, 1.0151, 1.0147, 1.0132, 1.0111, 1.0089, 1.0068, 1.005, 1.0035, 1.0023, 1.0014, 1.0008, 1.0004, 1.0001, 0.9999, 0.9998, 0.9998, 0.9998, 1)',
+      // The tombola's wheel: fast at once, then a long slowing onto the drawn piece.
+      wheel: 'cubic-bezier(0.12, 0.62, 0.14, 1)',
     },
     // How long a motion takes (DESIGN.md › Motion).
     transitionDuration: {
@@ -167,6 +169,8 @@ export const { style, vars } = defineConfig({
       brief: '200ms',
       // A loader's turn.
       spin: '0.9s',
+      // The tombola's wheel turning to the drawn piece, the one long motion, only on request.
+      wheel: '2500ms',
       instant: '0ms',
     },
     // inset: a table inside a card with 8px padding, so its corner is the card's 16px less the padding.

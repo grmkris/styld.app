@@ -16,7 +16,17 @@ import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { fromStyld, stillTable } from './Board/Table.ts'
-import { canSwap, Message, type Model, showsWornOutfit, Swap, TableMotion, tableOutfit, Worn } from './Today.ts'
+import {
+  briefFor,
+  canSwap,
+  Message,
+  type Model,
+  showsWornOutfit,
+  Swap,
+  TableMotion,
+  tableOutfit,
+  Worn,
+} from './Today.ts'
 import type { PiecesData } from '../ServerData.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
@@ -25,6 +35,7 @@ import { pieceDescription, pieceLabel } from './WardrobeWords.ts'
 import { challengesView } from './ChallengesView.ts'
 import { type HomeData, pickUpView } from './PickUpView.ts'
 import { earlierView, stripView } from './WhatsNewView.ts'
+import * as TombolaView from './TombolaView.ts'
 
 const dateOf = (day: string) => {
   const [year = 2026, month = 1, date = 1] = day.split('-').map(Number)
@@ -282,6 +293,9 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
+/** The season of the day, once the browser knows the day: the tombola draws pieces for it first. */
+const seasonOf = (model: Model) => Option.flatMap(model.maybeDay, (day) => Option.fromNullishOr(briefFor(day).season))
+
 /** Home (Eva's sketch, 4 November): the day, What's new along a strip, today's outfit, then Challenges, Pick up and
  * the rest of What's new. On a desktop the day heads the page, the strip runs across it, and the outfit stands beside
  * the rest. */
@@ -291,6 +305,15 @@ export const view = Submodel.defineView<Model, Message, HomeData & { readonly lo
       [h.Id('main'), ...styled(h, styles.page())],
       [
         h.div(styled(h, styles.head()), [headlineView(model.maybeDay, locale, h)]),
+        h.div(styled(h, styles.pick()), [
+          h.submodel({
+            slotId: 'tombola',
+            model: model.tombola,
+            view: TombolaView.view,
+            viewInputs: { pieces, maybeSeason: seasonOf(model), locale },
+            toParentMessage: (message) => Message.GotTombolaMessage({ message }),
+          }),
+        ]),
         h.div(styled(h, styles.news()), [
           h.submodel({
             slotId: 'whats-new-strip',

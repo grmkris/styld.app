@@ -637,10 +637,15 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.swapNone': { readonly name: string | number }
   'today.swapPieces': Readonly<Record<string, never>>
   'today.title': Readonly<Record<string, never>>
+  'today.tombola.again': Readonly<Record<string, never>>
+  'today.tombola.drawn': { readonly piece: string | number }
+  'today.tombola.openPiece': Readonly<Record<string, never>>
+  'today.tombola.spinning': Readonly<Record<string, never>>
   'today.waiting': { readonly count: number }
   'today.wear': Readonly<Record<string, never>>
   'today.wearFailed': Readonly<Record<string, never>>
   'today.wearing': Readonly<Record<string, never>>
+  'today.whatToWear': Readonly<Record<string, never>>
   'today.whatsNew': Readonly<Record<string, never>>
   'today.whatsNewEarlier': Readonly<Record<string, never>>
   'today.whatsNewEmpty': Readonly<Record<string, never>>
@@ -904,4 +909,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'd8e6892de89ee556a58f368a59976ea1c228c167d71b28de783b2f020dfa4f12'
+export const catalogVersion = 'd8c32951ded71f21142ec058ce6b88fa471459a91b5240fac0703c8a2bcc5c8b'

@@ -5,12 +5,11 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, TrayData } from '../src/page/PickUp.ts'
-import { FeedData, More } from '../src/page/WhatsNew.ts'
 import { Message, OutfitsData, ReadWorn, SwapPiece, Wear, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withBoards, withPage, withPieces } from './AppFixtures.ts'
+import { settled } from './HomeFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -42,14 +41,7 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
   withPage(
     withBoards(withPieces(at('/', { signedIn: true }), [knit]), Option.toArray(maybeBoard)),
     lenses.today,
-    (today) =>
-      modifyFields(today, {
-        pickUp: () => ({
-          tray: TrayData.Success({ data: { waiting, pictures } }),
-          favourite: FavouriteData.Success({ data: Option.none() }),
-        }),
-        whatsNew: () => ({ feed: FeedData.Success({ data: { items: [], cursor: null } }), more: More.Idle() }),
-      }),
+    (today) => settled(today, waiting, pictures),
   )
 
 /** Home on a day already worn, with today's outfits as given. */

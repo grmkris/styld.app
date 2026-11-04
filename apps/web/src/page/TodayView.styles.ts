@@ -18,12 +18,17 @@ export const page = style({
   paddingBlock: '0 40px',
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, clamp(320px, (100svh - 280px) * 0.8, 560px)) minmax(0, 1fr)',
-    gridTemplateAreas: '"head head" "news news" "outfit side"',
+    gridTemplateAreas: '"head pick" "news news" "outfit side"',
     alignItems: 'start',
     columnGap: 'columns',
   },
 })
 export const head = style({ minInlineSize: '0', '@media (min-width: 900px)': { gridArea: 'head' } })
+/** What to wear today: under the day on a phone, at the end of the day's row on a desktop. */
+export const pick = style({
+  minInlineSize: '0',
+  '@media (min-width: 900px)': { gridArea: 'pick', alignSelf: 'center', justifySelf: 'end', minInlineSize: '280px' },
+})
 export const news = style({ minInlineSize: '0', '@media (min-width: 900px)': { gridArea: 'news' } })
 export const today = style({
   display: 'grid',

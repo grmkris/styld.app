@@ -932,7 +932,14 @@
     "comingSoon": "Kmalu",
     "challengeRed": "30 dni v rdečem",
     "challengeWitch": "Čarovniški oktober",
-    "challengeOnePiece": "En kos ves teden"
+    "challengeOnePiece": "En kos ves teden",
+    "whatToWear": "Kaj obleči danes",
+    "tombola": {
+      "spinning": "Vrtim …",
+      "drawn": "Današnja izbira: {piece}",
+      "again": "Zavrti znova",
+      "openPiece": "Odpri kos"
+    }
   },
   "stylist": {
     "title": "Vprašaj Stylda",
