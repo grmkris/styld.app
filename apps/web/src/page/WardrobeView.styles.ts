@@ -37,8 +37,11 @@ export const categoryImage = style({
   inlineSize: '100%',
   aspectRatio: '1 / 1',
   objectFit: 'contain',
-  // A photo's pale backdrop gives way to the card, as the grid's does to the paper.
+  // A photo's pale backdrop gives way to the card, as the grid's does to the paper. On the dark card darken would keep
+  // only what is darker than the card, so a white trainer would vanish: there it lies as it is, as in the grid
+  // (DESIGN.md › Dark).
   mixBlendMode: 'darken',
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 export const categorySkeleton = style({ minBlockSize: '96px', borderRadius: 'photo' })
 /** A level's head: the round back a step up, the category's name, and on a type's page its Filter button. */
