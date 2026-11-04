@@ -37,7 +37,7 @@ const shownTryOn = (origin: string) => (tryOn: TryOn) => ({
   photoUrl: `${origin}/gallery/${tryOn.photoId}`,
 })
 
-const photoList = toolSpec({
+export const photoList = toolSpec({
   name: 'photo_list',
   title: 'Your Gallery photos',
   description:
@@ -46,7 +46,7 @@ const photoList = toolSpec({
   annotations: { readOnlyHint: true, openWorldHint: false },
 })
 
-const tryOnStart = toolSpec({
+export const tryOnStart = toolSpec({
   name: 'tryon_start',
   title: 'Try pieces on',
   description: `Redraw one of the person’s own Gallery photos (photo_list) with them wearing 1 to ${String(maximumTryOnPieces)} of their pieces (piece_search), for ${creditsText(prices.tryOn)}, given back if it is refused or lost. Only a photo of the person themselves: ask them whether it shows them and pass \`thisIsMe: true\` only when they say yes, never for anyone else. It is drawn in the background (about half a minute): read it with tryon_get, then show it with tryon_show. Choose a new \`operationId\`.`,
@@ -54,7 +54,7 @@ const tryOnStart = toolSpec({
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 })
 
-const tryOnGet = toolSpec({
+export const tryOnGet = toolSpec({
   name: 'tryon_get',
   title: 'How a try-on is going',
   description:
@@ -63,7 +63,7 @@ const tryOnGet = toolSpec({
   annotations: { readOnlyHint: true, openWorldHint: false },
 })
 
-const tryOnList = toolSpec({
+export const tryOnList = toolSpec({
   name: 'tryon_list',
   title: 'Your try-ons',
   description: 'The person’s try-ons, newest first, each with the photo and pieces it used and its page on Styld.',

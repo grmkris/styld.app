@@ -1,4 +1,12 @@
-import { type ChatMessage, LookId, PieceId, type ReplyPart, type Replying, WardrobeAnalysis } from '@styld/protocol'
+import {
+  type ChatMessage,
+  LookId,
+  PieceId,
+  type ReplyPart,
+  type Replying,
+  TryOnId,
+  WardrobeAnalysis,
+} from '@styld/protocol'
 import type { CanonicalRecordPayload } from '@yielded/agent/records'
 import { DateTime, Match, Option, Predicate, Schema } from 'effect'
 import { StylistInput } from './Agent.ts'
@@ -12,12 +20,14 @@ const decodeInput = Schema.decodeUnknownOption(StylistInput)
 const decodeShown = Schema.decodeUnknownOption(Schema.Struct({ shown: Schema.Array(PieceId) }))
 const decodeLook = Schema.decodeUnknownOption(Schema.Struct({ id: LookId, name: Schema.String }))
 const decodeAnalysis = Schema.decodeUnknownOption(WardrobeAnalysis)
+const decodeTryOn = Schema.decodeUnknownOption(Schema.Struct({ id: TryOnId }))
 const decodeText = Schema.decodeUnknownOption(Schema.String)
 
 /** A piece id anywhere in a tool's result: the pieces the reply looked up. */
 const pieceIds = /\bpc_[A-Za-z0-9_-]{22}\b/gu
 
-/** What one recorded tool result shows under the reply, if anything. */
+/** What one recorded tool result shows under the reply, if anything: pieces shown, a look saved, the wardrobe counted, or
+ * a try-on started or read. */
 const partOf = (toolName: string, result: unknown): Option.Option<ReplyPart> => {
   if (toolName === 'pieces_show')
     return Option.flatMap(decodeShown(result), ({ shown }) =>
@@ -27,6 +37,8 @@ const partOf = (toolName: string, result: unknown): Option.Option<ReplyPart> => 
     return Option.map(decodeLook(result), ({ id, name }): ReplyPart => ({ _tag: 'Look', lookId: id, name }))
   if (toolName === 'wardrobe_analyze')
     return Option.map(decodeAnalysis(result), (analysis): ReplyPart => ({ _tag: 'Analysis', analysis }))
+  if (toolName === 'tryon_start' || toolName === 'tryon_get')
+    return Option.map(decodeTryOn(result), ({ id }): ReplyPart => ({ _tag: 'TryOn', tryOnId: id }))
   return Option.none()
 }
 
@@ -67,15 +79,18 @@ const asked = (reading: Reading, payload: Payload<'UserInputRecorded'>, at: stri
   }
 }
 
+/** Whether the reply already shows this card: one analysis per reply, and each try-on once. */
+const shownBefore = (parts: ReadonlyArray<ReplyPart>, shown: ReplyPart) =>
+  (Predicate.isTagged(shown, 'Analysis') && parts.some(Predicate.isTagged('Analysis'))) ||
+  (Predicate.isTagged(shown, 'TryOn') &&
+    parts.some((part) => Predicate.isTagged(part, 'TryOn') && part.tryOnId === shown.tryOnId))
+
 /** A tool call the answer made: the pieces it read, and its card if it shows one (one analysis per reply). */
 const toolResult = (reading: Reading, payload: Payload<'ToolCallSettled'>): Reading => {
   const { answering } = reading
   if (answering === undefined || payload.isFailure) return reading
   const seen = new Set([...answering.seen, ...[...JSON.stringify(payload.result).matchAll(pieceIds)].map(([id]) => id)])
-  const part = Option.filter(
-    partOf(payload.toolName, payload.result),
-    (shown) => !(Predicate.isTagged(shown, 'Analysis') && answering.parts.some(Predicate.isTagged('Analysis'))),
-  )
+  const part = Option.filter(partOf(payload.toolName, payload.result), (shown) => !shownBefore(answering.parts, shown))
   const parts = Option.match(part, { onNone: () => answering.parts, onSome: (shown) => [...answering.parts, shown] })
   return { ...reading, answering: { ...answering, parts, seen } }
 }

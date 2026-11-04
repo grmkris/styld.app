@@ -59,7 +59,7 @@ const call = (name: string, params: unknown, submissionId = 'sub-1', on = accoun
   Effect.runPromise(runTool(on, { submissionId, name, params }))
 
 describe('the chat’s tools, as the model is offered them', () => {
-  test('the nine assistants’ tools and the chat’s two, each with how it may be repeated', () => {
+  test('the thirteen assistants’ tools and the chat’s two, each with how it may be repeated', () => {
     expect(catalogue.map(({ name, execution }) => [name, execution])).toEqual([
       ['pieces_show', 'readonly'],
       ['wardrobe_analyze', 'readonly'],
@@ -72,6 +72,10 @@ describe('the chat’s tools, as the model is offered them', () => {
       ['note_add', 'idempotent'],
       ['note_list', 'readonly'],
       ['saved_list', 'readonly'],
+      ['photo_list', 'readonly'],
+      ['tryon_start', 'idempotent'],
+      ['tryon_get', 'readonly'],
+      ['tryon_list', 'readonly'],
     ])
     expect(stylistDefinitions.tools).toEqual(catalogue.map(({ name, execution }) => ({ name, execution })))
   })
@@ -189,6 +193,17 @@ describe('a chat read from its Thread', () => {
       // A piece the reply only named in a note shows when its tools read it.
       { _tag: 'Pieces', pieceIds: ['pc_greyknit00000000000000'] },
     ])
+  })
+
+  test('a try-on it started or read shows once under the reply, by its id alone', () => {
+    const tryOnId = `to_${'t'.repeat(22)}`
+    const chat = chatOf([
+      asked('sub-1', 'Show me in the navy blazer'),
+      toolSettled('tryon_start', { id: tryOnId, status: 'drawing', url: 'https://styld.test/try-on' }),
+      toolSettled('tryon_get', { id: tryOnId, status: 'done' }),
+      settled('sub-1', 'completed', 'It is on its way.'),
+    ])
+    expect(chat.messages[1]?.parts).toEqual([{ _tag: 'TryOn', tryOnId }])
   })
 
   test('a message being answered shows the reply being written; one that did not come shows it failed', () => {
