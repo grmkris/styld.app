@@ -73,8 +73,18 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   before the provider could have taken it.
 - **The Wallet** (Alchemy Domain on a SQLite Durable Object per account, `packages/domain/src/Wallet/`) owns only the
   daily credit pool and its reservations: `dailyCredits` (100) per UTC day, unused credits do not carry over.
-  `WalletCommandIds.ts` is the only place Wallet command ids are derived. There are no subscription or purchased pools
-  (billing gets its own planning round).
+  `WalletCommandIds.ts` is the only place Wallet command ids are derived. A reservation brings the day's allowance (free
+  100, or premium 500); the Wallet keeps the allowance the day was granted and a larger one the same day adds the
+  difference, so premium bought mid-day counts at once. It never stores premium's end.
+- **Payments** (`server/src/billing/`, Styld Premium Week through Dodo Payments as merchant of record): the website
+  opens Dodo's hosted checkout (`POST /api/billing/checkout`, the account id in its metadata) and only Dodo's webhook
+  credits a week. `POST /api/billing/dodo/webhook` is a raw route (the signature covers the body as sent), verified the
+  Standard Webhooks way with WebCrypto; a payment counts only when its cart holds the stage's product. Each delivery is
+  one D1 batch whose statements check the purchase row themselves: `purchases` (keyed by Dodo's payment id, the
+  receipt and audit trail) and `premium` (the account's end, its one record) move together, once. A refund or a lost
+  dispute takes its week back once, never before now. `billing/Premium.ts` › `allowanceAt` is the one rule that turns
+  the end into the day's allowance, for holds, the tray and `GET /api/credits`. A stage without Dodo's key and secret
+  sells nothing; its mode and product are stage facts (`Resources.ts`).
 - **Work lifecycles are D1 rows driven by queues**, not Domain aggregates: captures, pieces' pictures and turns,
   gallery photos, generation jobs, Styld's turns, imports. `jobs/Jobs.ts`: every queue body is a tagged union consumed
   one way (done acks, failures retry until the last attempt, which gives the job up; an unknown body is dropped; one
