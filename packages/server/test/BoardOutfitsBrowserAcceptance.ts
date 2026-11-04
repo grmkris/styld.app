@@ -68,12 +68,13 @@ export const verifyOutfitBoardJourney = async (browser: Browser, origin: string,
     for (const arrows of [arrowsBefore, arrowsAfter]) expect([0, await cards.count()]).toContain(arrows)
     await shoot(page, 'phone-outfit-board-relaid')
 
-    // Another, when every combination has been shown, says so.
-    await page.getByRole('button', { name: 'Another' }).first().click()
-    await page
-      .getByRole('alert')
-      .filter({ hasText: 'Your wardrobe has no other outfit around this piece.' })
-      .waitFor({ state: 'visible' })
+    // Another answers either way: a new outfit in that place, or, when every combination has been shown, says so.
+    // Which one depends on the layout dealt above (a smaller one frees outfits), so the words are asserted in the
+    // story tests and here only that the answer arrives and the board stays whole.
+    const another = page.waitForResponse((response) => /\/outfits\/[^/]+\/another$/u.test(response.url()))
+    await page.getByRole('button', { name: 'Another', exact: true }).first().click()
+    expect([200, 422]).toContain((await another).status())
+    expect(await shortsItems.count()).toBe((await cards.count()) + 1)
 
     // Keep makes the first outfit a look pinned on the board; it opens from its card.
     await page.getByRole('button', { name: 'Keep' }).first().click()

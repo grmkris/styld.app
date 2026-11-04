@@ -35,7 +35,7 @@ const seed = (database: QueryDatabaseClient) => seedIdentity(database, picturesA
 /** The backfill journey's account: pieces kept before clean pictures were drawn, as the operator finds them. */
 export const backfillAccount = 'native-backfill'
 
-const backfillId = (name: string) => `pc_${`nativebackfill${name}`.padEnd(22, '0')}`
+const backfillId = (name: string) => `pc_${`nativebf${name}`.padEnd(22, '0')}`
 
 /** The backfill journey's pieces, by name: a red cut-out never drawn, a green one whose drawing waits as proposed
  * (before 4 November), a piece kept as its photo, and a red cut-out still processing. */
