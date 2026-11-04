@@ -16,8 +16,9 @@ import { wornHandlers } from '../worn/Http.ts'
 import { Worn } from '../worn/Worn.ts'
 import { Curation } from './Curation.ts'
 import { Discovery } from './Discovery.ts'
-import { profileHandlers } from './Http.ts'
+import { preferencesHandlers, profileHandlers } from './Http.ts'
 import { Profiles } from './Profiles.ts'
+import { ShowMe } from './ShowMe.ts'
 import { PublicPages } from './Public.ts'
 import { publicHandlers, publicImageRoutes } from './PublicHttp.ts'
 import { Social } from './Social.ts'
@@ -28,7 +29,15 @@ import { socialHandlers } from './SocialHttp.ts'
 export const social = module({
   layer: Layer.mergeAll(Boards.layer, Social.layer, Discovery.layer).pipe(
     Layer.provideMerge(
-      Layer.mergeAll(Looks.layer, PublicPages.layer, Profiles.layer, Curation.layer, Worn.layer, PieceChanged.layer),
+      Layer.mergeAll(
+        Looks.layer,
+        PublicPages.layer,
+        Profiles.layer,
+        Curation.layer,
+        Worn.layer,
+        PieceChanged.layer,
+        ShowMe.layer,
+      ),
     ),
     Layer.provideMerge(Checks.layer),
     Layer.provide([WardrobeStore.layer, BoardStore.layer, outfits.layer]),
@@ -38,6 +47,7 @@ export const social = module({
     boardHandlers,
     wornHandlers,
     profileHandlers,
+    preferencesHandlers,
     socialHandlers,
     withAuth(publicHandlers),
   ),

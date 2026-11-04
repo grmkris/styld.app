@@ -1,5 +1,6 @@
-import { boards, follows, profiles } from '@styld/db'
+import { boards, boardTags, follows, profiles } from '@styld/db'
 import {
+  type Audience,
   type Author,
   type Explore,
   type FoundBoard,
@@ -10,11 +11,12 @@ import {
   Unavailable,
   wordsIn,
 } from '@styld/protocol'
-import { and, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
 import { shownToOthers } from './ProfileStore.ts'
 import { PublicPages } from './Public.ts'
+import { otherAudience, preferencesOf } from './ShowMe.ts'
 import { SocialStore } from './SocialStore.ts'
 
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
@@ -54,19 +56,33 @@ const moodWords: Readonly<Record<string, Mood>> = {
 /** A board that has this mood among its own. */
 const withMood = (mood: Mood) => sql`exists (select 1 from json_each(${boards.moods}) where value = ${mood})`
 
+/** A board's place for a reader who chose Show me: their choice first, the boards for everyone or nobody in particular
+ * next, the others last (`showMeRank`, in SQL). */
+const showMeOrder = (db: Database['Service'], choice: 'women' | 'men') => {
+  const tagged = (audience: Audience) =>
+    exists(
+      db
+        .select({ id: boardTags.boardId })
+        .from(boardTags)
+        .where(and(eq(boardTags.boardId, boards.id), eq(boardTags.kind, 'audience'), eq(boardTags.value, audience))),
+    )
+  return sql`CASE WHEN ${tagged(choice)} THEN 0 WHEN ${tagged(otherAudience(choice))} THEN 2 ELSE 1 END`
+}
+
 const makeQueries = (db: Database['Service']) => {
-  const publicBoards = (where: SQL | undefined, order: SQL | typeof boards.publishedAt) =>
+  const publicBoards = (where: SQL | undefined, ...order: ReadonlyArray<SQL | typeof boards.publishedAt>) =>
     read(() =>
       db
         .select()
         .from(boards)
         .where(and(eq(boards.visibility, 'public'), where))
-        .orderBy(order)
+        .orderBy(...order)
         .limit(rowLimit),
     )
   return {
-    /** Edits from Styld: the house accounts' public boards. */
-    houseBoards: () =>
+    /** Edits from Styld: the house accounts' public boards, newest first (they go public interleaved by audience), or
+     * for a reader who chose Show me, the boards for their choice first (owner, 4 November 2026), before the limit. */
+    houseBoards: (choice: Audience | null) =>
       Effect.flatMap(
         read(() => db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.house, true))),
         (house) =>
@@ -77,6 +93,7 @@ const makeQueries = (db: Database['Service']) => {
                   boards.accountId,
                   house.map(({ accountId }) => accountId),
                 ),
+                ...(choice === null || choice === 'all' ? [] : [showMeOrder(db, choice)]),
                 desc(boards.publishedAt),
               ),
       ),
@@ -124,7 +141,8 @@ const makeQueries = (db: Database['Service']) => {
 }
 
 const make = Effect.gen(function* () {
-  const queries = makeQueries(yield* Database)
+  const db = yield* Database
+  const queries = makeQueries(db)
   const pages = yield* PublicPages
   const social = yield* SocialStore
   const reported = (accountIds: ReadonlyArray<string>) =>
@@ -156,8 +174,9 @@ const make = Effect.gen(function* () {
   return {
     /** Explore: Edits from Styld, featured boards, people to follow and the newest boards, in a mood if chosen. */
     explore: Effect.fn('Styld.Discovery.explore')(function* (mood: Option.Option<Mood>, viewer: Option.Option<string>) {
+      const choice = Option.isSome(viewer) ? (yield* preferencesOf(db, viewer.value)).showMe : null
       const explore: Explore = {
-        edits: yield* found(yield* queries.houseBoards(), viewer),
+        edits: yield* found(yield* queries.houseBoards(choice), viewer),
         featured: yield* found(yield* queries.featuredBoards(), viewer),
         people: (yield* findable(
           (yield* queries.people(viewer)).map(({ accountId }) => accountId),
