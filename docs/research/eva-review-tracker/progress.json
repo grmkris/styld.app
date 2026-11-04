@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-03",
+  "updatedAt": "2026-11-04",
   "tickets": {
     "T-01": {
       "status": "in_progress",
@@ -334,11 +334,22 @@
       ]
     },
     "T-10": {
-      "status": "planned",
-      "owner": "Codex",
-      "updatedAt": "2026-11-03",
-      "note": "Approved bounded first template after board-to-Look: One piece, six outfits. The remaining wishlist, travel and other templates stay outside this first slice.",
-      "evidence": [],
+      "status": "in_progress",
+      "owner": "Claude",
+      "updatedAt": "2026-11-04",
+      "note": "On main (fa4790a, 05e8cea, 57eb723, 25536e2, 8286fad), not deployed; plan docs/PLAN-boards-t16-t10.md. + on Boards opens a sheet: Blank, or One piece, six outfits (a ready piece by group, an optional season). Fast makes up to six complete outfits, free: base, shoes, one to three accessories of different kinds, few repeated pieces; laid out as clusters two across with the piece the same in each, accessories arranged three ways, on a paper from its colour. Cards under the table: Keep (a look pinned on the board) and Another. Fewer than six and a deleted piece are said; with no outfit the sheet says what to add. Remaining: deploy with migration 20261104062656, readback with a seeded wardrobe (timing, Clef ranking), Eva's phone check after T-02's retype. Out of this slice: Wishlist, travel/week/day/blank templates, screenshot cut-outs (M5), export.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-04",
+          "summary": "Rules for complete outfits (accessories, kinds, socks, a dress anchor, an accessory anchor, a wardrobe with only socks), the distinct batch, missingOf for a fixed piece, the cluster layout and paper, stories and scenes for the cards, the sheet and Ask's Start a board."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-04",
+          "summary": "BoardOutfitsAcceptance (workerd, real D1) keeps a look pinned on a board once per operation id and builds six complete outfits around one piece, refuses with what is missing, replaces one where its cluster was after a table saved by hand, and marks a kept one; BoardOutfitsBrowserAcceptance (Chromium, 390×844) makes a board from the new-board sheet, keeps an outfit and opens its look; the Gallery journey keeps two ticked pieces as a look. The full gate passed on 8286fad (4 November): every gate, 874 unit tests in 129 files, 33 of 33 native journeys (1,653 assertions); initial bundle 370,287 of 370,300 gzip bytes."
+        }
+      ],
       "criteriaDone": []
     },
     "T-11": {
@@ -538,11 +549,22 @@
       ]
     },
     "T-16": {
-      "status": "planned",
-      "owner": "Codex",
-      "updatedAt": "2026-11-03",
-      "note": "Approved after reliability work: save one selected board outfit as a fixed Look.",
-      "evidence": [],
+      "status": "in_progress",
+      "owner": "Claude",
+      "updatedAt": "2026-11-04",
+      "note": "On main (6885ee4, 7931bbb), not deployed. Select pieces in the collage editor (a tap or Space ticks a piece instead of moving it) and Save keeps them as a look pinned on the board, in one D1 batch; with nothing selected the whole table, as before. A template board's outfit card keeps its outfit as a look the same way (T-10). Remaining: deploy and preview readback, before/after screenshots, Eva's phone check. Look -> board already works through Add to a board; variations of a look stay out.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-04",
+          "summary": "Stories and a scene for select mode: tick, untick, Save with none or some ticked, a failure; the keep's command names exactly the ticked pieces, top of the stack first."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-04",
+          "summary": "BoardOutfitsAcceptance (workerd, real D1) keeps a look pinned on a board once per operation id and builds six complete outfits around one piece, refuses with what is missing, replaces one where its cluster was after a table saved by hand, and marks a kept one; BoardOutfitsBrowserAcceptance (Chromium, 390×844) makes a board from the new-board sheet, keeps an outfit and opens its look; the Gallery journey keeps two ticked pieces as a look. The full gate passed on 8286fad (4 November): every gate, 874 unit tests in 129 files, 33 of 33 native journeys (1,653 assertions); initial bundle 370,287 of 370,300 gzip bytes."
+        }
+      ],
       "criteriaDone": []
     },
     "T-17": {
@@ -1552,6 +1574,14 @@
       "items": [
         "T-14",
         "T-18"
+      ]
+    },
+    {
+      "date": "2026-11-04",
+      "text": "Claude built T-16 (a look kept on a board, select mode) and T-10's first template, One piece, six outfits, with the new-board sheet (F-26), on main; not deployed. Deploy and readback by styldappv2-51.",
+      "items": [
+        "T-16",
+        "T-10"
       ]
     }
   ],

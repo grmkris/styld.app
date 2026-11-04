@@ -29,6 +29,53 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
   these bumps (A/B builds differ by bytes). mediabunny's phone-side video cutting and the stylist on beta.192 still
   need preview acceptance once deployed.
 
+## Boards: a look kept on a board (T-16) and "One piece, six outfits" (T-10), 4 November (on main, not deployed)
+
+Built from `docs/PLAN-boards-t16-t10.md` (owner decisions of 4 November: Fast and free; the anchor repeated in each of
+six clusters; Keep and Another on cards under the table; a look stays its pieces). Not deployed: the deploy and its
+readback belong to the coordinator session once the shared Alchemy state store is settled. The deploy applies the
+migration `20261104062656_boards_outfits_t10` (ADD COLUMN and new tables only; `MigrationSafety` passes).
+
+- **T-16, keep a look on a board** (`6885ee4`, `7931bbb`): `POST /api/boards/:boardId/looks` writes the look, its pin
+  on the board and the receipt in one D1 batch; a keep from an outfit proposal is counted. The collage editor's
+  **Select pieces** mode ticks pieces by tap or Space instead of moving them, and Save names how many it keeps; with
+  nothing selected it keeps the whole table, as before. Every look saved from a board is now pinned on it.
+- **Complete outfits** (`fa4790a`): `MakeOutfit.complete` asks for one to three accessories of different kinds (two
+  most often) whenever the wardrobe has accessories that suit, never loose socks, and picks a batch that repeats as
+  few pieces as it can. Today's Spin and swap keep their rules.
+- **The outfit board** (`05e8cea`, `84f35a1`): `POST /api/boards/outfits` makes up to six complete outfits by Fast
+  around one ready piece (for a season if one is chosen), lays them out as clusters two across with the anchor at one
+  size and turn in each and the accessories arranged three ways, on a paper from the anchor's colour (denim and earth
+  tones on sand, black, white and grey on slate, green on sage, warm colours on clay), pins every piece, in one batch.
+  With no complete outfit it refuses with what the wardrobe lacks and makes no board. `POST .../outfits/:id/another`
+  replaces an outfit not kept where its cluster was; a table saved by hand keeps each item's outfit. Deleting the
+  anchor leaves the board without Another; deleting a kept look makes its card keepable again.
+- **Cards** (`57eb723`): under the table, each outfit is a card (its flat-lay on the board's paper) with Keep (a look
+  named "<board> · <n>", pinned and counted) and Another; a kept card links to its look; fewer than six and a deleted
+  anchor are said. A lost answer is asked again under the same operation id.
+- **The new-board sheet** (`25536e2`, F-26): + on Boards opens Blank or "One piece, six outfits" (piece by group, an
+  optional season, Make six outfits) instead of making "My board" at once; Ask's Start a board opens the same sheet
+  once Boards is on screen.
+- **Fixed on the way:** `missingOf` named nothing for a fixed top in a wardrobe with no bottom (now `bottom`); the
+  assistant views had grown 65 KB past their budget since `6885ee4` imported the outfit HTTP group into `Board.ts`
+  (the schemas a board names moved to `OutfitRun.ts`, `8286fad`: 373,835 bytes).
+- **Bundle budget** raised by measurement to 370,300 gzip bytes (Select mode 1,090; the contract's outfits 279; the
+  cards 2,926; the sheet 2,594; at 370,284).
+- **Evidence:** unit: rules (complete, distinct, `missingOf`), the layout and paper, stories and scenes for select
+  mode, the cards, the sheet and the Ask hand-over. Native workerd (`BoardOutfitsAcceptance`): keep, replay, conflict,
+  foreign pieces and boards, the refusal with what is missing, six complete outfits with the anchor in each cluster,
+  replay, a foreign anchor, another after a table saved by hand, kept refusals, unkeep, anchor and board deleted.
+  Chromium: the Gallery journey ticks two pieces and counts the look among the pins; `BoardOutfitsBrowserAcceptance`
+  makes a board around denim shorts from the sheet, sees three outfits said, hears Another say there is no other,
+  keeps one and opens its look. The full gate passed on 8286fad (4 November): every gate, 874 unit tests in 129 files, 33 of 33 native journeys (1,653 assertions); initial bundle 370,287 of 370,300 gzip bytes.
+- **Open:** the deploy and preview readback with a test account and a seeded, non-personal wardrobe (Fast's time for
+  six complete outfits warm and cold, whether Clef ranks within its 4 s budget, a keep, an another, before/after
+  screenshots for the tracker); Eva's phone acceptance, after T-02's retype is applied to her pieces; Thinking on
+  boards after the owner's gate-1 rating. A knit worn over a shirt mostly hides the shirt in a card's flat-lay.
+- **Out of this slice:** the Wishlist board and Before you buy's screenshot cut-outs, the week/trip, outfit-of-the-day
+  and blank lookbook templates, export, MCP tools for template boards, the piece page's Create board, a lock or swap per
+  piece on a card, renaming looks.
+
 ## Overnight 3–4 November: Gallery person (T-03), types and colours (T-02), main's gate (on main, not deployed)
 
 **The preview is not redeployed.** Everything below and every stack above it (Effect 4.1, T-14 streaming, the dark
