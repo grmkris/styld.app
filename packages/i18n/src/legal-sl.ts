@@ -11,12 +11,12 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.privacy.collectContent':
     'Kar dodaš: fotografije in videe oblačil in oprav, povezave do strani trgovin, ki jih prilepiš, kose, videze in table, ki jih ustvariš, svoj profil in pogovore s Styldom, stilistom v aplikaciji.',
   'legal.privacy.collectPayment':
-    'Plačila: ko kupiš Premium teden, plačilo izvede Dodo Payments. Izvemo, da je plačilo opravljeno in kdaj, številke tvoje kartice pa nikoli.',
+    'Plačila: ko izbereš paket, plačilo izvede in naročnino vodi Dodo Payments. Izvemo, kateri paket je plačan, kdaj, do kdaj velja in Dodovo številko stranke zate, številke tvoje kartice pa nikoli.',
   'legal.privacy.collectTechnical':
     'Tehnični podatki: tvoj naslov IP in podatki o brskalniku pridejo na naše strežnike z vsako zahtevo in se zapišejo v dnevnike storitve.',
   'legal.privacy.useHeading': 'Za kaj jih uporabljamo',
   'legal.privacy.use':
-    'Da Styld deluje zate: da najde oblačila na tvojih fotografijah in videih, jih izreže in nariše njihove čiste slike, hrani tvojo garderobo, predlaga oprave, odgovarja na vprašanja in pokaže, kar se odločiš deliti. Pa tudi za prijavo, štetje dnevnih kreditov, varnost storitve in odpravljanje napak.',
+    'Da Styld deluje zate: da najde oblačila na tvojih fotografijah in videih, jih izreže in nariše njihove čiste slike, hrani tvojo garderobo, predlaga oprave, odgovarja na vprašanja in pokaže, kar se odločiš deliti. Pa tudi za prijavo, štetje kreditov, varnost storitve in odpravljanje napak.',
   'legal.privacy.privateHeading': 'Kaj ostane zasebno',
   'legal.privacy.private':
     'Tvoja garderoba je privzeto zasebna. Fotografij oprav v tvoji Galeriji ne vidi nihče drug, prav tako nihče ne vidi tvojih izvirnih fotografij: kar deliš, pokaže izrez ali narisano sliko vsakega kosa.',
@@ -60,11 +60,11 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.terms.accountsHeading': 'Tvoj račun',
   'legal.terms.accounts':
     'Za uporabo Styld moraš imeti vsaj 16 let. Varuj svojo e-pošto in račun Google: kdor lahko prebere tvoje kode za prijavo, lahko uporablja tvoj račun. Za vse, kar se zgodi v njem, odgovarjaš ti.',
-  'legal.terms.creditsHeading': 'Krediti in Premium teden',
+  'legal.terms.creditsHeading': 'Krediti in paketi',
   'legal.terms.credits':
-    'Nekatera dejanja, kot sta dodajanje fotografije ali vrtenje slike, stanejo kredite. Vsak dobi 100 brezplačnih kreditov na dan; obnovijo se vsak dan ob polnoči UTC, neporabljeni pa se ne prenesejo. Krediti nimajo denarne vrednosti in jih ni mogoče prodati ali prenesti. Če opravilo spodleti in ne ustvari ničesar, se krediti vrnejo.',
-  'legal.terms.premiumWeek':
-    'Premium teden je eno plačilo 4,99 USD za 500 kreditov na dan, 7 dni od nakupa; ponoven nakup doda še en teden. Ni naročnina in se nikoli ne podaljša sam. Prodaja ga Dodo Payments kot trgovec (merchant of record), zato za plačilo veljajo tudi njegovi pogoji. Razen kjer zakon določa drugače, plačil ne vračamo.',
+    'Nekatera dejanja, kot sta dodajanje fotografije ali vrtenje slike, stanejo kredite. Nov račun dobi enkrat 3 brezplačne kredite, dovolj za izrez treh fotografij; ne obnovijo se. Potem za vsako dejanje, ki stane kredite, potrebuješ paket. Krediti nimajo denarne vrednosti in jih ni mogoče prodati ali prenesti. Če opravilo spodleti in ne ustvari ničesar, se krediti vrnejo.',
+  'legal.terms.plans':
+    'Vsak paket ti da 500 kreditov na dan, dokler velja; obnovijo se vsak dan ob polnoči UTC, neporabljeni pa se ne prenesejo. Teden je eno plačilo 4,99 USD za 7 dni od nakupa; ponoven nakup doda še en teden, sam se nikoli ne podaljša. Mesec (20 USD na mesec) in Leto (200 USD na leto) sta naročnini: podaljšujeta se, dokler ju ne prekličeš, preklicati pa ju lahko kadar koli v Dodovem portalu za stranke, prek Upravljaj naročnino na strani računa; preklicana naročnina velja do konca plačanega obdobja. Za vedno je eno plačilo 349 USD in nikoli ne poteče. Pakete ti prodaja Dodo Payments kot trgovec (merchant of record), zato za plačilo veljajo tudi njegovi pogoji. Razen kjer zakon določa drugače, plačil ne vračamo.',
   'legal.terms.contentHeading': 'Tvoje fotografije in vsebina',
   'legal.terms.content':
     'Kar dodaš, ostane tvoje. Styldu dovoliš, da to hrani in obdeluje, tudi prek ponudnikov, navedenih v pravilniku o zasebnosti, le zato, da Styld deluje zate in da pokaže, kar se odločiš deliti.',

@@ -1,12 +1,25 @@
-// What each paid action costs, in credits from the account's daily allowance. The server holds this many before the
-// work runs and gives them back when nothing comes of it; the website and the assistants quote the same numbers.
+// What each paid action costs, in credits. The server holds this many before the work runs and gives them back when
+// nothing comes of it; the website and the assistants quote the same numbers.
 
-/** The credits every account has each UTC day; unused ones do not carry over. Changing it is a commit. */
-export const dailyCredits = 100
+/** The credits a new account has once, enough for three photos' cut-outs; they never reset (owner, 4 November 2026).
+ * Without a plan the day brings no credits. Changing it is a commit. */
+export const freeCredits = 3
 
-/** Styld Premium Week (owner, 4 November 2026): this many credits a day instead, for `days` days from the purchase,
- * for one payment of `price` (US dollars, shown as Dodo charges it). Buying again extends from the current end. */
-export const premiumWeek = { dailyCredits: 500, days: 7, price: '$4.99' } as const
+/** The credits each UTC day brings while a plan is active; unused ones do not carry over. */
+export const memberDailyCredits = 500
+
+/** The plans, each giving `memberDailyCredits` a day while it lasts (owner, 4 November 2026), priced in US dollars as
+ * Dodo charges them. A week extends from the current end when bought again; monthly and yearly renew until cancelled;
+ * lifetime never ends. */
+export const planNames = ['week', 'monthly', 'yearly', 'lifetime'] as const
+export type PlanName = (typeof planNames)[number]
+
+export const plans = {
+  week: { price: '$4.99', days: 7, renews: false },
+  monthly: { price: '$20', renews: true },
+  yearly: { price: '$200', renews: true },
+  lifetime: { price: '$349', renews: false },
+} as const satisfies Record<PlanName, { readonly price: string; readonly days?: number; readonly renews: boolean }>
 
 export const prices = {
   /** A photo's garments found and cut out (owner, 30 October). A piece's back is free (owner, 4 November): the camera

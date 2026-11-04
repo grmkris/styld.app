@@ -65,16 +65,31 @@
     "deleteAccountConfirm": "Izbriši moj račun",
     "deleteAccountFailed": "Styld tvojega računa trenutno ni mogel izbrisati. Poskusi znova čez trenutek.",
     "credits": {
-      "title": "Krediti",
       "today": "Danes še {remaining} od {daily} kreditov",
-      "premiumUntil": "Premium do {date}",
-      "premiumWeek": "Teden Premium · {price}",
-      "premiumAbout": "{daily} kreditov na dan {days} dni, od trenutka plačila. Eno plačilo, brez naročnine.",
-      "paid": "Plačilo je prejeto. Premium se začne v trenutku.",
-      "paidSlow": "Plačilo je prejeto. Tvoj teden Premium se tu pokaže v nekaj minutah.",
+      "free": "Še {free} od {total} brezplačnih izrezov",
+      "paid": "Plačilo je prejeto. Tvoj paket se začne v trenutku.",
+      "paidSlow": "Plačilo je prejeto. Tvoj paket se tu pokaže v nekaj minutah.",
       "checkoutFailed": "Styld trenutno ni mogel odpreti strani za plačilo. Poskusi znova čez trenutek.",
       "loadFailed": "Styld trenutno ni mogel prebrati tvojih kreditov.",
-      "more": "Več kreditov"
+      "more": "Izberi paket in nadaljuj."
+    },
+    "plans": {
+      "title": "Paketi",
+      "about": "Vsak paket ti da {daily} kreditov na dan, dokler traja.",
+      "week": "Teden",
+      "weekPrice": "{price} enkrat, za 7 dni",
+      "monthly": "Mesec",
+      "monthlyPrice": "{price} na mesec, dokler ne prekličeš",
+      "yearly": "Leto",
+      "yearlyPrice": "{price} na leto, dokler ne prekličeš",
+      "lifetime": "Za vedno",
+      "lifetimePrice": "{price} enkrat, nikoli ne poteče",
+      "choose": "Izberi",
+      "currentUntil": "{plan} do {date}",
+      "currentRenews": "{plan}, podaljša se {date}",
+      "currentLifetime": "Za vedno, nikoli ne poteče",
+      "manage": "Upravljaj naročnino",
+      "portalFailed": "Styld trenutno ni mogel odpreti strani tvoje naročnine. Poskusi znova čez trenutek."
     }
   },
   "telemetryConsent": {
@@ -148,7 +163,7 @@
       "problem": {
         "busy": "Čista slika tega kosa se že riše.",
         "photo": "Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",
-        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+        "dailyLimit": "Tvoji 3 brezplačni izrezi so porabljeni.",
         "network": "Risanja ni bilo mogoče naročiti. Poskusi znova."
       },
       "backPhoto": "Tvoja fotografija hrbtne strani"
@@ -164,7 +179,7 @@
       "problem": {
         "busy": "Vrtenje tega kosa se že pripravlja.",
         "picture": "Ta kos najprej potrebuje čisto sliko.",
-        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+        "dailyLimit": "Tvoji 3 brezplačni izrezi so porabljeni.",
         "network": "Vrtenja ni bilo mogoče naročiti. Poskusi znova.",
         "build": "Vrtenja ni bilo mogoče pripraviti na tej napravi. Odpri kos znova in poskusi še enkrat."
       }
@@ -410,10 +425,7 @@
     },
     "price": {
       "title": "Koliko stane",
-      "free": "Brezplačno",
-      "freeText": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, brez kartice. Dodajanje fotografije porabi enega.",
-      "premium": "Premium teden",
-      "premiumText": "{price} enkratno: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na dan, {days, plural, one {# dan} two {# dneva} few {# dni} other {# dni}}."
+      "lead": "Preizkusi {free} izreze brezplačno, potem od {price} na teden. Vsak paket ti da {daily} kreditov na dan."
     },
     "faq": {
       "title": "Vprašanja",
@@ -422,7 +434,7 @@
       "app": "Moram namestiti aplikacijo?",
       "appAnswer": "Ne. Styld deluje v brskalniku na vsakem telefonu ali računalniku ter v ChatGPT in Claudu.",
       "cost": "Koliko stane?",
-      "costAnswer": "Za začetek nič: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, dodajanje fotografije porabi enega. Premium teden stane {price} enkratno, za več kreditov na dan sedem dni.",
+      "costAnswer": "Prvi {free} izrezi so brezplačni, brez kartice. Potem ti paket da {daily} kreditov na dan: {week} za teden, {monthly} na mesec, {yearly} na leto ali {lifetime} enkrat za vedno. Mesec ali leto se podaljšuje, dokler ne prekličeš, kar lahko narediš kadar koli.",
       "delete": "Lahko izbrišem vse?",
       "deleteAnswer": "Da. Ko v Računu izbrišeš račun, z njim izbrišeš vse kose, fotografije, zbirke in videze."
     },
@@ -675,7 +687,7 @@
     "addTitle": "Dodaj oblačila",
     "addHint": "Fotografije ali video do 15 minut, posnet počasi z razdalje približno enega metra. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
     "cost": "Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}.",
-    "costLeft": "Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}. Danes jih imaš še {remaining}.",
+    "costLeft": "Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}. Imaš jih še {remaining}.",
     "chooseTitle": "Naloži iz galerije",
     "chooseHint": "Fotografije ali video",
     "notSupported": "{name} ni fotografija ali video, ki ga Styld lahko uporabi",
@@ -685,14 +697,14 @@
     "preparingVideo": "Berem video …",
     "sent": "Poslano",
     "problem": {
-      "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+      "dailyLimit": "Tvoji 3 brezplačni izrezi so porabljeni.",
       "videoTooLong": "Video je lahko dolg največ 15 minut",
       "videoUnreadable": "Tega videa tukaj ni mogoče prebrati",
       "refused": "Te datoteke ni mogoče uporabiti",
       "uploadsWaiting": "Preveč tvojih nalaganj še čaka. Najprej jih dodaj v garderobo ali poskusi znova jutri.",
       "slowDown": "Preveč fotografij naenkrat. Poskusi znova čez minuto.",
       "network": "Ni poslano",
-      "videoPartial": "Današnji krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri."
+      "videoPartial": "Tvoji krediti so pokrili {sent} od {parts} delov. Izberi paket, da pošlješ ostale."
     },
     "seeFound": "{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}",
     "sightings": "V dodanem se pojavi {count}-krat in bo shranjen kot en kos.",
@@ -704,7 +716,7 @@
     "betterLookHint": "Viden je le del. Dvigni ga ali ga položi in ga dodaj znova.",
     "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",
     "reviewHint": "Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.",
-    "allowance": "Danes še {remaining} od {daily} kreditov",
+    "allowance": "{plan, select, free {Še {remaining, plural, one {# brezplačni kredit} two {# brezplačna kredita} few {# brezplačni krediti} other {# brezplačnih kreditov}}} other {Danes še {remaining} kreditov}}",
     "finding": "Iščem kose …",
     "failed": "{source, select, video {Dela videa, dodanega ob {time}, ni bilo mogoče obdelati.} link {Slike s strani trgovine, dodane ob {time}, ni bilo mogoče obdelati.} other {Fotografije, dodane ob {time}, ni bilo mogoče obdelati.}} Kredit je vrnjen.",
     "unknown": "{source, select, video {Obdelava dela videa} link {Obdelava slike s strani trgovine} other {Obdelava fotografije}} se je ustavila na pol poti. Nov poskus ne stane nič.",
@@ -861,10 +873,10 @@
       "kindLabel": "Kaj ustvariti",
       "moodBoard": "Tabla razpoloženja",
       "moodBoardHint": "Tvoji kosi, ki nosijo ta občutek, pripeti in razporejeni na kolaž.",
-      "moodBoardCost": "{credits, plural, one {# kredit od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ga} two {# kredita od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ju} few {# krediti od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih} other {# kreditov od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih}} dobiš nazaj.",
+      "moodBoardCost": "{credits, plural, one {# kredit. Če je v tvoji garderobi zanjo še premalo, ga} two {# kredita. Če je v tvoji garderobi zanjo še premalo, ju} few {# krediti. Če je v tvoji garderobi zanjo še premalo, jih} other {# kreditov. Če je v tvoji garderobi zanjo še premalo, jih}} dobiš nazaj.",
       "sticker": "Nalepka",
       "stickerHint": "Majhna okrasna risba po tvojih besedah, izrezana za kolaž.",
-      "stickerCost": "{credits, plural, one {# kredit od današnjih brezplačnih. Če nalepka ne nastane, ga} two {# kredita od današnjih brezplačnih. Če nalepka ne nastane, ju} few {# krediti od današnjih brezplačnih. Če nalepka ne nastane, jih} other {# kreditov od današnjih brezplačnih. Če nalepka ne nastane, jih}} dobiš nazaj.",
+      "stickerCost": "{credits, plural, one {# kredit. Če nalepka ne nastane, ga} two {# kredita. Če nalepka ne nastane, ju} few {# krediti. Če nalepka ne nastane, jih} other {# kreditov. Če nalepka ne nastane, jih}} dobiš nazaj.",
       "wordsLabel": "Kakšen naj bo občutek?",
       "wordsPlaceholder": "Deževna nedelja v mestu",
       "stickerWordsLabel": "Kaj naj Styld nariše?",
@@ -879,7 +891,7 @@
       "nothing": "Tokrat nalepka ni nastala, kredit je vrnjen.",
       "dismiss": "V redu",
       "problem": {
-        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+        "dailyLimit": "Tvoji 3 brezplačni izrezi so porabljeni.",
         "refused": "Styld tega ne ustvarja.",
         "slowDown": "Preveč naenkrat. Poskusi znova čez minuto.",
         "failed": "Ni uspelo. Poskusi znova."
@@ -991,7 +1003,7 @@
     "firstTitle": "Dodaj svoj prvi kos",
     "firstHint": "Fotografiraj kos ali več razloženih in Styld izreže vsakega posebej.",
     "photoCost": "Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}.",
-    "photoCostLeft": "Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}. Danes jih imaš še {remaining} od {daily}.",
+    "photoCostLeft": "Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}. Imaš jih še {remaining}.",
     "cutting": "Tvoji prvi kosi se izrezujejo.",
     "moreForOutfit": "{count, plural, one {Dodaj še # kos za celo opravo.} two {Dodaj še # kosa za celo opravo.} few {Dodaj še # kose za celo opravo.} other {Dodaj še # kosov za celo opravo.}}",
     "failed": "Tvoja garderoba se ni naložila.",
@@ -1078,7 +1090,7 @@
     "fieldLabel": "Sporočilo Styldu",
     "placeholder": "Vprašaj o svojih oblačilih",
     "send": "Pošlji",
-    "price": "Vsako sporočilo porabi {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}} današnje brezplačne kvote.",
+    "price": "Vsako sporočilo porabi {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}.",
     "writing": "Styld piše …",
     "failed": "Odgovor tokrat ni prišel, kredit je vrnjen. Vprašaj znova.",
     "loadFailed": "Pogovorov ni bilo mogoče naložiti.",
@@ -1087,7 +1099,7 @@
     "openLook": "Odpri videz {name}",
     "problem": {
       "busy": "Styld še odgovarja na tvoje zadnje sporočilo.",
-      "dailyLimit": "Današnji krediti so porabljeni. Vprašaj znova jutri.",
+      "dailyLimit": "Tvoji 3 brezplačni izrezi so porabljeni.",
       "unavailable": "Styld trenutno ne more odgovoriti. Poskusi pozneje.",
       "network": "Ni poslano. Poskusi znova."
     },
@@ -1099,9 +1111,9 @@
   "photos": {
     "back": "Nazaj v galerijo",
     "add": "Dodaj fotografijo",
-    "addCost": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih, za iskanje oblačil na njej.",
+    "addCost": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}, za iskanje oblačil na njej.",
     "sending": "Pošiljam …",
-    "spent": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+    "spent": "Tvoji 3 brezplačni izrezi so porabljeni.",
     "addFailed": "Fotografija ni šla skozi. Poskusi znova.",
     "emptyTitle": "Zapomni si oprave, ki so ti všeč",
     "emptyHint": "Dodaj fotografije sebe v opravah, ki so se obnesle. Styld najde oblačila in jih poveže s tvojimi kosi. Vidiš jih samo ti.",
@@ -1236,10 +1248,10 @@
       "collectHeading": "Kaj zbiramo",
       "collectAccount": "Tvoj račun: e-poštni naslov in ime, ki ga vpišeš. Če se prijaviš z Googlom, nam Google sporoči tvoj potrjeni e-poštni naslov in ime; shranimo samo to.",
       "collectContent": "Kar dodaš: fotografije in videe oblačil in oprav, povezave do strani trgovin, ki jih prilepiš, kose, videze in table, ki jih ustvariš, svoj profil in pogovore s Styldom, stilistom v aplikaciji.",
-      "collectPayment": "Plačila: ko kupiš Premium teden, plačilo izvede Dodo Payments. Izvemo, da je plačilo opravljeno in kdaj, številke tvoje kartice pa nikoli.",
+      "collectPayment": "Plačila: ko izbereš paket, plačilo izvede in naročnino vodi Dodo Payments. Izvemo, kateri paket je plačan, kdaj, do kdaj velja in Dodovo številko stranke zate, številke tvoje kartice pa nikoli.",
       "collectTechnical": "Tehnični podatki: tvoj naslov IP in podatki o brskalniku pridejo na naše strežnike z vsako zahtevo in se zapišejo v dnevnike storitve.",
       "useHeading": "Za kaj jih uporabljamo",
-      "use": "Da Styld deluje zate: da najde oblačila na tvojih fotografijah in videih, jih izreže in nariše njihove čiste slike, hrani tvojo garderobo, predlaga oprave, odgovarja na vprašanja in pokaže, kar se odločiš deliti. Pa tudi za prijavo, štetje dnevnih kreditov, varnost storitve in odpravljanje napak.",
+      "use": "Da Styld deluje zate: da najde oblačila na tvojih fotografijah in videih, jih izreže in nariše njihove čiste slike, hrani tvojo garderobo, predlaga oprave, odgovarja na vprašanja in pokaže, kar se odločiš deliti. Pa tudi za prijavo, štetje kreditov, varnost storitve in odpravljanje napak.",
       "privateHeading": "Kaj ostane zasebno",
       "private": "Tvoja garderoba je privzeto zasebna. Fotografij oprav v tvoji Galeriji ne vidi nihče drug, prav tako nihče ne vidi tvojih izvirnih fotografij: kar deliš, pokaže izrez ali narisano sliko vsakega kosa.",
       "sharing": "Deljenje je tvoja izbira, za vsako stvar posebej. Ko objaviš profil, lahko tablo narediš javno ali deliš videz. Drugi potem vidijo to tablo ali videz in kose na njem, nikoli cele garderobe. Tablo lahko kadar koli znova narediš zasebno.",
@@ -1271,9 +1283,9 @@
       "service": "Styld je aplikacija za garderobo in stil v preizkusni (beta) različici. Pomaga ti dodati oblačila, jih videti kot čiste slike, sestavljati oprave in table ter prositi za nasvete o stilu. Funkcije se lahko spremenijo, Styld pa je na voljo tak, kot je, brez zagotovila, da bo vedno dosegljiv ali brez napak.",
       "accountsHeading": "Tvoj račun",
       "accounts": "Za uporabo Styld moraš imeti vsaj 16 let. Varuj svojo e-pošto in račun Google: kdor lahko prebere tvoje kode za prijavo, lahko uporablja tvoj račun. Za vse, kar se zgodi v njem, odgovarjaš ti.",
-      "creditsHeading": "Krediti in Premium teden",
-      "credits": "Nekatera dejanja, kot sta dodajanje fotografije ali vrtenje slike, stanejo kredite. Vsak dobi 100 brezplačnih kreditov na dan; obnovijo se vsak dan ob polnoči UTC, neporabljeni pa se ne prenesejo. Krediti nimajo denarne vrednosti in jih ni mogoče prodati ali prenesti. Če opravilo spodleti in ne ustvari ničesar, se krediti vrnejo.",
-      "premiumWeek": "Premium teden je eno plačilo 4,99 USD za 500 kreditov na dan, 7 dni od nakupa; ponoven nakup doda še en teden. Ni naročnina in se nikoli ne podaljša sam. Prodaja ga Dodo Payments kot trgovec (merchant of record), zato za plačilo veljajo tudi njegovi pogoji. Razen kjer zakon določa drugače, plačil ne vračamo.",
+      "creditsHeading": "Krediti in paketi",
+      "credits": "Nekatera dejanja, kot sta dodajanje fotografije ali vrtenje slike, stanejo kredite. Nov račun dobi enkrat 3 brezplačne kredite, dovolj za izrez treh fotografij; ne obnovijo se. Potem za vsako dejanje, ki stane kredite, potrebuješ paket. Krediti nimajo denarne vrednosti in jih ni mogoče prodati ali prenesti. Če opravilo spodleti in ne ustvari ničesar, se krediti vrnejo.",
+      "plans": "Vsak paket ti da 500 kreditov na dan, dokler velja; obnovijo se vsak dan ob polnoči UTC, neporabljeni pa se ne prenesejo. Teden je eno plačilo 4,99 USD za 7 dni od nakupa; ponoven nakup doda še en teden, sam se nikoli ne podaljša. Mesec (20 USD na mesec) in Leto (200 USD na leto) sta naročnini: podaljšujeta se, dokler ju ne prekličeš, preklicati pa ju lahko kadar koli v Dodovem portalu za stranke, prek Upravljaj naročnino na strani računa; preklicana naročnina velja do konca plačanega obdobja. Za vedno je eno plačilo 349 USD in nikoli ne poteče. Pakete ti prodaja Dodo Payments kot trgovec (merchant of record), zato za plačilo veljajo tudi njegovi pogoji. Razen kjer zakon določa drugače, plačil ne vračamo.",
       "contentHeading": "Tvoje fotografije in vsebina",
       "content": "Kar dodaš, ostane tvoje. Styldu dovoliš, da to hrani in obdeluje, tudi prek ponudnikov, navedenih v pravilniku o zasebnosti, le zato, da Styld deluje zate in da pokaže, kar se odločiš deliti.",
       "ownPhotos": "Dodajaj samo fotografije, ki jih posnameš ali jih smeš uporabiti. Ne dodajaj fotografij drugih ljudi brez njihovega soglasja in ničesar nezakonitega, spolnega ali sovražnega. Vsebino, ki krši ta pravila, lahko odstranimo.",

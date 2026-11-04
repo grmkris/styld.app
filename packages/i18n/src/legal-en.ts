@@ -11,12 +11,12 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.privacy.collectContent':
     'What you add: photos and videos of your clothes and outfits, links to shop pages you paste, the pieces, looks and boards you make, your profile, and your chats with Styld, the stylist in the app.',
   'legal.privacy.collectPayment':
-    'Payments: when you buy a Premium Week, Dodo Payments takes the payment. We learn that you paid and when, never your card number.',
+    'Payments: when you choose a plan, Dodo Payments takes the payment and keeps your subscription. We learn which plan you paid for, when, until when it runs and Dodo’s customer number for you, never your card number.',
   'legal.privacy.collectTechnical':
     'Technical data: your IP address and browser details reach our servers with every request and appear in our service logs.',
   'legal.privacy.useHeading': 'How we use it',
   'legal.privacy.use':
-    'To run Styld for you: to find the clothes in your photos and videos, cut them out and draw clean pictures of them, keep your wardrobe, suggest outfits, answer your questions and show what you choose to share. Also to sign you in, count your daily credits, keep Styld secure and fix what breaks.',
+    'To run Styld for you: to find the clothes in your photos and videos, cut them out and draw clean pictures of them, keep your wardrobe, suggest outfits, answer your questions and show what you choose to share. Also to sign you in, count your credits, keep Styld secure and fix what breaks.',
   'legal.privacy.privateHeading': 'What stays private',
   'legal.privacy.private':
     'Your wardrobe is private by default. The outfit photos in your Gallery are never shown to anyone else, and nobody else sees the photos you took: what you share shows a cut-out or a drawn picture of each piece.',
@@ -60,11 +60,11 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.terms.accountsHeading': 'Your account',
   'legal.terms.accounts':
     'You must be at least 16 to use Styld. Keep your email and Google account safe: whoever can read your sign-in codes can use your account. You are responsible for what happens in it.',
-  'legal.terms.creditsHeading': 'Credits and Premium Week',
+  'legal.terms.creditsHeading': 'Credits and plans',
   'legal.terms.credits':
-    "Some actions, such as adding a photo or turning a picture, cost credits. Everyone gets 100 free credits a day; they renew each day at midnight UTC, and unused credits don't carry over. Credits have no cash value and can't be sold or transferred. When a task fails and makes nothing, its credits come back.",
-  'legal.terms.premiumWeek':
-    'Premium Week is one payment of $4.99 for 500 credits a day for 7 days from the purchase; buying again adds another week. It is not a subscription and never renews. Dodo Payments sells it to you as the merchant of record, so its terms also apply to the payment. Except where the law requires otherwise, payments are non-refundable.',
+    "Some actions, such as adding a photo or turning a picture, cost credits. A new account gets 3 free credits once, enough to cut out three photos; they don't renew. After that, every action that costs credits needs a plan. Credits have no cash value and can't be sold or transferred. When a task fails and makes nothing, its credits come back.",
+  'legal.terms.plans':
+    "Every plan gives you 500 credits a day while it runs; they renew each day at midnight UTC, and unused credits don't carry over. Week is one payment of $4.99 for 7 days from the purchase; buying again adds another week, and it never renews. Month ($20 a month) and Year ($200 a year) are subscriptions: they renew until you cancel, and you can cancel any time in Dodo's customer portal, through Manage subscription on your account page; a cancelled subscription runs to the end of the period you paid for. Lifetime is one payment of $349 and never ends. Dodo Payments sells the plans to you as the merchant of record, so its terms also apply to the payment. Except where the law requires otherwise, payments are non-refundable.",
   'legal.terms.contentHeading': 'Your photos and content',
   'legal.terms.content':
     'What you add stays yours. You allow Styld to store and process it, including through the providers named in the privacy policy, only to run Styld for you and to show what you choose to share.',

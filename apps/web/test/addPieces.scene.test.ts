@@ -39,7 +39,7 @@ describe('what adding costs', () => {
           modifyFields(page, { maybeAllowance: () => Option.some({ remaining: 42, daily: 100 }) }),
         ),
       ),
-      expect(text('A photo costs 1 credit, and 30 seconds of video 5. You have 42 left today.')).toExist(),
+      expect(text('A photo costs 1 credit, and 30 seconds of video 5. You have 42 left.')).toExist(),
     )
   })
 })
@@ -67,7 +67,7 @@ describe('reading a video on the add page', () => {
           prepared: Option.none(),
         }),
       ),
-      expect(text("Today's credits covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
+      expect(text('Your credits covered 1 of 2 parts. Choose a plan to send the rest.')).toExist(),
     )
   })
 })

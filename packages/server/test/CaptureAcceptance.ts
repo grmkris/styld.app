@@ -1,7 +1,7 @@
 import { verifySignedImage } from './SignedMediaAcceptance.ts'
 import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
-import { dailyCredits } from '@styld/protocol'
+import { memberDailyCredits } from '@styld/protocol'
 import { Schema } from 'effect'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
@@ -247,7 +247,7 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
     expect((await send(call, '/api/native/spend', 'POST', { accountId, leave: nativeDailyAllowance })).status).toBe(204)
   expect(await tray(owner)).toEqual({
     captures: [],
-    allowance: { remaining: nativeDailyAllowance, daily: dailyCredits },
+    allowance: { remaining: nativeDailyAllowance, daily: memberDailyCredits },
   })
   const { photo, first } = await verifyPhoto(origin, owner, other)
   const { video, still, clip, last, lastCapture } = await verifyAllowance(origin, owner)

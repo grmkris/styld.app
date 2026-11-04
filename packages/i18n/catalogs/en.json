@@ -65,16 +65,31 @@
     "deleteAccountConfirm": "Delete my account",
     "deleteAccountFailed": "Styld couldn't delete your account just now. Try again in a moment.",
     "credits": {
-      "title": "Credits",
       "today": "{remaining} of {daily} credits left today",
-      "premiumUntil": "Premium until {date}",
-      "premiumWeek": "Premium week · {price}",
-      "premiumAbout": "{daily} credits a day for {days} days, from the moment you pay. One payment, no subscription.",
-      "paid": "Payment received. Premium starts in a moment.",
-      "paidSlow": "Payment received. Your premium week shows here within a few minutes.",
+      "free": "{free} of your {total} free cut-outs left",
+      "paid": "Payment received. Your plan starts in a moment.",
+      "paidSlow": "Payment received. Your plan shows here within a few minutes.",
       "checkoutFailed": "Styld couldn't open the payment page just now. Try again in a moment.",
       "loadFailed": "Styld couldn't read your credits just now.",
-      "more": "Get more credits"
+      "more": "Choose a plan to keep going."
+    },
+    "plans": {
+      "title": "Plans",
+      "about": "Each plan gives you {daily} credits a day while it lasts.",
+      "week": "Week",
+      "weekPrice": "{price} once, for 7 days",
+      "monthly": "Month",
+      "monthlyPrice": "{price} a month, until you cancel",
+      "yearly": "Year",
+      "yearlyPrice": "{price} a year, until you cancel",
+      "lifetime": "Lifetime",
+      "lifetimePrice": "{price} once, never ends",
+      "choose": "Choose",
+      "currentUntil": "{plan} until {date}",
+      "currentRenews": "{plan}, renews on {date}",
+      "currentLifetime": "Lifetime, never ends",
+      "manage": "Manage subscription",
+      "portalFailed": "Styld couldn't open your subscription page just now. Try again in a moment."
     }
   },
   "telemetryConsent": {
@@ -148,7 +163,7 @@
       "problem": {
         "busy": "A clean picture of this piece is already being drawn.",
         "photo": "This piece shows your original photo, which is never sent to be drawn.",
-        "dailyLimit": "Today's credits are used up. Try again tomorrow.",
+        "dailyLimit": "Your 3 free cut-outs are used.",
         "network": "The drawing could not be asked for. Try again."
       },
       "backPhoto": "Your photo of the back"
@@ -164,7 +179,7 @@
       "problem": {
         "busy": "A turn of this piece is already being made.",
         "picture": "This piece needs a clean picture first.",
-        "dailyLimit": "Today's credits are used up. Try again tomorrow.",
+        "dailyLimit": "Your 3 free cut-outs are used.",
         "network": "The turn could not be asked for. Try again.",
         "build": "The turn could not be prepared on this device. Open the piece again to retry."
       }
@@ -410,10 +425,7 @@
     },
     "price": {
       "title": "What it costs",
-      "free": "Free",
-      "freeText": "{credits, plural, one {# credit} other {# credits}} every day, no card. Adding a photo uses one.",
-      "premium": "Premium week",
-      "premiumText": "{price} once: {credits, plural, one {# credit} other {# credits}} a day for {days, plural, one {# day} other {# days}}."
+      "lead": "Try {free} cut-outs free, then from {price} a week. Every plan gives you {daily} credits a day."
     },
     "faq": {
       "title": "Questions",
@@ -422,7 +434,7 @@
       "app": "Do I need to install an app?",
       "appAnswer": "No. Styld runs in the browser on any phone or computer, and in ChatGPT and Claude.",
       "cost": "What does it cost?",
-      "costAnswer": "Nothing to start: {credits, plural, one {# credit} other {# credits}} every day, and adding a photo uses one. A premium week is {price} once, for more credits a day for seven days.",
+      "costAnswer": "Your first {free} cut-outs are free, no card. Then a plan gives you {daily} credits a day: {week} for a week, {monthly} a month, {yearly} a year, or {lifetime} once for life. A month or a year renews until you cancel, which you can do any time.",
       "delete": "Can I delete everything?",
       "deleteAnswer": "Yes. Deleting your account in Account removes every piece, photo, board and look with it."
     },
@@ -675,7 +687,7 @@
     "addTitle": "Add clothes",
     "addHint": "Photos, or a video up to 15 minutes filmed slowly from about a metre away. Every piece is cut out for you to keep or drop.",
     "cost": "A photo costs {photo, plural, one {# credit} other {# credits}}, and 30 seconds of video {video}.",
-    "costLeft": "A photo costs {photo, plural, one {# credit} other {# credits}}, and 30 seconds of video {video}. You have {remaining} left today.",
+    "costLeft": "A photo costs {photo, plural, one {# credit} other {# credits}}, and 30 seconds of video {video}. You have {remaining} left.",
     "chooseTitle": "Upload from library",
     "chooseHint": "Photos or a video",
     "notSupported": "{name} isn't a photo or video Styld can use",
@@ -685,14 +697,14 @@
     "preparingVideo": "Reading the video…",
     "sent": "Sent",
     "problem": {
-      "dailyLimit": "Today's credits are used up. Try again tomorrow.",
+      "dailyLimit": "Your 3 free cut-outs are used.",
       "videoTooLong": "Videos can be up to 15 minutes long",
       "videoUnreadable": "This video can't be read here",
       "refused": "This file can't be used",
       "uploadsWaiting": "Too many of your uploads are still waiting. Add them to your wardrobe first, or try again tomorrow.",
       "slowDown": "Too many photos at once. Try again in a minute.",
       "network": "Didn't send",
-      "videoPartial": "Today's credits covered {sent} of {parts} parts. Send the rest tomorrow."
+      "videoPartial": "Your credits covered {sent} of {parts} parts. Choose a plan to send the rest."
     },
     "seeFound": "{count, plural, one {See what's in # file} other {See what's in # files}}",
     "sightings": "Seen {count} times in what you added, kept as one piece.",
@@ -704,7 +716,7 @@
     "betterLookHint": "Only part of it shows. Hold it up or lay it out flat, and add it again.",
     "foundTitle": "{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}",
     "reviewHint": "They're cut out and ready. Untick anything that isn't yours.",
-    "allowance": "{remaining} of {daily} credits left today",
+    "allowance": "{plan, select, free {{remaining, plural, one {# free credit left} other {# free credits left}}} other {{remaining} credits left today}}",
     "finding": "Finding pieces…",
     "failed": "{source, select, video {A part of a video added at {time} couldn't be processed.} link {The picture from a shop's page added at {time} couldn't be processed.} other {A photo added at {time} couldn't be processed.}} Its credit is back.",
     "unknown": "{source, select, video {A part of a video} link {The picture from a shop's page} other {A photo}} stopped halfway. Trying again won't cost anything.",
@@ -861,10 +873,10 @@
       "kindLabel": "What to make",
       "moodBoard": "A mood board",
       "moodBoardHint": "Your pieces that carry the feeling, pinned and laid out on the collage.",
-      "moodBoardCost": "{credits, plural, one {# credit from today’s free allowance. It comes back} other {# credits from today’s free allowance. They come back}} if your wardrobe holds too little for it yet.",
+      "moodBoardCost": "{credits, plural, one {# credit. It comes back} other {# credits. They come back}} if your wardrobe holds too little for it yet.",
       "sticker": "A sticker",
       "stickerHint": "A small decorative drawing from your words, cut out for the collage.",
-      "stickerCost": "{credits, plural, one {# credit from today’s free allowance. It comes back} other {# credits from today’s free allowance. They come back}} if the sticker doesn’t come out.",
+      "stickerCost": "{credits, plural, one {# credit. It comes back} other {# credits. They come back}} if the sticker doesn’t come out.",
       "wordsLabel": "What should it feel like?",
       "wordsPlaceholder": "A rainy Sunday in the city",
       "stickerWordsLabel": "What should Styld draw?",
@@ -879,7 +891,7 @@
       "nothing": "No sticker came out this time, and your credit is back.",
       "dismiss": "OK",
       "problem": {
-        "dailyLimit": "Today’s credits are spent. Try again tomorrow.",
+        "dailyLimit": "Your 3 free cut-outs are used.",
         "refused": "Styld doesn’t make that.",
         "slowDown": "Too many at once. Try again in a minute.",
         "failed": "That didn’t go through. Try again."
@@ -991,7 +1003,7 @@
     "firstTitle": "Add your first piece",
     "firstHint": "Photograph a piece, or a few laid out, and Styld cuts each one out.",
     "photoCost": "A photo costs {credits, plural, one {# credit} other {# credits}}.",
-    "photoCostLeft": "A photo costs {credits, plural, one {# credit} other {# credits}}. You have {remaining} of {daily} left today.",
+    "photoCostLeft": "A photo costs {credits, plural, one {# credit} other {# credits}}. You have {remaining} left.",
     "cutting": "Your first pieces are being cut out.",
     "moreForOutfit": "{count, plural, one {Add # more piece for a whole outfit.} other {Add # more pieces for a whole outfit.}}",
     "failed": "Your wardrobe didn’t load.",
@@ -1078,7 +1090,7 @@
     "fieldLabel": "Message to Styld",
     "placeholder": "Ask about your clothes",
     "send": "Send",
-    "price": "Each message uses {credits, plural, one {# credit} other {# credits}} of today’s free allowance.",
+    "price": "Each message uses {credits, plural, one {# credit} other {# credits}}.",
     "writing": "Styld is writing…",
     "failed": "No answer came this time, and your credit is back. Ask again.",
     "loadFailed": "Your chats could not load.",
@@ -1087,7 +1099,7 @@
     "openLook": "Open the look {name}",
     "problem": {
       "busy": "Styld is still answering your last message.",
-      "dailyLimit": "Today’s credits are spent. Ask again tomorrow.",
+      "dailyLimit": "Your 3 free cut-outs are used.",
       "unavailable": "Styld cannot answer just now. Try again later.",
       "network": "Not sent. Try again."
     },
@@ -1099,9 +1111,9 @@
   "photos": {
     "back": "Back to the gallery",
     "add": "Add a photo",
-    "addCost": "{credits, plural, one {# credit} other {# credits}} from today’s free allowance, for finding the clothes in it.",
+    "addCost": "{credits, plural, one {# credit} other {# credits}}, for finding the clothes in it.",
     "sending": "Sending…",
-    "spent": "Today’s credits are spent. Try again tomorrow.",
+    "spent": "Your 3 free cut-outs are used.",
     "addFailed": "That photo didn’t go through. Try again.",
     "emptyTitle": "Remember the outfits you love",
     "emptyHint": "Add photos of yourself in outfits that worked. Styld finds the clothes and links them to your pieces. Only you see them.",
@@ -1236,10 +1248,10 @@
       "collectHeading": "What we collect",
       "collectAccount": "Your account: your email address and the name you give. If you sign in with Google, Google tells us your verified email address and your name, and we keep only those.",
       "collectContent": "What you add: photos and videos of your clothes and outfits, links to shop pages you paste, the pieces, looks and boards you make, your profile, and your chats with Styld, the stylist in the app.",
-      "collectPayment": "Payments: when you buy a Premium Week, Dodo Payments takes the payment. We learn that you paid and when, never your card number.",
+      "collectPayment": "Payments: when you choose a plan, Dodo Payments takes the payment and keeps your subscription. We learn which plan you paid for, when, until when it runs and Dodo’s customer number for you, never your card number.",
       "collectTechnical": "Technical data: your IP address and browser details reach our servers with every request and appear in our service logs.",
       "useHeading": "How we use it",
-      "use": "To run Styld for you: to find the clothes in your photos and videos, cut them out and draw clean pictures of them, keep your wardrobe, suggest outfits, answer your questions and show what you choose to share. Also to sign you in, count your daily credits, keep Styld secure and fix what breaks.",
+      "use": "To run Styld for you: to find the clothes in your photos and videos, cut them out and draw clean pictures of them, keep your wardrobe, suggest outfits, answer your questions and show what you choose to share. Also to sign you in, count your credits, keep Styld secure and fix what breaks.",
       "privateHeading": "What stays private",
       "private": "Your wardrobe is private by default. The outfit photos in your Gallery are never shown to anyone else, and nobody else sees the photos you took: what you share shows a cut-out or a drawn picture of each piece.",
       "sharing": "Sharing is your choice, one thing at a time. Once you publish your profile, you can make a board public or share a look. Others then see that board or look and the pieces on it, never your whole wardrobe. You can make a board private again at any time.",
@@ -1271,9 +1283,9 @@
       "service": "Styld is a wardrobe and styling app in beta. It helps you add your clothes, see them as clean pictures, put together outfits and boards, and ask for styling advice. Features may change, and Styld is provided as is, with no promise that it is always available or free of errors.",
       "accountsHeading": "Your account",
       "accounts": "You must be at least 16 to use Styld. Keep your email and Google account safe: whoever can read your sign-in codes can use your account. You are responsible for what happens in it.",
-      "creditsHeading": "Credits and Premium Week",
-      "credits": "Some actions, such as adding a photo or turning a picture, cost credits. Everyone gets 100 free credits a day; they renew each day at midnight UTC, and unused credits don't carry over. Credits have no cash value and can't be sold or transferred. When a task fails and makes nothing, its credits come back.",
-      "premiumWeek": "Premium Week is one payment of $4.99 for 500 credits a day for 7 days from the purchase; buying again adds another week. It is not a subscription and never renews. Dodo Payments sells it to you as the merchant of record, so its terms also apply to the payment. Except where the law requires otherwise, payments are non-refundable.",
+      "creditsHeading": "Credits and plans",
+      "credits": "Some actions, such as adding a photo or turning a picture, cost credits. A new account gets 3 free credits once, enough to cut out three photos; they don't renew. After that, every action that costs credits needs a plan. Credits have no cash value and can't be sold or transferred. When a task fails and makes nothing, its credits come back.",
+      "plans": "Every plan gives you 500 credits a day while it runs; they renew each day at midnight UTC, and unused credits don't carry over. Week is one payment of $4.99 for 7 days from the purchase; buying again adds another week, and it never renews. Month ($20 a month) and Year ($200 a year) are subscriptions: they renew until you cancel, and you can cancel any time in Dodo's customer portal, through Manage subscription on your account page; a cancelled subscription runs to the end of the period you paid for. Lifetime is one payment of $349 and never ends. Dodo Payments sells the plans to you as the merchant of record, so its terms also apply to the payment. Except where the law requires otherwise, payments are non-refundable.",
       "contentHeading": "Your photos and content",
       "content": "What you add stays yours. You allow Styld to store and process it, including through the providers named in the privacy policy, only to run Styld for you and to show what you choose to share.",
       "ownPhotos": "Add only photos you took or have the right to use. Don't add photos of other people without their consent, or anything unlawful, sexual or hateful. We may remove content that breaks these rules.",

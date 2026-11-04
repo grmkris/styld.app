@@ -93,10 +93,11 @@ export class NotFound extends Schema.TaggedError<NotFound>()(
 ) {}
 
 /** Which of the account's allowances is spent. */
-export const Limit = Schema.Literals(['dailyCredits', 'thinking', 'reports', 'uploads', 'styleNotes'])
+export const Limit = Schema.Literals(['credits', 'dailyCredits', 'thinking', 'reports', 'uploads', 'styleNotes'])
 export type Limit = typeof Limit.Type
 
-/** One of the account's allowances is spent: today's credits (back at `resetsAt`), today's Thinking outfits, this
+/** One of the account's allowances is spent: the free credits of an account without a plan (none come back), a
+ * member's credits today (back at `resetsAt`), today's Thinking outfits, this
  * hour's reports, the uploads that may wait unused, or the notes Styld keeps. */
 export class LimitReached extends Schema.TaggedError<LimitReached>()(
   'LimitReached',
@@ -104,10 +105,17 @@ export class LimitReached extends Schema.TaggedError<LimitReached>()(
   {
     httpApiStatus: 429,
     guide: byCase<Limit>('limit', {
+      credits: {
+        code: 'credits_used',
+        message: 'Your 3 free cut-outs are used. Choose a plan to keep going.',
+        recovery:
+          'Tell the person to choose a plan at https://styld.app/account: a week, a month, a year or lifetime, each with 500 credits a day.',
+        retryable: false,
+      },
       dailyCredits: {
         code: 'daily_limit',
-        message: 'Today’s credits are used up.',
-        recovery: 'Try again after {resetsAt}, or the person can take a Premium week on their Styld account page.',
+        message: 'Today’s 500 credits are used up.',
+        recovery: 'Try again after {resetsAt}; the plan brings 500 more each day.',
         retryable: false,
       },
       thinking: {

@@ -20,7 +20,7 @@ import {
 import { GenerationApi } from './Generation.ts'
 import { TryOnApi } from './TryOn.ts'
 import { LinkApi } from './Link.ts'
-import { BillingApi } from './Billing.ts'
+import { BillingApi, MembershipGrantApi } from './Billing.ts'
 import { GalleryOperatorApi } from './GalleryOperator.ts'
 import { SeedApi } from './Seed.ts'
 import { PreferencesApi } from './Preferences.ts'
@@ -486,6 +486,7 @@ export class StyldApi extends HttpApi.make('styld')
   .add(PhotoApi)
   .add(ImportApi)
   .add(PictureBackfillApi)
+  .add(MembershipGrantApi)
   .add(GalleryOperatorApi)
   .add(SeedApi)
   .add(PreferencesApi)

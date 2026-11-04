@@ -6,11 +6,19 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { Billing } from './Billing.ts'
 
-/** The website's credits and the premium week's checkout, for the session's account. */
+/** The website's credits, a plan's checkout and the customer portal, for the session's account. */
 export const billingHandlers = HttpApiBuilder.group(StyldApi, 'billing', (handlers) =>
   Effect.map(Billing, (billing) =>
-    handlers.handle('credits', () => billing.credits()).handle('checkout', () => billing.checkout()),
+    handlers
+      .handle('credits', () => billing.credits())
+      .handle('checkout', ({ payload }) => billing.checkout(payload.plan))
+      .handle('portal', () => billing.portal()),
   ),
+)
+
+/** The operator's grant of a lifetime membership, which `tools/grant-membership.ts` calls. */
+export const membershipGrantHandlers = HttpApiBuilder.group(StyldApi, 'membershipGrant', (handlers) =>
+  Effect.map(Billing, (billing) => handlers.handle('grantMembership', ({ payload }) => billing.grant(payload.email))),
 )
 
 /** The path Dodo's webhook endpoints are registered at, in test and live mode alike. */

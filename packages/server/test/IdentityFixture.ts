@@ -33,6 +33,17 @@ export const seedIdentity = (database: QueryDatabaseClient, id = 'native-identit
           'INSERT INTO styld_auth_passwords (module_id, subject_id, credential_id, credential_revision, verifier_version, verifier, normalization) VALUES (?, ?, ?, ?, ?, ?, ?)',
         )
         .bind(moduleId, id, `${id}-credential`, 'revision-1', 'version-1', Redacted.value(verifier), 'none'),
+      // A member for life, so the native journeys spend the members' daily allowance (owner, 4 November 2026: without
+      // a plan an account has only 3 free credits); an id starting `native-free` stays without a plan.
+      ...(id.startsWith('native-free')
+        ? []
+        : [
+            database
+              .prepare(
+                "INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES (?, 'lifetime', NULL, 'active', ?)",
+              )
+              .bind(id, now),
+          ]),
     ])
   }).pipe(Effect.provide(WorkerdServices.layer))
 

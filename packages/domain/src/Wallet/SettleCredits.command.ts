@@ -14,6 +14,9 @@ export class CreditsSettled extends Domain.Event('CreditsSettled', {
   outcome: Settlement,
   amount: Credits,
   dailyAfter: Credits,
+  /** The free credits left after a refund gave back the ones the reservation took from them; absent when it took
+   * none. */
+  freeAfter: Schema.optionalKey(Credits),
 }) {}
 // Sent once the work ended: consumed when it succeeded, refunded when it failed or its outcome is unknown.
 export class SettleCredits extends Domain.Command('SettleCredits', {

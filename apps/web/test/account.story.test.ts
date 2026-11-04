@@ -35,17 +35,24 @@ const names = (commands: ReadonlyArray<{ readonly name: string }> | undefined) =
   (commands ?? []).map(({ name }) => name)
 
 describe('the account’s credits', () => {
-  const waiting = { remaining: 40, daily: 100, premiumUntil: null, premiumAvailable: true }
-  const premium = { remaining: 440, daily: 500, premiumUntil: '2026-11-11T18:00:00.000Z', premiumAvailable: true }
+  const waiting = { remaining: 3, daily: 0, free: 3, membership: null, plansAvailable: true, manageable: false }
+  const member = {
+    remaining: 503,
+    daily: 500,
+    free: 3,
+    membership: { plan: 'week' as const, until: '2026-11-11T18:00:00.000Z', renews: false },
+    plansAvailable: true,
+    manageable: true,
+  }
 
-  test('back from the checkout, reads the credits again until the week shows', () => {
+  test('back from the checkout, reads the credits again until the plan shows', () => {
     const entered = enter(true)(init())
     expect(entered.model.arrival).toEqual(Arrival.Paid({ readsLeft: paidReads }))
     expect(names(entered.commands)).toEqual(expect.arrayContaining(['ReadProfile', 'ReadCredits']))
     const first = update(entered.model, Message.SucceededReadCredits({ credits: waiting }))
     expect(names(first.commands)).toEqual(['ReadCreditsSoon'])
     expect(first.model.arrival).toEqual(Arrival.Paid({ readsLeft: paidReads - 1 }))
-    const shown = update(first.model, Message.SucceededReadCredits({ credits: premium }))
+    const shown = update(first.model, Message.SucceededReadCredits({ credits: member }))
     expect(names(shown.commands)).toEqual([])
   })
 
@@ -63,11 +70,19 @@ describe('the account’s credits', () => {
     expect(names(update(entered.model, Message.SucceededReadCredits({ credits: waiting })).commands)).toEqual([])
   })
 
-  test('the premium week opens one checkout at a time', () => {
-    const opening = update(init(), Message.ClickedPremiumWeek())
+  test('a plan opens one checkout at a time, and the portal waits for it', () => {
+    const opening = update(init(), Message.ClickedChoosePlan({ plan: 'yearly' }))
     expect(names(opening.commands)).toEqual(['OpenCheckout'])
-    expect(opening.model.checkout).toEqual(Checkout.Opening())
-    expect(names(update(opening.model, Message.ClickedPremiumWeek()).commands)).toEqual([])
+    expect(opening.model.checkout).toEqual(Checkout.Opening({ plan: 'yearly' }))
+    expect(names(update(opening.model, Message.ClickedChoosePlan({ plan: 'week' })).commands)).toEqual([])
+    expect(names(update(opening.model, Message.ClickedManageSubscription()).commands)).toEqual([])
     expect(update(opening.model, Message.FailedOpenCheckout()).model.checkout).toEqual(Checkout.Failed())
+  })
+
+  test('Manage subscription opens the customer portal, and says when it could not', () => {
+    const opening = update(init(), Message.ClickedManageSubscription())
+    expect(names(opening.commands)).toEqual(['OpenPortal'])
+    expect(opening.model.checkout).toEqual(Checkout.OpeningPortal())
+    expect(update(opening.model, Message.FailedOpenPortal()).model.checkout).toEqual(Checkout.PortalFailed())
   })
 })

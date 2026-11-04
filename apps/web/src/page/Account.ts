@@ -1,6 +1,6 @@
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
-import { CreditBalance, Profile } from '@styld/protocol'
+import { CreditBalance, Plan, Profile } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { load } from 'foldkit/navigation'
@@ -25,11 +25,17 @@ export const Copy = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
 export const CreditsData = AsyncData.Schema(CreditBalance, Schema.Literal('Unavailable'))
 export type CreditsData = typeof CreditsData.schema.Type
 
-/** Opening the premium week's checkout: the request, then the browser leaves for Dodo's page. */
-export const Checkout = defineTaggedUnion({ Idle: {}, Opening: {}, Failed: {} })
+/** Opening a plan's checkout or the customer portal: the request, then the browser leaves for Dodo's page. */
+export const Checkout = defineTaggedUnion({
+  Idle: {},
+  Opening: { plan: Plan },
+  OpeningPortal: {},
+  Failed: {},
+  PortalFailed: {},
+})
 
-/** Back from Dodo's checkout (`/account?premium=1`), the week comes from Dodo's webhook a moment later: the credits are
- * read again a few times until premium shows. */
+/** Back from Dodo's checkout (`/account?premium=1`), the plan comes from Dodo's webhook a moment later: the credits are
+ * read again a few times until it shows. */
 export const Arrival = defineTaggedUnion({ Plain: {}, Paid: { readsLeft: Schema.Int } })
 
 /** How many times the credits are read again after a payment, three seconds apart. */
@@ -80,8 +86,10 @@ export const Message = defineMessageUnion({
   SucceededReadCredits: { credits: CreditBalance },
   FailedReadCredits: {},
   ClickedRetryCredits: {},
-  ClickedPremiumWeek: {},
+  ClickedChoosePlan: { plan: Plan },
   FailedOpenCheckout: {},
+  ClickedManageSubscription: {},
+  FailedOpenPortal: {},
   LeftForCheckout: {},
 })
 export type Message = typeof Message.Type
@@ -134,16 +142,29 @@ export const ReadCreditsSoon = Command.define('ReadCreditsSoon', {
   execute: Effect.andThen(Effect.sleep('3 seconds'), readCredits),
 })
 
-/** Dodo's hosted checkout for a premium week: a top-level navigation, which the page's CSP allows (a form post to
- * Dodo it would not). */
+/** Dodo's hosted checkout for a plan: a top-level navigation, which the page's CSP allows (a form post to Dodo it
+ * would not). */
 export const OpenCheckout = Command.define('OpenCheckout', {
+  args: { plan: Plan },
   messages: [Message.LeftForCheckout, Message.FailedOpenCheckout],
+  execute: ({ plan }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const { url } = yield* api.billing.checkout({ payload: { operationId: yield* drawOperationId(), plan } })
+      yield* load(url)
+      return Message.LeftForCheckout()
+    }).pipe(Effect.orElseSucceed(() => Message.FailedOpenCheckout())),
+})
+
+/** Dodo's customer portal, where a subscription is cancelled and receipts are read. */
+export const OpenPortal = Command.define('OpenPortal', {
+  messages: [Message.LeftForCheckout, Message.FailedOpenPortal],
   execute: Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    const { url } = yield* api.billing.checkout({ payload: { operationId: yield* drawOperationId() } })
+    const { url } = yield* api.billing.portal({ payload: { operationId: yield* drawOperationId() } })
     yield* load(url)
     return Message.LeftForCheckout()
-  }).pipe(Effect.orElseSucceed(() => Message.FailedOpenCheckout())),
+  }).pipe(Effect.orElseSucceed(() => Message.FailedOpenPortal())),
 })
 
 const showMeFold = ShowMe.heldBy<Model, Message>((message) => Message.GotShowMeMessage({ message }))
@@ -165,12 +186,12 @@ export const enter =
       Update.foldChildStep({ update: Taste.enter, ...tasteFold }),
     ])
 
-/** Read credits: after a payment, read again until the week shows or the reads run out. */
+/** Read credits: after a payment, read again until the plan shows or the reads run out. */
 const readCreditsAgain = (model: Model, credits: CreditBalance): UpdateReturn =>
   Arrival.match(model.arrival, {
     Plain: () => ({ model }),
     Paid: ({ readsLeft }) =>
-      credits.premiumUntil === null && readsLeft > 0
+      credits.membership === null && readsLeft > 0
         ? {
             model: modifyFields(model, { arrival: () => Arrival.Paid({ readsLeft: readsLeft - 1 }) }),
             commands: [ReadCreditsSoon()],
@@ -179,6 +200,10 @@ const readCreditsAgain = (model: Model, credits: CreditBalance): UpdateReturn =>
   })
 
 // UPDATE
+
+/** Whether Dodo's checkout or portal is already being opened: one at a time. */
+const opening = (model: Model) =>
+  Checkout.guards.Opening(model.checkout) || Checkout.guards.OpeningPortal(model.checkout)
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
@@ -235,11 +260,19 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onNone: () => ({ model }),
         onSome: (credits) => ({ model: modifyFields(model, { credits: () => credits }), commands: [ReadCredits()] }),
       }),
-    ClickedPremiumWeek: () =>
-      Checkout.guards.Opening(model.checkout)
+    ClickedChoosePlan: ({ plan }) =>
+      opening(model)
         ? { model }
-        : { model: modifyFields(model, { checkout: () => Checkout.Opening() }), commands: [OpenCheckout()] },
+        : {
+            model: modifyFields(model, { checkout: () => Checkout.Opening({ plan }) }),
+            commands: [OpenCheckout({ plan })],
+          },
+    ClickedManageSubscription: () =>
+      opening(model)
+        ? { model }
+        : { model: modifyFields(model, { checkout: () => Checkout.OpeningPortal() }), commands: [OpenPortal()] },
     // The browser is on its way to Dodo; the button stays busy until the page goes.
     LeftForCheckout: () => ({ model }),
     FailedOpenCheckout: () => ({ model: modifyFields(model, { checkout: () => Checkout.Failed() }) }),
+    FailedOpenPortal: () => ({ model: modifyFields(model, { checkout: () => Checkout.PortalFailed() }) }),
   })
