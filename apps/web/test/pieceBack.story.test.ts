@@ -6,7 +6,7 @@ import { pieceFixture } from './WardrobeFixtures.ts'
 const piece = pieceFixture('jeans')
 
 describe('a piece’s back', () => {
-  test('a picked photo becomes the back, shown at once; removing it shows the front again', () => {
+  test('a picked photo becomes the back, and the page is told the piece changed', () => {
     const file = new File(['back'], 'back.jpg', { type: 'image/jpeg' })
     const withBack = pieceFixture('jeans', { hasBack: true })
     story(
@@ -16,21 +16,18 @@ describe('a piece’s back', () => {
       Command.expectExact(SetBack({ pieceId: piece.id, file })),
       model(({ work }) => expect(work).toBe('sending')),
       Command.resolve(SetBack, Message.SucceededBack({ piece: withBack })),
-      model(({ side, work }) => {
-        expect(side).toBe('back')
-        expect(work).toBe('idle')
-      }),
+      model(({ work }) => expect(work).toBe('idle')),
       expectOutMessage({ _tag: 'ChangedPiece', piece: withBack }),
     )
   })
 
-  test('removing the back shows the front, and one that does not go through says so', () => {
+  test('removing the back tells the page, and one that does not go through says so', () => {
     story(
       update,
-      given({ ...init(piece.id), side: 'back' }),
+      given(init(piece.id)),
       message(Message.ClickedRemoveBack()),
       Command.resolve(RemoveBack, Message.SucceededBack({ piece })),
-      model(({ side }) => expect(side).toBe('front')),
+      expectOutMessage({ _tag: 'ChangedPiece', piece }),
       message(Message.ClickedRemoveBack()),
       Command.resolve(RemoveBack, Message.FailedBack()),
       model(({ work }) => expect(work).toBe('failed')),

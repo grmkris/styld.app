@@ -1,4 +1,3 @@
-import { cdn } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import type { Piece } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
@@ -11,7 +10,7 @@ import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { editIcon, loader } from '../Icon.ts'
 import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, Message, type Model, ShowTurn, TurnWork } from './Piece.ts'
+import { Deletion, Message, type Model, TurnWork } from './Piece.ts'
 import { type Draft, DraftSave } from './PieceDraft.ts'
 import { type PieceCategory, piecePickers } from './PieceFields.ts'
 
@@ -27,17 +26,12 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import * as styles from './PieceView.styles.ts'
 import { picturePanel } from './PiecePictureView.ts'
+import { carousel } from './PieceCarouselView.ts'
 import { factsView } from './PieceFactsView.ts'
 import * as PieceBackView from './PieceBackView.ts'
 import * as PieceLooksView from './PieceLooksView.ts'
 import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
-
-/** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
-const fullPath = (piece: Piece) => cdn.piece(piece, 'full')
-
-/** The piece's back; a new back is a new piece version, so a new address. */
-const backPath = cdn.pieceBack
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -255,57 +249,6 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
   h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
 ]
 
-/** The piece's picture: its back when that side is chosen, its turn, played on tap, once the clean picture it shows
- * has one ready; else the image. */
-const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const rotation = Option.match(model.draft, {
-    onNone: () => piece.rotation,
-    onSome: (draft) => draft.rotation,
-  })
-  // A quarter turn as a data attribute: zyzz composes only statically known styles, so the rotation is a selector.
-  const pictureStyle = [
-    h.DataAttribute('rotation', String(rotation)),
-    ...styled(h, cx(styles.photo(), styles.rotated())),
-  ]
-  if (piece.hasBack && model.back.side === 'back')
-    return h.img([
-      h.Src(backPath(piece)),
-      h.Alt(format(locale, 'wardrobe.backAlt', { name: pieceLabel(piece, locale) })),
-      ...pictureStyle,
-    ])
-  const turn = piece.turn
-  const still = (underPlayer: boolean) =>
-    h.img([
-      h.Src(fullPath(piece)),
-      h.Alt(pieceLabel(piece, locale)),
-      ...(underPlayer ? [h.AriaHidden(true)] : []),
-      ...pictureStyle,
-    ])
-  if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean') return still(false)
-  const sheet = turn.media?.sheet
-  if (sheet === undefined) return still(false)
-  // The still stays under the player until its sheet has loaded and drawn its first frame.
-  return h.div(styled(h, styles.turnStack()), [
-    model.turnShown ? h.empty : still(true),
-    h.button(
-      [
-        h.Type('button'),
-        h.AriaLabel(format(locale, 'wardrobe.turn.play', {})),
-        h.AriaPressed('false'),
-        ...styled(h, styles.turnButton()),
-      ],
-      [
-        h.canvas([
-          h.Role('img'),
-          h.AriaLabel(pieceLabel(piece, locale)),
-          h.OnMount(ShowTurn({ sheet, layout: turn.layout })),
-          ...pictureStyle,
-        ]),
-      ],
-    ),
-  ])
-}
-
 /** Where the piece's turn stands, and the way to ask for one when its clean picture shows. */
 const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (piece.picture?.shows !== 'clean') return h.empty
@@ -347,10 +290,10 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
   ])
 }
 
-/** The piece's back: Front and Back under the picture, and adding, replacing or removing it. */
+/** The piece's back: adding, replacing or removing it. */
 const backSlot = (
   slotId: string,
-  view: typeof PieceBackView.sides,
+  view: typeof PieceBackView.actions,
   piece: Piece,
   model: Model,
   locale: Locale,
@@ -372,8 +315,7 @@ const loadedView = (
 ): ReadonlyArray<Html> => {
   const { locale } = inputs
   return [
-    shownPicture(piece, model, locale, h),
-    backSlot('piece-sides', PieceBackView.sides, piece, model, locale, h),
+    carousel(piece, model, locale, h),
     Option.match(model.draft, {
       onNone: () => pieceDetails(piece, model, inputs, h),
       onSome: (draft) =>

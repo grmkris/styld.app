@@ -17,28 +17,22 @@ const [email] = process.argv.slice(2)
 if (email === undefined || !email.includes('@'))
   throw new Error('Usage: STYLD_URL=https://… bun --env-file=.env.preview.local tools/backfill-pictures.ts <email>')
 
-const required = (name: string) => {
-  const value = process.env[name]
-  if (value === undefined || value.length === 0) throw new Error(`Set ${name}`)
-  return value
-}
-
-const origin = new URL(required('STYLD_URL')).origin
-const response = await fetch(`${origin}/api/operator/pictures/backfill`, {
+const url = process.env['STYLD_URL']
+const token = process.env['STYLD_OPERATOR_TOKEN']
+if (url === undefined || token === undefined || token.length === 0)
+  throw new Error('Set STYLD_URL, and STYLD_OPERATOR_TOKEN through the stage’s private env file')
+const origin = new URL(url).origin
+const answer = await fetch(`${origin}/api/operator/pictures/backfill`, {
   method: 'POST',
-  headers: {
-    origin,
-    authorization: `Bearer ${required('STYLD_OPERATOR_TOKEN')}`,
-    'content-type': 'application/json',
-  },
+  headers: { origin, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
   body: JSON.stringify({ email }),
 })
-if (!response.ok)
+if (!answer.ok)
   throw new Error(
-    `The backfill answered ${response.status}: is STYLD_OPERATOR_TOKEN the stage's operator token, and does the email ` +
+    `The backfill answered ${answer.status}: is STYLD_OPERATOR_TOKEN the stage's operator token, and does the email ` +
       'sign in to an account there?',
   )
-const done = Schema.decodeUnknownSync(PictureBackfilled)(await response.json())
+const done = Schema.decodeUnknownSync(PictureBackfilled)(await answer.json())
 console.log(
   `Queued ${done.queued} pictures, showed ${done.shown} waiting drawings; ${done.remaining} pieces left for another run`,
 )

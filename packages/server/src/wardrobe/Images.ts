@@ -7,26 +7,36 @@ import { piecePrefix } from './Media.ts'
 import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 
 // A piece's pictures, as stored objects and as the signed addresses the owner's browser loads them by
-// (`kernel/SignedMedia.ts`): the one it shows, its photo, its clean drawing and its back.
+// (`kernel/SignedMedia.ts`): the one it shows, its clean drawing and its back; and on its own page its plain cut-out
+// and the photo it came from.
 
-/** One of a piece's pictures. */
-export type PieceView = 'shown' | 'photo' | 'clean' | 'back'
+/** One of a piece's pictures: the one it shows, its clean drawing, its back, its plain cut-out (when it was cut out),
+ * and the person's own photo it came from. */
+type PieceView = 'shown' | 'clean' | 'back' | 'cutout' | 'original'
 
-/** The stored image behind one of a piece's pictures, if it has that picture. */
+/** The stored image behind one of a piece's pictures, if it has that picture, and the quarter turn it is delivered
+ * with: the owner's rotation turns their own photo and cut-out (`shownImage`), never the drawing, which is drawn
+ * upright, or the back, a photo of its own. The stored object's own type is what is served (`deliverImage`). */
 const pictureImage = (piece: PieceRow, picture: PictureRow | undefined, which: PieceView) => {
+  const { contentType, rotation } = piece
   if (which === 'shown') return Option.some(shownImage(piece, picture))
-  if (which === 'photo') return Option.some(shownImage(piece, undefined))
-  // The stored object's own type is what is served (`deliverImage`).
+  if (which === 'original') return Option.some({ key: piece.originalKey, contentType, rotation })
+  if (which === 'cutout')
+    return piece.imageKey === null || piece.imageKey === piece.originalKey
+      ? Option.none()
+      : Option.some({ key: piece.imageKey, contentType, rotation })
   if (which === 'back')
-    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType: piece.contentType }))
-  return isDrawn(picture) ? Option.some({ key: picture.cleanKey, contentType: 'image/png' }) : Option.none()
+    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType, rotation: 0 as const }))
+  return isDrawn(picture)
+    ? Option.some({ key: picture.cleanKey, contentType: 'image/png', rotation: 0 as const })
+    : Option.none()
 }
 
 /** The version a piece's picture is shown under: a change to the piece, a new drawing, or a change of which picture
  * shows is a new version, and so a new address. */
 const pictureVersion = (piece: PieceRow, picture: PictureRow | undefined, which: PieceView) => {
   const drawing =
-    which === 'photo' || which === 'back'
+    which === 'original' || which === 'cutout' || which === 'back'
       ? which
       : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
   return `${piece.updatedAt.getTime()}.${drawing}`
@@ -38,32 +48,47 @@ const addressOf = (piece: PieceRow, picture: PictureRow | undefined, which: Piec
   Effect.flatMap(SignedMedia, (signed) =>
     Option.match(pictureImage(piece, picture, which), {
       onNone: () => Effect.succeed(Option.none<string>()),
-      onSome: ({ key, contentType }) =>
+      onSome: ({ key, contentType, rotation }) =>
         signed.address({
           entityId: piece.id,
           key,
           contentType,
           variant: size,
           version: pictureVersion(piece, picture, which),
-          rotation: piece.rotation,
+          rotation,
         }),
     }),
   )
 
-/** The addresses the owner's browser loads a piece's pictures by: none for an assistant. */
-export const pieceImages = Effect.fnUntraced(function* (piece: PieceRow, picture: PictureRow | undefined) {
+/** The addresses the owner's browser loads a piece's pictures by: none for an assistant. Its own page (`page`) also
+ * gets its plain cut-out and the photo it came from; a list of pieces does not sign what it never shows. */
+export const pieceImages = Effect.fnUntraced(function* (
+  piece: PieceRow,
+  picture: PictureRow | undefined,
+  page = false,
+) {
   const shown = Option.all({
     thumb: yield* addressOf(piece, picture, 'shown', 'thumb'),
     full: yield* addressOf(piece, picture, 'shown', 'full'),
   })
   if (Option.isNone(shown)) return Option.none<PieceImages>()
-  const clean = yield* addressOf(piece, picture, 'clean', 'thumb')
-  const back = yield* addressOf(piece, picture, 'back', 'full')
-  return Option.some<PieceImages>({
-    ...shown.value,
-    ...Option.match(clean, { onNone: () => ({}), onSome: (address) => ({ clean: address }) }),
-    ...Option.match(back, { onNone: () => ({}), onSome: (address) => ({ back: address }) }),
-  })
+  const extra: Partial<Record<'clean' | 'back' | 'photo' | 'cutout', string>> = {}
+  const views = page
+    ? ([
+        ['clean', 'clean'],
+        ['back', 'back'],
+        ['photo', 'original'],
+        ['cutout', 'cutout'],
+      ] as const)
+    : ([
+        ['clean', 'clean'],
+        ['back', 'back'],
+      ] as const)
+  for (const [name, which] of views) {
+    const address = yield* addressOf(piece, picture, which, 'full')
+    if (Option.isSome(address)) extra[name] = address.value
+  }
+  return Option.some<PieceImages>({ ...shown.value, ...extra })
 })
 
 /** The turn's generated files keep their exact dimensions; their grants are separate from resized photos. */

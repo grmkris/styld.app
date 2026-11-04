@@ -1,4 +1,4 @@
-import type { PictureChoice, PiecePicture, PieceTurn } from '@styld/protocol'
+import type { PictureChoice, PiecePicture, PieceRotation, PieceTurn } from '@styld/protocol'
 import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 
 // A claim older than Muse's 90 s timeout plus the keying belongs to a delivery that died: its drawing may have been
@@ -23,15 +23,16 @@ export const shows = (picture: PictureRow | undefined): PictureChoice =>
   isDrawn(picture) ? (picture.shown ?? 'clean') : 'photo'
 
 /** The stored image a piece shows, wherever a piece's picture appears: its clean drawing (`shows`), else its cut-out,
- * else the photo it came from. */
+ * else the photo it came from; with the quarter turn it is delivered with. The owner's rotation turns their own photo
+ * and cut-out, never a drawing: Muse draws the garment upright from the turned cut-out (`capture/Pictures.ts`). */
 export const shownImage = (
-  piece: Pick<PieceRow, 'imageKey' | 'originalKey' | 'contentType'>,
+  piece: Pick<PieceRow, 'imageKey' | 'originalKey' | 'contentType' | 'rotation'>,
   picture: PictureRow | undefined,
-): { readonly key: string; readonly contentType: string } => {
+): { readonly key: string; readonly contentType: string; readonly rotation: PieceRotation } => {
   const cleanKey = picture?.cleanKey ?? null
   return cleanKey !== null && shows(picture) === 'clean'
-    ? { key: cleanKey, contentType: 'image/png' }
-    : { key: piece.imageKey ?? piece.originalKey, contentType: piece.contentType }
+    ? { key: cleanKey, contentType: 'image/png', rotation: 0 }
+    : { key: piece.imageKey ?? piece.originalKey, contentType: piece.contentType, rotation: piece.rotation }
 }
 
 const states: Record<PictureRow['state'], PiecePicture['state']> = {

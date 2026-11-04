@@ -10,31 +10,10 @@ import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { pictureAccept } from '../Upload.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { chip, chosen } from '../Controls.styles.ts'
 import { Message, type Model } from './PieceBack.ts'
 import * as styles from './PieceView.styles.ts'
 
 type Inputs = { readonly piece: Piece; readonly locale: Locale }
-
-/** Front and Back under the picture, once the piece has a back. */
-export const sides = Submodel.defineView<Model, Message, Inputs>((model, { piece, locale }, h) =>
-  piece.hasBack
-    ? h.div(
-        [h.Role('group'), h.AriaLabel(format(locale, 'wardrobe.sides', {})), ...styled(h, styles.sides())],
-        (['front', 'back'] as const).map((side) =>
-          h.button(
-            [
-              h.Type('button'),
-              h.AriaPressed(String(model.side === side)),
-              h.OnClick(Message.ClickedSide({ side })),
-              ...styled(h, cx(chip(), chosen())),
-            ],
-            [format(locale, side === 'front' ? 'wardrobe.front' : 'wardrobe.back', {})],
-          ),
-        ),
-      )
-    : h.empty,
-)
 
 /** Adding, replacing or removing the piece's back: a picked photo is cut out like the front, for a credit. */
 export const actions = Submodel.defineView<Model, Message, Inputs>((model, { piece, locale }, h) => {

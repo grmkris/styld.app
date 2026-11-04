@@ -358,11 +358,8 @@ const images = Effect.map(Effect.context<PublicServices>(), (context) => ({
     if (Option.isNone(shown)) return Option.none<ShownImage>()
     const image = publicImage(shown.value.row)
     if (Option.isNone(image)) return Option.none<ShownImage>()
-    return yield* delivered(
-      { ...image.value, rotation: shown.value.row.piece.rotation },
-      size,
-      yield* versionOf(image.value.key, size, shown.value.row.piece.rotation),
-    )
+    // The owner's rotation turns their cut-out, never a drawing (`shownImage`).
+    return yield* delivered(image.value, size, yield* versionOf(image.value.key, size, image.value.rotation))
   }, Effect.provide(context)),
   /** A picture on a public board others may see. A picture never changes, so its id and size are its version. */
   pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {

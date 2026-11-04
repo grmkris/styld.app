@@ -8,29 +8,24 @@ import { modifyFields } from 'foldkit/struct'
 import { type PictureEncoder, uploadPicture } from '../Upload.ts'
 import { StyldClient } from '../StyldClient.ts'
 
-// A piece's back on its page (owner, 2026-10-31): Front and Back under the picture once it has one, and adding,
-// replacing or removing it. A picked photo is cut out on the server like the front, for a photo's credit.
+// A piece's back on its page (owner, 2026-10-31): adding, replacing or removing it; the back is one of the pictures
+// the page swipes between (`PieceSlides.ts`). A picked photo is cut out on the server like the front, for a photo's
+// credit.
 
 // MODEL
 
-const Side = Schema.Literals(['front', 'back'])
-type Side = typeof Side.Type
-
 export const Model = Schema.Struct({
   pieceId: Schema.String,
-  /** Which side the picture shows, once the piece has a back. */
-  side: Side,
   /** A back on its way, or one that did not go through. */
   work: Schema.Literals(['idle', 'sending', 'failed']),
 })
 export type Model = typeof Model.Type
 
-export const init = (pieceId: string): Model => ({ pieceId, side: 'front', work: 'idle' })
+export const init = (pieceId: string): Model => ({ pieceId, work: 'idle' })
 
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  ClickedSide: { side: Side },
   ChoseBack: { files: Schema.Array(File.File) },
   ClickedRemoveBack: {},
   SucceededBack: { piece: Piece },
@@ -38,7 +33,7 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-/** The piece changed: its page shows it as it is now. */
+/** The piece changed: its page shows it as it is now, its new back at once. */
 export const OutMessage = defineMessageUnion({ ChangedPiece: { piece: Piece } })
 export type OutMessage = typeof OutMessage.Type
 
@@ -99,16 +94,14 @@ const sending = (
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    ClickedSide: ({ side }) => ({ model: modifyFields(model, { side: () => side }) }),
     ChoseBack: ({ files }) =>
       Option.match(Option.fromNullishOr(files[0]), {
         onNone: () => ({ model }),
         onSome: (file) => sending(model, SetBack({ pieceId: model.pieceId, file })),
       }),
     ClickedRemoveBack: () => sending(model, RemoveBack({ pieceId: model.pieceId })),
-    // A new back is shown at once; without one, the front is.
     SucceededBack: ({ piece }) => ({
-      model: modifyFields(model, { work: () => 'idle' as const, side: () => (piece.hasBack ? 'back' : 'front') }),
+      model: modifyFields(model, { work: () => 'idle' as const }),
       outMessage: OutMessage.ChangedPiece({ piece }),
     }),
     FailedBack: () => ({ model: modifyFields(model, { work: () => 'failed' as const }) }),

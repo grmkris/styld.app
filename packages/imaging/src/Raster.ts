@@ -105,6 +105,25 @@ export const shrink = (picture: Rgba, longest: number): Rgba => {
   return { width, height, data }
 }
 
+/** `picture` turned clockwise by `degrees`, a quarter turn at a time, as the Images binding turns a delivered piece
+ * (`rotate`), so what a model sees of a piece is what its owner sees. */
+export const turned = (picture: Rgba, degrees: 0 | 90 | 180 | 270): Rgba => {
+  if (degrees === 0) return picture
+  const { width, height } = picture
+  const sideways = degrees !== 180
+  const outWidth = sideways ? height : width
+  const outHeight = sideways ? width : height
+  const data = new Uint8Array(picture.data.length)
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      // Where the pixel at (x, y) lands once turned clockwise.
+      const [toX, toY] =
+        degrees === 90 ? [height - 1 - y, x] : degrees === 180 ? [width - 1 - x, height - 1 - y] : [y, width - 1 - x]
+      data.set(picture.data.subarray((y * width + x) * 4, (y * width + x) * 4 + 4), (toY * outWidth + toX) * 4)
+    }
+  return { width: outWidth, height: outHeight, data }
+}
+
 /** `picture` laid on a flat grey ground, opaque: how a cut-out is shown to a model that reads no transparency. */
 export const flatten = (picture: Rgba, ground = 236): Rgba => {
   const data = new Uint8Array(picture.data.length)

@@ -1,5 +1,5 @@
 import { ProviderError } from '../providers/Errors.ts'
-import { chromaKey, framed, keyColourFor, modelPicture, readPng, shrink } from '@styld/imaging'
+import { chromaKey, framed, keyColourFor, modelPicture, readPng, shrink, turned } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
 import { judgedAt } from './Garments.ts'
@@ -9,6 +9,7 @@ import { opaqueShare } from './Pixels.ts'
 import { capturePolicy } from './Policy.ts'
 import { type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
+import type { PieceRow } from '../wardrobe/Store.ts'
 import { holdId } from '../usage/Holds.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -34,6 +35,15 @@ const cutoutAt = (key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Rgba>())
     : readPixels(key).pipe(Effect.map(Option.filter((picture) => opaqueShare(picture) < 0.98)))
+
+/** A piece's front cut-out as its owner sees it: turned by the rotation they set, so Clef judges and Muse draws the
+ * garment upright. An upside-down skirt was once judged and drawn as it was stored (Eva, 4 November). Its back is a
+ * photo of its own, never turned by the front's rotation. */
+const frontOf = (piece: Pick<PieceRow, 'imageKey' | 'rotation'>) =>
+  Effect.map(
+    cutoutAt(piece.imageKey),
+    Option.map((front) => turned(front, piece.rotation)),
+  )
 
 const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
 
@@ -162,7 +172,7 @@ const start = (picture: PictureRow) =>
     const { pieceId } = picture
     const piece = yield* storedAs((yield* WardrobeStore).findPiece(picture.accountId, pieceId))
     if (Option.isNone(piece)) return
-    const front = yield* cutoutAt(piece.value.imageKey)
+    const front = yield* frontOf(piece.value)
     if (Option.isNone(front)) return yield* move(picture, ['queued'], { state: 'kept-real' })
     const judgement = yield* (yield* GarmentVision).judge(modelPicture(front.value, judgedAt))
     yield* Effect.annotateCurrentSpan('styld.picture.verdict', judgement.verdict)
@@ -192,7 +202,7 @@ const checkStored = (picture: PictureRow) =>
   Effect.gen(function* () {
     const piece = yield* storedAs((yield* WardrobeStore).findPiece(picture.accountId, picture.pieceId))
     const drawn = picture.cleanKey === null ? Option.none<Rgba>() : yield* cutoutAt(picture.cleanKey)
-    const real = Option.isNone(piece) ? Option.none<Rgba>() : yield* cutoutAt(piece.value.imageKey)
+    const real = Option.isNone(piece) ? Option.none<Rgba>() : yield* frontOf(piece.value)
     if (Option.isNone(drawn) || Option.isNone(real)) return yield* endChecking(picture, 'missing')
     yield* check(picture, drawn.value, real.value)
   })

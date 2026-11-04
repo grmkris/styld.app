@@ -17,7 +17,6 @@ export const cdn = {
   /** A piece known only by its id, from the pieces at hand. */
   pieceById: (pieces: PieceImagesById, pieceId: string, size: Size = 'thumb') => pieces.get(pieceId)?.[size] ?? '',
   pieceBack: (piece: Piece) => piece.images?.back ?? '',
-  pieceClean: (piece: Piece) => piece.images?.clean ?? '',
   /** The API supplies private media addresses after authorizing the containing entity once. */
   turn: (turn: PieceTurn | undefined, part: 'video' | 'front' | 'sheet') => turn?.media?.[part] ?? '',
   photo: (photo: Photo, size: Size) => photo.images?.[size] ?? '',

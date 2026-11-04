@@ -9,14 +9,13 @@ import {
   Piece,
   PieceId,
   PiecePicture,
-  PieceRotation,
   PieceTurn,
   PieceType,
   textLength,
   TurnLayout,
   PieceChanges,
 } from '@styld/protocol'
-import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
+import { Effect, Number, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Mount, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -30,8 +29,10 @@ import * as PieceBack from './PieceBack.ts'
 import * as PieceLooks from './PieceLooks.ts'
 import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, type Details, WornWhen } from './PieceFields.ts'
-import { changesOf, Draft, DraftSave, draftOf, DraftText, shopUrlSendable, typedInto } from './PieceDraft.ts'
+import { changesOf, Draft, DraftSave, draftOf, DraftText, nextTurn, shopUrlSendable, typedInto } from './PieceDraft.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
+import * as PieceSlides from './PieceSlides.ts'
+import { RedrawProblem, redrawProblemOf, TurnProblem, turnProblemOf } from './PieceProblems.ts'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 
 // MODEL
@@ -46,18 +47,9 @@ export { Deletion }
 export const Choosing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type Choosing = typeof Choosing.Type
 
-/** Why a turn was not made: the API's refusals, the day's credits, no answer, or a device that could not cut the
- * turn's video into frames. */
-export const TurnProblem = Schema.Literals(['busy', 'picture', 'dailyLimit', 'network', 'build'])
-export type TurnProblem = typeof TurnProblem.Type
-
 /** The turn this page is asking for or building the frames of, or why the last try did not make one. */
 export const TurnWork = defineTaggedUnion({ Idle: {}, Asking: {}, Building: {}, Failed: { problem: TurnProblem } })
 export type TurnWork = typeof TurnWork.Type
-
-/** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
-export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'dailyLimit', 'network'])
-export type RedrawProblem = typeof RedrawProblem.Type
 
 /** Where the asked-for drawing stands: being written, on its way, or refused or lost. A lost one keeps the operation
  * it was sent as, so trying again repeats it. */
@@ -90,6 +82,8 @@ export const Model = Schema.Struct({
   /** Whether the turn's player has drawn its first frame; until then the still shows under it. */
   turnShown: Schema.Boolean,
   saveToBoard: SaveToBoard.Model,
+  /** Which of its pictures the page shows (`PieceSlides.ts`). */
+  slides: PieceSlides.Model,
 })
 export type Model = typeof Model.Type
 
@@ -107,6 +101,7 @@ export const init = (pieceId: string): Model => ({
   photos: PiecePhotos.init(),
   looks: PieceLooks.init(pieceId),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
+  slides: PieceSlides.init,
 })
 
 // MESSAGE
@@ -140,6 +135,9 @@ export const Message = defineMessageUnion({
   GotPhotosMessage: { message: PiecePhotos.Message },
   GotLooksMessage: { message: PieceLooks.Message },
   FailedUpdatePiece: {},
+  ClickedSlide: { slide: PieceSlides.Slide },
+  PressedPicture: { x: Schema.Number, y: Schema.Number },
+  ReleasedPicture: { x: Schema.Number, y: Schema.Number },
   ClickedShowPicture: { use: PictureChoice },
   SucceededChoosePicture: { piece: Piece },
   FailedChoosePicture: {},
@@ -231,14 +229,6 @@ export const ChoosePicture = Command.define('ChoosePicture', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedChoosePicture())),
 })
 
-/** What a refused redraw means for the owner. */
-const redrawProblemOf = (error: unknown): RedrawProblem => {
-  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
-  if (Predicate.isTagged(error, 'PictureRefused') && Predicate.hasProperty(error, 'reason'))
-    return Schema.decodeUnknownOption(RedrawProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
-  return 'network'
-}
-
 export const RedrawPicture = Command.define('RedrawPicture', {
   args: { pieceId: Schema.String, hint: Schema.String, maybeOperationId: Schema.Option(OperationId) },
   messages: [Message.SucceededRedrawPicture, Message.FailedRedrawPicture],
@@ -264,14 +254,6 @@ export const RedrawPicture = Command.define('RedrawPicture', {
         )
     }).pipe(Effect.orDie),
 })
-
-/** What a refused turn means for the owner. */
-const turnProblemOf = (error: unknown): TurnProblem => {
-  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
-  if (Predicate.isTagged(error, 'TurnRefused') && Predicate.hasProperty(error, 'reason'))
-    return Schema.decodeUnknownOption(TurnProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
-  return 'network'
-}
 
 export const MakeTurn = Command.define('MakeTurn', {
   args: { pieceId: Schema.String },
@@ -358,7 +340,12 @@ const foldBack = Update.foldChild({
   foldOutMessage: PieceBack.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
     ChangedPiece:
       ({ piece }) =>
-      (stepModel) => ({ model: modifyFields(stepModel, { piece: () => PieceData.Success({ data: piece }) }) }),
+      (stepModel) => ({
+        model: modifyFields(stepModel, {
+          piece: () => PieceData.Success({ data: piece }),
+          slides: (slides) => PieceSlides.backChanged(slides, piece.hasBack),
+        }),
+      }),
   }),
 })
 
@@ -374,9 +361,6 @@ const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn 
 
 const editDetails = (model: Model, change: (details: Details) => Details): UpdateReturn =>
   editDraft(model, (draft) => modifyFields(draft, { details: change }))
-
-const nextRotation = (rotation: PieceRotation): PieceRotation =>
-  rotation === 0 ? 90 : rotation === 90 ? 180 : rotation === 180 ? 270 : 0
 
 const submittedEdit = (model: Model): UpdateReturn =>
   Option.match(model.draft, {
@@ -468,6 +452,11 @@ const submittedRedraw = (model: Model): UpdateReturn =>
 const redrawing = (model: Model, picture: PiecePicture): UpdateReturn =>
   shownWith(modifyFields(model, { redraw: () => Option.none() }), (piece) => ({ ...piece, picture }))
 
+/** The page's pictures after a tap or a swipe (`PieceSlides.ts`). */
+const withSlides = (model: Model, change: (slides: PieceSlides.Model) => PieceSlides.Model): UpdateReturn => ({
+  model: modifyFields(model, { slides: change }),
+})
+
 const pictureUpdates = (model: Model) => ({
   ClickedShowPicture: ({ use }: { readonly use: PictureChoice }): UpdateReturn =>
     Choosing.guards.Sending(model.choosing)
@@ -552,7 +541,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ChoseCategory: (category) => editDetails(model, changeDetails.chosenCategory(category)),
     UpdatedShopUrl: ({ value }) =>
       editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
-    ClickedRotate: () => editDraft(model, (draft) => modifyFields(draft, { rotation: nextRotation })),
+    ClickedRotate: () => editDraft(model, (draft) => modifyFields(draft, { rotation: nextTurn })),
     SubmittedEdit: () => submittedEdit(model),
     SucceededUpdatePiece: ({ piece }) => ({
       model: modifyFields(model, { piece: () => PieceData.Success({ data: piece }), draft: () => Option.none() }),
@@ -567,6 +556,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         draft: Option.map((draft) => modifyFields(draft, { save: () => DraftSave.Failed() })),
       }),
     }),
+    ClickedSlide: ({ slide }) => withSlides(model, (slides) => PieceSlides.chose(slides, slide)),
+    PressedPicture: ({ x, y }) => withSlides(model, (slides) => PieceSlides.pressed(slides, x, y)),
+    ReleasedPicture: ({ x, y }) =>
+      withSlides(model, (slides) => PieceSlides.released(slides, AsyncData.getData(model.piece), x, y)),
     ...pictureUpdates(model),
     ...turnUpdates(model),
   })

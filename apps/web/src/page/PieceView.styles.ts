@@ -1,11 +1,14 @@
-import { cutoutGlow, style } from '../zyzz.config.ts'
+import { style } from '../zyzz.config.ts'
 export { actionRow as backActions } from '../Controls.styles.ts'
 
 // Styles for a piece you own in PieceView.ts (Gallery: item.html, item-desktop.html).
+/** On a phone the page ends well clear of the floating tab bar, so its last rows (when it is worn, what it is for)
+ * scroll above it (Eva, 4 November). */
 export const piecePage = style({
   display: 'grid',
   gap: 'grid',
   paddingBlock: '8px 40px',
+  '@media (max-width: 899px)': { paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))' },
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)',
     alignItems: 'start',
@@ -35,16 +38,6 @@ export const nameSkeleton = style({
   inlineSize: '60%',
 })
 export const metaSkeleton = style({ fontSize: 'body', inlineSize: '30%' })
-export const photo = style({
-  display: 'block',
-  inlineSize: '100%',
-  aspectRatio: '1 / 1',
-  objectFit: 'contain',
-  borderRadius: 'photo',
-  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
-  // DESIGN.md › Dark: a dark garment keeps its edge on the dark paper.
-  '@media (prefers-color-scheme: dark)': { filter: cutoutGlow },
-})
 /** The piece's picture turned as its owner set it (`data-rotation`, a quarter turn at a time). */
 export const rotated = style({
   '&[data-rotation="90"]': { rotate: '90deg' },
@@ -108,7 +101,6 @@ export const status = style({ display: 'flex', alignItems: 'center', gap: 'actio
 export const backPanel = style({ display: 'grid', gap: 'actions', marginBlock: '8px 16px' })
 /** The clean picture's panel: what it is, where it stands and what the owner can do with it. */
 export const picturePanel = style({ display: 'grid', gap: 'actions', marginBlockStart: '8px' })
-export const cleanedLabel = style({ fontSize: 'small', fontWeight: 500, color: 'ink3' })
 export const pictureNote = style({ fontSize: 'label', color: 'ink2' })
 /** The turn's player: the picture itself is the button that turns it. */
 export const turnButton = style({
@@ -121,8 +113,6 @@ export const turnButton = style({
 })
 /** The still and the turn's player in one place, the player on top: until the player draws, the still shows. */
 export const turnStack = style({ display: 'grid', '& > *': { gridArea: '1 / 1' } })
-/** Front and Back under the picture: two chips, the shown side chosen. */
-export const sides = style({ display: 'flex', justifyContent: 'center', gap: 'actions' })
 /** A file picker drawn as a button: the label is the target, its input hidden but focusable. */
 export const fileAction = style({
   position: 'relative',

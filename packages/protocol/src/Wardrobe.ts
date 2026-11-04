@@ -130,13 +130,17 @@ export const RedrawPicture = Schema.Struct({ operationId: OperationId, hint: Sch
 export type RedrawPicture = typeof RedrawPicture.Type
 
 /** Where the owner's browser loads a piece's pictures: signed addresses that need no session, each good for about a
- * day and the same for an hour at a time. `thumb` and `full` are the picture it shows; `clean` the drawing (ready or
- * proposed), `back` its back, when it has them. */
+ * day and the same for an hour at a time. `thumb` and `full` are the picture it shows; `clean` the drawing that passed
+ * its check, `back` its back, when it has them. On the piece's own page (owner, 4 November 2026: the pictures swipe
+ * one to the next) also `photo`, the person's own photo it came from, and `cutout`, the plain cut-out, when it was cut
+ * out. */
 export const PieceImages = Schema.Struct({
   thumb: Schema.String,
   full: Schema.String,
   clean: Schema.optionalKey(Schema.String),
   back: Schema.optionalKey(Schema.String),
+  photo: Schema.optionalKey(Schema.String),
+  cutout: Schema.optionalKey(Schema.String),
 })
 export type PieceImages = typeof PieceImages.Type
 

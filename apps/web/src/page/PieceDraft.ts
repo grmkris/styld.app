@@ -1,9 +1,13 @@
-import { type Piece, type PieceChanges, ShopUrl } from '@styld/protocol'
+import { type Piece, type PieceChanges, type PieceRotation, ShopUrl } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { Details, detailsOf } from './PieceFields.ts'
 
 // A piece's edit form: its values as typed, how its save is going, and the changes it sends.
+
+/** The rotation Rotate turns the picture to: a quarter turn clockwise. */
+export const nextTurn = (rotation: PieceRotation): PieceRotation =>
+  rotation === 0 ? 90 : rotation === 90 ? 180 : rotation === 180 ? 270 : 0
 
 /** The edit form being filled in, saved, or refused on its last save. */
 export const DraftSave = defineTaggedUnion({ Editing: {}, Saving: {}, Failed: {} })

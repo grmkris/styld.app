@@ -8,10 +8,10 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
-import { Choosing, Message, type Model, type Redraw, RedrawSend } from './Piece.ts'
+import { Message, type Model, type Redraw, RedrawSend } from './Piece.ts'
 import * as styles from './PieceView.styles.ts'
 
-// A piece's clean picture on its page: where its drawing stands, which picture shows, and redrawing it.
+// A piece's clean picture on its page, below its pictures: why none came of it, and redrawing it.
 
 const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const sending = RedrawSend.guards.Sending(redraw.send)
@@ -61,61 +61,34 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
   )
 }
 
-/** What the owner can do with the picture it shows: swap it for the other one, redraw. */
-const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
-  const choose = (use: 'clean' | 'photo', key: 'wardrobe.picture.showPhoto' | 'wardrobe.picture.showClean') =>
-    actionButton(
-      {
-        label: format(locale, key, {}),
-        style: secondaryAction(),
-        onClick: Message.ClickedShowPicture({ use }),
-        isDisabled: Choosing.guards.Sending(model.choosing),
-      },
-      h,
-    )
-  return [
-    picture.state === 'ready' && picture.shows === 'clean' ? choose('photo', 'wardrobe.picture.showPhoto') : h.empty,
-    picture.state === 'ready' && picture.shows === 'photo' ? choose('clean', 'wardrobe.picture.showClean') : h.empty,
-    actionButton(
-      {
-        label: format(locale, 'wardrobe.picture.redraw', {}),
-        style: secondaryAction(),
-        onClick: Message.ClickedRedraw(),
-      },
-      h,
-    ),
-  ]
-}
-
-const pictureStatus = (picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (picture.state === 'drawing')
-    return h.p(
-      [h.Role('status'), ...styled(h, styles.status())],
-      [loader(h), format(locale, 'wardrobe.picture.drawing', {})],
-    )
-  if (picture.state === 'retake' || picture.state === 'failed')
-    return h.p(styled(h, styles.pictureNote()), [format(locale, `wardrobe.picture.${picture.state}`, {})])
-  return picture.shows === 'clean'
-    ? h.p(styled(h, styles.cleanedLabel()), [format(locale, 'wardrobe.picture.cleaned', {})])
+/** Where the drawing stands when none came of it: a retake asked for, or no drawing at all. */
+const pictureStatus = (picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  picture.state === 'retake' || picture.state === 'failed'
+    ? h.p(styled(h, styles.pictureNote()), [format(locale, `wardrobe.picture.${picture.state}`, {})])
     : h.empty
-}
 
-/** The piece's clean picture: none for a piece that never had one asked for. */
+/** The piece's shop-style picture below its pictures: why there is none, and redrawing it, for a credit. While a
+ * drawing is being made its slide says so (`PieceCarouselView.ts`), and nothing waits here. None for a piece that
+ * never had one asked for. */
 export const picturePanel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const picture = piece.picture
-  if (picture === undefined) return h.empty
+  if (picture === undefined || (picture.state === 'drawing' && Option.isNone(model.redraw))) return h.empty
   return h.section(
-    [h.AriaLabel(format(locale, 'wardrobe.picture.cleaned', {})), ...styled(h, styles.picturePanel())],
+    [h.AriaLabel(format(locale, 'wardrobe.picture.clean', {})), ...styled(h, styles.picturePanel())],
     [
       pictureStatus(picture, locale, h),
-      Choosing.guards.Failed(model.choosing)
-        ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.picture.chooseFailed', {})])
-        : h.empty,
       Option.match(model.redraw, {
         onNone: () =>
-          picture.state === 'drawing'
-            ? h.empty
-            : h.div(styled(h, styles.actions()), pictureChoices(picture, model, locale, h)),
+          h.div(styled(h, styles.actions()), [
+            actionButton(
+              {
+                label: format(locale, 'wardrobe.picture.redraw', {}),
+                style: secondaryAction(),
+                onClick: Message.ClickedRedraw(),
+              },
+              h,
+            ),
+          ]),
         onSome: (redraw) => redrawForm(redraw, locale, h),
       }),
     ],

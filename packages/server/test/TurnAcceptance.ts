@@ -74,6 +74,9 @@ export const verifyTurn = async (
         const shown = await page.locator('main').innerText()
         throw new Error(`the turn did not get ready: ${String(error)}\n${shown}\n${consoled.join('\n')}`)
       })
+    // The shop-style picture is the main one and shows first, the photo and cut-out one swipe away.
+    expect(await page.getByRole('button', { name: 'Shop-style picture' }).getAttribute('aria-current')).toBe('true')
+    expect(await page.getByRole('button', { name: 'Cut-out' }).count()).toBe(1)
     const player = page.getByRole('button', { name: 'Turn it' })
     await player.locator('canvas').waitFor({ state: 'visible' })
     await player.click()

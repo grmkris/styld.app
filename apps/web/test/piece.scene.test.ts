@@ -93,9 +93,10 @@ describe('the piece page', () => {
       expect(text('Checked')).toExist(),
       expect(text('COS')).toExist(),
       expect(role('link', { name: 'Open the shop’s page' })).toHaveAttr('href', 'https://shop.example/coat'),
-      expect(role('button', { name: 'Front' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('button', { name: 'Your photo' })).toHaveAttr('aria-current', 'true'),
       click(role('button', { name: 'Back' })),
       expect(role('img', { name: 'Coat, back' })).toExist(),
+      expect(role('button', { name: 'Back' })).toHaveAttr('aria-current', 'true'),
       expect(text('Replace the back')).not.toExist(),
       click(role('button', { name: 'Edit' })),
       expect(text('Replace the back')).toExist(),
@@ -196,28 +197,123 @@ describe('the piece page', () => {
     )
   })
 
-  test('a clean picture the owner set aside for the photo is shown again at a tap', () => {
-    // The API signs a new address for every picture it shows, so taking the drawing loads a new one.
+  test('shows the shop-style picture first, the photo, the cut-out and the back one swipe or dot away', () => {
     const images = {
-      thumb: signedPicture(jeans.id, 'thumb', 'photo2'),
-      full: signedPicture(jeans.id, 'full', 'photo2'),
-      clean: signedPicture(jeans.id, 'thumb', 'clean2'),
+      thumb: signedPicture(jeans.id, 'thumb', 'clean2'),
+      full: signedPicture(jeans.id, 'full', 'clean2'),
+      clean: signedPicture(jeans.id, 'full', 'drawing2'),
+      photo: signedPicture(jeans.id, 'full', 'original'),
+      cutout: signedPicture(jeans.id, 'full', 'cutout'),
+      back: signedPicture(jeans.id, 'full', 'back'),
     }
-    const proposed = { ...jeans, images, picture: { state: 'ready', shows: 'photo', version: 2 } } as const
-    const takenImages = { ...images, full: signedPicture(jeans.id, 'full', 'clean2') }
-    const taken = { ...jeans, images: takenImages, picture: { state: 'ready', shows: 'clean', version: 2 } } as const
+    const drawn = {
+      ...jeans,
+      images,
+      hasBack: true,
+      picture: { state: 'ready', shows: 'clean', version: 2 },
+    } as const
     scene(
       { update, view },
-      given(piecePage(PieceData.Success({ data: proposed }))),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.full),
-      click(role('button', { name: 'Show the clean picture' })),
+      given(piecePage(PieceData.Success({ data: drawn }))),
+      // The drawing is the main picture, and shows first.
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.clean),
+      expect(role('button', { name: 'Shop-style picture' })).toHaveAttr('aria-current', 'true'),
+      expect(text('Main picture')).toExist(),
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+      click(role('button', { name: 'Your photo' })),
+      expect(role('img', { name: 'Jeans, Your photo' })).toHaveAttr('src', images.photo),
+      // The photo a cut-out was made from is not a picture the wardrobe can show.
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+      click(role('button', { name: 'Cut-out' })),
+      expect(role('img', { name: 'Jeans, Cut-out' })).toHaveAttr('src', images.cutout),
+      expect(role('button', { name: 'Use as the main picture' })).toExist(),
+      click(role('button', { name: 'Back' })),
+      expect(role('img', { name: 'Jeans, back' })).toHaveAttr('src', images.back),
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+    )
+  })
+
+  test('the cut-out, or the drawing again, becomes the main picture from its slide', () => {
+    // The API signs a new address for every picture it shows, so a new main picture loads a new one.
+    const images = {
+      thumb: signedPicture(jeans.id, 'thumb', 'clean2'),
+      full: signedPicture(jeans.id, 'full', 'clean2'),
+      clean: signedPicture(jeans.id, 'full', 'drawing2'),
+      photo: signedPicture(jeans.id, 'full', 'original'),
+      cutout: signedPicture(jeans.id, 'full', 'cutout'),
+    }
+    const drawn = { ...jeans, images, picture: { state: 'ready', shows: 'clean', version: 2 } } as const
+    const photoImages = { ...images, full: signedPicture(jeans.id, 'full', 'photo2') }
+    const setAside = { ...drawn, images: photoImages, picture: { state: 'ready', shows: 'photo', version: 2 } } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: drawn }))),
+      click(role('button', { name: 'Cut-out' })),
+      click(role('button', { name: 'Use as the main picture' })),
       Command.resolve(
-        ChoosePicture({ pieceId: proposed.id, use: 'clean' }),
-        PieceMessage.SucceededChoosePicture({ piece: taken }),
+        ChoosePicture({ pieceId: drawn.id, use: 'photo' }),
+        PieceMessage.SucceededChoosePicture({ piece: setAside }),
       ),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', takenImages.full),
-      expect(text('AI-cleaned picture')).toExist(),
-      expect(role('button', { name: 'Show my photo' })).toExist(),
+      // The cut-out stays on screen, now the main picture.
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.cutout),
+      expect(text('Main picture')).toExist(),
+      click(role('button', { name: 'Shop-style picture' })),
+      expect(text('Drawn by AI from your cut-out')).toExist(),
+      click(role('button', { name: 'Use as the main picture' })),
+      Command.resolve(ChoosePicture({ pieceId: drawn.id, use: 'clean' }), PieceMessage.FailedChoosePicture()),
+      expect(role('alert')).toHaveText('The picture could not be changed. Try again.'),
+    )
+  })
+
+  test('while a drawing is being made its slide says so, and the page opens on the cut-out meanwhile', () => {
+    const images = {
+      thumb: signedPicture(jeans.id, 'thumb', 'photo0'),
+      full: signedPicture(jeans.id, 'full', 'photo0'),
+      photo: signedPicture(jeans.id, 'full', 'original'),
+      cutout: signedPicture(jeans.id, 'full', 'cutout'),
+    }
+    const making = { ...jeans, images, picture: { state: 'drawing', shows: 'photo', version: 0 } } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: making }))),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.cutout),
+      expect(role('button', { name: 'Cut-out' })).toHaveAttr('aria-current', 'true'),
+      expect(role('button', { name: 'Redraw' })).not.toExist(),
+      click(role('button', { name: 'Shop-style picture' })),
+      expect(role('status')).toHaveText('Making a shop-style picture…'),
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+    )
+  })
+
+  test('Rotate turns the picture by what is not saved yet, and once saved the server alone turns it', () => {
+    // The server delivers the photo and the cut-out already turned by the saved rotation (signed addresses carry it).
+    const images = {
+      thumb: signedPicture(jeans.id, 'thumb', 'r0'),
+      full: signedPicture(jeans.id, 'full', 'r0'),
+      photo: signedPicture(jeans.id, 'full', 'original-r0'),
+      cutout: signedPicture(jeans.id, 'full', 'cutout-r0'),
+    }
+    const upright = { ...jeans, images }
+    const turnedImages = { ...images, cutout: signedPicture(jeans.id, 'full', 'cutout-r180') }
+    const saved = { ...jeans, images: turnedImages, rotation: 180 } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: upright }))),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '0'),
+      click(role('button', { name: 'Edit' })),
+      click(role('button', { name: 'Rotate image 90°' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '90'),
+      click(role('button', { name: 'Rotate image 90°' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '180'),
+      submit(role('form')),
+      Command.resolve(SavePiece, PieceMessage.SucceededUpdatePiece({ piece: saved })),
+      // The turned address alone: no turn on top of it.
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', turnedImages.cutout),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '0'),
+      click(role('button', { name: 'Edit' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '0'),
+      click(role('button', { name: 'Rotate image 90°' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '90'),
     )
   })
 
@@ -265,6 +361,7 @@ describe('the piece page', () => {
     const layout = { frames: 30, columns: 6, width: 288, height: 384, pivot: [0.5, 0.027] } as const
     const turned = {
       ...jeans,
+      images: { thumb: '/test/thumb', full: '/test/full', clean: '/test/clean' },
       picture: { state: 'ready', shows: 'clean', version: 1 },
       turn: { state: 'ready', version: 9, layout, media: { sheet: '/test/turn-sheet.png' } },
     } as const

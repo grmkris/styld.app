@@ -24,6 +24,7 @@ import {
   update,
 } from '../src/page/Piece.ts'
 import { changesOf, DraftSave } from '../src/page/PieceDraft.ts'
+import { currentSlide } from '../src/page/PieceSlides.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const piece = pieceFixture('jeans', {
@@ -43,6 +44,15 @@ const shownPiece = (current: Model) => Option.getOrNull(AsyncData.getData(curren
 
 /** What the page's one poll waits on; none while it does not run. */
 const pending = (current: Model) => subscriptions.pieceWhileSettling.modelToDependencies(current).pendingIds
+
+/** The picture the page shows. */
+const shownSlide = (current: Model) =>
+  Option.map(AsyncData.getData(current.piece), (shown) => currentSlide(shown, current.slides.slide))
+/** A press from `from` let go at `to`, `drift` lower. */
+const swipe = (from: number, to: number, drift = 0) => [
+  message(Message.PressedPicture({ x: from, y: 100 })),
+  message(Message.ReleasedPicture({ x: to, y: 100 + drift })),
+]
 
 describe('a piece you own', () => {
   test('a piece still processing is followed by the poll until it is ready', () => {
@@ -243,6 +253,45 @@ describe('a piece you own', () => {
       Command.resolve(SavePiece, Message.SucceededUpdatePiece({ piece: pieceFixture('jeans', { rotation: 90 }) })),
       model((current) => expect(shownPiece(current)?.rotation).toBe(90)),
     )
+  })
+
+  test('a sideways swipe moves to the next picture or the one before, and stops at either end', () => {
+    const drawn = pieceFixture('jeans', {
+      hasBack: true,
+      images: { thumb: 't', full: 'f', clean: 'c', photo: 'p', cutout: 'o', back: 'b' },
+      picture: { state: 'ready', shows: 'clean', version: 1 },
+    })
+    story(
+      update,
+      given(update(init(piece.id), Message.SucceededGetPiece({ piece: drawn })).model),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('clean'))),
+      // Rightwards from the first picture: still the first.
+      ...swipe(100, 200),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('clean'))),
+      ...swipe(200, 100),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('photo'))),
+      // Too short, or more up than across: a tap or a scroll, not a swipe.
+      ...swipe(200, 170),
+      ...swipe(200, 140, 120),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('photo'))),
+      ...swipe(300, 100),
+      ...swipe(300, 100),
+      ...swipe(300, 100),
+      model((current) => {
+        expect(shownSlide(current)).toEqual(Option.some('back'))
+        expect(Option.isNone(current.slides.press)).toBe(true)
+      }),
+      ...swipe(100, 300),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('cutout'))),
+    )
+  })
+
+  test('a new back shows at once, and the main picture shows once the back is gone', () => {
+    const withBack = pieceFixture('jeans', { hasBack: true })
+    const current = update(opened(), Message.GotBackMessage({ message: { _tag: 'SucceededBack', piece: withBack } }))
+    expect(current.model.slides.slide).toEqual(Option.some('back'))
+    const removed = update(current.model, Message.GotBackMessage({ message: { _tag: 'SucceededBack', piece } }))
+    expect(removed.model.slides.slide).toEqual(Option.none())
   })
 
   test('the clean picture is chosen again in place of the photo the owner chose', () => {

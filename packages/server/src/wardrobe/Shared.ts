@@ -33,10 +33,10 @@ export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({
 export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 
 /** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for, and, for the
- * owner's browser, the signed addresses of its pictures (`Images.ts`). */
-export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: PictureRow, turn?: TurnRow) {
+ * owner's browser, the signed addresses of its pictures (`Images.ts`): all of them on its own `page`. */
+export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: PictureRow, turn?: TurnRow, page = false) {
   const at = yield* nowDate
-  const images = yield* pieceImages(row, picture)
+  const images = yield* pieceImages(row, picture, page)
   return yield* Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,
@@ -88,12 +88,12 @@ export const pictureRow = (accountId: string, pieceId: string) =>
     Option.getOrUndefined,
   )
 
-/** A piece as its owner sees it, with its clean picture and its turn. */
+/** A piece as its owner sees it on its page, with its clean picture, its turn and every picture of it. */
 export const ownerPiece = (accountId: string, row: PieceRow) =>
   Effect.gen(function* () {
     const picture = yield* pictureRow(accountId, row.id)
     const turn = Option.getOrUndefined(yield* stored((yield* WardrobeStore).turnOf(accountId, row.id)))
-    return yield* toPiece(row, picture, turn)
+    return yield* toPiece(row, picture, turn, true)
   })
 
 /** Why an upload cannot make something, if it cannot. */
