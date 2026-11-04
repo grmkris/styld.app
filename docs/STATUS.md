@@ -7,6 +7,35 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Rotate turns the shop-style picture too (4 November, `0f29dcd4`, live on the preview and styld.app)
+
+Eva (4 November): Rotate turned her photo and cut-out but never the shop-style picture, so a drawing Muse made from
+an upside-down cut-out stayed upside down.
+
+- **The cause.** The drawing was always served at 0. Since `4cb61c56`, Muse draws from the cut-out turned by the
+  piece's rotation, but nothing recorded which rotation a drawing was made at.
+- **The fix.**
+  - `piece_pictures.drawn_rotation` (migration `20261104210909_drawn_rotation`, an in-place ALTER) records the
+    rotation a claim draws at.
+  - The drawing is served turned by `drawingTurn`, the piece's rotation minus the drawn one. This applies wherever it
+    shows: piece page, wardrobe, boards, public pages, MCP and try-on.
+  - In Edit, Rotate previews the turn on the shop-style slide. The spin, whose frames are served as made, turns by
+    `PiecePicture.rotation`.
+- **The backfill.** Drawings finished after 13:35 UTC on pieces last changed before them were drawn at the piece's
+  rotation: one on the preview, one in production. Every other drawing was drawn at 0. Production read back after the
+  deploy:
+  - four drawings on rotated pieces are now served turned 180° or 270°;
+  - one drawing made at 180 is served upright.
+- **Evidence.**
+  - Unit: `PieceImages` and `Wardrobe` cover `drawingTurn` and `pictureView`; `Drawing` checks that the rotation is
+    recorded at the claim.
+  - Scene: `piece.scene` covers Rotate on the shop-style slide and the spin's turn.
+  - Deployed: the preview and styld.app both report release `0f29dcd4`, and the migration is applied on both.
+- **Open:**
+  - The full gate with native, run after the deploy.
+  - Eva's look at her top on her phone.
+  - From 900 px up, a 90° or 270° turn overflows the non-square picture box, as the photo and cut-out already do.
+
 ## A piece is sorted beside the photo it was cut from (4 November, on main, not deployed)
 
 Eva (4 November): leggings, sports bras, skirts and "a bit of everything" were sorted into the wrong type. Clef's
