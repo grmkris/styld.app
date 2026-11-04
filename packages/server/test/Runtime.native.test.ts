@@ -19,6 +19,7 @@ import { verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
 import { verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
+import { verifyBoardOutfits } from './BoardOutfitsAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
@@ -129,6 +130,10 @@ test(
   overHttp(verifyGallery),
   { timeout: 60000 },
 )
+
+test('keeps outfits put together on a board as looks pinned on it, once each', overHttp(verifyBoardOutfits), {
+  timeout: 60000,
+})
 
 test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
 test('makes stickers and mood boards of the person’s pieces for a board, once each', overHttp(verifyGeneration), {

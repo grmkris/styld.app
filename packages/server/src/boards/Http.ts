@@ -17,6 +17,7 @@ export const boardHandlers = HttpApiBuilder.group(StyldApi, 'board', (handlers) 
       .handle('saveBoardItems', ({ params, payload }) => boards.saveBoardItems(params.boardId, payload))
       .handle('addPins', ({ params, payload }) => boards.addPins(params.boardId, payload))
       .handle('removePins', ({ params, payload }) => boards.removePins(params.boardId, payload))
+      .handle('keepLook', ({ params, payload }) => boards.keepLook(params.boardId, payload))
       .handle('setBoardVisibility', ({ params, payload }) => boards.setBoardVisibility(params.boardId, payload))
       .handle('addBoardImage', ({ params, payload }) => boards.addBoardImage(params.boardId, payload))
   }),

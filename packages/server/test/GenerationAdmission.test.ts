@@ -17,6 +17,7 @@ import { AttemptElsewhere, PaidAttempts, type Work as PaidWork } from '../src/us
 import { Holds } from '../src/usage/Holds.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { localD1 } from './LocalD1.ts'
+import { unusedBoards } from './fakes/Boards.ts'
 
 const over = () => {
   const database = localD1()
@@ -64,22 +65,7 @@ const inserted = Effect.gen(function* () {
 
 const passing = Layer.succeed(ContentJudge, { judge: () => Effect.succeed(passed) })
 const notUsed = () => Effect.die('not used by this test')
-const boards = Boards.of({
-  listBoards: notUsed,
-  getBoard: notUsed,
-  createBoard: notUsed,
-  updateBoard: notUsed,
-  deleteBoard: notUsed,
-  addPins: notUsed,
-  removePins: notUsed,
-  setBoardVisibility: notUsed,
-  saveBoardItems: notUsed,
-  arrangeBoard: notUsed,
-  setTable: notUsed,
-  addBoardImage: notUsed,
-  addGeneratedImage: notUsed,
-  addPhotoImage: notUsed,
-})
+const boards = Boards.of(unusedBoards)
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed([]),
   getPiece: notUsed,

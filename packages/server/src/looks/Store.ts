@@ -24,19 +24,22 @@ export const ownLookIds = (db: Drizzle, accountId: string, lookIds: ReadonlyArra
     (rows) => new Set(rows.map(({ id }) => id)),
   )
 
+/** The statements that write a look and its pieces in order: the one way a look's rows are made, for a board's keep
+ * too. */
+export const lookRows = (db: Drizzle, look: LookRow, pieceIds: ReadonlyArray<string>) => [
+  db.insert(looks).values(look),
+  ...pieceIds.map((pieceId, position) => db.insert(lookPieces).values({ lookId: look.id, pieceId, position })),
+]
+
 /** Looks and their pieces in D1. Every read and write of a look names the account, but for `looksById`. */
 export const lookStore = (db: Drizzle) => ({
   ...receiptRows(db),
   ...recordedWrites(db),
   /** The look, its pieces in order and the operation's receipt, as one atomic batch. */
   createLook: (look: LookRow, pieceIds: ReadonlyArray<string>, receipt: ReceiptRow) =>
-    query(() =>
-      db.batch([
-        db.insert(looks).values(look),
-        ...pieceIds.map((pieceId, position) => db.insert(lookPieces).values({ lookId: look.id, pieceId, position })),
-        db.insert(operationReceipts).values(receipt),
-      ]),
-    ).pipe(Effect.asVoid),
+    query(() => db.batch([db.insert(operationReceipts).values(receipt), ...lookRows(db, look, pieceIds)])).pipe(
+      Effect.asVoid,
+    ),
   listLooks: (accountId: string) =>
     query(() =>
       db.select().from(looks).where(eq(looks.accountId, accountId)).orderBy(desc(looks.createdAt)).limit(200),

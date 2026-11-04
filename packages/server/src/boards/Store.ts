@@ -185,6 +185,8 @@ const pinReads = (db: Database) => ({
 })
 
 const pinWrites = (db: Database) => ({
+  /** The statement that pins something new on a board, for its operation's batch (`recorded`). */
+  pinRow: (pin: BoardPinRow) => db.insert(boardPins).values(pin),
   /** These pins of the board, to take off. */
   pinsOn: (boardId: string, pinIds: ReadonlyArray<string>) =>
     query(() =>

@@ -31,6 +31,7 @@ import { curationTools } from '../src/mcp/CurationTools.ts'
 import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
 import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
+import { unusedBoards } from './fakes/Boards.ts'
 
 /** The account service: Ana, with her verified email. */
 const accounts = {
@@ -147,23 +148,15 @@ const arrangements: Array<ArrangeBoard> = []
 /** The uploads pictures were pinned from. */
 const pinnedUploads: Array<string> = []
 const boards = Boards.of({
+  ...unusedBoards,
   listBoards: () => Effect.succeed([]),
   getBoard: () => withThumbnail(board, pieces[0]?.id ?? ''),
-  createBoard: notUsed,
-  updateBoard: notUsed,
-  deleteBoard: notUsed,
-  saveBoardItems: notUsed,
   arrangeBoard: (_boardId, input) => Effect.sync(() => arrangements.push(input)).pipe(Effect.as(board)),
   setTable: () => Effect.fail(BoardVersionConflict.make({ version: 4 })),
-  addPins: notUsed,
-  removePins: notUsed,
   addBoardImage: (_boardId, { uploadId }) =>
     Effect.sync(() => pinnedUploads.push(uploadId)).pipe(
       Effect.as({ imageId: BoardImageId.make(`bm_${'replay'.padEnd(22, 'x')}`) }),
     ),
-  addGeneratedImage: notUsed,
-  addPhotoImage: notUsed,
-  setBoardVisibility: notUsed,
 })
 /** The profile: Ana's, published with a handle. */
 const profiles = Profiles.of({

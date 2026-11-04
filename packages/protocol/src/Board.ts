@@ -1,11 +1,12 @@
-import { maximumBoardItems, maximumMoods, pinsAtOnce } from './Limits.ts'
-import { textLength, trimmedText } from './Text.ts'
+import { maximumBoardItems, maximumLookPieces, maximumMoods, pinsAtOnce } from './Limits.ts'
+import { Name, textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
 import { Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
+import { ProposalRef } from './Outfit.ts'
 import { Piece, PieceId, UploadId } from './Wardrobe.ts'
 
 /** Opaque ids: a kind prefix and 22 base64url characters (16 random bytes). The website makes item ids
@@ -159,6 +160,20 @@ export const RemovePins = Schema.Struct({
   pinIds: Schema.Array(PinId).check(Schema.isMinLength(1), Schema.isMaxLength(pinsAtOnce)),
 })
 export type RemovePins = typeof RemovePins.Type
+
+/** Keep some of a board's pieces as a look, pinned on the board (T-16): what the person selected on its table, or
+ * all of it. With the proposal it came from, the keep is counted for the outfit engine. */
+export const KeepLook = Schema.Struct({
+  operationId: OperationId,
+  name: Name,
+  pieceIds: Schema.Array(PieceId).check(Schema.isMinLength(1), Schema.isMaxLength(maximumLookPieces)),
+  proposal: Schema.optionalKey(ProposalRef),
+})
+export type KeepLook = typeof KeepLook.Type
+
+/** The look kept, and the board it is now pinned on. */
+export const KeptLook = Schema.Struct({ look: Look, board: Board })
+export type KeptLook = typeof KeptLook.Type
 
 /** Something to lay on a board's table without an id of its own: the server gives it one. */
 export const TablePiece = Schema.TaggedStruct('TablePiece', { pieceId: PieceId })

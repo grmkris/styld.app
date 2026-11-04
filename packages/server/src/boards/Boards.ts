@@ -29,6 +29,7 @@ import { ownPieceIds } from '../wardrobe/Store.ts'
 import { usableUpload } from '../wardrobe/Shared.ts'
 import { type BoardRow, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
+import { keeping } from './Keeping.ts'
 import { placePins } from './PinTable.ts'
 import {
   lookTarget,
@@ -346,7 +347,13 @@ const make = Effect.gen(function* () {
     <I, A, E, R>(edit: (boardId: BoardId, input: I) => Effect.Effect<A, E, R>) =>
     (boardId: BoardId, input: I) =>
       rechecked(edit)(boardId, input).pipe(Effect.provide(context))
-  const edits = { ...(yield* changes), ...(yield* tables), ...(yield* pinning), ...(yield* pictures) }
+  const edits = {
+    ...(yield* changes),
+    ...(yield* tables),
+    ...(yield* pinning),
+    ...(yield* pictures),
+    ...(yield* keeping),
+  }
   return {
     ...(yield* reads),
     ...edits,
@@ -357,6 +364,7 @@ const make = Effect.gen(function* () {
     setTable: checked(edits.setTable),
     addPins: checked(edits.addPins),
     removePins: checked(edits.removePins),
+    keepLook: checked(edits.keepLook),
     addBoardImage: checked(edits.addBoardImage),
     /** A picture Styld generated for the board, marked Generated. */
     addGeneratedImage: checked((boardId: BoardId, input: AddBoardImage) =>

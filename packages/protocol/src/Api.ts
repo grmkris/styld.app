@@ -43,6 +43,8 @@ import {
   BoardVersionConflict,
   Boards,
   CreateBoard,
+  KeepLook,
+  KeptLook,
   PinRefused,
   RemovePins,
   SaveBoardItems,
@@ -265,6 +267,14 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: AddPins,
       success: Board,
+      error: [NotFound, PinRefused, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('keepLook', '/boards/:boardId/looks', {
+      params: { boardId: BoardId },
+      payload: KeepLook,
+      success: KeptLook,
       error: [NotFound, PinRefused, OperationConflict, Unavailable],
     }),
   )
