@@ -136,7 +136,9 @@
         "photo": "This piece shows your original photo, which is never sent to be drawn.",
         "dailyLimit": "Today's credits are used up. Try again tomorrow.",
         "network": "The drawing could not be asked for. Try again."
-      }
+      },
+      "backPhoto": "Your photo of the back",
+      "cleanedBack": "Drawn by AI from your photo of the back"
     },
     "turn": {
       "make": "Make it turn",

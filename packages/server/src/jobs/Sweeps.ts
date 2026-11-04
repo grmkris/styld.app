@@ -60,8 +60,6 @@ const sweepEach = <A, R>(rows: ReadonlyArray<A>, move: (row: A) => Effect.Effect
 
 const ids = (rows: ReadonlyArray<{ readonly id: string }>) => rows.map(({ id }) => id)
 
-/** The rows stuck in a working state since before a moment, oldest first: read here, moved by their owners.
- * @internal Exported for its tests. */
 /** Drawings of either side of a piece stuck on their way: the two tables share the drawing's columns. */
 const stuckDrawings = (db: Database['Service'], table: typeof piecePictures | typeof pieceBackPictures, until: Date) =>
   query(() =>
@@ -73,6 +71,8 @@ const stuckDrawings = (db: Database['Service'], table: typeof piecePictures | ty
       .limit(sweepBatch),
   ).pipe(Effect.map(ids))
 
+/** The rows stuck in a working state since before a moment, oldest first: read here, moved by their owners.
+ * @internal Exported for its tests. */
 export const stuckRows = (db: Database['Service']) => ({
   pieces: (until: Date) =>
     query(() =>
