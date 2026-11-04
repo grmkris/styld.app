@@ -6,6 +6,46 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Eva's Home: What to wear today, What's new, Challenges soon, and no Explore page (4 November, on main, not deployed)
+
+Built from `docs/PLAN-home-2026-11-04.md` (owner-approved 4 November) after Eva's paper sketch and voice note. This
+session ran as a track: cheap checks per commit; the native suite, the full gate and the deploy belong to the
+coordinator (`styldappv2-51`).
+
+- **Explore leaves the website** (dcef50cc): `/explore` opens Home and the address becomes `/`; the head's compass,
+  the signed-out bar's Explore link and the landing's "See all" go, and a profile's Back goes Home. The landing reads
+  its boards through its own `LandingBoards` state; `Visit` holds only a person and a piece again. The server's
+  `/api/public/explore`, `explore_get` and curation stay; Ask still finds people and boards. Board moods' copy moved to
+  `boards.moods` ("Moods, for search").
+- **Ask's Start a board opens the new-board sheet** (44cfb2c7): the move to Boards was a full page load that forgot
+  the request; both are tabs, so it is now an in-page move. Scene through to the open sheet; native
+  `expectBoardStartFromAsk`.
+- **What's new is everyone's** (fd3dbbc0, 0db5e5fe): `feedFor` reads every public board, pin added after its board
+  went public, and shared look, gated as discovery is (owner's profile and the thing passed, no profile three people
+  reported; blocks and unpublished profiles drop out through the public pages), with the followed people first on each
+  page. No migration. `feed_get` says so. Local-D1 `Feed.test.ts`; native `verifyWhatsNew` in `SocialAcceptance`.
+- **Home in Eva's order** (2cf49e46 refactor, then c62c23e9): the day, "What to wear today", What's new along a strip (eight
+  newest, one card shape so the strip keeps its height), today's outfit as before, Challenges (her three examples,
+  "Coming soon", nothing to tap), Pick up, then "What's new, earlier", which reads more as it nears the screen
+  (IntersectionObserver per cursor) or on Show more. "From people you follow" is gone. Desktop: the day heads the page,
+  the strip runs across it, the outfit stands beside the rest.
+- **The tombola** (ad798779): a full-screen wheel of twelve of the person's pieces turns ≈2.5 s and stops on one (in
+  season first; never sportswear, swimwear, loungewear, sport or outdoor shoes or socks; free, spin again at will;
+  at once under reduced motion). From the piece: **Make outfits with it** (the "One piece, many outfits" board,
+  5d70aad6), **Wear it today** (today's outfits around it as the engine's anchor, with "Back to today's outfits",
+  7fa62f23), **Build my own** (a board with the piece on its table, 5d70aad6), Open the piece.
+- **Bundle budget** 384,600 (dated notes in `tools/bundle-check.ts`): Explore's removal saved 4,495; What's new and
+  the layout, the tombola (3,627), Wear it today (545) and the boards (888, measured in clean worktrees) add back.
+- **Evidence:** unit and story/scene: `landing.*`, `whatsNew.*`, `tombola.*`, `wearIt.story`, `Feed.test.ts`,
+  `today.scene`, `ask.scene`, `session.story`, `Rendering` (`/explore` answers 200). Native tests written, not run
+  here: `SocialAcceptance` (What's new), `verifyHome` (strip, Challenges, the wheel, Wear it today, both boards),
+  `expectBoardStartFromAsk`, the layout checks without `/explore`.
+- **Open:** the coordinator's deploy, full gate and native run; the Eva tracker's ticket for this (after T-22–T-24,
+  with the deploy's evidence, and F-46's note that the tombola and challenges are no longer deferred); a phone walk by Eva (her sketch was phone-only, so the
+  desktop arrangement is a proposal); Challenges themselves (kept for later); re-publishing a board moves it to the top
+  of What's new again (known); What's new pages by an instant, so items sharing the cursor's exact millisecond can be
+  skipped at a page boundary.
+
 ## Gallery: a piece chosen or added from the wardrobe, photos found again (G1–G4 of `docs/PLAN-gallery-delete-2026-11-04.md`, 4 November, deployed at 679e8d0)
 
 - Choosing a garment's piece (470f446c): the inline same-slot picker is gone. "Not this one", "Change" and "Choose from

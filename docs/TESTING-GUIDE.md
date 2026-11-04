@@ -92,13 +92,15 @@ the phone and on a computer.
 - Ask about your own clothes: "What should I wear today?", "What goes well together?", "Save that as a look". Styld
   shows pieces in its answers. Try it in Slovenian too. Replies can take up to a minute.
 
-**Your public page and Explore**
+**Your public page and What's new**
 
 - In Account › Public profile, choose a username, add a name, city and bio, and **Make it public**. Then make a board
   or a look public with **Share** and open its link signed out (or send it to the other tester). Your wardrobe itself
   stays private.
-- Open **Explore** from Home, follow the other tester, save one of their boards, and look at **From people you
-  follow** on Home. Report and block exist too; please only try them on each other.
+- On Home, **What's new** shows what people shared: open the other tester's board from it, follow them (their new things
+  then come first), and save one of their boards. Report and block exist too; please only try them on each other.
+- Tap **What to wear today**: the wheel stops on one of your pieces. Try **Make outfits with it**, **Wear it today**
+  and **Build my own**, and spin again a few times.
 
 **ChatGPT and Claude**
 

@@ -63,12 +63,15 @@ reading a product's brand.
 - **Styld:** pictures in or out of the chat, renaming or deleting chats; the model and price are the owner's to
   confirm.
 - **Sign in with Google** (an owner topic from the screen review).
+- **Challenges** (Eva's Home sketch, 4 November): shown on Home as coming soon ("30 days of red", "Witch October",
+  "One piece for a whole week"); joining one and posting an outfit to it, private or public, is not built.
 
 ## Parked (not built unless real demand appears)
 
 - the Slovenian shop catalog and its shop directory;
 - fit badges ("Goes with 4 of yours", "You own 2 like these");
-- referrals, the daily wheel, the calendar and v1's onboarding funnels;
+- referrals, the calendar and v1's onboarding funnels (the daily wheel came back as Home's What to wear today, 4
+  November);
 - favourites and archive for pieces (favourite outfit photos are kept, in My Gallery);
 - Jev outfit ideas.
 

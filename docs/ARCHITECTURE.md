@@ -145,13 +145,14 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 ## Visibility, checks and social
 
 - **Visibility has one predicate per level** (`social/Visibility.ts`): `link` (a profile and its links) and
-  `discovery` (Explore, feeds, search), applied by every public read, page, feed, search result, MCP answer and pin,
+  `discovery` (What's new, search, the landing's boards, the assistants' Explore), applied by every public read, page, feed, search result, MCP answer and pin,
   with blocks both ways. The owner always reads their own content. A piece is public only while it is on a public
   board or a shared look; original photos, tray items and My Gallery photos are never public.
 - **Checks have one writer** (`safety/Checks.ts`): content goes pending with its digest right after the change; a
   result is written only while the digest still matches. The judge reads only what others would see. No human queue;
   admins act through admin MCP tools; a report re-runs the check on the content itself.
-- **The feed is a query over follows**, not a written activity table. Public media has its own routes; visibility is
+- **What's new is a query over everyone's public things** (followed people first on each page), not a written activity
+  table. Public media has its own routes; visibility is
   checked before any cache, the stored original is never served, a failed transform answers 503.
 - **Rate limits** are Workers RateLimit bindings (10 or 60 second periods), one pace table (`kernel/Pacing.ts`).
 

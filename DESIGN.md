@@ -1,8 +1,8 @@
 # Design: Styld
 
 **Gallery 2** is Styld v2's design (owner decision, 2026-10-30): Gallery's paper, ink and cutouts, with one idea
-added. **Your clothes are the interface.** Home opens on today's outfit laid out on paper (the table), and a board is a
-table you arrange yourself. It replaced Gallery 1 (2026-10-28), which replaced v1's Atelier.
+added. **Your clothes are the interface.** Home opens on the day, What to wear today and What's new, then today's
+outfit laid out on paper (the table); a board is a table you arrange yourself. It replaced Gallery 1 (2026-10-28), which replaced v1's Atelier.
 
 The prototypes:
 
