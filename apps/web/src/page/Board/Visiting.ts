@@ -7,10 +7,12 @@ import { generatedPiecesMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
 import { fromPublic, stillTable } from './Table.ts'
 
-/** A public board as others see it: its name and whose it is, its collage, then the pins they may see. */
+/** A public board as others see it: its name and whose it is, trying it with one's own wardrobe when it shows
+ * generated pieces, its collage, then the pins they may see. */
 export const visitingView = <Message>(
   board: PublicBoard,
   actions: Html,
+  tryIt: Html,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html =>
@@ -20,6 +22,7 @@ export const visitingView = <Message>(
       byline(board.by, locale, h),
       board.generated ? generatedPiecesMark(locale, h) : h.empty,
       actions,
+      tryIt,
     ]),
     board.items.length === 0
       ? h.empty

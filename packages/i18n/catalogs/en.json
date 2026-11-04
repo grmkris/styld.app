@@ -1064,5 +1064,13 @@
     "accountReason": "What's new starts with these. Nothing is hidden.",
     "notNow": "Not now",
     "failed": "That didn't save. Try again."
+  },
+  "tryBoard": {
+    "action": "Try with my wardrobe",
+    "tried": "{fromWardrobe} of {of} from your wardrobe",
+    "open": "Open your board",
+    "failed": "That didn't work. Try again.",
+    "missing": "No {colour} {type} yet",
+    "missingKind": "No {type} yet"
   }
 }

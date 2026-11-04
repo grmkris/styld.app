@@ -943,4 +943,10 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'showMe.accountReason': "What's new starts with these. Nothing is hidden.",
   'showMe.notNow': 'Not now',
   'showMe.failed': "That didn't save. Try again.",
+  'tryBoard.action': 'Try with my wardrobe',
+  'tryBoard.tried': '{fromWardrobe} of {of} from your wardrobe',
+  'tryBoard.open': 'Open your board',
+  'tryBoard.failed': "That didn't work. Try again.",
+  'tryBoard.missing': 'No {colour} {type} yet',
+  'tryBoard.missingKind': 'No {type} yet',
 }

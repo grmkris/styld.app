@@ -1,7 +1,9 @@
 import { StyldApi } from '@styld/protocol'
 import { Effect } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
+import { asReader } from '../social/Translated.ts'
 import { Boards } from './Boards.ts'
+import { TryBoards } from './Try.ts'
 
 /** The website's board endpoints, each the matching `Boards` operation for the session's account; changes are
  * admitted first. */
@@ -24,4 +26,11 @@ export const boardHandlers = HttpApiBuilder.group(StyldApi, 'board', (handlers) 
       .handle('setBoardVisibility', ({ params, payload }) => boards.setBoardVisibility(params.boardId, payload))
       .handle('addBoardImage', ({ params, payload }) => boards.addBoardImage(params.boardId, payload))
   }),
+)
+
+/** Trying a public board with the session's own wardrobe; its texts as the person reads them. */
+export const tryBoardHandlers = HttpApiBuilder.group(StyldApi, 'tryBoard', (handlers) =>
+  Effect.map(TryBoards, (tries) =>
+    handlers.handle('tryBoard', ({ params, payload }) => asReader(tries.tryBoard(params.boardId, payload))),
+  ),
 )

@@ -17,6 +17,7 @@ import {
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
 import * as People from '../People.ts'
+import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
@@ -106,6 +107,7 @@ export const Message = defineMessageUnion({
   FailedRename: {},
   ToggledPublic: { isPublic: Schema.Boolean },
   GotPeopleMessage: { message: People.Message },
+  GotTryItMessage: { message: TryIt.Message },
   GotShareMessage: { message: Share.Message },
   GotMakeMessage: { message: Make.Message },
   GotOutfitsMessage: { message: Outfits.Message },

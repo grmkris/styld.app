@@ -41,6 +41,7 @@ import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving
 import type { LoadError } from '../../ServerData.ts'
 import { closePiecePicker, pageSteps } from './Page.ts'
 import * as People from '../People.ts'
+import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
@@ -52,6 +53,12 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
   model.signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+const foldTryIt = Update.foldChild({
+  update: TryIt.update,
+  read: (model: Model) => Option.some(model.tryIt),
+  write: (model: Model, tryIt: TryIt.Model) => modifyFields(model, { tryIt: () => tryIt }),
+  toParentMessage: (message: TryIt.Message) => Message.GotTryItMessage({ message }),
+})
 const foldShare = Share.foldInto<Model, Message>((message) => Message.GotShareMessage({ message }))
 
 /** Make with Styld: once an ask ends, the board reloads to show what it added. */
@@ -122,6 +129,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Visiting({ board }) }) }),
     }),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
+    GotTryItMessage: (got) => foldTryIt(model, got.message),
     GotShareMessage: (got) => foldShare(model, got.message),
     GotMakeMessage: (got) => foldMake(model, got.message),
     GotOutfitsMessage: (got) => foldOutfits(model, got.message),

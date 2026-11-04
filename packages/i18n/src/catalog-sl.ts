@@ -962,4 +962,10 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'showMe.accountReason': 'Novosti se začnejo s tem. Nič ni skrito.',
   'showMe.notNow': 'Ne zdaj',
   'showMe.failed': 'Ni se shranilo. Poskusi znova.',
+  'tryBoard.action': 'Preizkusi s svojo omaro',
+  'tryBoard.tried': '{fromWardrobe} od {of} iz tvoje omare',
+  'tryBoard.open': 'Odpri svojo zbirko',
+  'tryBoard.failed': 'Ni uspelo. Poskusi znova.',
+  'tryBoard.missing': 'Še manjka: {type}, {colour}',
+  'tryBoard.missingKind': 'Še manjka: {type}',
 }

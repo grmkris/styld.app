@@ -13,6 +13,7 @@ import {
   Visibility,
 } from '@styld/protocol'
 import * as People from '../People.ts'
+import * as TryIt from './TryIt.ts'
 import { initPicker, PiecePicker } from '../PiecePicker.ts'
 import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
@@ -175,6 +176,8 @@ export const Model = Schema.Struct({
   moods: Schema.Array(Mood),
   /** Saving and reporting it, when it is someone else's. */
   people: People.Model,
+  /** Trying it with the visitor's own wardrobe, when it shows generated pieces. */
+  tryIt: TryIt.Model,
   /** Share on the owner's public board: the link shared or copied. */
   sharing: Share.Model,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
@@ -231,6 +234,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   publishing: Publishing.Idle(),
   moods: [],
   people: People.init(People.Subject.Board({ boardId })),
+  tryIt: TryIt.init(),
   sharing: Share.init,
   picker: Dialog.init({ id: 'board-picker', isAnimated: true }),
   piecePicker: initPicker('board-piece-picker'),

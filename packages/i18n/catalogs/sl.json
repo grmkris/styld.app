@@ -1064,5 +1064,13 @@
     "accountReason": "Novosti se začnejo s tem. Nič ni skrito.",
     "notNow": "Ne zdaj",
     "failed": "Ni se shranilo. Poskusi znova."
+  },
+  "tryBoard": {
+    "action": "Preizkusi s svojo omaro",
+    "tried": "{fromWardrobe} od {of} iz tvoje omare",
+    "open": "Odpri svojo zbirko",
+    "failed": "Ni uspelo. Poskusi znova.",
+    "missing": "Še manjka: {type}, {colour}",
+    "missingKind": "Še manjka: {type}"
   }
 }

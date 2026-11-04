@@ -2,7 +2,8 @@ import { Effect, Layer } from 'effect'
 import { withAuth } from '../AuthHttp.ts'
 import { Boards } from '../boards/Boards.ts'
 import { BoardStore } from '../boards/Store.ts'
-import { boardHandlers } from '../boards/Http.ts'
+import { boardHandlers, tryBoardHandlers } from '../boards/Http.ts'
+import { TryBoards } from '../boards/Try.ts'
 import { consumer } from '../jobs/Jobs.ts'
 import { module } from '../kernel/Module.ts'
 import { outfits } from '../outfits/Module.ts'
@@ -27,7 +28,8 @@ import { socialHandlers } from './SocialHttp.ts'
 /** What people make and show each other: checks, looks, worn days, profiles, public pages, follows and blocks,
  * discovery, curation and boards, each a service from its own layer. */
 export const social = module({
-  layer: Layer.mergeAll(Boards.layer, Social.layer, Discovery.layer).pipe(
+  layer: TryBoards.layer.pipe(
+    Layer.provideMerge(Layer.mergeAll(Boards.layer, Social.layer, Discovery.layer)),
     Layer.provideMerge(
       Layer.mergeAll(
         Looks.layer,
@@ -45,6 +47,7 @@ export const social = module({
   api: Layer.mergeAll(
     lookHandlers,
     boardHandlers,
+    tryBoardHandlers,
     wornHandlers,
     profileHandlers,
     preferencesHandlers,

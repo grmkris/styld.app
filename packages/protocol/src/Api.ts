@@ -21,6 +21,7 @@ import { LinkApi } from './Link.ts'
 import { GalleryOperatorApi } from './GalleryOperator.ts'
 import { SeedApi } from './Seed.ts'
 import { PreferencesApi } from './Preferences.ts'
+import { TryBoardApi } from './TryBoard.ts'
 import { ImportApi } from './Import.ts'
 import { PictureBackfillApi } from './PictureBackfill.ts'
 import {
@@ -512,4 +513,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(GalleryOperatorApi)
   .add(SeedApi)
   .add(PreferencesApi)
+  .add(TryBoardApi)
   .prefix('/api') {}

@@ -23,6 +23,7 @@ import { boardStateView } from './Unready.ts'
 import { lookMosaic, pickerBody } from './PickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
+import * as TryItView from './TryItView.ts'
 import { type Model, canChangePins, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
@@ -473,7 +474,20 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs & { re
       viewInputs: { locale, signedIn },
       toParentMessage: (message) => Message.GotPeopleMessage({ message }),
     })
-    const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
+    const visiting = (board: PublicBoard) =>
+      visitingView(
+        board,
+        actions,
+        h.submodel({
+          slotId: 'board-try',
+          model: model.tryIt,
+          view: TryItView.view,
+          viewInputs: { locale, signedIn, board },
+          toParentMessage: (message) => Message.GotTryItMessage({ message }),
+        }),
+        locale,
+        h,
+      )
     return boardStateView(
       model.board,
       (name, paper) => readyView(model, pieces, name, paper, locale, h),

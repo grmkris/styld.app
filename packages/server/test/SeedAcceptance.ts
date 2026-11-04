@@ -1,13 +1,16 @@
 import { expect } from 'bun:test'
 import {
+  Board,
   Feed,
   type FeedItem,
+  PieceItem,
   PublicBoard,
   PublicProfile,
   SeededBoard,
   SeededProfile,
   SeedRefused,
   TextItem,
+  TriedBoard,
 } from '@styld/protocol'
 import { Match, Schema } from 'effect'
 import { client, emailOf, seedAccounts, send, signIn } from './Accounts.ts'
@@ -17,7 +20,8 @@ import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 // through the public edge. Only the operator reaches the seed, and only into a configured house account; a board needs
 // its garments imported; the profile and the board are built through the app's own services, the board public only
 // once its table is pinned and laid out, so What's new shows it once; the same entry again changes nothing; a
-// Slovenian reader reads the board and profile in Slovenian; the board is marked Generated; removing it takes it down.
+// Slovenian reader reads the board and profile in Slovenian; the board is marked Generated; a reader can try it with
+// their own wardrobe; removing it takes it down.
 
 const house = 'native-house'
 const email = emailOf(house)
@@ -55,6 +59,18 @@ const profile = {
   name: 'Native House',
   bio: 'Outfit formulas.',
   sl: { name: 'Domača hiša', bio: 'Formule za videze.', review: 'pending' },
+}
+
+/** The public board once others see all its garments: each piece's own check follows the board going public. */
+const garmentsShown = async (origin: string, boardId: string) => {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const shown = Schema.decodeUnknownSync(PublicBoard)(
+      await (await fetch(`${origin}/api/public/boards/${boardId}`)).json(),
+    )
+    if (shown.items.filter((item) => Schema.is(PieceItem)(item)).length === garments.length) return shown
+    await Bun.sleep(250)
+  }
+  throw new Error('the board’s garments never showed')
 }
 
 /** A public read as a reader in a language, by the website's own cookie. */
@@ -125,6 +141,25 @@ export const verifySeed = async (origin: string, testUrl: string) => {
       }),
     )
   expect(feed.items.flatMap(shows)).toEqual(['board'])
+
+  // Tried with a wardrobe that has none of its pieces: a private board of the reader's, a label where each piece lay
+  // and the board's own words, no house piece pinned; the same try again is the same board. Signed out, no try.
+  await garmentsShown(origin, created.boardId)
+  const tryPath = `/api/boards/${created.boardId}/try`
+  expect((await fetch(`${origin}${tryPath}`, { method: 'POST', body: '{}' })).status).not.toBe(200)
+  const tried = Schema.decodeUnknownSync(TriedBoard)(
+    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
+  )
+  expect([tried.fromWardrobe, tried.of]).toEqual([0, garments.length])
+  const mine = Schema.decodeUnknownSync(Board)(await (await reader(`/api/boards/${tried.boardId}`)).json())
+  expect([mine.name, mine.visibility, mine.pins.length]).toEqual(['Black dress, white trainers', 'private', 0])
+  const labels = mine.items.flatMap((item) => (Schema.is(TextItem)(item) ? [item.text] : []))
+  expect(labels).toContain('Four pieces')
+  expect(labels.filter((text) => text.startsWith('No ') && text.endsWith(' yet'))).toHaveLength(garments.length)
+  const triedAgain = Schema.decodeUnknownSync(TriedBoard)(
+    await (await send(reader, tryPath, 'POST', { operationId: 'try-native-1' })).json(),
+  )
+  expect(triedAgain.boardId).toBe(tried.boardId)
 
   // Removed, it is gone for good: its status and its page.
   expect((await send(operator, board, 'DELETE', { operationId: 'seed-native-remove-1', email })).status).toBe(204)
