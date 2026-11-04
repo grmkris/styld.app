@@ -118,7 +118,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // it, each measured in a clean worktree).
 // Raised to 393,000 the same day for Styld taking Ask's question once (addressInPlace and samePageArrival): 49 more,
 // 392,864 to 392,913 on main.
-if (initialGzip > 393000) throw new Error(`Initial browser assets exceed the 393,000-byte gzip budget: ${initialGzip}`)
+// Raised to 394,100 the same day for the privacy policy and the terms: their two routes, the footer's two links, the
+// pages' view and styles, the loader of their own words and the titles left in the catalogs add 1,100 (main 392,390 at
+// 89f4a292 and 393,490 with them; 392,913 to 393,989 at d64d4d64). The sections' words (about 3,300 more) load only
+// on those pages (`legal-en.ts`, `legal-sl.ts`).
+if (initialGzip > 394100) throw new Error(`Initial browser assets exceed the 394,100-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -334,6 +334,68 @@ export interface MessageArgumentsByKey<_T = string> {
   'landing.signIn': Readonly<Record<string, never>>
   'landing.start': Readonly<Record<string, never>>
   'landing.title': Readonly<Record<string, never>>
+  'legal.privacy.ai': Readonly<Record<string, never>>
+  'legal.privacy.aiHeading': Readonly<Record<string, never>>
+  'legal.privacy.aiProviders': Readonly<Record<string, never>>
+  'legal.privacy.assistants': Readonly<Record<string, never>>
+  'legal.privacy.assistantsHeading': Readonly<Record<string, never>>
+  'legal.privacy.changes': Readonly<Record<string, never>>
+  'legal.privacy.changesHeading': Readonly<Record<string, never>>
+  'legal.privacy.children': Readonly<Record<string, never>>
+  'legal.privacy.childrenHeading': Readonly<Record<string, never>>
+  'legal.privacy.collectAccount': Readonly<Record<string, never>>
+  'legal.privacy.collectContent': Readonly<Record<string, never>>
+  'legal.privacy.collectHeading': Readonly<Record<string, never>>
+  'legal.privacy.collectPayment': Readonly<Record<string, never>>
+  'legal.privacy.collectTechnical': Readonly<Record<string, never>>
+  'legal.privacy.cookies': Readonly<Record<string, never>>
+  'legal.privacy.cookiesHeading': Readonly<Record<string, never>>
+  'legal.privacy.noSale': Readonly<Record<string, never>>
+  'legal.privacy.private': Readonly<Record<string, never>>
+  'legal.privacy.privateHeading': Readonly<Record<string, never>>
+  'legal.privacy.providers': Readonly<Record<string, never>>
+  'legal.privacy.providersHeading': Readonly<Record<string, never>>
+  'legal.privacy.retention': Readonly<Record<string, never>>
+  'legal.privacy.retentionHeading': Readonly<Record<string, never>>
+  'legal.privacy.rights': Readonly<Record<string, never>>
+  'legal.privacy.rightsHeading': Readonly<Record<string, never>>
+  'legal.privacy.sharing': Readonly<Record<string, never>>
+  'legal.privacy.telemetry': Readonly<Record<string, never>>
+  'legal.privacy.transfers': Readonly<Record<string, never>>
+  'legal.privacy.transfersHeading': Readonly<Record<string, never>>
+  'legal.privacy.use': Readonly<Record<string, never>>
+  'legal.privacy.useHeading': Readonly<Record<string, never>>
+  'legal.privacy.who': Readonly<Record<string, never>>
+  'legal.privacy.whoHeading': Readonly<Record<string, never>>
+  'legal.privacyLink': Readonly<Record<string, never>>
+  'legal.privacyTitle': Readonly<Record<string, never>>
+  'legal.questions': Readonly<Record<string, never>>
+  'legal.terms.accounts': Readonly<Record<string, never>>
+  'legal.terms.accountsHeading': Readonly<Record<string, never>>
+  'legal.terms.agree': Readonly<Record<string, never>>
+  'legal.terms.changes': Readonly<Record<string, never>>
+  'legal.terms.changesHeading': Readonly<Record<string, never>>
+  'legal.terms.content': Readonly<Record<string, never>>
+  'legal.terms.contentHeading': Readonly<Record<string, never>>
+  'legal.terms.credits': Readonly<Record<string, never>>
+  'legal.terms.creditsHeading': Readonly<Record<string, never>>
+  'legal.terms.ending': Readonly<Record<string, never>>
+  'legal.terms.endingHeading': Readonly<Record<string, never>>
+  'legal.terms.generated': Readonly<Record<string, never>>
+  'legal.terms.generatedHeading': Readonly<Record<string, never>>
+  'legal.terms.liability': Readonly<Record<string, never>>
+  'legal.terms.liabilityHeading': Readonly<Record<string, never>>
+  'legal.terms.ownPhotos': Readonly<Record<string, never>>
+  'legal.terms.premiumWeek': Readonly<Record<string, never>>
+  'legal.terms.property': Readonly<Record<string, never>>
+  'legal.terms.propertyHeading': Readonly<Record<string, never>>
+  'legal.terms.service': Readonly<Record<string, never>>
+  'legal.terms.serviceHeading': Readonly<Record<string, never>>
+  'legal.terms.use': Readonly<Record<string, never>>
+  'legal.terms.useHeading': Readonly<Record<string, never>>
+  'legal.termsLink': Readonly<Record<string, never>>
+  'legal.termsTitle': Readonly<Record<string, never>>
+  'legal.updated': Readonly<Record<string, never>>
   'looks.backToLooks': Readonly<Record<string, never>>
   'looks.delete': Readonly<Record<string, never>>
   'looks.deleteConfirm': Readonly<Record<string, never>>
@@ -945,5 +1007,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.uploadingImage': Readonly<Record<string, never>>
 }
 export type MessageKey = keyof MessageArgumentsByKey
+/** The privacy policy's and the terms' own words, which only those pages load. */
+export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
+export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5cab58ac8e1b63578d3badaff07494383ad20be908b30cc2b844beafaf5e22e9'
+export const catalogVersion = '1338e152b01bb4cfec2a17c22c554df7c0e3ea36c9ddfc078fcb41fe30486300'
