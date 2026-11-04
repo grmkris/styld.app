@@ -251,7 +251,10 @@ check on her phone (Samsung, Android Chrome, dark mode), which is the acceptance
 - **Navigation (T-06):** the physical Android Back button on the wardrobe filters and the Gallery.
 - **Categories (T-12):** custom categories under a built-in type, suggested by Styld in the review tray and made on
   keep.
-- **Ask Styld (T-14):** a live readback on the preview through the real LiteLLM route.
+- **Ask Styld (T-14):** Eva's check only. The live readback on the preview through the real LiteLLM route passed on
+  4 November after LiteLLM moved to v1.108.0 (release 784e201, test account): English, Slovenian and a saved look were
+  answered in 5–14 s, every piece shown was the person's own, one credit a message, and a repeated operation id
+  reused its chat. Deleting the readback's look answered 400, so a "Readback autumn" look is left on the test account.
 - **Android (T-20):** the share sheet and the gallery picker on a phone; the Chrome tab-restore black screen was
   never reproduced.
 - **Signed media (T-21, F-43):** signed-in media loading under load, Workers Logs, and the addresses refreshing after
