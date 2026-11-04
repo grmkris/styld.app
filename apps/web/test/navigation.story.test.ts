@@ -17,7 +17,7 @@ import {
   ScrollToTop,
   SignInToFollow,
 } from '../src/Navigation.ts'
-import { ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
+import { ReadCredits, ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import * as ShowMe from '../src/page/ShowMe.ts'
 import * as Taste from '../src/page/Taste.ts'
@@ -145,13 +145,15 @@ describe('opening a tab page inside the page', () => {
       update,
       given(signedIn('/ask')),
       message(Message.ChangedUrl({ url: urlOf('/account#assistants') })),
-      // The account reads its profile, to say where it stands, what What's new starts with, and what Styld knows.
-      Command.expectExact(ReadProfile, ShowMe.ReadPreferences, Taste.ReadTaste, ScrollToAnchor),
+      // The account reads its profile, to say where it stands, its credits, what What's new starts with, and what Styld
+      // knows.
+      Command.expectExact(ReadProfile, ReadCredits, ShowMe.ReadPreferences, Taste.ReadTaste, ScrollToAnchor),
       Command.resolve(ReadProfile, AccountMessage.FailedReadProfile()),
+      Command.resolve(ReadCredits, AccountMessage.FailedReadCredits()),
       Command.resolve(ShowMe.ReadPreferences, ShowMe.Message.FailedReadPreferences()),
       Command.resolve(Taste.ReadTaste, Taste.Message.FailedReadTaste()),
       Command.resolve(ScrollToAnchor, Message.CompletedScrollToAnchor()),
-      model(({ route }) => expect(route).toEqual(AppRoute.Account())),
+      model(({ route }) => expect(route).toEqual(AppRoute.Account({}))),
     )
   })
 

@@ -32,6 +32,7 @@ import * as PieceBackView from './PieceBackView.ts'
 import * as PieceLooksView from './PieceLooksView.ts'
 import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
+import { spentWords } from './MoreCredits.ts'
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -257,7 +258,10 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
   const problem = Option.match(failed, {
     onNone: () => h.empty,
     onSome: (reason) =>
-      h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, `wardrobe.turn.problem.${reason}`, {})]),
+      h.p(
+        [h.Role('alert'), ...styled(h, formError())],
+        spentWords(format(locale, `wardrobe.turn.problem.${reason}`, {}), reason === 'dailyLimit', locale, h),
+      ),
   })
   const unbuilt = turn?.state === 'building' && Option.contains(failed, 'build')
   if (unbuilt) return problem

@@ -1,6 +1,26 @@
 # yaml-language-server: $schema=https://x18n.dev/schema/reviews.json
 x18n: 1
 sources:
+  account.credits.checkoutFailed:
+    sl: 18a2bfa2e1a075
+  account.credits.loadFailed:
+    sl: ad6a5bf78b718
+  account.credits.more:
+    sl: 146f7e68b1b2cb
+  account.credits.paid:
+    sl: f1d7fd1b0a419
+  account.credits.paidSlow:
+    sl: 9108dcf2125f9
+  account.credits.premiumAbout:
+    sl: 103808e45ad3c6
+  account.credits.premiumUntil:
+    sl: f099e524a5753
+  account.credits.premiumWeek:
+    sl: 111d6ec223cb41
+  account.credits.title:
+    sl: c1906431b20b6
+  account.credits.today:
+    sl: 19beec3129a277
   ask.otherLanguageFailed:
     sl: 133375c41998fb
   ask.title:
@@ -9,10 +29,14 @@ sources:
     sl: 4f000d5544291
   board.bringFront:
     sl: ed71fc904db54
+  board.make.problem.dailyLimit:
+    sl: 185f7d2885e6be
   board.selectPiece:
     sl: 153d945c3dbf06
   board.sendBack:
     sl: 14bb856cbfca86
+  capture.allowance:
+    sl: 19beec3129a277
   capture.camera.blocked:
     sl: a055ac323376
   capture.camera.countdown:
@@ -29,6 +53,10 @@ sources:
     sl: e9c3a77c57f9d
   capture.done:
     sl: 2936f6c715a06
+  capture.problem.dailyLimit:
+    sl: 1a8e1fe9cd09d
+  capture.problem.videoPartial:
+    sl: 53d58a3363af6
   lab.title:
     sl: 6df3339a8b353
   nav.lab:
@@ -45,8 +73,12 @@ sources:
     sl: df34eaf63bb5f
   photo.showPhoto:
     sl: 1bd883fd814ac6
+  photos.spent:
+    sl: 185f7d2885e6be
   saveToBoard.add:
     sl: 1607b6b648f427
+  stylist.problem.dailyLimit:
+    sl: 148052928625b3
   today.wornUnread:
     sl: ecfc9a548ec3e
   wardrobe.addPieceColorsLabel:

@@ -63,7 +63,19 @@
     "deleteAccountConfirmTitle": "Delete your account?",
     "deleteAccountConfirmBody": "This deletes your account, your wardrobe and its photos for good, and assistants you connected lose access. This can't be undone.",
     "deleteAccountConfirm": "Delete my account",
-    "deleteAccountFailed": "Styld couldn't delete your account just now. Try again in a moment."
+    "deleteAccountFailed": "Styld couldn't delete your account just now. Try again in a moment.",
+    "credits": {
+      "title": "Credits",
+      "today": "{remaining} of {daily} credits left today",
+      "premiumUntil": "Premium until {date}",
+      "premiumWeek": "Premium week · {price}",
+      "premiumAbout": "{daily} credits a day for {days} days, from the moment you pay. One payment, no subscription.",
+      "paid": "Payment received. Premium starts in a moment.",
+      "paidSlow": "Payment received. Your premium week shows here within a few minutes.",
+      "checkoutFailed": "Styld couldn't open the payment page just now. Try again in a moment.",
+      "loadFailed": "Styld couldn't read your credits just now.",
+      "more": "Get more credits"
+    }
   },
   "telemetryConsent": {
     "message": "Can Styld record anonymous error and speed data from this browser so we can fix problems faster? It never includes what you type, your photos or your account details.",
@@ -601,14 +613,14 @@
     "preparingVideo": "Reading the video…",
     "sent": "Sent",
     "problem": {
-      "dailyLimit": "Today's free credits are used up. Try again tomorrow.",
+      "dailyLimit": "Today's credits are used up. Try again tomorrow.",
       "videoTooLong": "Videos can be up to 15 minutes long",
       "videoUnreadable": "This video can't be read here",
       "refused": "This file can't be used",
       "uploadsWaiting": "Too many of your uploads are still waiting. Add them to your wardrobe first, or try again tomorrow.",
       "slowDown": "Too many photos at once. Try again in a minute.",
       "network": "Didn't send",
-      "videoPartial": "Today's free allowance covered {sent} of {parts} parts. Send the rest tomorrow."
+      "videoPartial": "Today's credits covered {sent} of {parts} parts. Send the rest tomorrow."
     },
     "seeFound": "{count, plural, one {See what's in # file} other {See what's in # files}}",
     "sightings": "Seen {count} times in what you added, kept as one piece.",
@@ -620,7 +632,7 @@
     "betterLookHint": "Only part of it shows. Hold it up or lay it out flat, and add it again.",
     "foundTitle": "{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}",
     "reviewHint": "They're cut out and ready. Untick anything that isn't yours.",
-    "allowance": "{remaining} of {daily} free credits left today",
+    "allowance": "{remaining} of {daily} credits left today",
     "finding": "Finding pieces…",
     "failed": "{source, select, video {A part of a video added at {time} couldn't be processed.} link {The picture from a shop's page added at {time} couldn't be processed.} other {A photo added at {time} couldn't be processed.}} Its credit is back.",
     "unknown": "{source, select, video {A part of a video} link {The picture from a shop's page} other {A photo}} stopped halfway. Trying again won't cost anything.",
@@ -795,7 +807,7 @@
       "nothing": "No sticker came out this time, and your credit is back.",
       "dismiss": "OK",
       "problem": {
-        "dailyLimit": "Today’s free credits are spent. Try again tomorrow.",
+        "dailyLimit": "Today’s credits are spent. Try again tomorrow.",
         "refused": "Styld doesn’t make that.",
         "slowDown": "Too many at once. Try again in a minute.",
         "failed": "That didn’t go through. Try again."
@@ -1003,7 +1015,7 @@
     "openLook": "Open the look {name}",
     "problem": {
       "busy": "Styld is still answering your last message.",
-      "dailyLimit": "Today’s free allowance is spent. Ask again tomorrow.",
+      "dailyLimit": "Today’s credits are spent. Ask again tomorrow.",
       "unavailable": "Styld cannot answer just now. Try again later.",
       "network": "Not sent. Try again."
     },
@@ -1014,7 +1026,7 @@
     "add": "Add a photo",
     "addCost": "{credits, plural, one {# credit} other {# credits}} from today’s free allowance, for finding the clothes in it.",
     "sending": "Sending…",
-    "spent": "Today’s free credits are spent. Try again tomorrow.",
+    "spent": "Today’s credits are spent. Try again tomorrow.",
     "addFailed": "That photo didn’t go through. Try again.",
     "emptyTitle": "Remember the outfits you love",
     "emptyHint": "Add photos of yourself in outfits that worked. Styld finds the clothes and links them to your pieces. Only you see them.",

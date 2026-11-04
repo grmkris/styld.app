@@ -63,7 +63,7 @@ describe('reading a video on the add page', () => {
           prepared: Option.none(),
         }),
       ),
-      expect(text("Today's free allowance covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
+      expect(text("Today's credits covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
     )
   })
 })

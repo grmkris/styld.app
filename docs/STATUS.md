@@ -27,6 +27,30 @@ Google sign-in's consent screen and the app directories need both pages on styld
   - The pages describe Dodo Payments and Premium Week (server on main at `eb92789e`). The policy says Dodo takes the payment; check that matches the checkout.
   - Deployed readback of both paths on the preview.
 
+## Styld Premium Week: payments through Dodo (4 November, on main, not deployed)
+
+Owner decisions of 4 November: $4.99 once (no subscription), 500 credits a day instead of 100 for 7 days from the
+purchase, buying again extends from the current end, bought mid-day it tops today up at once; free stays 100 a day and
+no card is ever asked for.
+
+- **Built:** the Wallet records the allowance each day was granted and tops up a larger one the same day (old events
+  replay as 100; `Wallet.story`); migration `20261104181042_premium_week_purchases` (plain CREATE TABLEs `purchases`,
+  keyed by Dodo's payment id, and `premium`, the one record of an account's end); `server/src/billing/`:
+  `GET /api/credits`, `POST /api/billing/checkout` (Dodo's `POST /checkouts`), the raw `POST /api/billing/dodo/webhook`
+  (Standard Webhooks with WebCrypto, 5 minutes' tolerance; only the stage's product counts; one D1 batch per delivery,
+  idempotent on the payment id; refunds and lost disputes take the week back once, never before now); holds reserve
+  under premium's allowance through one function (`billing/Premium.ts` › `allowanceAt`, `usage/Holds.ts` › `balance`).
+  Web: the account's Credits section (today's credits, Premium until, Premium week · $4.99 opening Dodo's page; back on
+  `/account?premium=1` it says the payment arrived and reads the credits again every 3 s, 8 times); every refusal of
+  the day's credits links to it. Unit `Billing.test` (the Standard Webhooks reference vector, product filter, a payment
+  twice is one purchase and one week, refund and dispute once), `account.story`/`account.scene`; native
+  `BillingAcceptance` (a stage without payments) written, not run.
+- **Open:** deploy with `STYLD_DODO_API_KEY` and `STYLD_DODO_WEBHOOK_SECRET` (test mode on the preview), then a
+  test-card purchase on the preview: the webhook's 200, the purchase row, 500 a day and the top-up, a refund taking the
+  week back; then production's live readback after the cutover. A payment for an account deleted since its checkout is
+  answered 200 and logged (`Styld.Billing a payment arrived for an account that is gone`) for a refund by hand. The
+  initial bundle budget rose by 1,687 bytes to 394,600.
+
 ## Sign in with Google (4 November, on main, not deployed)
 
 The owner chose Google sign-in with v1's OAuth client and v1's linking, from Grok's competitor onboarding report.

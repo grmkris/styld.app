@@ -125,7 +125,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // pages' view and styles, the loader of their own words and the titles left in the catalogs add 1,100 (main 392,390 at
 // 89f4a292 and 393,490 with them; 392,913 to 393,989 at d64d4d64). The sections' words (about 3,300 more) load only
 // on those pages (`legal-en.ts`, `legal-sl.ts`).
-if (initialGzip > 396500) throw new Error(`Initial browser assets exceed the 396,500-byte gzip budget: ${initialGzip}`)
+// Raised to 394,600 on 4 November for Styld Premium Week (payments): the account's Credits section (its read, the
+// return poll, the checkout's Command and states), the way to more credits beside every refusal of the day's credits,
+// and their words add 1,687 (main 392,913 at d64d4d64 and 394,600 with it).
+// Taste, the legal pages and Premium Week together measured 398,060 on 4 November (merged on 58969964).
+if (initialGzip > 398300) throw new Error(`Initial browser assets exceed the 398,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

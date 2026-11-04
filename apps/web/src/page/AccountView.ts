@@ -10,7 +10,9 @@ import { Message as AppMessage, type Model as AppModel, Session } from '../App.t
 import { loader } from '../Icon.ts'
 import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
-import { Copy, Deletion, Message, type Model } from './Account.ts'
+import { Arrival, Checkout, Copy, Deletion, Message, type Model } from './Account.ts'
+import { premiumWeek, type CreditBalance } from '@styld/protocol'
+import { intlLocale } from '../Locale.ts'
 import { avatar as personAvatar } from '../Avatar.ts'
 import { checkNotice } from './CheckNotice.ts'
 import {
@@ -41,7 +43,7 @@ import { pageHead, pageTitle } from './PageHead.ts'
 import { tasteSection } from './TasteView.ts'
 import { Message as ShowMeMessage, type Model as ShowMeModel } from './ShowMe.ts'
 import { choiceButtons, failure as showMeFailure } from './ShowMeView.ts'
-import { assistantsSection, personRouter, profileRouter } from '../route.ts'
+import { assistantsSection, creditsSection, personRouter, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
@@ -50,6 +52,7 @@ type Inputs = {
   readonly signingOut: boolean
   readonly locale: Locale
   readonly origin: string
+  readonly timeZone: string
 }
 
 const assistants = (model: Model, { locale, origin }: Inputs, h: HtmlBuilder<Message>): Html => {
@@ -213,6 +216,88 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     ]),
   ])
 
+/** The day premium ends, in the person's language and time zone. */
+const premiumEnd = (until: string, { locale, timeZone }: Inputs) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'long', timeZone }).format(new Date(until))
+
+/** After a payment: received, and the week on its way from Dodo's webhook. */
+const paidNotice = (model: Model, credits: CreditBalance, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Arrival.match(model.arrival, {
+    Plain: () => h.empty,
+    Paid: ({ readsLeft }) =>
+      credits.premiumUntil === null
+        ? h.p(
+            [h.Role('status'), ...styled(h, notice())],
+            [format(locale, readsLeft > 0 ? 'account.credits.paid' : 'account.credits.paidSlow', {})],
+          )
+        : h.empty,
+  })
+
+/** The premium week's button, where the stage sells it: one payment through Dodo's page. */
+const premiumOffer = (model: Model, credits: CreditBalance, locale: Locale, h: HtmlBuilder<Message>): Html[] => {
+  if (!credits.premiumAvailable) return []
+  const opening = Checkout.guards.Opening(model.checkout)
+  return [
+    h.p(styled(h, sectionText()), [
+      format(locale, 'account.credits.premiumAbout', { daily: premiumWeek.dailyCredits, days: premiumWeek.days }),
+    ]),
+    h.div(styled(h, rowActions()), [
+      actionButton(
+        {
+          label: format(locale, 'account.credits.premiumWeek', { price: premiumWeek.price }),
+          style: primaryAction(),
+          onClick: Message.ClickedPremiumWeek(),
+          isDisabled: opening,
+          leading: opening ? loader(h) : h.empty,
+        },
+        h,
+      ),
+    ]),
+    Checkout.guards.Failed(model.checkout)
+      ? h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'account.credits.checkoutFailed', {})])
+      : h.empty,
+  ]
+}
+
+/** Today's credits, premium's end while it lasts, and the premium week to buy. */
+const creditsView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
+  return h.section(
+    [h.Id(creditsSection), ...styled(h, cx(section(), linkedSection()))],
+    [
+      h.h2(styled(h, sectionTitle()), [format(locale, 'account.credits.title', {})]),
+      ...AsyncData.matchData(model.credits, {
+        onEmpty: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
+        onFailure: () => [
+          h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'account.credits.loadFailed', {})]),
+          h.div(styled(h, rowActions()), [
+            actionButton(
+              {
+                label: format(locale, 'common.tryAgain', {}),
+                style: linkAction(),
+                onClick: Message.ClickedRetryCredits(),
+              },
+              h,
+            ),
+          ]),
+        ],
+        onData: (credits) => [
+          h.p(styled(h, sectionText()), [
+            format(locale, 'account.credits.today', { remaining: credits.remaining, daily: credits.daily }),
+          ]),
+          credits.premiumUntil === null
+            ? h.empty
+            : h.p(styled(h, hostName()), [
+                format(locale, 'account.credits.premiumUntil', { date: premiumEnd(credits.premiumUntil, inputs) }),
+              ]),
+          paidNotice(model, credits, locale, h),
+          ...premiumOffer(model, credits, locale, h),
+        ],
+      }),
+    ],
+  )
+}
+
 /** What What's new starts with: the three choices Home's card asks once, the saved one pressed. */
 const showMeSection = Submodel.defineView<ShowMeModel, ShowMeMessage, { readonly locale: Locale }>(
   (model, { locale }, h) =>
@@ -267,6 +352,7 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
       identityView(model, inputs, h),
       signOut(inputs, h),
       profileSection(model, inputs.locale, h),
+      creditsView(model, inputs, h),
       h.submodel({
         slotId: 'account-show-me',
         model: model.showMe,
@@ -318,7 +404,13 @@ const signedIn = (
     slotId: 'account',
     model: account,
     view,
-    viewInputs: { claims, signingOut, locale: model.context.locale, origin: model.context.origin },
+    viewInputs: {
+      claims,
+      signingOut,
+      locale: model.context.locale,
+      origin: model.context.origin,
+      timeZone: model.context.timeZone,
+    },
     toParentMessage: (message) => AppMessage.GotAccountMessage({ message }),
   })
 

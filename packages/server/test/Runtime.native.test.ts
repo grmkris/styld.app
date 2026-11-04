@@ -12,6 +12,7 @@ import { testPassword } from './IdentityFixture.ts'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyBackfill, verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyTurn } from './TurnAcceptance.ts'
+import { verifyBillingOff } from './BillingAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGuidedCameraJourney } from './GuidedCameraBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
@@ -185,6 +186,10 @@ test(
   overHttp((origin, testUrl) => verifyCaptures(origin, testUrl).then(() => verifyScan(origin, testUrl))),
   { timeout: 180000 },
 )
+
+test('a stage without payments answers the free allowance and has no checkout or webhook', overHttp(verifyBillingOff), {
+  timeout: 60000,
+})
 
 test('lets Styld answer about the person’s own wardrobe, once per message, privately', overHttp(verifyStylist), {
   timeout: 120000,

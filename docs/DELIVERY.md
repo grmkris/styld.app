@@ -29,6 +29,7 @@ names passes at the release under test and the preview readback is recorded in S
 | Sign in with Google            | `GoogleEntry` (linking by verified address), `AuthHttp` (callback), `Login` Continue with Google, `SignInReturn` `noteNext`                                | `GoogleEntry.test` (unit); native and a live preview sign-in open                    | live sign-in on the preview                    |
 | Email code sign-in, logout     | `AuthHttp`, `SessionAccount`, `login.story`, `session.story`, `signInReturn`, auth `Client`                                                                | `IdentityBrowserAcceptance`; Origin/CSRF and session reads                           | `preview.native` auth; walk sign-in            |
 | Account deletion               | `AccountRead`, `account.story`, `account.scene`                                                                                                            | `WardrobeAcceptance` (deletes accounts)                                              | walk                                           |
+| Premium week (Dodo payments)   | `Billing` (signature vector, product filter, credit once, take back once, checkout body), `Wallet.story` premium, `Holds`, `account.story/scene`           | `BillingAcceptance` (a stage without payments) written, not run                      | test-card purchase on the preview, open        |
 | Credits: daily 100, holds      | `Holds`, `Receipts`, `PaidClaims`, `PaidAttempts`, `Settlements`, domain `Wallet.story`, `GenerationSettle`, `StylistSweep`                                | reservations in native SQLite DOs; concurrent redraw/turn; long video stops at limit | Workers Logs: 0 pending holds                  |
 | Jobs and sweeps                | `Jobs`, `Sweeps`, `StylistSweep`, `GenerationSettle`, `Deletes`                                                                                            | wallet, sessions and R2 recover after a Worker restart                               | `Styld.Sweep` lines idle                       |
 | Providers: deadlines, costs    | `ProviderCall`, `CaptureProviders`, `LanguageModel`, `Pacing`                                                                                              | fake providers in every journey                                                      | `provider-live` per provider                   |
@@ -80,7 +81,7 @@ does not close those rows.
 ## Kept, not built
 
 Template boards beyond "One piece, many outfits" (Before you buy and the Wishlist board, Travel, the week, the outfit of
-the day, a blank lookbook), board export, the try-on quality test and try-on (M5–M6, M8–M9, frozen); billing; go-live (legal pages, the reviewer account, the ChatGPT directory, the cutover).
+the day, a blank lookbook), board export, the try-on quality test and try-on (M5–M6, M8–M9, frozen); go-live (legal pages, the reviewer account, the ChatGPT directory, the cutover).
 Each gets its rows here when it is built. `docs/ROADMAP.md` holds their decisions.
 
 ## Completion conditions
