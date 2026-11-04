@@ -29,7 +29,7 @@ describe('Try on', () => {
       given(onTryOn([])),
       expect(role('heading', { name: 'See yourself in your clothes' })).toExist(),
       click(role('button', { name: 'New try-on' })),
-      expect(text('2 credits from today’s free allowance.')).toExist(),
+      expect(text('2 credits.')).toExist(),
       expect(role('button', { name: 'Try on' })).toHaveAttr('aria-disabled', 'true'),
       click(role('button', { name: 'Photo from 31 Oct' })),
       click(role('button', { name: 'White tee' })),
@@ -43,7 +43,7 @@ describe('Try on', () => {
         TryOn.StartTryOn({ photoId: photo.id, pieceIds: [tee.id], maybeOperationId: Option.none() }),
         TryOn.Message.FailedStartTryOn({ problem: TryOn.Problem.Spent() }),
       ),
-      expect(role('link', { name: 'Get more credits' })).toExist(),
+      expect(role('link', { name: 'Choose a plan to keep going.' })).toExist(),
     )
   })
 

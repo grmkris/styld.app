@@ -59,17 +59,29 @@ export const catalog: Readonly<Record<MainKey, string>> = {
     'S tem trajno izbrišeš svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.',
   'account.deleteAccountConfirm': 'Izbriši moj račun',
   'account.deleteAccountFailed': 'Styld tvojega računa trenutno ni mogel izbrisati. Poskusi znova čez trenutek.',
-  'account.credits.title': 'Krediti',
   'account.credits.today': 'Danes še {remaining} od {daily} kreditov',
-  'account.credits.premiumUntil': 'Premium do {date}',
-  'account.credits.premiumWeek': 'Teden Premium · {price}',
-  'account.credits.premiumAbout':
-    '{daily} kreditov na dan {days} dni, od trenutka plačila. Eno plačilo, brez naročnine.',
-  'account.credits.paid': 'Plačilo je prejeto. Premium se začne v trenutku.',
-  'account.credits.paidSlow': 'Plačilo je prejeto. Tvoj teden Premium se tu pokaže v nekaj minutah.',
+  'account.credits.free': 'Še {free} od {total} brezplačnih izrezov',
+  'account.credits.paid': 'Plačilo je prejeto. Tvoj paket se začne v trenutku.',
+  'account.credits.paidSlow': 'Plačilo je prejeto. Tvoj paket se tu pokaže v nekaj minutah.',
   'account.credits.checkoutFailed': 'Styld trenutno ni mogel odpreti strani za plačilo. Poskusi znova čez trenutek.',
   'account.credits.loadFailed': 'Styld trenutno ni mogel prebrati tvojih kreditov.',
-  'account.credits.more': 'Več kreditov',
+  'account.credits.more': 'Izberi paket in nadaljuj.',
+  'account.plans.title': 'Paketi',
+  'account.plans.about': 'Vsak paket ti da {daily} kreditov na dan, dokler traja.',
+  'account.plans.week': 'Teden',
+  'account.plans.weekPrice': '{price} enkrat, za 7 dni',
+  'account.plans.monthly': 'Mesec',
+  'account.plans.monthlyPrice': '{price} na mesec, dokler ne prekličeš',
+  'account.plans.yearly': 'Leto',
+  'account.plans.yearlyPrice': '{price} na leto, dokler ne prekličeš',
+  'account.plans.lifetime': 'Za vedno',
+  'account.plans.lifetimePrice': '{price} enkrat, nikoli ne poteče',
+  'account.plans.choose': 'Izberi',
+  'account.plans.currentUntil': '{plan} do {date}',
+  'account.plans.currentRenews': '{plan}, podaljša se {date}',
+  'account.plans.currentLifetime': 'Za vedno, nikoli ne poteče',
+  'account.plans.manage': 'Upravljaj naročnino',
+  'account.plans.portalFailed': 'Styld trenutno ni mogel odpreti strani tvoje naročnine. Poskusi znova čez trenutek.',
   'telemetryConsent.message':
     'Ali lahko Styld v tem brskalniku beleži anonimne podatke o napakah in hitrosti, da hitreje odpravimo težave? Nikoli ne vključujejo tega, kar vpišeš, tvojih fotografij ali podatkov o računu.',
   'telemetryConsent.allow': 'Dovoli',
@@ -137,7 +149,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
     'Stane {credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# kredite, ki jih} other {# kreditov, ki jih}} vrnemo, če slika ne nastane.',
   'wardrobe.picture.problem.busy': 'Čista slika tega kosa se že riše.',
   'wardrobe.picture.problem.photo': 'Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.',
-  'wardrobe.picture.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
+  'wardrobe.picture.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'wardrobe.picture.problem.network': 'Risanja ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.picture.backPhoto': 'Tvoja fotografija hrbtne strani',
   'wardrobe.turn.make': 'Zavrti ga',
@@ -150,7 +162,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'wardrobe.turn.play': 'Zavrti',
   'wardrobe.turn.problem.busy': 'Vrtenje tega kosa se že pripravlja.',
   'wardrobe.turn.problem.picture': 'Ta kos najprej potrebuje čisto sliko.',
-  'wardrobe.turn.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
+  'wardrobe.turn.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'wardrobe.turn.problem.network': 'Vrtenja ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.turn.problem.build':
     'Vrtenja ni bilo mogoče pripraviti na tej napravi. Odpri kos znova in poskusi še enkrat.',
@@ -375,12 +387,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.outfits.title': 'En kos, veliko videzov',
   'landing.outfits.text': 'Izberi en kos. Styld okoli njega razporedi, kar že imaš, videz za videzom.',
   'landing.price.title': 'Koliko stane',
-  'landing.price.free': 'Brezplačno',
-  'landing.price.freeText':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, brez kartice. Dodajanje fotografije porabi enega.',
-  'landing.price.premium': 'Premium teden',
-  'landing.price.premiumText':
-    '{price} enkratno: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na dan, {days, plural, one {# dan} two {# dneva} few {# dni} other {# dni}}.',
+  'landing.price.lead':
+    'Preizkusi {free} izreze brezplačno, potem od {price} na teden. Vsak paket ti da {daily} kreditov na dan.',
   'landing.faq.title': 'Vprašanja',
   'landing.faq.who': 'Kdo vidi mojo garderobo?',
   'landing.faq.whoAnswer': 'Samo ti. Vse ostane zasebno, dokler se ne odločiš deliti zbirke, videza ali kosa.',
@@ -388,7 +396,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.faq.appAnswer': 'Ne. Styld deluje v brskalniku na vsakem telefonu ali računalniku ter v ChatGPT in Claudu.',
   'landing.faq.cost': 'Koliko stane?',
   'landing.faq.costAnswer':
-    'Za začetek nič: {credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} vsak dan, dodajanje fotografije porabi enega. Premium teden stane {price} enkratno, za več kreditov na dan sedem dni.',
+    'Prvi {free} izrezi so brezplačni, brez kartice. Potem ti paket da {daily} kreditov na dan: {week} za teden, {monthly} na mesec, {yearly} na leto ali {lifetime} enkrat za vedno. Mesec ali leto se podaljšuje, dokler ne prekličeš, kar lahko narediš kadar koli.',
   'landing.faq.delete': 'Lahko izbrišem vse?',
   'landing.faq.deleteAnswer':
     'Da. Ko v Računu izbrišeš račun, z njim izbrišeš vse kose, fotografije, zbirke in videze.',
@@ -583,7 +591,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.cost':
     'Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}.',
   'capture.costLeft':
-    'Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}. Danes jih imaš še {remaining}.',
+    'Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}. Imaš jih še {remaining}.',
   'capture.chooseTitle': 'Naloži iz galerije',
   'capture.chooseHint': 'Fotografije ali video',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',
@@ -592,7 +600,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.waiting': 'Čaka',
   'capture.preparingVideo': 'Berem video …',
   'capture.sent': 'Poslano',
-  'capture.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
+  'capture.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'capture.problem.videoTooLong': 'Video je lahko dolg največ 15 minut',
   'capture.problem.videoUnreadable': 'Tega videa tukaj ni mogoče prebrati',
   'capture.problem.refused': 'Te datoteke ni mogoče uporabiti',
@@ -600,7 +608,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
     'Preveč tvojih nalaganj še čaka. Najprej jih dodaj v garderobo ali poskusi znova jutri.',
   'capture.problem.slowDown': 'Preveč fotografij naenkrat. Poskusi znova čez minuto.',
   'capture.problem.network': 'Ni poslano',
-  'capture.problem.videoPartial': 'Današnji krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri.',
+  'capture.problem.videoPartial': 'Tvoji krediti so pokrili {sent} od {parts} delov. Izberi paket, da pošlješ ostale.',
   'capture.seeFound':
     '{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}',
   'capture.sightings': 'V dodanem se pojavi {count}-krat in bo shranjen kot en kos.',
@@ -613,7 +621,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.foundTitle':
     '{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}',
   'capture.reviewHint': 'Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.',
-  'capture.allowance': 'Danes še {remaining} od {daily} kreditov',
+  'capture.allowance':
+    '{plan, select, free {Še {remaining, plural, one {# brezplačni kredit} two {# brezplačna kredita} few {# brezplačni krediti} other {# brezplačnih kreditov}}} other {Danes še {remaining} kreditov}}',
   'capture.finding': 'Iščem kose …',
   'capture.failed':
     '{source, select, video {Dela videa, dodanega ob {time}, ni bilo mogoče obdelati.} link {Slike s strani trgovine, dodane ob {time}, ni bilo mogoče obdelati.} other {Fotografije, dodane ob {time}, ni bilo mogoče obdelati.}} Kredit je vrnjen.',
@@ -771,11 +780,11 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'board.make.moodBoard': 'Tabla razpoloženja',
   'board.make.moodBoardHint': 'Tvoji kosi, ki nosijo ta občutek, pripeti in razporejeni na kolaž.',
   'board.make.moodBoardCost':
-    '{credits, plural, one {# kredit od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ga} two {# kredita od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ju} few {# krediti od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih} other {# kreditov od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih}} dobiš nazaj.',
+    '{credits, plural, one {# kredit. Če je v tvoji garderobi zanjo še premalo, ga} two {# kredita. Če je v tvoji garderobi zanjo še premalo, ju} few {# krediti. Če je v tvoji garderobi zanjo še premalo, jih} other {# kreditov. Če je v tvoji garderobi zanjo še premalo, jih}} dobiš nazaj.',
   'board.make.sticker': 'Nalepka',
   'board.make.stickerHint': 'Majhna okrasna risba po tvojih besedah, izrezana za kolaž.',
   'board.make.stickerCost':
-    '{credits, plural, one {# kredit od današnjih brezplačnih. Če nalepka ne nastane, ga} two {# kredita od današnjih brezplačnih. Če nalepka ne nastane, ju} few {# krediti od današnjih brezplačnih. Če nalepka ne nastane, jih} other {# kreditov od današnjih brezplačnih. Če nalepka ne nastane, jih}} dobiš nazaj.',
+    '{credits, plural, one {# kredit. Če nalepka ne nastane, ga} two {# kredita. Če nalepka ne nastane, ju} few {# krediti. Če nalepka ne nastane, jih} other {# kreditov. Če nalepka ne nastane, jih}} dobiš nazaj.',
   'board.make.wordsLabel': 'Kakšen naj bo občutek?',
   'board.make.wordsPlaceholder': 'Deževna nedelja v mestu',
   'board.make.stickerWordsLabel': 'Kaj naj Styld nariše?',
@@ -790,7 +799,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'board.make.unclear': 'Za te besede je v tvoji garderobi še premalo, kredit je vrnjen. Poskusi z drugimi besedami.',
   'board.make.nothing': 'Tokrat nalepka ni nastala, kredit je vrnjen.',
   'board.make.dismiss': 'V redu',
-  'board.make.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
+  'board.make.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'board.make.problem.refused': 'Styld tega ne ustvarja.',
   'board.make.problem.slowDown': 'Preveč naenkrat. Poskusi znova čez minuto.',
   'board.make.problem.failed': 'Ni uspelo. Poskusi znova.',
@@ -893,7 +902,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'today.photoCost':
     'Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}.',
   'today.photoCostLeft':
-    'Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}. Danes jih imaš še {remaining} od {daily}.',
+    'Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}. Imaš jih še {remaining}.',
   'today.cutting': 'Tvoji prvi kosi se izrezujejo.',
   'today.moreForOutfit':
     '{count, plural, one {Dodaj še # kos za celo opravo.} two {Dodaj še # kosa za celo opravo.} few {Dodaj še # kose za celo opravo.} other {Dodaj še # kosov za celo opravo.}}',
@@ -974,7 +983,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'stylist.placeholder': 'Vprašaj o svojih oblačilih',
   'stylist.send': 'Pošlji',
   'stylist.price':
-    'Vsako sporočilo porabi {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}} današnje brezplačne kvote.',
+    'Vsako sporočilo porabi {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}.',
   'stylist.writing': 'Styld piše …',
   'stylist.failed': 'Odgovor tokrat ni prišel, kredit je vrnjen. Vprašaj znova.',
   'stylist.loadFailed': 'Pogovorov ni bilo mogoče naložiti.',
@@ -982,7 +991,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'stylist.openPiece': 'Odpri kos',
   'stylist.openLook': 'Odpri videz {name}',
   'stylist.problem.busy': 'Styld še odgovarja na tvoje zadnje sporočilo.',
-  'stylist.problem.dailyLimit': 'Današnji krediti so porabljeni. Vprašaj znova jutri.',
+  'stylist.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'stylist.problem.unavailable': 'Styld trenutno ne more odgovoriti. Poskusi pozneje.',
   'stylist.problem.network': 'Ni poslano. Poskusi znova.',
   'stylist.chatToday': 'Danes ob {time}',
@@ -992,9 +1001,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'photos.back': 'Nazaj v galerijo',
   'photos.add': 'Dodaj fotografijo',
   'photos.addCost':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih, za iskanje oblačil na njej.',
+    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}, za iskanje oblačil na njej.',
   'photos.sending': 'Pošiljam …',
-  'photos.spent': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
+  'photos.spent': 'Tvoji 3 brezplačni izrezi so porabljeni.',
   'photos.addFailed': 'Fotografija ni šla skozi. Poskusi znova.',
   'photos.emptyTitle': 'Zapomni si oprave, ki so ti všeč',
   'photos.emptyHint':
@@ -1085,8 +1094,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'tryOn.thisIsMeNote':
     'Styld pošlje to fotografijo Metinemu slikovnemu modelu, da te nariše v teh oblačilih. Rezultat vidiš samo ti, dokler ga ne dodaš na tablo.',
   'tryOn.tryOn': 'Pomeri',
-  'tryOn.cost':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih.',
+  'tryOn.cost': '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}.',
   'tryOn.startFailed': 'Ni šlo skozi. Poskusi znova.',
   'tryOn.back': 'Vsa pomerjanja',
   'tryOn.drawing': 'Rišem te v teh oblačilih. Traja približno 15 sekund.',

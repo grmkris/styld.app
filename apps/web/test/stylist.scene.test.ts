@@ -85,7 +85,7 @@ describe('Styld, the stylist in the app', () => {
       expect(role('button', { name: 'Analyze my wardrobe' })).toExist(),
       expect(role('textbox', { name: 'Message to Styld' })).toExist(),
       expect(role('button', { name: 'Send' })).toBeDisabled(),
-      expect(text('Each message uses 1 credit of today’s free allowance.')).toExist(),
+      expect(text('Each message uses 1 credit.')).toExist(),
       expect(role('button', { name: 'New chat' })).not.toExist(),
     )
   })
@@ -175,9 +175,9 @@ describe('Styld, the stylist in the app', () => {
           }),
         ),
       ),
-      expect(role('alert')).toHaveText('Today’s credits are spent. Ask again tomorrow. Get more credits'),
-      expect(role('link', { name: 'Get more credits' })).toHaveAttr('href', '/account#credits'),
-      expect(text('Each message uses 1 credit of today’s free allowance.')).not.toExist(),
+      expect(role('alert')).toHaveText('Your 3 free cut-outs are used. Choose a plan to keep going.'),
+      expect(role('link', { name: 'Choose a plan to keep going.' })).toHaveAttr('href', '/account#plans'),
+      expect(text('Each message uses 1 credit.')).not.toExist(),
     )
   })
 })

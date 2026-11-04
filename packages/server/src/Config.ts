@@ -43,10 +43,15 @@ const deploymentConfig = Config.all({
   oauthKeys: Config.String('AUTH_OAUTH_KEYS').pipe(Config.option),
   /** The operator's token (`Operator.ts`); none switches the operator's routes off. */
   operatorToken: Config.Redacted('STYLD_OPERATOR_TOKEN').pipe(Config.option),
-  /** Dodo Payments (`billing/`): its API's address and the premium week's product, from the stage's facts, and the
-   * API key and webhook secret; payments are on only when all four are set. */
+  /** Dodo Payments (`billing/`): its API's address and each plan's product, from the stage's facts, and the API key
+   * and webhook secret; payments are on only when all of them are set. */
   dodoBase: Config.String('STYLD_DODO_BASE').pipe(Config.option),
-  dodoProduct: Config.String('STYLD_DODO_PRODUCT').pipe(Config.option),
+  dodoProducts: Config.all({
+    week: Config.String('STYLD_DODO_PRODUCT_WEEK'),
+    monthly: Config.String('STYLD_DODO_PRODUCT_MONTHLY'),
+    yearly: Config.String('STYLD_DODO_PRODUCT_YEARLY'),
+    lifetime: Config.String('STYLD_DODO_PRODUCT_LIFETIME'),
+  }).pipe(Config.option),
   dodoKey: Config.Redacted('STYLD_DODO_API_KEY').pipe(Config.option),
   dodoWebhookSecret: Config.Redacted('STYLD_DODO_WEBHOOK_SECRET').pipe(Config.option),
 })
@@ -54,18 +59,18 @@ const deploymentConfig = Config.all({
 /** `STYLD_DODO_WEBHOOK_SECRET` is not a `whsec_<base64>` secret: a broken stage, so the Worker does not start. */
 class WebhookSecretMalformed extends Data.TaggedError('WebhookSecretMalformed') {}
 
-/** Payments, when the stage has all of Dodo's settings: the API's address, the product, the key and the webhook's
- * HMAC key. */
+/** Payments, when the stage has all of Dodo's settings: the API's address, each plan's product, the key and the
+ * webhook's HMAC key. */
 const billingOf = (raw: Config.Success<typeof deploymentConfig>) =>
   Option.match(
-    Option.all({ base: raw.dodoBase, product: raw.dodoProduct, key: raw.dodoKey, secret: raw.dodoWebhookSecret }),
+    Option.all({ base: raw.dodoBase, products: raw.dodoProducts, key: raw.dodoKey, secret: raw.dodoWebhookSecret }),
     {
       onNone: () => Effect.succeed(Option.none()),
-      onSome: ({ base, product, key, secret }) =>
+      onSome: ({ base, products, key, secret }) =>
         Option.match(webhookKeyOf(Redacted.value(secret)), {
           onNone: () => Effect.die(new WebhookSecretMalformed()),
           onSome: (webhookKey) =>
-            Effect.succeed(Option.some({ base: base.replace(/\/$/u, ''), product, key, webhookKey })),
+            Effect.succeed(Option.some({ base: base.replace(/\/$/u, ''), products, key, webhookKey })),
         }),
     },
   )

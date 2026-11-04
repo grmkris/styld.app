@@ -58,7 +58,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
     expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
-    await page.getByText('4 of 100 free credits left today').waitFor({ state: 'visible' })
+    await page.getByText('4 credits left today').waitFor({ state: 'visible' })
 
     await keepAs(page, 'T-shirts & short-sleeve tops', 'T-shirt')
     await keepAs(page, 'Dresses', 'Dress')
@@ -163,7 +163,7 @@ export const verifyLongVideoJourney = async (browser: Browser, origin: string, f
     })
     await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
     await page.locator('input[type="file"][multiple]').setInputFiles([fixture('long-rail.mp4')])
-    await page.getByText("Today's free allowance covered 1 of 5 parts").waitFor({ state: 'visible', timeout: 90000 })
+    await page.getByText('Your credits covered 1 of 5 parts').waitFor({ state: 'visible', timeout: 90000 })
     // One wake lock held the screen on through both parts, and went back once the video stopped.
     await page.waitForFunction('globalThis.styldWakeLocks.released > 0', undefined, { timeout: 5000 })
     expect(await page.evaluate('globalThis.styldWakeLocks')).toEqual({ requested: 1, released: 1 })

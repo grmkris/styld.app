@@ -31,6 +31,14 @@ const unkept = new Map([
     'billing.checkout',
     'opens a payment page and stores nothing, so a repeat opens another; only a payment Dodo confirms counts, once',
   ],
+  [
+    'billing.portal',
+    'opens Dodo’s customer portal and stores nothing, so a repeat opens another; changes there reach Styld by webhook',
+  ],
+  [
+    'membershipGrant.grantMembership',
+    "the operator's: it makes the account a member for life, so granting again changes nothing",
+  ],
   ['account.deleteMe', 'ends the session it is asked in, so a repeat is signed out; deleting again changes nothing'],
   [
     'pictureBackfill.backfillPictures',

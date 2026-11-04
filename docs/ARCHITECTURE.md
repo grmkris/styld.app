@@ -71,20 +71,43 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   result; a repeat resumes from the result, a live claim is left to its delivery, and a claim whose delivery died past
   the 15-minute lease is an unknown outcome: refunded, never sent again. A claim is released only when the work failed
   before the provider could have taken it.
-- **The Wallet** (Alchemy Domain on a SQLite Durable Object per account, `packages/domain/src/Wallet/`) owns only the
-  daily credit pool and its reservations: `dailyCredits` (100) per UTC day, unused credits do not carry over.
-  `WalletCommandIds.ts` is the only place Wallet command ids are derived. A reservation brings the day's allowance (free
-  100, or premium 500); the Wallet keeps the allowance the day was granted and a larger one the same day adds the
-  difference, so premium bought mid-day counts at once. It never stores premium's end.
-- **Payments** (`server/src/billing/`, Styld Premium Week through Dodo Payments as merchant of record): the website
-  opens Dodo's hosted checkout (`POST /api/billing/checkout`, the account id in its metadata) and only Dodo's webhook
-  credits a week. `POST /api/billing/dodo/webhook` is a raw route (the signature covers the body as sent), verified the
-  Standard Webhooks way with WebCrypto; a payment counts only when its cart holds the stage's product. Each delivery is
-  one D1 batch whose statements check the purchase row themselves: `purchases` (keyed by Dodo's payment id, the
-  receipt and audit trail) and `premium` (the account's end, its one record) move together, once. A refund or a lost
-  dispute takes its week back once, never before now. `billing/Premium.ts` › `allowanceAt` is the one rule that turns
-  the end into the day's allowance, for holds, the tray and `GET /api/credits`. A stage without Dodo's key and secret
-  sells nothing; its mode and product are stage facts (`Resources.ts`).
+- **The Wallet** (Alchemy Domain on a SQLite Durable Object per account, `packages/domain/src/Wallet/`) owns the
+  spendable credits and their reservations: each UTC day's allowance (unused credits do not carry over) and the
+  account's one-time free credits. `WalletCommandIds.ts` is the only place Wallet command ids are derived. A
+  reservation brings the day's allowance (the members' 500 while a plan is active, 0 without one) and the one-time
+  grant (`freeCredits`, 3); the Wallet keeps the allowance the day was granted and a larger one the same day adds the
+  difference, so a plan bought mid-day counts at once. It never stores a plan's end.
+  The free credits (owner, 4 November 2026: "a new account gets 3 free credits once") are a second balance in the
+  Wallet's state, `free`, that never resets. There is no separate grant command: the grant is the absence of `free`,
+  and the first reservation that brings `freeCredits` records it (`CreditsReserved.freeAfter`), so it is idempotent
+  and deterministic per account by construction, and every Wallet written before the change (old events and snapshots
+  have no `free`) gets all 3 once. The day's allowance is spent first (tomorrow replaces it anyway), then the free
+  credits; a reservation records how many came from the free ones (`fromFree`), and a refund returns each part where
+  it came from: the day's only on the same day, the free ones on any day. Old events without `fromFree`/`freeAfter`
+  replay exactly as before (`Wallet.story`).
+- **Payments** (`server/src/billing/`, plans through Dodo Payments as merchant of record; owner, 4 November 2026):
+  Week ($4.99 once, 7 days, extending from the current end), Monthly ($20) and Yearly ($200) subscriptions, and
+  Lifetime ($349 once), each giving 500 credits a day while active (`Prices.ts` › `plans`). The website opens Dodo's
+  hosted checkout for a plan (`POST /api/billing/checkout {operationId, plan}`, the account id in its metadata,
+  discount codes allowed) and Dodo's customer portal (`POST /api/billing/portal`, from the customer id the webhook
+  stored); only Dodo's webhook gives or moves a membership. `POST /api/billing/dodo/webhook` is a raw route (the
+  signature covers the body as sent), verified the Standard Webhooks way with WebCrypto; a delivery counts only for
+  one of the stage's four products (`Resources.ts` › `billing.products`). D1's `memberships` row (plan, `until`, none
+  for lifetime, status, subscription and customer ids) is the single writer of the entitlement; `purchases` (keyed by
+  Dodo's payment id) is the receipt of each one-time payment. A week's or lifetime's `payment.succeeded` is one D1
+  batch whose statements check the purchase row themselves, so it counts once; its amount is never checked (a week paid
+  in full by a discount code is a week). A subscription's own payments are left to its events:
+  `subscription.active`/`renewed` (and `plan_changed` while active) set `until` to the next billing date plus a day's
+  grace, `cancelled` stops renewing and keeps that end, `expired`/`failed`/`on_hold` end it at once. Those events carry
+  absolute facts, and each applies only when it happened no earlier than the last one applied (`subscription_event_at`,
+  Dodo's own time), so a retry or a late delivery never undoes a newer one. A refund or a lost dispute takes back what
+  its one-time payment gave, once: a week comes off the end, never before now; a lifetime ends now. A subscription
+  payment's refund moves nothing by itself; the subscription's own ending events do. A lifetime membership is never
+  moved by a week or a subscription. The delivery's account is the checkout's metadata account, else the subscription
+  Styld already knows, else the customer's email (v1's order). The operator grants lifetime by email
+  (`POST /api/operator/memberships`, `tools/grant-membership.ts`). `billing/Membership.ts` › `allowanceAt` is the one
+  rule that turns the membership into the day's allowance, for holds, the tray and `GET /api/credits`. A stage without
+  Dodo's key and secret sells nothing (no checkout, portal or webhook); its mode and products are stage facts.
 - **Work lifecycles are D1 rows driven by queues**, not Domain aggregates: captures, pieces' pictures and turns,
   gallery photos, generation jobs, Styld's turns, imports. `jobs/Jobs.ts`: every queue body is a tagged union consumed
   one way (done acks, failures retry until the last attempt, which gives the job up; an unknown body is dropped; one

@@ -1,7 +1,7 @@
 import { isOutcomeUnknown, ProviderError } from '../providers/Errors.ts'
 import { accounts, pendingSettlements } from '@styld/db'
-import { LimitReached, Unavailable } from '@styld/protocol'
-import { spendableOn } from '@styld/domain/Wallet/Allowance'
+import { freeCredits, LimitReached, Unavailable } from '@styld/protocol'
+import { freeLeft, spendableOn } from '@styld/domain/Wallet/Allowance'
 import type { WalletState } from '@styld/domain/Wallet/WalletState'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
@@ -11,7 +11,7 @@ import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCo
 import { and, asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { Cause, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schedule, Schema } from 'effect'
 import { Database, first, nowDate, query } from '../kernel/Db.ts'
-import { allowanceAt, premiumUntilOf } from '../billing/Premium.ts'
+import { allowanceAt, membershipOf, type MembershipRecord } from '../billing/Membership.ts'
 
 // Every paid action holds its credits in the account's Wallet before the work runs and settles them once after it
 // ends, by one policy: work that succeeded consumes them; work that failed, or whose provider answer was lost after it
@@ -48,6 +48,12 @@ const dayOf = (now: DateTime.Utc) => DateTime.formatIso(now).slice(0, 10)
 const nextDay = (now: DateTime.Utc) => DateTime.formatIso(DateTime.add(DateTime.startOf(now, 'day'), { days: 1 }))
 
 const unavailable = () => Unavailable.make({})
+
+/** Why a hold was refused: a member's credits come back tomorrow; without a plan none do (owner, 4 November 2026). */
+const refusal = (daily: number, now: DateTime.Utc) =>
+  daily === 0
+    ? LimitReached.make({ limit: 'credits' })
+    : LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) })
 
 /** A Wallet the same isolate just reached may refuse for a moment while its object starts. */
 const walletPatience = { schedule: Schedule.exponential('100 millis'), times: 2 }
@@ -123,29 +129,32 @@ export const settlementRows = (db: Database['Service']) => ({
     ),
 })
 
-/** An account's credits today. */
+/** An account's credits now: today's and the free ones left together, today's allowance, the free ones left, and its
+ * membership as D1 has it. */
 export interface Balance {
   readonly remaining: number
   readonly daily: number
-  readonly premiumUntil: Option.Option<Date>
+  readonly free: number
+  readonly membership: Option.Option<MembershipRecord>
 }
 
-/** Today's allowance (premium's while it lasts, `billing/Premium.ts`, the free one otherwise) and what is left of it:
- * the one reading the holds reserve under and the credits the person is shown. */
+/** Today's allowance (the members' while a plan is active, `billing/Membership.ts`, none otherwise) and what is left
+ * of it and of the free credits: the one reading the holds reserve under and the credits the person is shown. */
 const balances = (
   walletOf: (accountId: string) => Effect.Effect<WalletState, Unavailable>,
   db: Database['Service'],
 ) => {
   const allowanceOf = (accountId: string, now: DateTime.Utc) =>
-    premiumUntilOf(db, accountId).pipe(
-      Effect.map((until) => ({ until, daily: allowanceAt(until, DateTime.toDateUtc(now)) })),
+    membershipOf(db, accountId).pipe(
+      Effect.map((membership) => ({ membership, daily: allowanceAt(membership, DateTime.toDateUtc(now)) })),
       Effect.mapError(unavailable),
     )
   const balance = Effect.fn('Styld.Holds.balance')(function* (accountId: string) {
     const now = yield* DateTime.now
-    const { until, daily } = yield* allowanceOf(accountId, now)
+    const { membership, daily } = yield* allowanceOf(accountId, now)
     const state = yield* walletOf(accountId)
-    return { remaining: spendableOn(state.daily, dayOf(now), daily).available, daily, premiumUntil: until }
+    const free = freeLeft(state, freeCredits) ?? 0
+    return { remaining: spendableOn(state.daily, dayOf(now), daily).available + free, daily, free, membership }
   })
   return { allowanceOf, balance }
 }
@@ -160,9 +169,9 @@ export class Holds extends Context.Service<
     /** Settle a hold by how its work ended; the first settlement stands, and one with no hold is done. Done once the
      * ending is recorded: a Wallet that cannot take it now is settled by the sweep. */
     readonly settle: (accountId: string, hold: HoldId, ending: Ending) => Effect.Effect<void, Unavailable>
-    /** The credits the account has left today. */
+    /** The credits the account has left now. */
     readonly remaining: (accountId: string) => Effect.Effect<number, Unavailable>
-    /** The credits left today, today's allowance (free or premium) and until when premium lasts. */
+    /** The credits left now, today's allowance (the members' or none), the free credits left and the membership. */
     readonly balance: (accountId: string) => Effect.Effect<Balance, Unavailable>
     /** Settle the holds still kept, a batch at a time; how many it tried. */
     readonly sweep: Effect.Effect<number, Unavailable>
@@ -204,8 +213,9 @@ export class Holds extends Context.Service<
             amount: charge.credits,
             day: dayOf(now),
             dailyAllowance: daily,
+            freeCredits,
           })
-          const refusedToday = () => LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) })
+          const refusedToday = () => refusal(daily, now)
           yield* wallets.send(UserId.make(charge.accountId), command, { commandId: reserveCommandId(command) }).pipe(
             Effect.catchTags({
               InsufficientCredits: refusedToday,

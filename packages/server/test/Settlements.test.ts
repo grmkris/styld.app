@@ -1,12 +1,15 @@
 import * as Domain from '@alchemy.run/domain'
 import { describe, expect, it } from '@effect/vitest'
-import { dailyCredits } from '@styld/protocol'
+import { freeCredits, memberDailyCredits } from '@styld/protocol'
 import { Styld } from '@styld/domain/Styld.model'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Exit, Layer } from 'effect'
 import { Database, nowDate } from '../src/kernel/Db.ts'
 import { holdId, Holds, settlementRows } from '../src/usage/Holds.ts'
 import { localD1 } from './LocalD1.ts'
+
+/** A member's credits on a fresh day: the day's allowance and the free credits. */
+const allCredits = memberDailyCredits + freeCredits
 
 // Every hold is kept in D1 from before it is reserved until the Wallet confirms it settled, so a settlement the Wallet
 // could not take, or one whose work was lost before it ended, is settled by the sweep whatever became of the work's own
@@ -18,6 +21,10 @@ const over = () => {
   const database = localD1()
   database.sqlite.exec(
     "INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0)",
+  )
+  // A member, so the day brings the members' allowance; the account's 3 free credits are on top.
+  database.sqlite.exec(
+    "INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES ('ac_1', 'lifetime', NULL, 'active', 0)",
   )
   const wallet = Styld.layer(Layer.empty).pipe(Layer.provide(Domain.InMemory))
   const layer = Holds.layer.pipe(Layer.provide(Layer.mergeAll(wallet, Database.layer(database))))
@@ -43,7 +50,7 @@ describe('the credit ledger', () => {
       expect(yield* Effect.flip(holds.reserve({ accountId: 'ac_1', hold: first, credits: 2 }))).toMatchObject({
         _tag: 'Unavailable',
       })
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
 
@@ -57,7 +64,7 @@ describe('the credit ledger', () => {
       yield* ledger.end('ac_1', first, 'failed', yield* nowDate)
       yield* holds.sweep
       expect(kept()).toEqual([])
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
   it.effect('keeps a hold from before it is reserved until the Wallet settled it', () => {
@@ -66,10 +73,10 @@ describe('the credit ledger', () => {
       const holds = yield* Holds
       yield* holds.reserve({ accountId: 'ac_1', hold: first, credits: 2 })
       expect(kept()).toEqual([{ hold_id: first, ending: null }])
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits - 2)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits - 2)
       yield* holds.settle('ac_1', first, 'succeeded')
       expect(kept()).toEqual([])
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits - 2)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits - 2)
     }).pipe(Effect.provide(layer))
   })
 
@@ -84,7 +91,7 @@ describe('the credit ledger', () => {
       expect(yield* ledger.end('ac_1', first, 'succeeded', at)).toBe('failed')
       expect(yield* holds.sweep).toBe(1)
       expect(kept()).toEqual([])
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits)
     }).pipe(Effect.provide(layer))
   })
 
@@ -98,7 +105,7 @@ describe('the credit ledger', () => {
       age(second, 1)
       expect(yield* holds.sweep).toBe(1)
       expect(kept()).toEqual([{ hold_id: second, ending: null }])
-      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits - 1)
+      expect(yield* holds.remaining('ac_1')).toBe(allCredits - 1)
     }).pipe(Effect.provide(layer))
   })
 
@@ -106,7 +113,7 @@ describe('the credit ledger', () => {
     const { layer, kept } = over()
     return Effect.gen(function* () {
       const holds = yield* Holds
-      const refused = yield* Effect.exit(holds.reserve({ accountId: 'ac_1', hold: first, credits: dailyCredits + 1 }))
+      const refused = yield* Effect.exit(holds.reserve({ accountId: 'ac_1', hold: first, credits: allCredits + 1 }))
       expect(Exit.isFailure(refused)).toBe(true)
       yield* holds.settle('ac_1', second, 'failed')
       expect(kept()).toEqual([])

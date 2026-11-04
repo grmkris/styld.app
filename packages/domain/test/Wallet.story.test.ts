@@ -220,3 +220,114 @@ describe('premium', () => {
     ),
   )
 })
+
+const reservedFree = (
+  name: string,
+  amount: number,
+  day: string,
+  spent: { readonly dailyAfter: number; readonly dailyAllowance: number; fromFree: number; freeAfter: number },
+) => new CreditsReserved({ operationId: OperationId.make(name), day, amount, ...spent })
+const refundOf = (name: string) => new SettleCredits({ operationId: OperationId.make(name), outcome: 'refunded' })
+
+describe('the free credits and a non-member allowance of 0 (owner, 4 November 2026)', () => {
+  const freeCredits = 3
+  const member = 500
+  const reserveFree = (name: string, amount: number, day: string, dailyAllowance: number) =>
+    new ReserveCredits({ operationId: OperationId.make(name), amount, day, dailyAllowance, freeCredits })
+  const none = { dailyAfter: 0, dailyAllowance: 0 }
+
+  it.effect('a non-member spends the 3 free credits once, then is refused every day after', () =>
+    story(
+      Story.when(wallet, reserveFree('one', 1, today, 0)),
+      Story.then(wallet, reservedFree('one', 1, today, { ...none, fromFree: 1, freeAfter: 2 })),
+      Story.when(wallet, reserveFree('two', 2, today, 0)),
+      Story.then(wallet, reservedFree('two', 2, today, { ...none, fromFree: 2, freeAfter: 0 })),
+      Story.when(wallet, reserveFree('three', 1, today, 0)),
+      Story.rejected(new InsufficientCredits({ available: 0, required: 1 })),
+      // A new day brings no allowance and no new free credits.
+      Story.when(wallet, reserveFree('four', 1, tomorrow, 0)),
+      Story.rejected(new InsufficientCredits({ available: 0, required: 1 })),
+      Story.state(wallet, (state) => expect(state.free).toBe(0)),
+    ),
+  )
+
+  it.effect('a refund gives the free credits back, on any day', () =>
+    story(
+      Story.when(wallet, reserveFree('one', 3, today, 0)),
+      Story.then(wallet, reservedFree('one', 3, today, { ...none, fromFree: 3, freeAfter: 0 })),
+      Story.when(wallet, refundOf('one')),
+      Story.then(
+        wallet,
+        new CreditsSettled({
+          operationId: OperationId.make('one'),
+          outcome: 'refunded',
+          amount: 3,
+          dailyAfter: 0,
+          freeAfter: 3,
+        }),
+      ),
+      Story.when(wallet, reserveFree('two', 1, today, 0)),
+      Story.then(wallet, reservedFree('two', 1, today, { ...none, fromFree: 1, freeAfter: 2 })),
+      Story.when(wallet, reserveFree('three', 1, tomorrow, 0)),
+      Story.then(wallet, reservedFree('three', 1, tomorrow, { ...none, fromFree: 1, freeAfter: 1 })),
+      // Yesterday's hold refunded today still returns its free credit.
+      Story.when(wallet, refundOf('two')),
+      Story.then(
+        wallet,
+        new CreditsSettled({
+          operationId: OperationId.make('two'),
+          outcome: 'refunded',
+          amount: 1,
+          dailyAfter: 0,
+          freeAfter: 2,
+        }),
+      ),
+      // A consumed hold keeps them spent.
+      Story.when(wallet, new SettleCredits({ operationId: OperationId.make('three'), outcome: 'consumed' })),
+      Story.then(
+        wallet,
+        new CreditsSettled({ operationId: OperationId.make('three'), outcome: 'consumed', amount: 1, dailyAfter: 0 }),
+      ),
+      Story.state(wallet, (state) => expect(state.free).toBe(2)),
+    ),
+  )
+
+  it.effect('a member spends the day first, then the free credits, and a refund returns each part', () =>
+    story(
+      Story.when(wallet, reserveFree('one', 499, today, member)),
+      Story.then(
+        wallet,
+        reservedFree('one', 499, today, { dailyAfter: 1, dailyAllowance: member, fromFree: 0, freeAfter: 3 }),
+      ),
+      Story.when(wallet, reserveFree('two', 3, today, member)),
+      Story.then(
+        wallet,
+        reservedFree('two', 3, today, { dailyAfter: 0, dailyAllowance: member, fromFree: 2, freeAfter: 1 }),
+      ),
+      Story.when(wallet, refundOf('two')),
+      Story.then(
+        wallet,
+        new CreditsSettled({
+          operationId: OperationId.make('two'),
+          outcome: 'refunded',
+          amount: 3,
+          dailyAfter: 1,
+          freeAfter: 3,
+        }),
+      ),
+    ),
+  )
+
+  it.effect('a Wallet written before the free credits gets all 3 with its first reservation that brings them', () =>
+    story(
+      Story.given(
+        wallet,
+        new CreditsReserved({ operationId: OperationId.make('old'), day: today, amount: 40, dailyAfter: 60 }),
+        new CreditsSettled({ operationId: OperationId.make('old'), outcome: 'consumed', amount: 40, dailyAfter: 60 }),
+      ),
+      Story.state(wallet, (state) => expect(state.free).toBeUndefined()),
+      Story.when(wallet, reserveFree('new', 2, tomorrow, 0)),
+      Story.then(wallet, reservedFree('new', 2, tomorrow, { ...none, fromFree: 2, freeAfter: 1 })),
+    ),
+  )
+})

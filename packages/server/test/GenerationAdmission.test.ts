@@ -1,7 +1,7 @@
 import * as Domain from '@alchemy.run/domain'
 import { describe, expect, it } from '@effect/vitest'
 import { Styld } from '@styld/domain/Styld.model'
-import { CurrentAccount, dailyCredits, prices } from '@styld/protocol'
+import { CurrentAccount, freeCredits, memberDailyCredits, prices } from '@styld/protocol'
 import { DateTime, Deferred, Effect, Fiber, Layer, Option, Ref } from 'effect'
 import { admitJob } from '../src/generation/Admission.ts'
 import { work } from '../src/generation/Work.ts'
@@ -20,10 +20,14 @@ import { localD1 } from './LocalD1.ts'
 import { unusedBoards } from './fakes/Boards.ts'
 import { unusedWardrobe } from './fakes/Wardrobe.ts'
 
+/** A member's credits on a fresh day: the day's allowance and the free credits. */
+const allCredits = memberDailyCredits + freeCredits
+
 const over = () => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 'r', 'Ana', 0);
+    INSERT INTO memberships (account_id, plan, until, status, updated_at) VALUES ('ac_1', 'lifetime', NULL, 'active', 0);
     INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, created_at, updated_at) VALUES ('bd_1', 'ac_1', 'Trip', 'paper', 0, 'private', '[]', 'trip', 0, 0);
   `)
   const db = Database.layer(database)
@@ -79,7 +83,7 @@ describe('generation admission', () => {
       yield* admitJob(job)
       yield* admitJob(job)
       expect(Option.getOrThrow(yield* store.findJob('ac_1', job.id)).status).toBe('drawing')
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.sticker)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.sticker)
     }).pipe(Effect.provide(Layer.merge(layer, passing)))
   })
 
@@ -101,7 +105,7 @@ describe('generation admission', () => {
       ).toMatchObject({ _tag: 'Unavailable' })
       expect(Option.getOrThrow(yield* store.findJob('ac_1', job.id)).status).toBe('refused')
       expect(Option.getOrThrow(yield* store.findReceipt('ac_1', 'ask-1')).result).toBe(job.id)
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits - prices.sticker)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits - prices.sticker)
     }).pipe(Effect.provide(layer))
   })
 
@@ -112,7 +116,7 @@ describe('generation admission', () => {
       const old = { ...job, createdAt: DateTime.toDateUtc(DateTime.subtract(yield* DateTime.now, { minutes: 31 })) }
       yield* admitJob(old)
       expect(Option.getOrThrow(yield* (yield* GenerationStore).findJob('ac_1', job.id)).status).toBe('failed')
-      expect(yield* (yield* Holds).remaining('ac_1')).toBe(dailyCredits)
+      expect(yield* (yield* Holds).remaining('ac_1')).toBe(allCredits)
     }).pipe(
       Effect.provide(layer),
       Effect.provideService(ContentJudge, { judge: () => Effect.die(new Error('expired work reached provider')) }),

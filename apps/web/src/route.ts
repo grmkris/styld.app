@@ -321,8 +321,8 @@ export const isSameTab = (left: AppRoute, right: AppRoute) =>
 /** The section of the account page about connecting an assistant, linked from Ask. */
 export const assistantsSection = 'assistants'
 
-/** The account's Credits section, which the day's refusals link to. */
-export const creditsSection = 'credits'
+/** The account's Plans section (credits left, the plan, the plans to choose), which every refusal for credits links to. */
+export const plansSection = 'plans'
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */
