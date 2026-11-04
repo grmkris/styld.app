@@ -3,7 +3,9 @@
 -- winter, all year or none -> none). SQLite changes a CHECK only by rebuilding the table, and on D1 a dropped table
 -- deletes every row that cascades from it (MigrationSafety.test.ts), so every row the drops touch is kept aside first
 -- and put back: the rebuilt tables under their own names, then the links the drops set to null, then the rows they
--- deleted. No PRAGMA: D1 enforces foreign keys throughout, and each statement leaves every link valid.
+-- deleted. No PRAGMA: D1 enforces foreign keys throughout, and each statement leaves every link valid. Dropping pieces
+-- deletes only the rows that name a piece (every kept table cascades on piece_id), so only those are put back: a board's
+-- label or picture stays where it was (found on the preview's real boards, 4 November).
 CREATE TABLE `__keep_pieces` AS SELECT * FROM `pieces`;--> statement-breakpoint
 CREATE TABLE `__keep_detections` AS SELECT * FROM `detections`;--> statement-breakpoint
 CREATE TABLE `__keep_photo_garments` AS SELECT * FROM `photo_garments`;--> statement-breakpoint
@@ -112,15 +114,15 @@ INSERT INTO `photo_garments` (`id`, `photo_id`, `account_id`, `position`, `cutou
 UPDATE `captures` SET `garment_id` = (SELECT `garment_id` FROM `__keep_captures` WHERE `__keep_captures`.`id` = `captures`.`id`) WHERE `id` IN (SELECT `id` FROM `__keep_captures` WHERE `garment_id` IS NOT NULL);--> statement-breakpoint
 INSERT INTO `detections` (`id`, `capture_id`, `account_id`, `status`, `cutout_key`, `source_key`, `back_cutout_key`, `confidence`, `preselected`, `suggested_type`, `suggested_colours`, `suggested_occasions`, `suggested_pattern`, `whole`, `group_of`, `duplicate_of`, `matching`, `match_claimed_at`, `created_at`, `suggested_seasons`, `suggested_rainproof`) SELECT `id`, `capture_id`, `account_id`, `status`, `cutout_key`, `source_key`, `back_cutout_key`, `confidence`, `preselected`, `suggested_type`, `suggested_colours`, `suggested_occasions`, `suggested_pattern`, `whole`, `group_of`, `duplicate_of`, `matching`, `match_claimed_at`, `created_at`, CASE `suggested_season` WHEN 'warm' THEN '["spring","summer"]' WHEN 'cold' THEN '["autumn","winter"]' ELSE '[]' END, 0 FROM `__keep_detections`;--> statement-breakpoint
 UPDATE `pieces` SET `detection_id` = (SELECT `detection_id` FROM `__keep_pieces` WHERE `__keep_pieces`.`id` = `pieces`.`id`) WHERE `id` IN (SELECT `id` FROM `__keep_pieces` WHERE `detection_id` IS NOT NULL);--> statement-breakpoint
-INSERT INTO `piece_pictures` SELECT * FROM `__keep_piece_pictures`;--> statement-breakpoint
-INSERT INTO `piece_turns` SELECT * FROM `__keep_piece_turns`;--> statement-breakpoint
-INSERT INTO `look_pieces` SELECT * FROM `__keep_look_pieces`;--> statement-breakpoint
-INSERT INTO `board_items` SELECT * FROM `__keep_board_items`;--> statement-breakpoint
-INSERT INTO `board_pins` SELECT * FROM `__keep_board_pins`;--> statement-breakpoint
-INSERT INTO `saves` SELECT * FROM `__keep_saves`;--> statement-breakpoint
-INSERT INTO `worn_pieces` SELECT * FROM `__keep_worn_pieces`;--> statement-breakpoint
-INSERT INTO `generation_picks` SELECT * FROM `__keep_generation_picks`;--> statement-breakpoint
-INSERT INTO `imported_pieces` SELECT * FROM `__keep_imported_pieces`;--> statement-breakpoint
+INSERT INTO `piece_pictures` SELECT * FROM `__keep_piece_pictures` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `piece_turns` SELECT * FROM `__keep_piece_turns` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `look_pieces` SELECT * FROM `__keep_look_pieces` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `board_items` SELECT * FROM `__keep_board_items` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `board_pins` SELECT * FROM `__keep_board_pins` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `saves` SELECT * FROM `__keep_saves` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `worn_pieces` SELECT * FROM `__keep_worn_pieces` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `generation_picks` SELECT * FROM `__keep_generation_picks` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
+INSERT INTO `imported_pieces` SELECT * FROM `__keep_imported_pieces` WHERE `piece_id` IS NOT NULL;--> statement-breakpoint
 CREATE INDEX `pieces_account_created` ON `pieces` (`account_id`,`created_at`);--> statement-breakpoint
 CREATE INDEX `pieces_status_updated` ON `pieces` (`status`,`updated_at`);--> statement-breakpoint
 CREATE INDEX `detections_capture` ON `detections` (`capture_id`);--> statement-breakpoint

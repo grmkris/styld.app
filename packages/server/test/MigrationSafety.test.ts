@@ -87,6 +87,11 @@ const linkedRows = [
   `INSERT INTO capture_frames (capture_id, idx, upload_id, object_key, at_ms, sharpness) VALUES ('cp1',0,'up1','f',0,'[]');`,
   `INSERT INTO detections (id, capture_id, account_id, status, source_key, preselected, suggested_colours, suggested_occasions, suggested_season, duplicate_of, created_at) VALUES ('dt1','cp1','ac1','kept','s',1,'[]','[]','cold','pc2',0);`,
   `UPDATE pieces SET detection_id = 'dt1' WHERE id = 'pc1';`,
+  // A board holds a piece and a label: dropping pieces deletes only the piece's item, so only it is put back (Eva's
+  // boards on the preview, 4 November: putting back every kept item collided with the label that stayed).
+  `INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, created_at, updated_at) VALUES ('bd1','ac1','B','paper',1,'private','[]','b',0,0);`,
+  `INSERT INTO board_items (board_id, id, kind, piece_id, x, y, size, turn, z, flipped) VALUES ('bd1','it1','piece','pc1',0,0,1,0,0,0);`,
+  `INSERT INTO board_items (board_id, id, kind, text, text_style, x, y, size, turn, z, flipped) VALUES ('bd1','it2','text','Weekend','label',0,0,1,0,1,0);`,
 ]
 
 describe('the T-12 rebuild of pieces, detections and photo garments', () => {
@@ -105,6 +110,10 @@ describe('the T-12 rebuild of pieces, detections and photo garments', () => {
     expect(one('SELECT count(*) AS n FROM look_pieces')).toEqual({ n: 2 })
     expect(one('SELECT count(*) AS n FROM worn_pieces')).toEqual({ n: 1 })
     expect(one('SELECT count(*) AS n FROM capture_frames')).toEqual({ n: 1 })
+    expect(db.prepare("SELECT id, kind, piece_id FROM board_items WHERE board_id = 'bd1' ORDER BY id").all()).toEqual([
+      { id: 'it1', kind: 'piece', piece_id: 'pc1' },
+      { id: 'it2', kind: 'text', piece_id: null },
+    ])
     expect(one("SELECT detection_id AS link FROM pieces WHERE id = 'pc1'")).toEqual({ link: 'dt1' })
     expect(one("SELECT garment_id AS link FROM captures WHERE id = 'cp1'")).toEqual({ link: 'pg1' })
     expect(one("SELECT piece_id AS link FROM photo_garments WHERE id = 'pg1'")).toEqual({ link: 'pc1' })
