@@ -204,8 +204,8 @@
     "@modelcontextprotocol/server": "2.4.0",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
-    "@yielded/agent": "0.1.0-beta.191",
-    "@yielded/agent-platform-cloudflare": "0.1.0-beta.191",
+    "@yielded/agent": "0.1.0-beta.192",
+    "@yielded/agent-platform-cloudflare": "0.1.0-beta.192",
     "@yielded/auth": "0.1.0-beta.47",
     "@yielded/auth-persistence": "0.1.0-beta.47",
     "@yielded/auth-persistence-drizzle": "0.1.0-beta.47",
@@ -786,13 +786,13 @@
 
     "@x18n/ui": ["@x18n/ui@0.1.10", "", { "dependencies": { "@devframes/agentic": "1.2.5", "@valibot/to-json-schema": "^1.8.0", "@x18n/builtins": "0.1.10", "@x18n/core": "0.1.10", "devframe": "^1.2.6", "valibot": "^1.5.0" } }, "sha512-MKjRIzr0ySfaK7s3qxYuu0sf2D5EAEdbLZ4gvxnu3t41JjBEza3Xm1OcJW9RKSxZN/cu7ebSFWe35SJrVdXP3Q=="],
 
-    "@yielded/agent": ["@yielded/agent@0.1.0-beta.191", "", { "dependencies": { "image-dimensions": "2.6.0" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-/qrWb5HT16yaE2pwStncsaEPKXmKPLOsMvXjWlLSHN+Q0zDlAG6GsfnP6AE+kx1P/ID7NUb5EXWTJHN/M6uXCg=="],
+    "@yielded/agent": ["@yielded/agent@0.1.0-beta.192", "", { "dependencies": { "image-dimensions": "2.6.0" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-WGCKlAPT1mutBPuG52EvsZIAtCEKqASEiFxAvfxc45oKvpaRjUAksyvTrrnyN1jb2S6lRk4ArWfV02GnaW9fow=="],
 
-    "@yielded/agent-platform-cloudflare": ["@yielded/agent-platform-cloudflare@0.1.0-beta.191", "", { "dependencies": { "@effect/platform-browser": "4.1.0", "@effect/sql-sqlite-do": "4.1.0", "@yielded/agent": "0.1.0-beta.191", "@yielded/agent-storage-cloudflare": "0.1.0-beta.191", "@yielded/agent-storage-sql": "0.1.0-beta.191", "puppeteer-core": "24.29.0" }, "peerDependencies": { "effect": "^4.1.0", "effect-cf": "^0.59.0" } }, "sha512-oHUuxUcDjSEW0weTvbYIn33l28f3QyBXKpux7Pa+GSxGLvfG/BIR+y+MZ+ZlfMG3+h6yTYCwLq++wgiDD1C7uw=="],
+    "@yielded/agent-platform-cloudflare": ["@yielded/agent-platform-cloudflare@0.1.0-beta.192", "", { "dependencies": { "@effect/platform-browser": "4.1.2", "@effect/sql-sqlite-do": "4.1.2", "@yielded/agent": "0.1.0-beta.192", "@yielded/agent-storage-cloudflare": "0.1.0-beta.192", "@yielded/agent-storage-sql": "0.1.0-beta.192", "puppeteer-core": "24.29.0" }, "peerDependencies": { "effect": "^4.1.0", "effect-cf": "^0.59.0" } }, "sha512-UMX2l4a7ZD4EK4G1EIYSk0cwV2ydnpkxPfvknxebBZEBCPjrNBxPYKbcBH7ARz6EHAbuKEXHFqPA4DkX/2OoWQ=="],
 
-    "@yielded/agent-storage-cloudflare": ["@yielded/agent-storage-cloudflare@0.1.0-beta.191", "", { "dependencies": { "@effect/platform-browser": "4.1.0", "@effect/sql-sqlite-do": "4.1.0", "@yielded/agent": "0.1.0-beta.191", "@yielded/agent-storage-sql": "0.1.0-beta.191" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-rco0f5I2YzCt8QtkFee8yaS6gAzsRzqHtl4XvP2iJuMrrRAbcC3I+q65fpJmoCvrm5+7VhnKWumswTDXc8iXmQ=="],
+    "@yielded/agent-storage-cloudflare": ["@yielded/agent-storage-cloudflare@0.1.0-beta.192", "", { "dependencies": { "@effect/platform-browser": "4.1.2", "@effect/sql-sqlite-do": "4.1.2", "@yielded/agent": "0.1.0-beta.192", "@yielded/agent-storage-sql": "0.1.0-beta.192" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-171Sli+bn9ZdJVwxMvXN4+jkGEZk4sbYeVq1fvfD9+0Ee8UabY8TUvzt1gLsaGIcwBG1f0WXIMKE5NtkD/xxaA=="],
 
-    "@yielded/agent-storage-sql": ["@yielded/agent-storage-sql@0.1.0-beta.191", "", { "dependencies": { "@yielded/agent": "0.1.0-beta.191" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-hUJoRFLJKrYM8y6oZTIF/SIx22RKs2KN432mQN2GvbyLLcvR8cfbOSwLCMUkojQsno7Lwd4E1jDSNNlr21oN7A=="],
+    "@yielded/agent-storage-sql": ["@yielded/agent-storage-sql@0.1.0-beta.192", "", { "dependencies": { "@yielded/agent": "0.1.0-beta.192" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-RqYbSv3QafwCpIEXkYTzFHQErie3drChKgY95oCUkWZFnNydhn+2ELvENJ47UADKT/JmzjIG7rRsi7TlNS+cvg=="],
 
     "@yielded/auth": ["@yielded/auth@0.1.0-beta.47", "", { "dependencies": { "@yielded/jose": "0.1.0-beta.47", "@yielded/oauth": "0.1.0-beta.47" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-/EiCCzEJxPXzzfpiGdOWgqgYYmoy8HlSl2Rbtzsu1FjFFek/8f8HVHSY5EDd7qowYxrF1EzcjBq2vQBUDzz2UA=="],
 
