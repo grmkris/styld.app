@@ -6,6 +6,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/ht
 import { CaptureApi } from './CaptureApi.ts'
 import { StylistApi } from './StylistApi.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
+import { Challenges } from './Challenges.ts'
 import { Explore, ExploreQuery, SearchQuery, SearchResults } from './Explore.ts'
 import {
   Handle,
@@ -433,6 +434,7 @@ class PublicApi extends HttpApiGroup.make('public')
       error: [SlowDown, Unavailable],
     }),
   )
+  .add(HttpApiEndpoint.get('challenges', '/public/challenges', { success: Challenges, error: [SlowDown, Unavailable] }))
   .add(
     HttpApiEndpoint.get('search', '/public/search', {
       query: SearchQuery,

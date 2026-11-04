@@ -391,7 +391,7 @@ export const view = Submodel.defineView<
       ]),
       todayView(model, pieces, locale, h),
       h.div(styled(h, styles.side()), [
-        challengesView(locale, h),
+        challengesView(model.challenges, locale, h),
         pickUpView(model.pickUp, { pieces, boards }, locale, h),
         h.submodel({
           slotId: 'whats-new-earlier',

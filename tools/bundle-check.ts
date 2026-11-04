@@ -129,7 +129,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // return poll, the checkout's Command and states), the way to more credits beside every refusal of the day's credits,
 // and their words add 1,687 (main 392,913 at d64d4d64 and 394,600 with it).
 // Taste, the legal pages and Premium Week together measured 398,060 on 4 November (merged on 58969964).
-if (initialGzip > 398300) throw new Error(`Initial browser assets exceed the 398,300-byte gzip budget: ${initialGzip}`)
+// Raised to 398,600 on 4 November for Challenges' boards on Home (taste, L7): the challenges' read and its submodel,
+// and a card opening its house board with its style, add 524: main measured 398,065 in a clean worktree at 784e2011
+// and 398,589 with them.
+if (initialGzip > 398600) throw new Error(`Initial browser assets exceed the 398,600-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

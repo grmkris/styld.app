@@ -49,6 +49,7 @@ export const publicHandlers = (auth: AuthHttp) =>
             read((viewer) => discovery.explore(Option.fromNullishOr(query.mood), viewer)),
           )
           .handle('search', ({ query }) => read((viewer) => discovery.search(query.q, viewer)))
+          .handle('challenges', () => read((viewer) => discovery.challenges(viewer)))
           // The preview is read as the page is: a block hides its title and pictures too (the edge forwards the cookie).
           .handle('meta', ({ query }) =>
             read((viewer) => Effect.flatMap(ReaderLocale, (locale) => pageMeta(pages, query.path, locale, viewer))),
