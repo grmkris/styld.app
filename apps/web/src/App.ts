@@ -278,11 +278,8 @@ const changedUrl = (model: Model, url: Url): UpdateReturn => {
   if (Option.isSome(sameBoard)) return sameBoard.value
   if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
   const moved = NavigationState.restoreBrowsing(model, route, url.hash)
-  if (AppRoute.guards.Ask(route) && AppRoute.guards.Ask(model.route))
-    return Update.combine<Model, Message, Services>(moved, [
-      Update.foldChildStep({ update: Ask.changedQuery(route.q), ...at(lenses.ask) }),
-      (stepModel) => ({ model: stepModel, commands: Option.isSome(url.hash) ? arrive(url.hash) : [] }),
-    ])
+  const withinAsk = NavigationState.withinAsk(moved, model.route, route, url.hash)
+  if (Option.isSome(withinAsk)) return withinAsk.value
   if (isSameTab(model.route, route))
     return Option.isSome(url.hash) ? { model: moved, commands: arrive(url.hash) } : { model: moved }
   return Update.combine<Model, Message, Services>(moved, [
@@ -379,14 +376,15 @@ const foldProfile = Update.foldChild({
 
 const foldToday = Update.foldChild({ update: Today.update, ...at(lenses.today), foldOutMessage: foldTodayOut })
 
-const foldAsk = Update.foldChild({
-  update: Ask.update,
-  ...at(lenses.ask),
-  foldOutMessage: Ask.OutMessage.match<Step>({
-    RequestedPieces: () => revisitPieces,
-    RequestedNewBoard: () => (model) => Update.combine(model, [startOnEnter, toBoards]),
-  }),
-})
+const foldAsk = (context: Ask.Context) =>
+  Update.foldChild({
+    update: (child: Ask.Model, message: Ask.Message) => Ask.update(child, message, context),
+    ...at(lenses.ask),
+    foldOutMessage: Ask.OutMessage.match<Step>({
+      RequestedPieces: () => revisitPieces,
+      RequestedNewBoard: () => (model) => Update.combine(model, [startOnEnter, toBoards]),
+    }),
+  })
 
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
@@ -572,7 +570,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),
-    GotAskMessage: (got) => foldAsk(model, got.message),
+    GotAskMessage: (got) => foldAsk(NavigationState.askContext(model.route))(model, got.message),
     GotBoardsMessage: (got) => foldPages.boards(model, got.message),
     GotBoardMessage: (got) => foldPages.board(model, got.message),
     GotVisitMessage: (got) => foldPages.visit(model, got.message),

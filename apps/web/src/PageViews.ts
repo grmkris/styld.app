@@ -165,7 +165,11 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.ask, ask),
             view: AskView.view,
-            viewInputs: { locale, pieces },
+            viewInputs: {
+              locale,
+              pieces,
+              query: AppRoute.guards.Ask(model.route) ? Option.getOrElse(model.route.q, () => '') : '',
+            },
           }),
         h,
       ),

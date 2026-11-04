@@ -2,6 +2,7 @@ import type { Piece } from '@styld/protocol'
 import { Animation, Dialog } from '@foldkit/ui'
 import { click, Command, expect, given, Mount, role, scene, Subscription, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
+import { Option, String } from 'effect'
 import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
@@ -9,35 +10,39 @@ import * as Ask from '../src/page/Ask.ts'
 import { FocusPageTitle, NavigateInternal, ScrollToTop } from '../src/Navigation.ts'
 import * as Boards from '../src/page/Boards.ts'
 import { ListBoards, ListPieces, Message as DataMessage } from '../src/ServerData.ts'
+import { askRouter } from '../src/route.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 import { at, urlOf, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
+/** Ask open at `/ask?q=…`, the search held only by its address. */
 const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
-  withPage(withPieces(at('/ask', { signedIn: true }), pieces), lenses.ask, (current) =>
-    modifyFields(current, { query: () => query }),
-  )
+  withPieces(at(askRouter({ q: Option.liftPredicate(query, String.isNonEmpty) }), { signedIn: true }), pieces)
 
 const tee = pieceFixture('tee', { name: 'White tee', type: 'shortSleeveTops', colours: ['white'] })
 const boots = pieceFixture('boots', { type: 'trainers', status: 'processing' })
 
 describe('Ask', () => {
-  test('its normalized address preserves a trailing space in the search field', () => {
+  test('a key replaces the address as typed, a trailing space included, and the pause searches the words', () => {
     scene(
       { update, view },
       given(askWith([tee])),
       type(role('searchbox'), 'red '),
-      Command.resolve(Ask.WaitBeforeWritingQuery, Ask.Message.ElapsedQueryPause({ query: 'red ', revision: 2 })),
-      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      Command.expectExact(Ask.ReplaceQuery({ q: 'red ' }), Ask.WaitBeforeSearching({ query: 'red', revision: 1 })),
+      Command.resolve(Ask.ReplaceQuery, Ask.Message.CompletedReplaceQuery()),
+      Command.resolve(Ask.WaitBeforeSearching, Ask.Message.ElapsedSearchPause({ query: 'red', revision: 1 })),
       Command.resolve(
-        Ask.SearchPublic,
-        Ask.Message.SucceededSearchPublic({ query: 'red ', revision: 2, results: { people: [], boards: [] } }),
+        Ask.SearchPublic({ query: 'red', revision: 1 }),
+        Ask.Message.SucceededSearchPublic({ query: 'red', revision: 1, results: { people: [], boards: [] } }),
       ),
-      Subscription.emit(AppMessage.ChangedUrl({ url: urlOf('/ask?q=red') })),
+      // The replace's own address change only shows what was typed; it searches nothing again.
+      Subscription.emit(AppMessage.ChangedUrl({ url: urlOf(askRouter({ q: Option.some('red ') })) })),
+      Command.expectNone(),
       expect(role('searchbox')).toHaveValue('red '),
     )
   })
+
   test('an empty wardrobe says what belongs here and the one way to fill it, with no empty suggestions', () => {
     scene(
       { update, view },
@@ -49,7 +54,11 @@ describe('Ask', () => {
   })
 
   test('the + sheet offers adding clothes, adding from a shop’s page, or starting a board', () => {
-    const open = withPage(askWith([tee]), lenses.ask, (current) => Ask.update(current, Ask.Message.ClickedAdd()).model)
+    const open = withPage(
+      askWith([tee]),
+      lenses.ask,
+      (current) => Ask.update(current, Ask.Message.ClickedAdd(), { query: '' }).model,
+    )
     scene(
       { update, view },
       given(open),

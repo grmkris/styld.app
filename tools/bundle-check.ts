@@ -135,7 +135,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 399,700 the same day for the first run's fixes from the preview walk: the empty Home's first piece ahead of
 // the rest, the diagnostics prompt waiting for a piece, Show me pressing nothing it was not told, Google's refusal under
 // Google, and the costs as sentences in en and sl add about 1,000 (396,400 against 395,366 before the merge).
-if (initialGzip > 399700) throw new Error(`Initial browser assets exceed the 399,700-byte gzip budget: ${initialGzip}`)
+// Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
+// pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
+// on top of e2560062 it measured 399,847.
+if (initialGzip > 399900) throw new Error(`Initial browser assets exceed the 399,900-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

@@ -12,7 +12,7 @@ import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, searchIcon, st
 import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
-import { PublicSearch } from './Search.ts'
+import { PublicSearch, searchWords } from './Search.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
@@ -33,7 +33,7 @@ const isReady = (piece: Piece) => piece.status === 'ready'
 
 /** The search pill (the prototype's `.askbar`): a field that says what it searches, then a quiet clear and the +
  * that opens the sheet. Enter shows what was found; the search stays in the address. */
-const searchForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const searchForm = (model: Model, query: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
     [h.Role('search'), h.OnSubmit(Message.SubmittedSearch()), ...styled(h, styles.search())],
     [
@@ -44,7 +44,7 @@ const searchForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
         h.Name('q'),
         h.AriaLabel(format(locale, 'ask.searchLabel', {})),
         h.Placeholder(format(locale, 'ask.placeholder', {})),
-        h.Value(model.query),
+        h.Value(query),
         h.Autocomplete('off'),
         h.Attribute('enterkeyhint', 'search'),
         h.Attribute('autocapitalize', 'none'),
@@ -53,7 +53,7 @@ const searchForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
         ...styled(h, styles.searchInput()),
         h.OnInput((value) => Message.UpdatedQuery({ value })),
       ]),
-      String.isNonEmpty(model.query)
+      String.isNonEmpty(query)
         ? h.button(
             [
               h.Type('button'),
@@ -149,8 +149,14 @@ const resultTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
   )
 
 /** What was found, under a head that says where and how many; nothing found says so once and offers a way on. */
-const resultsView = (ready: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const found = matching(ready, model.query, searchLocales(model, locale))
+const resultsView = (
+  ready: ReadonlyArray<Piece>,
+  model: Model,
+  query: string,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html => {
+  const found = matching(ready, query, searchLocales(model, locale))
   return h.section(
     [h.Id(resultsId), h.AriaLabelledBy(`${resultsId}-title`), ...styled(h, styles.section())],
     [
@@ -164,7 +170,7 @@ const resultsView = (ready: ReadonlyArray<Piece>, model: Model, locale: Locale, 
       Array.match(found, {
         onEmpty: () =>
           h.div(styled(h, styles.nothingFound()), [
-            h.p([], [format(locale, 'ask.noResults', { query: model.query.trim() })]),
+            h.p([], [format(locale, 'ask.noResults', { query: query.trim() })]),
             actionButton(
               { label: format(locale, 'ask.clear', {}), style: secondaryAction(), onClick: Message.ClickedClear() },
               h,
@@ -203,11 +209,11 @@ const otherLanguageView = (model: Model, locale: Locale, h: HtmlBuilder<Message>
     : h.empty
 
 /** People and public boards for the same words, once the server has answered for them. */
-const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const publicResults = (model: Model, query: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Option.match(
     Option.some(model.search).pipe(
       Option.filter(PublicSearch.guards.Found),
-      Option.filter((found) => found.query === model.query),
+      Option.filter((found) => found.query === searchWords(query)),
     ),
     {
       onNone: () => h.empty,
@@ -249,7 +255,7 @@ const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
     },
   )
 
-const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const wardrobeView = (model: Model, query: string, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
   AsyncData.matchData(pieces, {
     onEmpty: () => loadingView(locale, h),
     onFailure: () =>
@@ -263,11 +269,11 @@ const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlB
     onData: (list) => {
       const ready = list.filter(isReady)
       if (Array.isReadonlyArrayEmpty(ready)) return emptyView(locale, h)
-      return String.isNonEmpty(model.query.trim())
+      return String.isNonEmpty(query.trim())
         ? h.div(styled(h, styles.section()), [
-            resultsView(ready, model, locale, h),
-            publicResults(model, locale, h),
-            askStyld(model.query.trim(), locale, h),
+            resultsView(ready, model, query, locale, h),
+            publicResults(model, query, locale, h),
+            askStyld(query.trim(), locale, h),
           ])
         : suggestionsView(ready, locale, h)
     },
@@ -360,17 +366,22 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
     h,
   )
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
-  (model, { locale, pieces }, h) =>
-    h.main(
-      [h.Id('main'), ...styled(h, styles.page())],
-      [
-        pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
-        searchForm(model, locale, h),
-        wardrobeView(model, pieces, locale, h),
-        // While searching, Styld is the one row under the results; the card would ask the same thing twice.
-        String.isNonEmpty(model.query.trim()) ? h.empty : stylistView(locale, h),
-        sheetShown(model.addSheet) ? addSheetView(model, locale, h) : h.empty,
-      ],
-    ),
+/** The words typed are the address's (`/ask?q=…`), as typed: the field reads them from the route (Foldkit's
+ * query-sync), so Back and a reload bring them back. */
+export const view = Submodel.defineView<
+  Model,
+  Message,
+  { readonly locale: Locale; readonly pieces: PiecesData; readonly query: string }
+>((model, { locale, pieces, query }, h) =>
+  h.main(
+    [h.Id('main'), ...styled(h, styles.page())],
+    [
+      pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
+      searchForm(model, query, locale, h),
+      wardrobeView(model, query, pieces, locale, h),
+      // While searching, Styld is the one row under the results; the card would ask the same thing twice.
+      String.isNonEmpty(query.trim()) ? h.empty : stylistView(locale, h),
+      sheetShown(model.addSheet) ? addSheetView(model, locale, h) : h.empty,
+    ],
+  ),
 )

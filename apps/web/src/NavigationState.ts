@@ -3,12 +3,20 @@ import { AsyncData, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { Model } from './App.ts'
 import type { Message } from './Message.ts'
-import { Navigate, ReplaceInternal, ReturnToParent, ScrollToAnchor } from './Navigation.ts'
-import { Page } from './Page.ts'
+import { at } from './AppLens.ts'
+import { arrive, Navigate, ReplaceInternal, ReturnToParent, ScrollToAnchor } from './Navigation.ts'
+import { lenses, Page } from './Page.ts'
+import * as Ask from './page/Ask.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute, boardRouter, parentReturn, wardrobeRouter } from './route.ts'
+import type { StyldClient } from './StyldClient.ts'
 
 type NavigationUpdate = Update.Return<Model, Message>
+
+/** What Ask is given with each Message: the words its address holds, as typed. */
+export const askContext = (route: AppRoute): Ask.Context => ({
+  query: AppRoute.guards.Ask(route) ? Option.getOrElse(route.q, () => '') : '',
+})
 
 /** What the wardrobe page is given with each Message: the browse its address shows, while it shows. */
 export const wardrobeContext = (route: AppRoute): Wardrobe.Context => ({
@@ -32,6 +40,23 @@ export const samePageArrival = (model: Model, route: AppRoute): Option.Option<Na
   }
   return Option.none()
 }
+
+/** The address moved within Ask (its own replace, or Back and Forward to other words): Ask is told the words, and a
+ * section the address names is scrolled to. */
+export const withinAsk = (
+  moved: Model,
+  previous: AppRoute,
+  route: AppRoute,
+  hash: Option.Option<string>,
+): Option.Option<Update.Return<Model, Message, StyldClient>> =>
+  AppRoute.guards.Ask(previous) && AppRoute.guards.Ask(route)
+    ? Option.some(
+        Update.combine<Model, Message, StyldClient>(moved, [
+          Update.foldChildStep({ update: Ask.informQuery(route.q), ...at(lenses.ask) }),
+          (stepModel) => ({ model: stepModel, commands: Option.isSome(hash) ? arrive(hash) : [] }),
+        ]),
+      )
+    : Option.none()
 
 export const restoreBrowsing = (model: Model, route: AppRoute, hash: Option.Option<string>): Model =>
   modifyFields(model, {
