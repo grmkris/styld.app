@@ -138,12 +138,11 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
 // pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
 // on top of e2560062 it measured 399,847.
-// Raised to TRYON_BUDGET the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
+// Raised to 405,600 the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
 // tab and its page (the try-ons, the Gallery photo and pieces or look to choose, This is me, the cost, the poll, before
 // and after, Delete, and Save to board's try-on target) and their en/sl words add 5,773 (391,342 to 397,115 measured
-// in a clean worktree on 4189172c's base); merged with main at MAIN_HEAD (budget 399,900) the build measures TRYON_MEASURED.
-if (initialGzip > 999999)
-  throw new Error(`Initial browser assets exceed the TRYON_BUDGET-byte gzip budget: ${initialGzip}`)
+// in a clean worktree on 4189172c's base); merged with main at 9daa3422 the build measures 405,539.
+if (initialGzip > 405600) throw new Error(`Initial browser assets exceed the 405,600-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
