@@ -20,16 +20,22 @@ import * as styles from './PieceCarouselView.styles.ts'
 
 const names = {
   clean: 'wardrobe.picture.clean',
+  backClean: 'wardrobe.back',
   photo: 'wardrobe.picture.photo',
   cutout: 'wardrobe.picture.cutout',
   back: 'wardrobe.back',
 } as const
+
+/** What a picture is called: the photo of the back says so beside the back's drawing. */
+const nameOf = (piece: Piece, slide: Slide) =>
+  slide === 'back' && piece.images?.backClean !== undefined ? 'wardrobe.picture.backPhoto' : names[slide]
 
 /** The picture's address on the piece: the photo it came from, or the picture it shows when it never had another. */
 const addressOf = (piece: Piece, slide: Slide) => {
   const images = piece.images
   if (slide === 'clean') return images?.clean ?? ''
   if (slide === 'cutout') return images?.cutout ?? ''
+  if (slide === 'backClean') return images?.backClean ?? ''
   if (slide === 'back') return cdn.pieceBack(piece)
   return images?.photo ?? cdn.piece(piece, 'full')
 }
@@ -88,11 +94,14 @@ const slideView = (piece: Piece, model: Model, slide: Slide, locale: Locale, h: 
     )
   const label = pieceLabel(piece, locale)
   const alt =
-    slide === 'back'
+    slide === 'back' || slide === 'backClean'
       ? format(locale, 'wardrobe.backAlt', { name: label })
       : slide === mainSlide(piece)
         ? label
-        : format(locale, 'wardrobe.picture.slideAlt', { name: label, picture: format(locale, names[slide], {}) })
+        : format(locale, 'wardrobe.picture.slideAlt', {
+            name: label,
+            picture: format(locale, nameOf(piece, slide), {}),
+          })
   const still = (hidden: boolean) =>
     h.img([
       h.Src(addressOf(piece, slide)),
@@ -111,13 +120,19 @@ const slideView = (piece: Piece, model: Model, slide: Slide, locale: Locale, h: 
 }
 
 /** A dot for each picture, naming it, the shown one current. */
-const dotsView = (slides: ReadonlyArray<Slide>, current: Slide, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const dotsView = (
+  piece: Piece,
+  slides: ReadonlyArray<Slide>,
+  current: Slide,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(
     [h.Role('group'), h.AriaLabel(format(locale, 'wardrobe.picture.pictures', {})), ...styled(h, styles.dots())],
     slides.map((slide) =>
       h.button([
         h.Type('button'),
-        h.AriaLabel(format(locale, names[slide], {})),
+        h.AriaLabel(format(locale, nameOf(piece, slide), {})),
         h.AriaCurrent(String(slide === current)),
         h.OnClick(Message.ClickedSlide({ slide })),
         ...styled(h, styles.dot()),
@@ -131,12 +146,12 @@ const captionView = (piece: Piece, model: Model, current: Slide, locale: Locale,
   const isMain = current === mainSlide(piece)
   const note = isMain
     ? Option.some(format(locale, 'wardrobe.picture.main', {}))
-    : current === 'clean' && !making
+    : (current === 'clean' && !making) || current === 'backClean'
       ? Option.some(format(locale, 'wardrobe.picture.cleaned', {}))
       : Option.none()
   return h.div(styled(h, styles.caption()), [
     h.p(styled(h, styles.name()), [
-      h.span(styled(h, styles.title()), [format(locale, names[current], {})]),
+      h.span(styled(h, styles.title()), [format(locale, nameOf(piece, current), {})]),
       Option.match(note, { onNone: () => h.empty, onSome: (text) => h.span(styled(h, styles.note()), [text]) }),
     ]),
     Option.match(choiceOf(piece, current), {
@@ -172,7 +187,7 @@ export const carousel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuil
         ],
         [slideView(piece, model, current, locale, h)],
       ),
-      slides.length > 1 ? dotsView(slides, current, locale, h) : h.empty,
+      slides.length > 1 ? dotsView(piece, slides, current, locale, h) : h.empty,
       captionView(piece, model, current, locale, h),
       Choosing.guards.Failed(model.choosing)
         ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.picture.chooseFailed', {})])

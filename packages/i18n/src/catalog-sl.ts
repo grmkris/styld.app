@@ -126,7 +126,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
   'wardrobe.picture.problem.network': 'Risanja ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.picture.backPhoto': 'Tvoja fotografija hrbtne strani',
-  'wardrobe.picture.cleanedBack': 'Sliko je narisala umetna inteligenca po tvoji fotografiji hrbtne strani',
   'wardrobe.turn.make': 'Zavrti ga',
   'wardrobe.turn.cost':
     '{credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# krediti, ki jih} other {# kreditov, ki jih}} vrnemo, če vrtenje ne nastane.',

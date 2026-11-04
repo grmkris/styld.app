@@ -137,8 +137,7 @@
         "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
         "network": "Risanja ni bilo mogoče naročiti. Poskusi znova."
       },
-      "backPhoto": "Tvoja fotografija hrbtne strani",
-      "cleanedBack": "Sliko je narisala umetna inteligenca po tvoji fotografiji hrbtne strani"
+      "backPhoto": "Tvoja fotografija hrbtne strani"
     },
     "turn": {
       "make": "Zavrti ga",

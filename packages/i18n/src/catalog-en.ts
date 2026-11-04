@@ -125,7 +125,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.problem.dailyLimit': "Today's credits are used up. Try again tomorrow.",
   'wardrobe.picture.problem.network': 'The drawing could not be asked for. Try again.',
   'wardrobe.picture.backPhoto': 'Your photo of the back',
-  'wardrobe.picture.cleanedBack': 'Drawn by AI from your photo of the back',
   'wardrobe.turn.make': 'Make it turn',
   'wardrobe.turn.cost': '{credits, plural, one {# credit} other {# credits}}, refunded if no turn comes of it.',
   'wardrobe.turn.making': 'Making the turn. It takes about two minutes.',

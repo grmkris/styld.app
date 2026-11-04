@@ -2,13 +2,15 @@ import type { PictureChoice, Piece } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-// A piece's pictures on its page, one swipe from the next (owner, 4 November 2026): the shop-style picture first, as
-// Styld shows it by default, then the person's own photo, the plain cut-out, and the back. While a drawing is being made
-// its slide says so. One of them is the main picture, the one the wardrobe shows; another can be made the main one
+// A piece's pictures on its page, one swipe from the next (owner, 4 November 2026): its angles first, the front as
+// Styld shows it (the shop-style picture by default) and then its back (drawn pressed from the person's photo of it, or
+// that photo while there is no drawing), and the person's own pictures last: their photo, the plain cut-out, and the
+// photo of the back. Eva found swiping through three pictures of the front pointless. While a drawing is being made its
+// slide says so. One of them is the main picture, the one the wardrobe shows; another can be made the main one
 // where the piece's choice allows it (the drawing or its cut-out, `ChoosePicture`).
 
 /** One of a piece's pictures on its page. */
-export const Slide = Schema.Literals(['clean', 'photo', 'cutout', 'back'])
+export const Slide = Schema.Literals(['clean', 'backClean', 'photo', 'cutout', 'back'])
 export type Slide = typeof Slide.Type
 
 /** Where a press on the picture began, to tell a sideways swipe from a tap or a scroll. */
@@ -34,14 +36,20 @@ const swipeSlant = 1.5
 /** Whether the piece's shop-style picture is drawn and shown to its owner. */
 const isDrawn = (piece: Piece) => piece.picture?.state === 'ready' && piece.images?.clean !== undefined
 
-/** The piece's pictures, in their order: the shop-style one while it is drawn or being made, the photo, the cut-out
- * when there is one, and the back. */
-export const slidesOf = (piece: Piece): ReadonlyArray<Slide> => [
-  ...(isDrawn(piece) || piece.picture?.state === 'drawing' ? (['clean'] as const) : []),
-  'photo',
-  ...(piece.images?.cutout === undefined ? [] : (['cutout'] as const)),
-  ...(piece.hasBack ? (['back'] as const) : []),
-]
+/** The piece's pictures, in their order: its front (the shop-style one while it is drawn or being made, else the
+ * picture it shows), its back (the drawn one, else the photo of it), then the rest of the person's own: the photo, the
+ * cut-out when there is one, and the photo of the back when its drawing came first. */
+export const slidesOf = (piece: Piece): ReadonlyArray<Slide> => {
+  const front: Slide = isDrawn(piece) || piece.picture?.state === 'drawing' ? 'clean' : mainSlide(piece)
+  const drawnBack = piece.images?.backClean !== undefined
+  const back: ReadonlyArray<Slide> = drawnBack ? ['backClean'] : piece.hasBack ? ['back'] : []
+  const own: ReadonlyArray<Slide> = [
+    'photo',
+    ...(piece.images?.cutout === undefined ? [] : (['cutout'] as const)),
+    ...(drawnBack && piece.hasBack ? (['back'] as const) : []),
+  ]
+  return [front, ...back, ...own.filter((slide) => slide !== front)]
+}
 
 /** The picture the wardrobe shows of it: the drawing when it shows, else its cut-out, else its photo. */
 export const mainSlide = (piece: Piece): Slide => {

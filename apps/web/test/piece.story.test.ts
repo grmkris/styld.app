@@ -24,7 +24,7 @@ import {
   update,
 } from '../src/page/Piece.ts'
 import { changesOf, DraftSave } from '../src/page/PieceDraft.ts'
-import { currentSlide } from '../src/page/PieceSlides.ts'
+import { currentSlide, slidesOf } from '../src/page/PieceSlides.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const piece = pieceFixture('jeans', {
@@ -268,22 +268,36 @@ describe('a piece you own', () => {
       // Rightwards from the first picture: still the first.
       ...swipe(100, 200),
       model((current) => expect(shownSlide(current)).toEqual(Option.some('clean'))),
+      // Its angles first (owner, 4 November): the back, without a drawing of it yet, is the photo of it.
       ...swipe(200, 100),
-      model((current) => expect(shownSlide(current)).toEqual(Option.some('photo'))),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('back'))),
       // Too short, or more up than across: a tap or a scroll, not a swipe.
       ...swipe(200, 170),
       ...swipe(200, 140, 120),
-      model((current) => expect(shownSlide(current)).toEqual(Option.some('photo'))),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('back'))),
       ...swipe(300, 100),
       ...swipe(300, 100),
       ...swipe(300, 100),
       model((current) => {
-        expect(shownSlide(current)).toEqual(Option.some('back'))
+        expect(shownSlide(current)).toEqual(Option.some('cutout'))
         expect(Option.isNone(current.slides.press)).toBe(true)
       }),
       ...swipe(100, 300),
-      model((current) => expect(shownSlide(current)).toEqual(Option.some('cutout'))),
+      model((current) => expect(shownSlide(current)).toEqual(Option.some('photo'))),
     )
+  })
+
+  test('the drawn back follows the front, and the person’s own pictures come last, the photo of the back too', () => {
+    const turned = pieceFixture('jeans', {
+      hasBack: true,
+      images: { thumb: 't', full: 'f', clean: 'c', backClean: 'bc', photo: 'p', cutout: 'o', back: 'b' },
+      picture: { state: 'ready', shows: 'clean', version: 1 },
+    })
+    expect(slidesOf(turned)).toEqual(['clean', 'backClean', 'photo', 'cutout', 'back'])
+    // Without a drawing of the front, the picture it shows comes first; the back still second.
+    const undrawn = pieceFixture('jeans', { hasBack: true, images: { thumb: 't', full: 'f', cutout: 'o', back: 'b' } })
+    expect(slidesOf(undrawn)).toEqual(['cutout', 'back', 'photo'])
+    expect(slidesOf(pieceFixture('jeans', { images: { thumb: 't', full: 'f' } }))).toEqual(['photo'])
   })
 
   test('a new back shows at once, and the main picture shows once the back is gone', () => {

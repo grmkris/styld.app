@@ -234,6 +234,29 @@ describe('the piece page', () => {
     )
   })
 
+  test('turns to the back drawn from the person’s photo of it, which itself comes last', () => {
+    const images = {
+      thumb: signedPicture(jeans.id, 'thumb', 'clean2'),
+      full: signedPicture(jeans.id, 'full', 'clean2'),
+      clean: signedPicture(jeans.id, 'full', 'drawing2'),
+      backClean: signedPicture(jeans.id, 'full', 'backClean1'),
+      photo: signedPicture(jeans.id, 'full', 'original'),
+      cutout: signedPicture(jeans.id, 'full', 'cutout'),
+      back: signedPicture(jeans.id, 'full', 'back'),
+    }
+    const turned = { ...jeans, images, hasBack: true, picture: { state: 'ready', shows: 'clean', version: 2 } } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: turned }))),
+      click(role('button', { name: 'Back' })),
+      expect(role('img', { name: 'Jeans, back' })).toHaveAttr('src', images.backClean),
+      expect(text('Drawn by AI from your cut-out')).toExist(),
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+      click(role('button', { name: 'Your photo of the back' })),
+      expect(role('img', { name: 'Jeans, back' })).toHaveAttr('src', images.back),
+    )
+  })
+
   test('the cut-out, or the drawing again, becomes the main picture from its slide', () => {
     // The API signs a new address for every picture it shows, so a new main picture loads a new one.
     const images = {

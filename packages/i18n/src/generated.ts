@@ -741,7 +741,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.picture.chooseFailed': Readonly<Record<string, never>>
   'wardrobe.picture.clean': Readonly<Record<string, never>>
   'wardrobe.picture.cleaned': Readonly<Record<string, never>>
-  'wardrobe.picture.cleanedBack': Readonly<Record<string, never>>
   'wardrobe.picture.cutout': Readonly<Record<string, never>>
   'wardrobe.picture.failed': Readonly<Record<string, never>>
   'wardrobe.picture.hintLabel': Readonly<Record<string, never>>
@@ -919,4 +918,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '1010866b307048d0adde2067416ca5ca174afe3a15f1c28a016f95c47c7272f7'
+export const catalogVersion = 'a4aa06001ab3bcd80042e99c84ce4d5841a53d5292b192a171d8b3826c9cf8a3'
