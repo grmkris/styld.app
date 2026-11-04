@@ -172,6 +172,20 @@ const within = (target: Box, x: number, y: number, size: number) => {
   }
 }
 
+/** A cluster moved whole so the box around its pieces is centred in its target (Eva's report of 4 November 2026: an
+ * outfit with no layer or accessories left the left of its sheet empty, so the table showed holes). Every piece lies
+ * within the target, so the box around them fits it and the move keeps them inside. */
+const centred = (pieces: ReadonlyArray<PlacedOutfitPiece>, target: Box): ReadonlyArray<PlacedOutfitPiece> => {
+  if (pieces.length === 0) return pieces
+  const left = Math.min(...pieces.map(({ x, size }) => x - size / 2))
+  const right = Math.max(...pieces.map(({ x, size }) => x + size / 2))
+  const top = Math.min(...pieces.map(({ y, size }) => y - size / 2))
+  const bottom = Math.max(...pieces.map(({ y, size }) => y + size / 2))
+  const dx = target.left + target.width / 2 - (left + right) / 2
+  const dy = target.top + target.height / 2 - (top + bottom) / 2
+  return pieces.map((piece) => ({ ...piece, ...within(target, piece.x + dx, piece.y + dy, piece.size) }))
+}
+
 /** The stacking left below the outfits for the anchor, and the room each cluster takes in the stack. */
 const anchorZ = 1
 const clusterZ = 20
@@ -195,7 +209,7 @@ const clusterOf = (
   const stacked = outfit
     .map((piece, at) => ({ piece, at }))
     .toSorted((a, b) => clusterSpots[slotOf(a.piece.type)].order - clusterSpots[slotOf(b.piece.type)].order)
-  return stacked.map(({ piece, at }, layer): PlacedOutfitPiece => {
+  const laid = stacked.map(({ piece, at }, layer): PlacedOutfitPiece => {
     const slot = slotOf(piece.type)
     const spot = clusterSpots[slot]
     const earlier = outfit.slice(0, at).filter((other) => slotOf(other.type) === slot).length
@@ -215,6 +229,7 @@ const clusterOf = (
       flipped: false,
     }
   })
+  return centred(laid, target)
 }
 
 /** The table of a "One piece, many outfits" board in a layout: the anchor large in the centre, then each outfit, in

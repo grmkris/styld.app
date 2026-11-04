@@ -141,6 +141,22 @@ describe.each(OutfitLayout.literals)('a "One piece, many outfits" board laid out
     expect(offsets[0]).not.toBe(offsets[1])
   })
 
+  test('a lean outfit (a tee, the jeans, trainers) sits in the middle of its box, not to one side', () => {
+    const lean = (seed: string): ReadonlyArray<OutfitPiece> => [
+      { id: pieceId(`${seed}-tee`), type: 'shortSleeveTops' },
+      anchor,
+      { id: pieceId(`${seed}-shoes`), type: 'trainers' },
+    ]
+    const leanOutfits = outfits.map((_, index) => lean(String.fromCharCode(97 + index)))
+    const leanPlaced = outfitsLaidOut(layout, anchor.id, leanOutfits, 1)
+    layoutPlans[layout].clusters.forEach((target, index) => {
+      const around = hull(leanPlaced.filter(({ outfit: place }) => place === index))
+      expect(Math.abs(around.left + around.width / 2 - (target.left + target.width / 2))).toBeLessThan(1)
+      expect(Math.abs(around.top + around.height / 2 - (target.top + target.height / 2))).toBeLessThan(1)
+      expect(contains(target, around)).toBe(true)
+    })
+  })
+
   test('another outfit in one place lies exactly where the whole layout would put it', () => {
     const replaced = outfits.map((one, index) => (index === 2 ? dressed : one))
     expect(clusterLaidOut(layout, anchor.id, replaced, 2, 1)).toEqual(
