@@ -73,7 +73,8 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // added to a photo by hand: its endpoint in the client's contract, the sheet's two purposes, the add button, the empty
 // photo's words and Remove add 458, for 373,915.
 // Raised to 376,000 the same day for Eva's board layouts (B2/B3): the layouts and their arrows in the shared contract,
-// the arrows on the table, Another layout (its state, Command and control, and their words) add 2,004.
+// the arrows on the table, Another layout (its state, Command and control, and their words) add 2,004; measured
+// together at 375,823.
 if (initialGzip > 376000) throw new Error(`Initial browser assets exceed the 376,000-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
