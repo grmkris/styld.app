@@ -70,3 +70,13 @@ export const cloudflareStage = async ({ token, cloudflareAccount, database, buck
         .result) satisfies RunClef,
   }
 }
+
+/** The command-line options every stage script shares: the stage's D1 database and R2 bucket, one account to work on,
+ * where the private report goes, and whether to write. */
+export const stageOptions = {
+  database: { type: 'string' },
+  bucket: { type: 'string' },
+  account: { type: 'string' },
+  out: { type: 'string' },
+  apply: { type: 'boolean', default: false },
+} as const

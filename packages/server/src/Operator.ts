@@ -29,7 +29,8 @@ const sameDigest = (a: Uint8Array, b: Uint8Array) => {
   return difference === 0
 }
 
-/** Whether `presented` is the operator's token, for a stage whose token has `operator` as its digest. */
+/** Whether `presented` is the operator's token, for a stage whose token has `operator` as its digest.
+ * @internal Exported for its tests. */
 export const isOperator = Effect.fnUntraced(function* (operator: Option.Option<Uint8Array>, presented: string) {
   if (Option.isNone(operator)) return false
   return sameDigest(operator.value, yield* digest(presented))

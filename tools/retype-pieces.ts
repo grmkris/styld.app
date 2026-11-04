@@ -23,17 +23,9 @@ import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
 import { makeGarmentVision } from '../packages/server/src/providers/Clef.ts'
-import { cloudflareStage } from './CloudflareRest.ts'
+import { cloudflareStage, stageOptions } from './CloudflareRest.ts'
 
-const { values } = parseArgs({
-  options: {
-    database: { type: 'string' },
-    bucket: { type: 'string' },
-    account: { type: 'string' },
-    out: { type: 'string' },
-    apply: { type: 'boolean', default: false },
-  },
-})
+const { values } = parseArgs({ options: { ...stageOptions } })
 const token = process.env['CLOUDFLARE_API_TOKEN']
 const cloudflareAccount = process.env['CLOUDFLARE_ACCOUNT_ID']
 const { database, bucket, account } = values
