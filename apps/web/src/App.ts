@@ -449,7 +449,6 @@ export const subscriptions = Subscription.aggregate(
   Subscription.lift(Photos.subscriptions)<Model, Message>(onTab(lenses.photos, AppRoute.guards.Photos)),
   Subscription.lift(Photo.subscriptions)<Model, Message>(at(lenses.photo)),
   Subscription.lift(Login.subscriptions)<Model, Message>(at(lenses.login)),
-  Subscription.lift(Landing.subscriptions)<Model, Message>(at(lenses.landing)),
   tryOnSubscriptions,
   Subscription.lift(Piece.subscriptions)<Model, Message>(at(lenses.piece)),
   Subscription.lift(Review.subscriptions)<Model, Message>(at(lenses.review)),

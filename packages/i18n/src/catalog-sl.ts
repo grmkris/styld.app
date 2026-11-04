@@ -388,6 +388,12 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.ask.text': 'Stilist, ki pozna tvojo garderobo. Vprašaj, kaj obleči, in odgovori s tvojimi kosi.',
   'landing.ask.question': 'Kaj naj oblečem na večerjo v petek?',
   'landing.ask.answer': 'Kamelji plašč čez črn puli, zraven rjave hlače in rjavi mokasini.',
+  'landing.assistants.title': 'V ChatGPT in Claudu',
+  'landing.assistants.text': 'Poveži Styld in prosi za videze kar v klepetu, ki ga že uporabljaš.',
+  'landing.assistants.question': 'Kaj se ta konec tedna poda k mojemu kameljemu plašču?',
+  'landing.assistants.card': 'Iz tvoje garderobe',
+  'landing.assistants.film':
+    'Klepet v drugem asistentu vpraša Styld, kaj se poda k kameljemu plašču, in Styld odgovori s štirimi kosi iz garderobe.',
   'landing.price.title': 'Koliko stane',
   'landing.price.lead':
     'Preizkusi {free} izreze brezplačno, potem od {price} na teden. Vsak paket ti da {daily} kreditov na dan.',
@@ -402,7 +408,6 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.faq.delete': 'Lahko izbrišem vse?',
   'landing.faq.deleteAnswer':
     'Da. Ko v Računu izbrišeš račun, z njim izbrišeš vse kose, fotografije, zbirke in videze.',
-  'landing.final': 'Začni z eno fotografijo.',
   'studio.boardName': 'Ime zbirke',
   'studio.cancel': 'Prekliči',
   'studio.dangerZoneHint': 'Izbriše zbirko, njene kartice in kolaže. Tvoji kosi, videzi in fotografije ostanejo.',

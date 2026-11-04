@@ -2,6 +2,7 @@ import { format, type Locale } from '@styld/i18n'
 import {
   freeCredits,
   landingAnswerPieces,
+  landingAssistantPieces,
   type LandingFilmName,
   landingRailPieces,
   memberDailyCredits,
@@ -14,18 +15,7 @@ import { cx } from 'zyzz'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { signInHref } from '../route.ts'
 import { styled } from '../Styled.ts'
-import {
-  Film,
-  Message,
-  type Model,
-  PlayWhileSeen,
-  railId,
-  showsFront,
-  StartFilm,
-  tallQuery,
-  WatchChat,
-  WatchRail,
-} from './Landing.ts'
+import { Film, Message, type Model, PlayRail, PlayWhileSeen, StartFilm, tallQuery, WatchChat } from './Landing.ts'
 import { landingMedia } from './LandingMedia.ts'
 import * as styles from './LandingView.styles.ts'
 
@@ -136,31 +126,35 @@ const filmScreen = (name: 'shop' | 'outfits' | 'tryOn', locale: Locale, h: HtmlB
   )
 }
 
-/** A rail piece's style once the rail is near: each with its own sprite. */
-const withSprite = {
-  'coat-camel': () => cx(styles.railPiece(), styles.coatCamel()),
-  'sweater-cream': () => cx(styles.railPiece(), styles.sweaterCream()),
-  'dress-sage': () => cx(styles.railPiece(), styles.dressSage()),
-  'shirt-white': () => cx(styles.railPiece(), styles.shirtWhite()),
-  'top-stripe': () => cx(styles.railPiece(), styles.topStripe()),
-} as const
-
-/** The rail: the pieces hang from an oak rod and swipe; the one in front turns to show its front. */
-const rail = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** The rail: the pieces hang in profile from an oak rod; the player (`RailPlayer.ts`) turns them, slides them and tours
+ * the rail. Assistive technology hears the rail's description; the pieces themselves are for the pointer. */
+const rail = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.AriaLabelledBy('landing-rail-title'), ...styled(h, cx(styles.screen(), styles.paperScreen()))],
     [
       h.div(
-        [h.Role('img'), h.AriaLabel(format(locale, 'landing.rail.film', {})), ...styled(h, styles.railStage())],
         [
-          h.div(styled(h, styles.railRod())),
-          h.div(
-            [h.Id(railId), h.AriaHidden(true), h.OnMount(WatchRail()), ...styled(h, styles.railRow())],
-            landingRailPieces.map((piece, index) =>
-              h.keyed('div')(piece, [
-                ...(showsFront(model.rail, index) ? [h.DataAttribute('front', '')] : []),
-                ...styled(h, model.rail.near ? withSprite[piece]() : styles.railPiece()),
-              ]),
+          h.Role('img'),
+          h.AriaLabel(format(locale, 'landing.rail.film', {})),
+          h.OnMount(PlayRail({ sprites: landingRailPieces.map((piece) => landingMedia.sprite(piece)) })),
+          ...styled(h, styles.rack()),
+        ],
+        [
+          h.div(styled(h, styles.rod())),
+          ...landingRailPieces.map((piece) =>
+            h.keyed('button')(
+              piece,
+              [
+                h.Type('button'),
+                h.Tabindex(-1),
+                h.AriaHidden(true),
+                h.DataAttribute('rail-piece', piece),
+                ...styled(h, styles.garment()),
+              ],
+              [
+                h.span(styled(h, styles.wire())),
+                h.canvas([h.Width('384'), h.Height('448'), ...styled(h, styles.garmentCanvas())]),
+              ],
             ),
           ),
         ],
@@ -175,6 +169,23 @@ const rail = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+const answerPieces = (
+  pieces: ReadonlyArray<(typeof landingAnswerPieces)[number] | (typeof landingAssistantPieces)[number]>,
+  h: HtmlBuilder<Message>,
+) =>
+  h.div(
+    styled(h, styles.answerPieces()),
+    pieces.map((piece) =>
+      h.keyed('img')(piece, [
+        h.Src(landingMedia.piece(piece)),
+        h.Alt(''),
+        h.Loading('lazy'),
+        h.Decoding('async'),
+        ...styled(h, styles.answerPiece()),
+      ]),
+    ),
+  )
+
 /** Ask Styld: a question and Styld's answer with four of the visitor's pieces. */
 const ask = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
@@ -182,26 +193,15 @@ const ask = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     [
       h.div(
         [
-          ...(model.chatShown ? [h.DataAttribute('play', '')] : []),
-          h.OnMount(WatchChat()),
+          ...(model.playing.ask ? [h.DataAttribute('play', '')] : []),
+          h.OnMount(WatchChat({ chat: 'ask' })),
           ...styled(h, styles.chat()),
         ],
         [
           h.p(styled(h, styles.question()), [format(locale, 'landing.ask.question', {})]),
           h.div(styled(h, styles.answer()), [
             h.p(styled(h, styles.answerText()), [format(locale, 'landing.ask.answer', {})]),
-            h.div(
-              styled(h, styles.answerPieces()),
-              landingAnswerPieces.map((piece) =>
-                h.keyed('img')(piece, [
-                  h.Src(landingMedia.answerPiece(piece)),
-                  h.Alt(''),
-                  h.Loading('lazy'),
-                  h.Decoding('async'),
-                  ...styled(h, styles.answerPiece()),
-                ]),
-              ),
-            ),
+            answerPieces(landingAnswerPieces, h),
           ]),
         ],
       ),
@@ -209,20 +209,52 @@ const ask = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+/** Styld inside ChatGPT or Claude: the visitor's question in that chat, and Styld's card with pieces from their
+ * wardrobe, drawn as Styld's own view rather than as either assistant's screen. */
+const assistants = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
+    [h.AriaLabelledBy('landing-assistants'), ...styled(h, cx(styles.screen(), styles.paperScreen()))],
+    [
+      h.div(
+        [
+          h.Role('img'),
+          h.AriaLabel(format(locale, 'landing.assistants.film', {})),
+          ...(model.playing.assistants ? [h.DataAttribute('play', '')] : []),
+          h.OnMount(WatchChat({ chat: 'assistants' })),
+          ...styled(h, cx(styles.chat(), styles.host())),
+        ],
+        [
+          h.p(
+            [h.AriaHidden(true), ...styled(h, cx(styles.question(), styles.hostQuestion()))],
+            [format(locale, 'landing.assistants.question', {})],
+          ),
+          h.div(
+            [h.AriaHidden(true), ...styled(h, styles.card())],
+            [
+              h.p(styled(h, styles.cardName()), ['Styld']),
+              h.p(styled(h, styles.cardLine()), [format(locale, 'landing.assistants.card', {})]),
+              answerPieces(landingAssistantPieces, h),
+            ],
+          ),
+        ],
+      ),
+      words(
+        'landing-assistants',
+        format(locale, 'landing.assistants.title', {}),
+        format(locale, 'landing.assistants.text', {}),
+        h,
+        true,
+      ),
+    ],
+  )
+
 const questions = ['who', 'app', 'cost', 'delete'] as const
 
-/** The ending: the way in, the price and the questions. */
+/** The ending: the plans and the questions, with Start free still resting at the bottom. */
 const ending = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
-    [h.AriaLabelledBy('landing-final'), ...styled(h, styles.ending())],
+    [h.AriaLabel(format(locale, 'landing.price.title', {})), ...styled(h, styles.ending())],
     [
-      h.div(styled(h, styles.final()), [
-        h.h2(
-          [h.Id('landing-final'), ...styled(h, cx(styles.title(), styles.finalTitle()))],
-          [format(locale, 'landing.final', {})],
-        ),
-        startFree(locale, h),
-      ]),
       h.div(styled(h, styles.price()), [
         h.p(styled(h, styles.priceLead()), [
           format(locale, 'landing.price.lead', {
@@ -232,7 +264,7 @@ const ending = (locale: Locale, h: HtmlBuilder<Message>): Html =>
           }),
         ]),
         h.dl(
-          [h.AriaLabel(format(locale, 'landing.price.title', {})), ...styled(h, styles.prices())],
+          styled(h, styles.prices()),
           planNames.map((plan) =>
             h.div(styled(h, styles.priceRow()), [
               h.dt(styled(h, styles.priceTerm()), [format(locale, `account.plans.${plan}`, {})]),
@@ -264,7 +296,7 @@ const ending = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-/** The landing: the hero, the feature screens carrying Start free with them, and the ending. */
+/** The landing: the hero, then the feature screens and the ending carrying Start free with them. */
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale }, h) =>
   h.main(
     [h.Id('main')],
@@ -275,10 +307,11 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale
         filmScreen('shop', locale, h),
         filmScreen('outfits', locale, h),
         filmScreen('tryOn', locale, h),
-        rail(model, locale, h),
+        rail(locale, h),
         ask(model, locale, h),
+        assistants(model, locale, h),
+        ending(locale, h),
       ]),
-      ending(locale, h),
     ],
   ),
 )

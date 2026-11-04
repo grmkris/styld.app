@@ -2,7 +2,8 @@ import { format } from '@styld/i18n'
 import { expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { Message as LandingMessage, PlayWhileSeen, StartFilm, WatchChat, WatchRail } from '../src/page/Landing.ts'
+import { Message as LandingMessage, StartFilm } from '../src/page/Landing.ts'
+import { landingWaits } from './LandingFixtures.ts'
 import { privacyDocument, termsDocument } from '../src/page/LegalView.ts'
 import { view } from '../src/View.ts'
 import { at } from './AppFixtures.ts'
@@ -20,13 +21,7 @@ describe('the legal pages', () => {
           ? []
           : [
               Mount.resolve(StartFilm, LandingMessage.CheckedMotion({ moving: false })),
-              Mount.resolveAll(
-                [PlayWhileSeen, LandingMessage.SawClip()],
-                [PlayWhileSeen, LandingMessage.SawClip()],
-                [PlayWhileSeen, LandingMessage.SawClip()],
-                [WatchRail, LandingMessage.NearedRail()],
-                [WatchChat, LandingMessage.ShowedChat({ shown: false })],
-              ),
+              landingWaits,
               Mount.expectEnded(StartFilm),
             ]),
       )

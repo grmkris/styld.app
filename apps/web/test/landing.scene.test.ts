@@ -1,13 +1,12 @@
 import {
   all,
-  Command,
   expect,
+  expectAll,
   first,
   given,
   inside,
   last,
   Mount,
-  nth,
   role,
   scene,
   selector,
@@ -18,16 +17,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, update } from '../src/App.ts'
 import { Message as AppMessage } from '../src/Message.ts'
-import {
-  Message as LandingMessage,
-  PlayWhileSeen,
-  ScrollRail,
-  StartFilm,
-  WatchChat,
-  WatchRail,
-} from '../src/page/Landing.ts'
+import { Message as LandingMessage, StartFilm } from '../src/page/Landing.ts'
 import { view } from '../src/View.ts'
 import { at } from './AppFixtures.ts'
+import { landingWaits } from './LandingFixtures.ts'
 import { opened } from './VisitFixtures.ts'
 
 // The signed-out Home (owner, 4 November 2026): the wardrobe's film for everyone, then one full screen per feature
@@ -39,19 +32,10 @@ const landing = (locale: 'en' | 'sl' = 'en') =>
   modifyFields(at('/', { signedIn: false, locale }), { session: () => Session.SignedOut() })
 
 /** Everything below the hero waits for the screen, which the scene has none of. */
-const belowWaits = [
-  Mount.resolveAll(
-    [PlayWhileSeen, LandingMessage.SawClip()],
-    [PlayWhileSeen, LandingMessage.SawClip()],
-    [PlayWhileSeen, LandingMessage.SawClip()],
-    [WatchRail, LandingMessage.NearedRail()],
-    [WatchChat, LandingMessage.ShowedChat({ shown: false })],
-  ),
-]
+const belowWaits = [landingWaits]
 const filmPlays = Mount.resolve(StartFilm, LandingMessage.CheckedMotion({ moving: true }))
 /** A landing Message arriving later from a running Mount's stream or the tour's Subscription. */
 const arrives = (message: LandingMessage) => Subscription.emit(AppMessage.GotLandingMessage({ message }))
-const tick = arrives(LandingMessage.TickedRailTour())
 
 describe('the landing', () => {
   test("the hero: the wardrobe's poster in both shapes, its words and Start free, in English and Slovenian", () => {
@@ -121,36 +105,25 @@ describe('the landing', () => {
       ),
       expect(role('region', { name: 'Every side of it' })).toExist(),
       expect(role('region', { name: 'Ask Styld' })).toExist(),
+      expect(role('region', { name: 'In ChatGPT and Claude' })).toExist(),
       expect(role('heading', { name: 'Add it once' })).not.toExist(),
       expect(role('heading', { name: 'Try it with your wardrobe' })).not.toExist(),
     )
   })
 
-  test('the rail turns the piece in front once it shows, tours on by itself, rests after a touch, and turns again on return', () => {
+  test("the rail hangs the landing's five pieces for its player, which only the pointer drives", () => {
     scene(
       { update, view },
       given(landing()),
       filmPlays,
       ...belowWaits,
-      expect(selector('#landing-rail [data-front]')).not.toExist(),
-      arrives(LandingMessage.ShowedRail({ shown: true, moving: true })),
-      expect(nth(all.selector('#landing-rail div'), 0)).toHaveAttr('data-front', ''),
-      tick,
-      Command.resolve(ScrollRail, LandingMessage.CompletedScrollRail()),
-      expect(nth(all.selector('#landing-rail div'), 0)).not.toHaveAttr('data-front'),
-      expect(nth(all.selector('#landing-rail div'), 1)).toHaveAttr('data-front', ''),
-      // A swipe settles on the fourth piece; a touch then holds the tour for two beats.
-      arrives(LandingMessage.SettledRail({ index: 3 })),
-      arrives(LandingMessage.TouchedRail()),
-      tick,
-      tick,
-      expect(nth(all.selector('#landing-rail div'), 3)).toHaveAttr('data-front', ''),
-      tick,
-      Command.resolve(ScrollRail, LandingMessage.CompletedScrollRail()),
-      expect(nth(all.selector('#landing-rail div'), 4)).toHaveAttr('data-front', ''),
-      // Off screen every piece shows its side, so the one in front turns again when the rail comes back.
-      arrives(LandingMessage.ShowedRail({ shown: false, moving: true })),
-      expect(selector('#landing-rail [data-front]')).not.toExist(),
+      inside(
+        role('region', { name: 'Every side of it' }),
+        expect(role('img', { name: /hang on an oak rail/ })).toExist(),
+        expectAll(all.selector('[data-rail-piece]')).toHaveCount(5),
+        expect(first(all.selector('[data-rail-piece]'))).toHaveAttr('data-rail-piece', 'coat-camel'),
+        expect(selector('[data-rail-piece] canvas')).toHaveAttr('width', '384'),
+      ),
     )
   })
 
@@ -167,26 +140,43 @@ describe('the landing', () => {
         expect(selector('img[src="/cdn/landing/shop-loafers-tan.webp"]')).toExist(),
         expect(selector('[data-play]')).not.toExist(),
       ),
-      arrives(LandingMessage.ShowedChat({ shown: true })),
+      arrives(LandingMessage.ShowedChat({ chat: 'ask', shown: true })),
       inside(role('region', { name: 'Ask Styld' }), expect(selector('[data-play]')).toExist()),
+      inside(role('region', { name: 'In ChatGPT and Claude' }), expect(selector('[data-play]')).not.toExist()),
     )
   })
 
-  test('the ending: Start free first, then the plans and four questions', () => {
+  test("in ChatGPT and Claude, the visitor's question and Styld's card with pieces from their wardrobe", () => {
     scene(
       { update, view },
       given(landing()),
       filmPlays,
       ...belowWaits,
       inside(
-        role('region', { name: 'Start with one photo.' }),
-        expect(role('link', { name: 'Start free' })).toHaveAttr('href', '/login'),
+        role('region', { name: 'In ChatGPT and Claude' }),
+        expect(role('img', { name: /asks Styld what goes with a camel coat/ })).toExist(),
+        expect(selector('img[src="/cdn/landing/shop-boots-black.webp"]')).toExist(),
+      ),
+      arrives(LandingMessage.ShowedChat({ chat: 'assistants', shown: true })),
+      inside(role('region', { name: 'In ChatGPT and Claude' }), expect(selector('[data-play]')).toExist()),
+    )
+  })
+
+  test('the ending: the plans and four questions, with no second title', () => {
+    scene(
+      { update, view },
+      given(landing()),
+      filmPlays,
+      ...belowWaits,
+      inside(
+        role('region', { name: 'What it costs' }),
         expect(text('Try 3 cut-outs free, then from $4.99 a week. Every plan gives you 500 credits a day.')).toExist(),
         expect(first(all.selector('dt'))).toHaveText('Week'),
         expect(last(all.selector('dt'))).toHaveText('Lifetime'),
         expect(text('Who can see my wardrobe?')).toExist(),
         expect(text('Can I delete everything?')).toExist(),
       ),
+      expect(text('Start with one photo.')).not.toExist(),
     )
   })
 

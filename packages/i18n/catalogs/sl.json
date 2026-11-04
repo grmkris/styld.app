@@ -426,6 +426,13 @@
       "question": "Kaj naj oblečem na večerjo v petek?",
       "answer": "Kamelji plašč čez črn puli, zraven rjave hlače in rjavi mokasini."
     },
+    "assistants": {
+      "title": "V ChatGPT in Claudu",
+      "text": "Poveži Styld in prosi za videze kar v klepetu, ki ga že uporabljaš.",
+      "question": "Kaj se ta konec tedna poda k mojemu kameljemu plašču?",
+      "card": "Iz tvoje garderobe",
+      "film": "Klepet v drugem asistentu vpraša Styld, kaj se poda k kameljemu plašču, in Styld odgovori s štirimi kosi iz garderobe."
+    },
     "price": {
       "title": "Koliko stane",
       "lead": "Preizkusi {free} izreze brezplačno, potem od {price} na teden. Vsak paket ti da {daily} kreditov na dan."
@@ -440,8 +447,7 @@
       "costAnswer": "Prvi {free} izrezi so brezplačni, brez kartice. Potem ti paket da {daily} kreditov na dan: {week} za teden, {monthly} na mesec, {yearly} na leto ali {lifetime} enkrat za vedno. Mesec ali leto se podaljšuje, dokler ne prekličeš, kar lahko narediš kadar koli.",
       "delete": "Lahko izbrišem vse?",
       "deleteAnswer": "Da. Ko v Računu izbrišeš račun, z njim izbrišeš vse kose, fotografije, zbirke in videze."
-    },
-    "final": "Začni z eno fotografijo."
+    }
   },
   "studio": {
     "boardName": "Ime zbirke",

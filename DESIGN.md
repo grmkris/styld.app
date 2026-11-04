@@ -153,9 +153,10 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
   piece) read the same as signed in; Sign in appears only when the visitor saves, follows or reports. Home is the
   landing (owner, 4 November 2026): the wardrobe's film for everyone, its statement at the top and Start free at the
   bottom; then one full screen per feature, each with its words at the bottom: the wardrobe as a shop, one piece in many
-  outfits, try-on (films), the turning rail and Ask Styld (on paper); then a short ending: Start free, the plans as a
-  `<dl>` and four questions in `<details>`. Start free rests at the bottom of the screen (the bottom right on a wide one)
-  while any feature screen shows. Plain scrolling, no snapping.
+  outfits, try-on (films), the turning rail, Ask Styld and Styld in ChatGPT and Claude (on paper; the last as Styld's
+  own card inside a plain host window, never either assistant's screen); then a short ending: the plans as a `<dl>` and
+  four questions in `<details>`. Start free rests at the bottom of the screen (the bottom right on a wide one) from the
+  first feature screen to the end. Plain scrolling, no snapping.
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
   and under `prefers-reduced-transparency` they are solid stock.
 
@@ -230,10 +231,12 @@ Follow the prototype's `board`, `boards`, `person`, `pin`, `wishlist` and `ask-d
   behind the hero's words (9:16 on a phone held upright, 16:9 elsewhere), and each feature screen's clip below loops
   from the moment an eighth of it shows. There is no control: the films always play (owner, 4 November 2026). Under
   reduced motion or Save-Data no video is requested, and a film the browser refuses to start goes: the posters stay.
-  Two more exceptions on the same page: the rail tours by itself while it is on screen (the piece in front turns from
-  its side to its front through its sprite's frames, the next comes to the front every 2.2 s, a touch rests it for two
-  beats), and Ask Styld's question and answer rise in when its chat shows. Under reduced motion the rail stands still
-  with its front piece shown and the answer is there at once. Nothing else on the landing moves by itself.
+  Two more exceptions on the same page: the rail (its player adapted from interactive-garment-starter, MIT) and the two
+  chats. On a wide screen the piece under the pointer turns from its side to its front while its neighbours slide aside;
+  on a phone the row swipes with momentum and the piece that settles in the middle turns; a tap turns a piece again;
+  and while the rail is on screen it tours by itself, the next piece coming forward every 2.2 s, held for two beats by a
+  touch or a hover. Each chat's question and answer rise in when it shows. Under reduced motion the rail does not tour
+  and its pieces turn at once, and the answers are there at once. Nothing else on the landing moves by itself.
 - **Reduced motion:** everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 - **Reduced transparency:** glass turns solid.
 

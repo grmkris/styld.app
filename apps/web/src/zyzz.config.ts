@@ -152,8 +152,6 @@ export const { style, vars } = defineConfig({
         'linear(0, 0.0491, 0.1629, 0.3039, 0.4479, 0.5806, 0.6949, 0.7883, 0.8613, 0.9159, 0.9549, 0.9815, 0.9985, 1.0085, 1.0134, 1.0151, 1.0147, 1.0132, 1.0111, 1.0089, 1.0068, 1.005, 1.0035, 1.0023, 1.0014, 1.0008, 1.0004, 1.0001, 0.9999, 0.9998, 0.9998, 0.9998, 1)',
       // The tombola's wheel: fast at once, then a long slowing onto the drawn piece.
       wheel: 'cubic-bezier(0.12, 0.62, 0.14, 1)',
-      // The landing rail's turn: a piece's 30 frames stepped through, one at a time (`turn-<piece>.webp`).
-      turnFrames: 'steps(29, jump-none)',
     },
     // How long a motion takes (DESIGN.md › Motion).
     transitionDuration: {
@@ -173,8 +171,6 @@ export const { style, vars } = defineConfig({
       spin: '0.9s',
       // The tombola's wheel turning to the drawn piece, the one long motion, only on request.
       wheel: '2500ms',
-      // A rail piece on the landing turning from its side to its front.
-      turn: '800ms',
       instant: '0ms',
     },
     // inset: a table inside a card with 8px padding, so its corner is the card's 16px less the padding.

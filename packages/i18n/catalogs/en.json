@@ -426,6 +426,13 @@
       "question": "What should I wear to dinner on Friday?",
       "answer": "Your camel coat over the black turtleneck, with the brown trousers and the tan loafers."
     },
+    "assistants": {
+      "title": "In ChatGPT and Claude",
+      "text": "Connect Styld, and ask for outfits in the chat you already use.",
+      "question": "What goes with my camel coat this weekend?",
+      "card": "From your wardrobe",
+      "film": "A chat in another assistant asks Styld what goes with a camel coat, and Styld answers with four pieces from the wardrobe."
+    },
     "price": {
       "title": "What it costs",
       "lead": "Try {free} cut-outs free, then from {price} a week. Every plan gives you {daily} credits a day."
@@ -440,8 +447,7 @@
       "costAnswer": "Your first {free} cut-outs are free, no card. Then a plan gives you {daily} credits a day: {week} for a week, {monthly} a month, {yearly} a year, or {lifetime} once for life. A month or a year renews until you cancel, which you can do any time.",
       "delete": "Can I delete everything?",
       "deleteAnswer": "Yes. Deleting your account in Account removes every piece, photo, board and look with it."
-    },
-    "final": "Start with one photo."
+    }
   },
   "studio": {
     "boardName": "Board name",

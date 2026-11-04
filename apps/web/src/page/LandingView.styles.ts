@@ -161,7 +161,7 @@ export const noWrap = style({ whiteSpace: 'nowrap' })
 export const screens = style({ position: 'relative' })
 export const pinned = style({
   position: 'sticky',
-  insetBlockStart: 'calc(100svh - 72px - env(safe-area-inset-bottom))',
+  insetBlockStart: 'calc(100svh - 20px - env(safe-area-inset-bottom))',
   zIndex: 3,
   display: 'flex',
   justifyContent: 'center',
@@ -169,70 +169,66 @@ export const pinned = style({
   overflow: 'visible',
   '@media (min-aspect-ratio: 4/5)': { justifyContent: 'flex-end', paddingInline: 'clamp(24px, 5vw, 72px)' },
 })
-export const pinnedAction = style({ blockSize: 'fit-content', boxShadow: 'lift1' })
+/** The pill rises from its resting point, so at the end of the screens it stops above the footer instead of over it. */
+export const pinnedAction = style({ blockSize: 'fit-content', boxShadow: 'lift1', translate: '0 -100%' })
 
-// The rail: an oak rod fixed across the screen, the pieces hanging from it in a row that swipes; the one in front turns
-// from its side to its front through its sprite's 30 frames.
+// The rail (RailPlayer.ts): an oak rod across the rack, the pieces hanging from it by their wires. The player sets each
+// piece's place (`left`) and its width (`--garment-width`) through the CSSOM and draws its frames on its canvas.
 
-export const railStage = style({
+export const rack = style({
   position: 'relative',
   gridRow: '1',
   alignSelf: 'center',
+  blockSize: '440px',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left), env(safe-area-inset-right)))',
-  paddingBlockStart: '28px',
-  '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '2', marginInline: '0' },
+  overflow: 'hidden',
+  touchAction: 'pan-y',
+  userSelect: 'none',
+  // The pieces fade out at the screen's edges instead of being cut by them.
+  maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)',
+  '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '2', marginInline: '0', blockSize: 'min(100%, 540px)' },
 })
-export const railRod = style({
+export const rod = style({
   position: 'absolute',
-  insetBlockStart: '0',
+  insetBlockStart: '30px',
   insetInline: '0',
   blockSize: '5px',
   borderRadius: 'pill',
   backgroundImage: 'linear-gradient(to bottom, #d9b98a, #b48c58 55%, #8f6a3d)',
   boxShadow: '0 3px 6px oklch(0.3 0.04 60 / 0.18) !custom',
 })
-export const railRow = style({
-  display: 'flex',
-  gap: 'related',
-  overflowX: 'auto',
-  overscrollBehaviorX: 'contain',
-  scrollSnapType: 'x mandatory',
-  scrollbarWidth: 'none',
-  paddingInline: 'calc(50% - min(37vw, 160px))',
-  // The pieces fade out at the screen's edges instead of being cut by them.
-  maskImage: 'linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)',
+/** A piece: a narrow target while it shows its side, its whole width once it turns to the front. */
+export const garment = style({
+  position: 'absolute',
+  insetBlockStart: '34px',
+  insetInlineStart: '0',
+  zIndex: 1,
+  inlineSize: '60px',
+  blockSize: 'calc(var(--garment-width, 370px) * 448 / 384)',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  transform: 'translateX(-50%)',
+  cursor: 'pointer',
+  '&[data-active]': { zIndex: 2, inlineSize: 'var(--garment-width, 370px)' },
+  '@media (max-width: 700px)': { inlineSize: 'var(--garment-width, 315px)' },
 })
-export const railPiece = style({
-  position: 'relative',
-  flex: '0 0 auto',
-  inlineSize: 'min(74vw, 320px)',
-  aspectRatio: '384 / 448',
-  scrollSnapAlign: 'center',
-  backgroundRepeat: 'no-repeat',
-  // Thirty frames in one row: the position steps from the first (the side) to the last (the front).
-  backgroundSize: '3000% 100%',
-  backgroundPosition: '0% 0%',
-  transitionProperty: 'background-position',
-  transitionDuration: 'turn',
-  transitionTimingFunction: 'turnFrames',
-  '&[data-front]': { backgroundPosition: '100% 0%' },
-  // The hanger's wire up to the rod.
-  '::before': {
-    content: '""',
-    position: 'absolute',
-    insetBlockStart: '-28px',
-    insetInlineStart: 'calc(50% - 0.5px)',
-    inlineSize: '1px',
-    blockSize: '34px',
-    backgroundColor: 'ink3',
-  },
+export const wire = style({
+  position: 'absolute',
+  insetBlockStart: '0',
+  insetInlineStart: 'calc(50% - 0.5px)',
+  inlineSize: '1px',
+  blockSize: '36px',
+  backgroundColor: 'ink3',
 })
-// Each sprite loads only once the rail nears the screen (the view adds these then).
-export const coatCamel = style({ backgroundImage: "url('/cdn/landing/turn-coat-camel.webp')" })
-export const sweaterCream = style({ backgroundImage: "url('/cdn/landing/turn-sweater-cream.webp')" })
-export const dressSage = style({ backgroundImage: "url('/cdn/landing/turn-dress-sage.webp')" })
-export const shirtWhite = style({ backgroundImage: "url('/cdn/landing/turn-shirt-white.webp')" })
-export const topStripe = style({ backgroundImage: "url('/cdn/landing/turn-top-stripe.webp')" })
+export const garmentCanvas = style({
+  position: 'absolute',
+  insetBlockStart: '24px',
+  insetInlineStart: 'calc(50% - var(--garment-width, 370px) / 2)',
+  inlineSize: 'var(--garment-width, 370px)',
+  blockSize: 'auto',
+  pointerEvents: 'none',
+})
 
 // Ask Styld: the question, then Styld's answer with its four pieces, played in each time the chat comes into view.
 
@@ -306,18 +302,39 @@ export const answerPiece = style({
   backgroundColor: 'paper2',
 })
 
-// The ending: the way in first, then the price and the questions as small print.
+// ChatGPT and Claude: the question in the visitor's own assistant, and Styld's card answering it inside the chat.
+
+/** A plain host window around the chat: neither assistant's own screen. */
+export const host = style({
+  paddingBlock: '20px',
+  paddingInline: '16px',
+  borderRadius: 'sheet',
+  backgroundColor: 'paper2',
+})
+export const hostQuestion = style({ backgroundColor: 'stock', color: 'ink' })
+export const card = style({
+  justifySelf: 'start',
+  display: 'grid',
+  gap: 'close',
+  inlineSize: 'min(100%, 22rem)',
+  padding: '14px',
+  borderRadius: 'panel',
+  backgroundColor: 'stock',
+  boxShadow: 'lift1',
+})
+export const cardName = style({ margin: '0', fontFamily: 'voice', fontSize: 'heading', lineHeight: 1 })
+export const cardLine = style({ margin: '0', fontSize: 'label', color: 'ink2' })
+
+// The ending: the plans and the questions as small print, clear of Start free resting at the bottom.
 
 export const ending = style({
   display: 'grid',
   gap: 'columnWide',
   maxInlineSize: '640px',
   marginInline: 'auto',
-  paddingBlock: '96px calc(48px + env(safe-area-inset-bottom))',
+  paddingBlock: '72px calc(112px + env(safe-area-inset-bottom))',
   paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
 })
-export const final = style({ display: 'grid', justifyItems: 'start', gap: 'gutter' })
-export const finalTitle = style({ textShadow: 'none', maxInlineSize: '9ch' })
 export const price = style({ display: 'grid', gap: 'grid' })
 export const priceLead = style({ margin: '0', fontSize: 'subheading', textWrap: 'pretty' })
 export const prices = style({

@@ -42,6 +42,10 @@ export const landingTurnFrames = 30
 export const landingAnswerPieces = ['coat-camel', 'turtleneck-black', 'trousers-brown', 'loafers-tan'] as const
 export type LandingAnswerPiece = (typeof landingAnswerPieces)[number]
 
+/** The pieces on Styld's card inside ChatGPT or Claude: what goes with the camel coat this weekend. */
+export const landingAssistantPieces = ['coat-camel', 'sweater-cream', 'jeans-light', 'boots-black'] as const
+export type LandingAssistantPiece = (typeof landingAssistantPieces)[number]
+
 /** Every name the landing reads, and the only names `/cdn/landing/:name` serves. */
 export const landingMediaNames: ReadonlyArray<string> = [
   ...Object.values(landingFilms).flatMap(({ tall, wide, posterTall, posterWide }) => [
@@ -51,7 +55,7 @@ export const landingMediaNames: ReadonlyArray<string> = [
     posterWide,
   ]),
   ...landingRailPieces.map((piece) => `turn-${piece}.webp`),
-  ...landingAnswerPieces.map((piece) => `shop-${piece}.webp`),
+  ...new Set([...landingAnswerPieces, ...landingAssistantPieces].map((piece) => `shop-${piece}.webp`)),
 ]
 
 /** Where the browser reads a landing file. */

@@ -298,7 +298,7 @@ beside the house boards, after reviewing the Grokbot inspiration-boards research
   now); no type preset on Add clothes (the capture types each piece); aesthetics show as the catalogue's slugs
   (`city break`) in both languages; a Discovery test of `challenges` over D1.
 
-## The landing that replaces v1 at styld.app (4 November: one screen per feature on main, not deployed)
+## The landing that replaces v1 at styld.app (live at 7810c475; the rail's player and Styld in ChatGPT and Claude on main, not deployed)
 
 The signed-out Home is rebuilt from the landing-film prototypes and the owner's three phone reviews of 4 November
 (DESIGN.md › Type, › Surfaces, › Motion). The prototype the owner approved is
@@ -315,29 +315,38 @@ The signed-out Home is rebuilt from the landing-film prototypes and the owner's 
     the oak table, and the wide `coat-*`), See it on you (the mirror, `mirror-*`), Every side of it (the rail) and Ask
     Styld. A film is fetched a screen and a half ahead and plays from the moment an eighth of it shows. The scanner
     and Try with my wardrobe screens were dropped by the owner as implied by the others.
-  - The rail: five pieces (`landingRailPieces`) hang from an oak rod in a row that swipes; the one in front turns from
-    its side to its front through a 30-frame sprite in one row (`turn-<piece>.webp`, a stepped `background-position`
-    transition, `turnFrames`/`turn` tokens). It tours by itself while on screen (a Subscription ticks every 2.2 s and
-    a Command glides the row), a touch rests it for two beats, a swipe sets the front piece, and off screen every
-    piece goes back to its side. The turns are Wan 3.0 takes from Muse front and side views of the landing's own
-    pieces (`chapters/turn/`), keyed and packed the way the 30 October turn spike did.
+  - The rail (owner, 5 November: the CSS rail of 74aa35d4 lost the prototype's behaviour, bring it back): five pieces
+    (`landingRailPieces`) hang in profile from an oak rod; `RailPlayer.ts`, adapted from interactive-garment-starter
+    (Amir Mušić, MIT) with its motion in `RailMotion.ts`, draws each piece's 30-frame sprite (`turn-<piece>.webp`) on a
+    canvas. On a wide screen the piece under the pointer turns to its front while its neighbours slide aside; on a phone
+    the row swipes with momentum and the piece that settles in the middle turns; a tap turns a piece again; while on
+    screen it tours every 2.2 s, held two beats by a touch or a hover. The player loads as its own chunk only when the
+    rail mounts (3,851 gzip bytes), and its sprites once the rail nears the screen.
   - Ask Styld: a question and Styld's answer with four pieces (`landingAnswerPieces`), rising in when a third of the
     chat shows and again each time it comes back; under reduced motion it is there at once.
-  - The ending: Start with one photo and Start free, the plans' lead and the four plans as a `<dl>`, and the four
-    questions in `<details>`. Start free rests at the bottom of the screen (bottom right on a wide one) while any
-    feature screen shows, as a sticky element, so it never covers the hero or the ending. Plain scrolling.
+  - In ChatGPT and Claude (owner, 5 November, until his screen recording): the visitor's question in a plain host
+    window and Styld's card answering it with four pieces (`landingAssistantPieces`), rising in like Ask Styld's.
+  - The ending: the plans' lead and the four plans as a `<dl>`, and the four questions in `<details>`; no second title
+    (owner, 5 November). Start free rests at the bottom of the screen (bottom right on a wide one) from the first
+    feature screen to the end, as a sticky element that rises from its resting point, so it never covers the hero or
+    the footer. Plain scrolling.
   - `GET /cdn/landing/:name` serves the 24 allowlisted names in `@styld/protocol` › `Landing.ts` from the stage's
     media bucket (a year's immutable cache, ETag, 206 for Safari's ranges). Nothing is bundled.
-  - The initial bundle grows by 3,156 gzip bytes (418,328 to 421,484 on a clean main; budget 421,600).
+  - Budgets: the first bundle does not grow (the player loads apart); all browser assets grow by 3,547 (716,352 to
+    719,899 on main at 10730bc0), and their 700 KiB budget moves to 720,000.
 - **Evidence:** `landing.scene` (the hero in en and sl with no control; reduced motion or a refused film leaving the
   poster; each feature screen's film and poster, no scanner or try-with screen; the rail turning its front piece when
-  shown, touring a beat at a time, resting after a touch, following a swipe and turning back off screen; the chat
-  playing when shown; the ending's plans and questions), `legal.scene`, `LandingMedia.test`. Native, written and not
+  hung for its player; each chat playing when shown; the ending's plans and questions with no second title),
+  `railMotion.test` (a turn that never overshoots and lands on the last frame, a reverse mid-turn with no jump, reduced
+  motion at once, the rack moving neighbours aside, a phone's flick and slide), `legal.scene`, `LandingMedia.test`.
+  Checked by hand on the dev server with production's media at 1440x900 (arrival turn, tour, hover on the fifth piece,
+  tap) and 390x844 (arrival, tour, swipe, tap). Native, written and not
   run: `BrowserAcceptance` (the hero's words, no film requested under reduced motion, Start free on the first 360×740
   screen in sl, no sideways overflow at 360, 390, 768 and 1440).
 - **Open:** the new media (`pile-*`, `coat-board-*`, `turn-*`) uploaded to the preview's and production's buckets
   (production already holds `wardrobe-*`, `coat-loop-wide`, `coat-poster-wide`, `mirror-*` and `shop-*`), the deploy,
-  the full gate with native, and the walk on a phone. In ChatGPT and Claude waits for the owner's screen recording.
+  the full gate with native, and the walk on a phone. The card's pieces `shop-sweater-cream`, `shop-jeans-light` and `shop-boots-black` are in
+  production's bucket from the first landing; the deploy's readback confirms them.
 
 ## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
 

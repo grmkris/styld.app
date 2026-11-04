@@ -384,6 +384,12 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.ask.text': 'A stylist that knows your wardrobe. Ask what to wear, and it answers with your own pieces.',
   'landing.ask.question': 'What should I wear to dinner on Friday?',
   'landing.ask.answer': 'Your camel coat over the black turtleneck, with the brown trousers and the tan loafers.',
+  'landing.assistants.title': 'In ChatGPT and Claude',
+  'landing.assistants.text': 'Connect Styld, and ask for outfits in the chat you already use.',
+  'landing.assistants.question': 'What goes with my camel coat this weekend?',
+  'landing.assistants.card': 'From your wardrobe',
+  'landing.assistants.film':
+    'A chat in another assistant asks Styld what goes with a camel coat, and Styld answers with four pieces from the wardrobe.',
   'landing.price.title': 'What it costs',
   'landing.price.lead':
     'Try {free} cut-outs free, then from {price} a week. Every plan gives you {daily} credits a day.',
@@ -398,7 +404,6 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.faq.delete': 'Can I delete everything?',
   'landing.faq.deleteAnswer':
     'Yes. Deleting your account in Account removes every piece, photo, board and look with it.',
-  'landing.final': 'Start with one photo.',
   'studio.boardName': 'Board name',
   'studio.cancel': 'Cancel',
   'studio.dangerZoneHint': 'Deletes this board, its pins and its collages. Your pieces, looks and photos stay.',
