@@ -5,6 +5,7 @@ import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { CheckQueue, Checks } from '../src/safety/Checks.ts'
+import { PieceChanged } from '../src/safety/PieceChanged.ts'
 import { type Content, ContentJudge, contentJudge, passed } from '../src/safety/Judge.ts'
 import { boardSourceDigest, profileSourceDigest } from '../src/social/Translated.ts'
 import { localD1 } from './LocalD1.ts'
@@ -200,5 +201,16 @@ describe('the checks', () => {
       yield* (yield* Checks).checkNow({ kind: 'profile', id: 'ac_1' })
       expect(seen.judged.map(({ texts }) => texts)).toEqual([['Ana', 'ana', 'Ana', 'Jesenske plasti.']])
     }).pipe(Effect.provide(checksOver(database, seen)))
+  })
+
+  it.live('hand a changed piece to the queue when its check cannot be marked, so it is judged anew', () => {
+    const seen = witness()
+    const database = seeded('ac_1/cutout.png')
+    // The checks' table is unreachable: marking the piece pending fails however often it is tried.
+    database.sqlite.exec('DROP TABLE content_checks')
+    return Effect.gen(function* () {
+      yield* (yield* PieceChanged).changed('pc_1')
+      expect(seen.queued).toEqual([{ body: { _tag: 'CheckContent', target: { kind: 'piece', id: 'pc_1' } } }])
+    }).pipe(Effect.provide(PieceChanged.layer.pipe(Layer.provide(checksOver(database, seen)))))
   })
 })

@@ -1,6 +1,6 @@
 import { captures, outfitPhotos, pieceBackPictures, piecePictures, pieces, pieceTurns } from '@styld/db'
 import { and, asc, eq, inArray, lt, or } from 'drizzle-orm'
-import { Cause, DateTime, Duration, Effect } from 'effect'
+import { Cause, DateTime, Duration, Effect, Exit } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
 
 // What the cron does every ten minutes: every sweep runs on its own, so one that fails never skips the rest. A sweep
@@ -14,9 +14,11 @@ export interface Sweep<R = never> {
   readonly run: Effect.Effect<number, unknown, R>
 }
 
-/** Run every sweep at once, each isolated: a failure is logged, and the others carry on. */
+/** Run every sweep at once, each isolated: a failure is logged and the others carry on. A defect (a bug) or an
+ * interruption is not swallowed: every sweep still ends, then the run dies with what went wrong, so the cron's own
+ * log shows it. */
 export const runSweeps = Effect.fn('Styld.Sweeps.run')(function* (sweeps: ReadonlyArray<Sweep>) {
-  yield* Effect.forEach(
+  const ended = yield* Effect.forEach(
     sweeps,
     ({ name, run }) =>
       run.pipe(
@@ -24,14 +26,18 @@ export const runSweeps = Effect.fn('Styld.Sweeps.run')(function* (sweeps: Readon
           Effect.logInfo('Styld.Sweep').pipe(Effect.annotateLogs({ 'styld.sweep': name, 'styld.sweep.count': count })),
         ),
         Effect.withSpan(`Styld.Sweep.${name}`),
-        Effect.catchCause((cause) =>
+        Effect.catch((error) =>
           Effect.logWarning('Styld.Sweep failed').pipe(
-            Effect.annotateLogs({ 'styld.sweep': name, 'styld.sweep.cause': Cause.pretty(cause) }),
+            Effect.annotateLogs({ 'styld.sweep': name, 'styld.sweep.cause': Cause.pretty(Cause.fail(error)) }),
           ),
         ),
+        Effect.exit,
       ),
-    { concurrency: 'unbounded', discard: true },
+    { concurrency: 'unbounded' },
   )
+  const broken = ended.flatMap((exit) => (Exit.isFailure(exit) ? [exit.cause] : []))
+  const [first, ...rest] = broken
+  if (first !== undefined) return yield* Effect.failCause(rest.reduce(Cause.combine, first))
 })
 
 /** The most rows one sweep moves.

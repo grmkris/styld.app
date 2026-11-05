@@ -140,7 +140,7 @@ export const contentJudge = (runClef: RunClef) =>
                 pictured(runClef, metrics, picture).pipe(
                   // A picture outage must not discard a completed paid text verdict and cause it to be billed again.
                   // Keep the item out of discovery; a later content change or report can judge it again.
-                  Effect.catchCause(() =>
+                  Effect.catchTag('ProviderError', () =>
                     Effect.succeed({ state: 'unsure', reason: 'other', model: 'clef-flash' } satisfies Verdict),
                   ),
                 ),
