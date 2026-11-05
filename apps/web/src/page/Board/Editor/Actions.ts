@@ -1,11 +1,9 @@
 import {
-  type Board,
   type BoardImageId,
   type BoardItem,
   BoardItemId,
   ImageItem,
   maximumLookPieces,
-  type Paper,
   PieceId,
   PieceItem,
   landing,
@@ -18,20 +16,9 @@ import {
 } from '@styld/protocol'
 import { Array, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { AddImage, SaveLook, UpdatePaper, WaitForExit, WaitForToast } from './Commands.ts'
+import { AddImage, SaveLook, WaitForExit, WaitForToast } from './Commands.ts'
 import { committed, findItem, refillIds, takeId, type UpdateReturn, withItem } from './Edits.ts'
-import {
-  BoardData,
-  BoardShown,
-  LookSave,
-  type Model,
-  ownBoard,
-  Ticks,
-  Toast,
-  Upload,
-  type UploadProblem,
-  withChecked,
-} from './Model.ts'
+import { LookSave, type Model, Ticks, Toast, Upload, type UploadProblem } from './Model.ts'
 
 /** The most pictures one paste or drop sends at once. */
 const picturesAtOnce = 4
@@ -185,36 +172,6 @@ export const exited = (model: Model, id: BoardItemId): UpdateReturn => ({
   model: modifyFields(model, { leaving: (leaving) => Array.filter(leaving, (item) => item.id !== id) }),
 })
 
-/** The board shown with another paper. */
-const withPaper = (model: Model, name: string, paper: Paper): Model =>
-  modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Own({ name, paper }) }) })
-
-/** A paper shows at once and is saved behind; the one it replaced comes back if the save fails. */
-export const paperSelected = (model: Model, paper: Paper): UpdateReturn =>
-  Option.match(ownBoard(model.board), {
-    onNone: () => ({ model }),
-    onSome: (own) =>
-      own.paper === paper
-        ? { model }
-        : {
-            model: withPaper(model, own.name, paper),
-            commands: [UpdatePaper({ boardId: model.boardId, paper, previous: own.paper })],
-          },
-  })
-
-/** A paper that did not save gives way to the one before it, unless the person has chosen another since. */
-export const paperFailed = (model: Model, attempted: Paper, previous: Paper): UpdateReturn =>
-  Option.match(ownBoard(model.board), {
-    onNone: () => ({ model }),
-    onSome: (own) => (own.paper === attempted ? { model: withPaper(model, own.name, previous) } : { model }),
-  })
-
-/** A paper saved: who sees the board and its check, as the server has them, unless another paper is on its way. */
-export const paperSaved = (model: Model, board: Board): UpdateReturn =>
-  Option.exists(ownBoard(model.board), (own) => own.paper === board.paper)
-    ? { model: withChecked(model, board) }
-    : { model }
-
 /** A paste that brought no picture leaves the board saying what it said before. */
 const pasteEnded = (upload: Upload): Upload =>
   Upload.guards.Pasting(upload)
@@ -263,14 +220,13 @@ export const lookPieces = (model: Model): ReadonlyArray<PieceId> => {
   })
 }
 
-export const lookRequested = (model: Model): UpdateReturn => {
+/** The look is named after the board, `name`. */
+export const lookRequested = (model: Model, name: string): UpdateReturn => {
   const pieceIds = Array.take(Array.dedupe(lookPieces(model)), maximumLookPieces)
-  const own = ownBoard(model.board)
-  if (Option.isNone(own) || Array.isReadonlyArrayEmpty(pieceIds))
-    return { model: modifyFields(model, { look: () => LookSave.NoPieces() }) }
+  if (Array.isReadonlyArrayEmpty(pieceIds)) return { model: modifyFields(model, { look: () => LookSave.NoPieces() }) }
   return {
     model: modifyFields(model, { look: () => LookSave.Saving(), ticks: () => Ticks.Off() }),
-    commands: [SaveLook({ boardId: model.boardId, name: own.value.name, pieceIds })],
+    commands: [SaveLook({ boardId: model.boardId, name, pieceIds })],
   }
 }
 

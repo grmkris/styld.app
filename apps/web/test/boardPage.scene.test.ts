@@ -14,9 +14,10 @@ import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
-import { MeasurePaper } from '../src/page/Board/Commands.ts'
+import { MeasurePaper } from '../src/page/Board/Editor/Commands.ts'
 import { KeepOutfit, Message as OutfitsMessage, RelayOut } from '../src/page/Board/Outfits.ts'
 import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
+import { Message as EditorMessage } from '../src/page/Board/Editor/Message.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -42,10 +43,13 @@ const picking = (locale: 'en' | 'sl') =>
   withPieces(
     withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
       modifyFields(fromBoard(boardInit(boardId), board), {
-        addSheet: (addSheet) => ({
-          ...addSheet,
-          picker: { ...addSheet.picker, sheet: { ...addSheet.picker.sheet, isOpen: true } },
-        }),
+        editor: (editor) =>
+          modifyFields(editor, {
+            addSheet: (addSheet) => ({
+              ...addSheet,
+              picker: { ...addSheet.picker, sheet: { ...addSheet.picker.sheet, isOpen: true } },
+            }),
+          }),
       }),
     ),
     [
@@ -55,7 +59,7 @@ const picking = (locale: 'en' | 'sl') =>
     ],
   )
 
-const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+const measured = Mount.resolve(MeasurePaper, EditorMessage.MeasuredPaper({ width: 500 }))
 const withSettings = (state: typeof page) =>
   withPage(state, lenses.board, (currentBoard) =>
     modifyFields(currentBoard, { chrome: (chrome) => ({ ...chrome, more: { ...chrome.more, isOpen: true } }) }),
@@ -218,7 +222,10 @@ describe("a board's page", () => {
     const looks = [look('monday', 'Monday', [knit]), look('dinner', 'Dinner', [tee])]
     const state = withPage(picking('en'), lenses.board, (current) =>
       modifyFields(current, {
-        addSheet: (addSheet) => ({ ...addSheet, kind: 'looks', looks: LooksData.Success({ data: looks }) }),
+        editor: (editor) =>
+          modifyFields(editor, {
+            addSheet: (addSheet) => ({ ...addSheet, kind: 'looks', looks: LooksData.Success({ data: looks }) }),
+          }),
       }),
     )
     scene(

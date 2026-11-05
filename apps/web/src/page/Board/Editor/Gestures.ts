@@ -2,9 +2,9 @@ import type { BoardItemId } from '@styld/protocol'
 import { Match, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { committed, findItem, type UpdateReturn, withItem } from './Edits.ts'
-import { dragged, nudged, type Placement, type Pointer, pinched, turned } from './Geometry.ts'
-import type { KeyStep } from './Message.ts'
+import { dragged, nudged, type Placement, type Pointer, pinched, turned } from '../Geometry.ts'
 import { Gesture, type Model } from './Model.ts'
+import type { KeyStep } from './Message.ts'
 
 /** A press selects and moves an item without changing its layer. A second finger starts a pinch. */
 export const pressedItem = (model: Model, id: BoardItemId, pointer: Pointer, isTouch: boolean): UpdateReturn =>

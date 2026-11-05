@@ -3,11 +3,11 @@ import { Array, Option } from 'effect'
 import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import type { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import type { StyldClient } from '../../StyldClient.ts'
-import type { PictureEncoder } from '../../Upload.ts'
+import type { StyldClient } from '../../../StyldClient.ts'
+import type { PictureEncoder } from '../../../Upload.ts'
 import { MakeIds, SaveItems, WaitToSave } from './Commands.ts'
+import { Gesture, type Model, restarted, Saving } from './Model.ts'
 import type { Message } from './Message.ts'
-import { fromBoard, Gesture, type Model, Saving } from './Model.ts'
 
 export type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder
 export type UpdateReturn = Update.Return<Model, Message, Services>
@@ -60,23 +60,16 @@ export const saveNow = (model: Model, generation: number): UpdateReturn => {
 /** The server took the table. Changes made while it was on its way are saved next. */
 export const saved = (model: Model, board: Board): UpdateReturn => {
   const dirty = Saving.guards.InFlight(model.saving) && model.saving.dirty
-  const next = modifyFields(model, {
-    version: () => board.version,
-    pins: () => board.pins,
-    publicPins: () => board.publicPins,
-    saving: () => Saving.Saved(),
-  })
+  const next = modifyFields(model, { version: () => board.version, saving: () => Saving.Saved() })
   return dirty ? scheduled(next) : { model: next }
 }
 
 /** Another tab or device saved first: show its table and start a fresh history. */
 export const replaced = (model: Model, board: Board): UpdateReturn => ({
-  model: modifyFields(fromBoard(model, board), {
+  model: modifyFields(restarted(model, board), {
     saving: () => Saving.Replaced(),
-    past: () => [],
-    future: () => [],
     gesture: () => Gesture.Idle(),
-    maybeSelectedId: (selected) => Option.filter(selected, (id) => Option.isSome(findItem(board.items, id))),
+    maybeSelectedId: () => Option.filter(model.maybeSelectedId, (id) => Option.isSome(findItem(board.items, id))),
   }),
 })
 

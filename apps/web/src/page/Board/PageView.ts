@@ -15,12 +15,14 @@ import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import * as TryItView from './TryItView.ts'
-import { type Model, canChangePins, isUploading, PinWork } from './Model.ts'
+import { type Model, canChangePins, PinWork } from './Model.ts'
 import * as MakeView from './MakeView.ts'
 import * as OutfitsView from './OutfitsView.ts'
 import * as styles from './PageView.styles.ts'
-import { editorView } from './View.ts'
-import { saveLookView } from './ViewTools.ts'
+import type * as EditorMessage from './Editor/Message.ts'
+import * as EditorView from './Editor/View.ts'
+import { saveLookView } from './Editor/ViewTools.ts'
+import * as Editor from './Editor/Model.ts'
 import type { PiecesData } from '../../ServerData.ts'
 
 /** Its pins and who sees it; public, how many of them others see when that is fewer (a piece shows others only with a
@@ -73,6 +75,28 @@ const outfitsSlot = (model: Model, name: string, paper: Paper, locale: Locale, h
   })
 
 const toChrome = (message: Chrome.Message) => Message.GotChromeMessage({ message })
+const toEditor = (message: EditorMessage.Message) => Message.GotEditorMessage({ message })
+
+/** The ⋯ sheet: what is done to the board rather than on its table, its moods, its pins and deleting it. */
+const moreSheetSlot = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'board-more-sheet',
+    model: model.chrome,
+    view: ChromeView.sheetView,
+    viewInputs: {
+      locale,
+      name,
+      visibility: model.visibility,
+      check: model.check,
+      pins: model.pins,
+      publicPins: model.publicPins,
+      pinsFailed: PinWork.guards.Failed(model.pinWork),
+      canChangePins: canChangePins(model),
+      canTidy: Array.isReadonlyArrayNonEmpty(model.editor.items),
+      canPaste: !Editor.isUploading(model.editor.upload),
+    },
+    toParentMessage: toChrome,
+  })
 
 const readyView = (
   model: Model,
@@ -121,29 +145,24 @@ const readyView = (
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
     h.div(styled(h, styles.barActions()), [
-      saveLookView(model, locale, h),
+      h.submodel({
+        slotId: 'board-save-look',
+        model: model.editor,
+        view: saveLookView,
+        viewInputs: { locale, name },
+        toParentMessage: toEditor,
+      }),
       makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
     ]),
-    editorView(model, pieces, paper, locale, h),
-    outfitsSlot(model, name, paper, locale, h),
     h.submodel({
-      slotId: 'board-more-sheet',
-      model: model.chrome,
-      view: ChromeView.sheetView,
-      viewInputs: {
-        locale,
-        name,
-        visibility: model.visibility,
-        check: model.check,
-        pins: model.pins,
-        publicPins: model.publicPins,
-        pinsFailed: PinWork.guards.Failed(model.pinWork),
-        canChangePins: canChangePins(model),
-        canTidy: Array.isReadonlyArrayNonEmpty(model.items),
-        canPaste: !isUploading(model.upload),
-      },
-      toParentMessage: toChrome,
+      slotId: 'board-editor',
+      model: model.editor,
+      view: EditorView.view,
+      viewInputs: { pieces, paper, pins: model.pins, around: model.outfits.maybeAround, locale },
+      toParentMessage: toEditor,
     }),
+    outfitsSlot(model, name, paper, locale, h),
+    moreSheetSlot(model, name, locale, h),
     makeSlot('board-make-sheet', MakeView.sheetView, model, locale, h),
   ])
 

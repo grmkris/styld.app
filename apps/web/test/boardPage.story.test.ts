@@ -7,8 +7,10 @@ import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
 import * as AddSheet from '../src/page/Board/AddSheet.ts'
 import { Message } from '../src/page/Board/Message.ts'
-import { BoardData, BoardShown, fromBoard, init, type Model, PinWork, Saving, Upload } from '../src/page/Board/Model.ts'
-import { AddGalleryPicture, AddTryOnPicture, MakeIds, WaitToSave } from '../src/page/Board/Commands.ts'
+import { BoardData, BoardShown, fromBoard, init, type Model, PinWork } from '../src/page/Board/Model.ts'
+import { Saving, Upload } from '../src/page/Board/Editor/Model.ts'
+import * as EditorMessage from '../src/page/Board/Editor/Message.ts'
+import { AddGalleryPicture, AddTryOnPicture, MakeIds, WaitToSave } from '../src/page/Board/Editor/Commands.ts'
 import {
   DeleteBoard,
   FocusName,
@@ -23,14 +25,11 @@ import {
 } from '../src/page/Board/Chrome.ts'
 import * as Chrome from '../src/page/Board/Chrome.ts'
 import { PinLook, ReloadBoard, UnpinThings } from '../src/page/Board/PageCommands.ts'
-import { update as boardUpdate } from '../src/page/Board/Update.ts'
+import { edit, update, withEditor } from './BoardFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 import { init as appInit, Message as AppMessage, update as appUpdate } from '../src/App.ts'
 import { flags, urlOf } from './AppFixtures.ts'
 import { done as doneTryOn, photo } from './TryOnFixtures.ts'
-
-/** The board's page with a session, as its owner opens it. */
-const update = (current: Model, sent: Message) => boardUpdate(current, sent, { signedIn: true })
 
 const knit = pieceFixture('knit')
 const shoes = pieceFixture('shoes', { type: 'trainers' })
@@ -71,7 +70,8 @@ const board = Schema.decodeUnknownSync(Board)({
 })
 const open: Model = fromBoard(init(board.id), board)
 /** A Message of the board's Add sheet, as the board receives it. */
-const add = (sheetMessage: AddSheet.Message) => Message.GotAddSheetMessage({ message: sheetMessage })
+const add = (sheetMessage: AddSheet.Message) =>
+  edit(EditorMessage.Message.GotAddSheetMessage({ message: sheetMessage }))
 /** A Message of the board's chrome (its title, public switch and ⋯ sheet), as the board receives it. */
 const chrome = (chromeMessage: Chrome.Message) => Message.GotChromeMessage({ message: chromeMessage })
 const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
@@ -79,21 +79,23 @@ const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
 
 /** A table change's wait to save and its fresh ids, answered without saving: these stories are about what lands. */
 const tableSettled = [
-  Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: -1 })),
-  Command.resolve(MakeIds, Message.CompletedMakeIds({ ids: [] })),
+  Command.resolve(WaitToSave, EditorMessage.Message.ElapsedSaveWait({ generation: -1 })),
+  Command.resolve(MakeIds, EditorMessage.Message.CompletedMakeIds({ ids: [] })),
 ]
 
 describe('a board page', () => {
   test('pin mutations wait for the local table save, then discard history of removed pins', () => {
-    const edited: Model = modifyFields(open, {
-      saving: () => Saving.Waiting({ generation: 1 }),
-      past: () => [board.items],
-      maybeSelectedId: () => Option.some(knitOnTable.id),
-    })
+    const edited: Model = withEditor(open, (editor) =>
+      modifyFields(editor, {
+        saving: () => Saving.Waiting({ generation: 1 }),
+        past: () => [board.items],
+        maybeSelectedId: () => Option.some(knitOnTable.id),
+      }),
+    )
     const waiting = update(edited, chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id })))
     expect(waiting.model).toEqual(edited)
     expect(waiting.commands ?? []).toEqual([])
-    const settled = modifyFields(edited, { saving: () => Saving.Saved() })
+    const settled = withEditor(edited, (editor) => modifyFields(editor, { saving: () => Saving.Saved() }))
     const sending = update(settled, chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id })))
     expect(PinWork.guards.Sending(sending.model.pinWork)).toBe(true)
     expect(
@@ -105,11 +107,11 @@ describe('a board page', () => {
         board: withPins([], { version: 3, items: [] }),
       }),
     ).model
-    expect(removed.items).toEqual([])
-    expect(removed.past).toEqual([])
-    expect(removed.future).toEqual([])
-    expect(removed.maybeSelectedId).toEqual(Option.none())
-    expect(removed.version).toBe(3)
+    expect(removed.editor.items).toEqual([])
+    expect(removed.editor.past).toEqual([])
+    expect(removed.editor.future).toEqual([])
+    expect(removed.editor.maybeSelectedId).toEqual(Option.none())
+    expect(removed.editor.version).toBe(3)
   })
 
   test('renaming on the title sends the typed name and shows it once saved', () => {
@@ -148,7 +150,7 @@ describe('a board page', () => {
       model(({ chrome: { more } }) => expect(more.isOpen).toBe(false)),
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
-      Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: -1 })),
+      Command.resolve(WaitToSave, EditorMessage.Message.ElapsedSaveWait({ generation: -1 })),
     )
   })
 
@@ -176,7 +178,7 @@ describe('a board page', () => {
       ),
       // The board the server answers says which pins others see: a piece shows them only with a picture of its own.
       Command.expectNone(),
-      model(({ visibility, check, chrome: { publishing }, version, publicPins }) => {
+      model(({ visibility, check, chrome: { publishing }, editor: { version }, publicPins }) => {
         expect(visibility).toBe('public')
         expect(check).toEqual(Option.some(pending))
         expect(Publishing.guards.Idle(publishing)).toBe(true)
@@ -238,9 +240,11 @@ describe('a board page', () => {
   })
 
   test('a look from the Add sheet lays its pieces on the table as one step, and is pinned', () => {
-    const withIds = modifyFields(open, {
-      ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
-    })
+    const withIds = withEditor(open, (editor) =>
+      modifyFields(editor, {
+        ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
+      }),
+    )
     story(
       update,
       given(withIds),
@@ -255,7 +259,7 @@ describe('a board page', () => {
       ...tableSettled,
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
-      model(({ items, past, addSheet }) => {
+      model(({ editor: { items, past, addSheet } }) => {
         // The knit was on the table already and stays where it is; the shoes join it, and undo takes them off again.
         expect(items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId)).toEqual([knit.id, shoes.id])
         expect(past).toEqual([[knitOnTable]])
@@ -269,7 +273,7 @@ describe('a board page', () => {
           ),
         }),
       ),
-      model(({ pins, items }) => {
+      model(({ pins, editor: { items } }) => {
         expect(pins).toHaveLength(2)
         expect(items).toHaveLength(2)
       }),
@@ -279,9 +283,11 @@ describe('a board page', () => {
   test('a Gallery cut-out and a try-on go up as pictures and land on the table when the board holds them', () => {
     const cutout = { ...photo, hasCutout: true }
     const imageId = Schema.decodeUnknownSync(BoardImageId)(`bm_${'cutout'.padEnd(22, 'x')}`)
-    const withIds = modifyFields(open, {
-      ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
-    })
+    const withIds = withEditor(open, (editor) =>
+      modifyFields(editor, {
+        ids: () => [Schema.decodeUnknownSync(BoardItemId)(`bi_${'fresh'.padEnd(22, 'x')}`)],
+      }),
+    )
     const galleryAdd = AddGalleryPicture({ boardId: board.id, photoId: cutout.id, picture: 'cutout' })
     const tryOnAdd = AddTryOnPicture({ boardId: board.id, tryOnId: doneTryOn.id })
     story(
@@ -292,10 +298,10 @@ describe('a board page', () => {
       Command.resolve(AddSheet.LoadPhotos, AddSheet.Message.SucceededLoadPhotos({ photos: [cutout] })),
       message(add(AddSheet.Message.ClickedGalleryPhoto({ photoId: cutout.id, picture: 'cutout' }))),
       Command.expectHas(galleryAdd),
-      model(({ upload }) => expect(upload).toEqual(Upload.Sending({ count: 1, problem: Option.none() }))),
-      Command.resolve(galleryAdd, Message.SucceededAddImage({ imageId })),
+      model(({ editor: { upload } }) => expect(upload).toEqual(Upload.Sending({ count: 1, problem: Option.none() }))),
+      Command.resolve(galleryAdd, EditorMessage.Message.SucceededAddImage({ imageId })),
       ...tableSettled,
-      model(({ items, upload }) => {
+      model(({ editor: { items, upload } }) => {
         expect(items.filter(Schema.is(ImageItem)).map((item) => item.imageId)).toEqual([imageId])
         expect(Upload.guards.Idle(upload)).toBe(true)
       }),
@@ -304,8 +310,8 @@ describe('a board page', () => {
       Command.resolve(AddSheet.LoadTryOns, AddSheet.Message.SucceededLoadTryOns({ tryOns: [doneTryOn] })),
       message(add(AddSheet.Message.ClickedTryOn({ tryOnId: doneTryOn.id }))),
       Command.expectHas(tryOnAdd),
-      Command.resolve(tryOnAdd, Message.FailedAddImage({ problem: 'failed' })),
-      model(({ upload }) => expect(upload).toEqual(Upload.Failed({ problem: 'failed' }))),
+      Command.resolve(tryOnAdd, EditorMessage.Message.FailedAddImage({ problem: 'failed' })),
+      model(({ editor: { upload } }) => expect(upload).toEqual(Upload.Failed({ problem: 'failed' }))),
     )
   })
 
@@ -336,7 +342,7 @@ describe('a board page', () => {
       message(chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id }))),
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, Message.SucceededPins({ board: withPins([], { version: 3, items: [] }) })),
-      model(({ pins, items, version }) => {
+      model(({ pins, editor: { items, version } }) => {
         expect(pins).toEqual([])
         expect(items).toEqual([])
         expect(version).toBe(3)
@@ -364,7 +370,7 @@ describe('coming back to a board', () => {
   test('reads it again, and a newer table from elsewhere replaces this one with a fresh history', () => {
     story(
       update,
-      given(modifyFields(open, { past: () => [[]] })),
+      given(withEditor(open, (editor) => modifyFields(editor, { past: () => [[]] }))),
       message(Message.BecameVisible()),
       Command.expectExact(ReloadBoard),
       Command.resolve(
@@ -373,7 +379,7 @@ describe('coming back to a board', () => {
           maybeBoard: Option.some(withPins([shoesPin, knitPin], { version: 5, items: [] })),
         }),
       ),
-      model(({ version, items, pins, past }) => {
+      model(({ pins, editor: { version, items, past } }) => {
         expect(version).toBe(5)
         expect(items).toEqual([])
         expect(pins).toHaveLength(2)
@@ -385,10 +391,10 @@ describe('coming back to a board', () => {
   test('leaves a table alone while a change of its own is waiting to be saved', () => {
     story(
       update,
-      given(modifyFields(open, { saving: () => Saving.Waiting({ generation: 1 }) })),
+      given(withEditor(open, (editor) => modifyFields(editor, { saving: () => Saving.Waiting({ generation: 1 }) }))),
       message(Message.BecameVisible()),
       Command.expectNone(),
-      model(({ items, saving }) => {
+      model(({ editor: { items, saving } }) => {
         expect(items).toEqual([knitOnTable])
         expect(Saving.guards.Waiting(saving)).toBe(true)
       }),
@@ -398,12 +404,14 @@ describe('coming back to a board', () => {
 
 describe('the board editor', () => {
   test('a saved table brings the pins the server added for the pieces it placed', () => {
-    const saving = modifyFields(open, { saving: () => Saving.InFlight({ dirty: false }) })
+    const saving = withEditor(open, (editor) =>
+      modifyFields(editor, { saving: () => Saving.InFlight({ dirty: false }) }),
+    )
     story(
       update,
       given(saving),
-      message(Message.SucceededSaveItems({ board: withPins([shoesPin, knitPin], { version: 3 }) })),
-      model(({ pins, version }) => {
+      message(edit(EditorMessage.Message.SucceededSaveItems({ board: withPins([shoesPin, knitPin], { version: 3 }) }))),
+      model(({ pins, editor: { version } }) => {
         expect(pins.map(({ id }) => id)).toEqual([shoesPin.id, knitPin.id])
         expect(version).toBe(3)
       }),
