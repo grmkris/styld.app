@@ -18,17 +18,44 @@ photo imports, Sport types, taste, the landing, plans, Google, try-on, house boa
   four Sport types, taste and the first run, the landing with the rail's player and the assistants' screen, addresses
   as the only copy, the privacy and terms pages, the four plans, Sign in with Google, try-on, the board's Add sheet
   and the shop sections. v1 no longer serves styld.app (cutover of 4 November).
-- **Preview, https://dev.styld.app:** release `6329b6f3` (5 November, 13:51): production plus the README's chat
-  model (`66e210c0`), the vendored humanizer skill (`3f8304bc`) and the preview's move to dev.styld.app, which retires
-  v1's Railway dev host (`6329b6f3`). Stages, accounts and the deploy are in `docs/DEPLOYMENT.md`.
-- **On main, not deployed:**
-  - `47dc8d4b`: profile, board, look and piece pages get their link-preview tags from the edge only; a private board
-    shows no preview, a public one its own tags once.
-  - `a8eaa5a4`: the debt ledger (`tools/quality/census.ts`, `tools/quality/debt.json`, `debt:check`): per-module
-    counts that can only go down.
-  - The 5 November fix round's tracks as they merge: the pre-commit fence (`lefthook.yml`), the size budgets in
-    `tools/budgets.json` with the API and edge Workers' startup gated, the one-off scripts in `tools/once/`, one
-    `escapeHtml` in `@styld/protocol`, and this rewrite.
+- **Preview, https://dev.styld.app:** release `a2742483` (5 November, 19:45): production plus the whole 5 November
+  fix round below. Read back 3/3 (`tools/preview.native.test.ts`). Stages, accounts and the deploy are in
+  `docs/DEPLOYMENT.md`.
+- **On main, not deployed:** nothing beyond the preview's release.
+
+## The 5 November fix round
+
+A review against Rat Stack and Foldkit's conventions after the hackathon rush, fixed on main in tracks, deployed to
+the preview and measured before and after (`tools/measure/`, results under `~/private/styld-research/measure/`).
+
+- **Data:** no whole raw SQL statement is left; `patterns:check` refuses new ones in server, auth and tools. The auth
+  tables have typed mirrors (`packages/db/src/authMirror.ts`, drift-tested). Store errors keep their operation and
+  cause (`kernel/Db.ts`); a constraint failure outside a `fenced` write is a defect. The feed reads its boards and
+  looks in one batch.
+- **Server:** each text call names its provider; R2 deletes are durable (`media_deletions`, swept); erasing a chat
+  answers before the Object ends and the caller confirms it; one piece search for Ask, MCP and Styld
+  (`@styld/protocol` `PieceSearch.ts`); the assistants' tools live in `tools/`, not `mcp/`; module direction is gated
+  in `graph:check` with a cycle allowlist that can only shrink.
+- **Lifecycles:** pictures, captures, detections, turns, try-ons and generation jobs each have one `*Lifecycle.ts`,
+  the only writer of their moves; the legacy picture states are backfilled (UPDATE only, no rebuild).
+- **Web:** the board's Add sheet, chrome and editor are Submodels (its Message 101 → 18 variants); the camera is a
+  ManagedResource; boards take signed-in state from the app (a stale-cookie retry bug fixed); colours in zyzz.
+- **Text is Meta-only:** the public-words check, mood-board plans and Thinking answer with Muse Spark 1.3 like the
+  chat; Styld no longer uses LiteLLM (owner, 5 November). Probed first (`tools/text-live.ts`): every answer decoded,
+  the check agreed on every clear case; about twice DeepSeek's latency and ten times its price per call. Read back on
+  the preview: a words check counted as `meta-spark`, 1.9 s, $0.0012.
+- **Fence:** lefthook pre-commit (format, graph, patterns, suppressions, debt; about 2 s); `--no-verify` denied to
+  agents; `debt:check` ratchet (`tools/quality/debt.json`); size budgets in `tools/budgets.json`, raised only in their
+  own commit.
+- **Measured (M0 `6329b6f3` → M3 `820e2509`, same account and journeys):** feed p50 1,371 → 689 ms; MCP search about
+  18% faster; simple API reads within network noise (pieces 142 → 146 ms); page LCP close to M0; API CPU p99 169 →
+  92–357 ms depending on the run. Census: raw SQL 30 → 0, errors without a cause 54 → 16, status literals 108 → 66,
+  module cycles 22 → 18, largest Message 101 → 46, colour literals 21 → 2. An apparent SSR CPU doubling was runtime
+  noise (the deployed bytes render alike in workerd; `~/private/styld-research/ssr-cpu-2026-11-05/`); the harness now
+  loads each page fifteen times.
+- **v1 is off:** its Railway services are down (Postgres and Redis kept), its domains, Dodo endpoints and DNS records
+  removed, SPF trimmed (mail still passes SPF, DKIM and DMARC). Archived and verified first: both databases (all 66
+  prod tables' counts match a restore) and both Tigris buckets, in `~/private/styld-v1/archive/`.
 
 ## Gates
 
@@ -246,8 +273,10 @@ Nothing below is done until its acceptance is recorded in `docs/DELIVERY.md`.
 - `AccountLifecycle` takes its bindings as a record; `mcp/Sdk.ts` still answers the MCP SDK's older protocol era
   (`answerLegacy`); the auth storage tables stay exported from `@styld/db` for Drizzle Kit; `capture/Providers.ts` and
   the stylist's and language model's `(parts) =>` records remain beside the services.
-- Styld's unit turn tests use recorded DeepSeek Chat Completions; live paid-gateway behaviour and moderation quality
-  are unverified until the dedicated Railway route is configured.
+- Production still calls DeepSeek through Railway's LiteLLM until it is promoted; promoting it needs its env file's
+  `STYLD_LITELLM_*` removed (no new secret: `META_MUSE_API_KEY` already feeds the chat).
+- Bisect the API's ~10 ms per read seen in M1's spans (session lookup 19 → 22 ms) once more runs separate it from noise.
+- The camera as a ManagedResource is not yet read back on an iPhone.
 - The garment pipeline's 512 px model input and the pair rule need the fixture comparison and one real photo per intent
   read back on the preview (C4a).
 - C7's web/workers tsconfig split is not done: the native suite imports the server's source and runs Playwright
@@ -257,6 +286,10 @@ Nothing below is done until its acceptance is recorded in `docs/DELIVERY.md`.
 ## Owner decisions pending
 
 - **Production:** when the hackathon freeze ends and what is promoted first.
+- **v1 deletion (irreversible, after judging and a 7-day grace):** the Railway `stylelab` project with its databases
+  and volumes, the Tigris buckets and keys, LiteLLM's `styld-dev`/`styld-prod` keys, the `stylelab` CI runners, v1's
+  PostHog, Sentry and Inbound keys, archiving `grmkris/stylelab`; and in Google Cloud Console, the dev.styld.app
+  redirect on the shared OAuth client (keep the client).
 - **Gate 1:** rate the ~60 calibration outfits (Fast against Thinking) on the rating page; feeds M4.
 - **My Gallery readback:** a worn outfit photo.
 - **Labels:** Flats against heels (the owner's Derby shoes are typed heels).
@@ -269,6 +302,5 @@ Nothing below is done until its acceptance is recorded in `docs/DELIVERY.md`.
 
 ## Next
 
-The fix round's tracks merge and deploy to the preview, then the full gate with native on the merged result. Then
-Eva's phone walk of the preview and the acceptance walks above, each outstanding `docs/DELIVERY.md` row, and the
+The full gate with native on `a2742483`. Then Eva's phone walk of the preview and the acceptance walks above, each outstanding `docs/DELIVERY.md` row, and the
 production promotion on the owner's go once judging ends.
