@@ -4,7 +4,7 @@ Styld is a wardrobe app. You film your clothes rail or photograph your pieces, a
 clean, shop-style picture you can browse, combine into looks and pin to boards. It runs at https://styld.app in
 English and Slovenian.
 
-Demo video: (link added at submission)
+Try it at https://styld.app: sign in with Google or an email code, and every account starts with 3 free credits.
 
 This repository is Styld v2, written during the Meta Global AI Developer Hackathon (26 October to 4 November 2026).
 [Built during the hackathon](#built-during-the-hackathon) says what is new and what came from v1.
@@ -23,15 +23,18 @@ This repository is Styld v2, written during the Meta Global AI Developer Hackath
 - **Wardrobe, looks and boards.** Browse by group, type and filter, build looks, and pin pieces, looks and pictures to
   boards with a collage. Muse Image paints a board's stickers from words (1 credit). The house boards
   (`@styld.women`, `@styld.men`) use garments generated with Muse Image, always labelled Generated.
-- **Try on.** In the Lab, a person picks one of their own Gallery photos, confirms "This is me", and chooses up to nine
+- **Try on.** In the Lab, a person picks one of their own Gallery photos and up to nine
   pieces or a look. Muse Image redraws them wearing those pieces, for 2 credits. This is the only original photo Styld
   ever sends out.
 - **Styld chat.** A chat at `/ask/stylist` that reads your wardrobe and looks through the same tools the MCP server
   offers, plus two of its own (`pieces_show`, `wardrobe_analyze`). A message costs 1 credit.
 - **Claude and ChatGPT.** An MCP server at `https://styld.app/mcp`, with Styld as its own OAuth issuer. Assistants can
   read and edit the wardrobe and make looks and boards, and MCP Apps views show the wardrobe and boards inside the chat.
-- **Accounts and credits.** Sign in with an email code or with Google. Everyone gets 100 free credits a day, and no
-  card is asked for. Premium Week ($4.99 once, through Dodo Payments) raises that to 500 a day for 7 days.
+- **Boards and people.** Make a board public and share its link, follow people, save their boards, and see what's
+  new from everyone on Home. Styld's house boards give ideas from the first day, and Try with my wardrobe rebuilds a
+  board from the pieces you own.
+- **Accounts and credits.** Sign in with an email code or with Google. Every account starts with 3 free credits and
+  no card. Plans through Dodo Payments (Week $4.99, Month $20, Year $200, Lifetime $349) give 500 credits a day.
 
 ## How Styld uses Meta's models
 
