@@ -20,7 +20,7 @@ import * as styles from './PhotosView.styles.ts'
 import { labMain } from './SectionMain.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import { spentWords } from './MoreCredits.ts'
-import { loadingStatus, placeholderList } from '../Loading.ts'
+import { loadingList } from '../Loading.ts'
 
 interface Inputs {
   readonly locale: Locale
@@ -97,13 +97,12 @@ const addView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
 
 const skeletonTiles = ['a', 'b'] as const
 
-const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  loadingStatus(format(locale, 'common.loading', {}), h),
-  placeholderList(
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  loadingList(
+    locale,
     { list: styles.grid(), slots: skeletonTiles, content: [h.span(styled(h, cx(block(), styles.tile())))] },
     h,
-  ),
-]
+  )
 
 const photosPage = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs

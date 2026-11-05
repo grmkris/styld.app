@@ -14,7 +14,7 @@ import { labMain } from './SectionMain.ts'
 import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
-import { loadingStatus, placeholderList } from '../Loading.ts'
+import { loadingList } from '../Loading.ts'
 
 /** Up to four of a look's pieces, laid out together. */
 export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
@@ -53,9 +53,9 @@ export const lookCard = <Message>(look: Look, locale: Locale, h: HtmlBuilder<Mes
 const skeletonCards = ['a', 'b'] as const
 
 /** The shape of what is coming: two cards with a square for the pieces, a name and a line. */
-const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  loadingStatus(format(locale, 'common.loading', {}), h),
-  placeholderList(
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  loadingList(
+    locale,
     {
       list: styles.grid(),
       slots: skeletonCards,
@@ -67,8 +67,7 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
       ],
     },
     h,
-  ),
-]
+  )
 
 const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   labMain(
