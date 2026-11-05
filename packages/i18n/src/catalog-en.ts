@@ -1118,7 +1118,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'legal.termsTitle': 'Terms of use',
   'legal.privacyLink': 'Privacy',
   'legal.termsLink': 'Terms',
-  'legal.updated': 'Last updated 4 November 2026',
+  'legal.updated': 'Last updated 5 November 2026',
   'legal.questions': 'Questions or requests:',
   'firstRun.step': 'Step {at} of {of}',
   'firstRun.skip': 'Skip',

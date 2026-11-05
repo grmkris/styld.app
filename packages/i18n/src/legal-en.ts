@@ -26,7 +26,7 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.privacy.ai':
     "To find your clothes, Styld sends a smaller copy of your photo, or your video, to Meta's SAM model; we delete videos from Meta once they are read. Clean pictures are drawn from the cut-outs by Meta's Muse Image, in its Standard version, which Meta does not train on. AI models on Cloudflare (Workers AI) sort and check photos and pictures.",
   'legal.privacy.aiProviders':
-    "Your chats with Styld go to Meta's Muse Spark model, in its Standard version, which Meta does not train on. Other text, such as the descriptions of your pieces, goes to a DeepSeek model at Alibaba Cloud Model Studio through our own gateway. Turning a picture sends the drawn picture, not your photo, to Google Veo through the Vercel AI Gateway.",
+    "Your chats with Styld, and other text such as your pieces' names and descriptions, the sentence you give a mood board and the words you make public, go to Meta's Muse Spark model, in its Standard version, which Meta does not train on. Turning a picture sends the drawn picture, not your photo, to Google Veo through the Vercel AI Gateway.",
   'legal.privacy.providersHeading': 'Who helps us',
   'legal.privacy.providers':
     'Cloudflare hosts Styld: the website and its servers, the database, photo storage (kept in the EU), image processing, the sign-in emails and our logs. Google runs Google sign-in when you choose it. Dodo Payments takes payments. The AI providers above process only what each task needs.',
