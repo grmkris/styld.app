@@ -7,7 +7,7 @@ import { OfferedRows } from '../capture/Rows.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
-import { Database, first, inChunks, query } from '../kernel/Db.ts'
+import { Database, fenced, first, inChunks, query } from '../kernel/Db.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
 export type GarmentRow = typeof photoGarments.$inferSelect
@@ -26,7 +26,7 @@ const finishFinding = (db: Db, photoId: string, garments: ReadonlyArray<GarmentR
   return query(() =>
     db.batch([
       db.delete(photoGarments).where(and(eq(photoGarments.photoId, photoId), owns)),
-      ...garments.map((garment) => insertWhen(db, photoGarments, garment, owns)),
+      ...garments.map((garment) => insertWhen(db, photoGarments, garment, { table: outfitPhotos, claim: current })),
       db.update(outfitPhotos).set({ status: 'ready', updatedAt: at }).where(current).returning({ id: outfitPhotos.id }),
     ]),
   ).pipe(Effect.asVoid)
@@ -76,7 +76,7 @@ const reads = (db: Db) => ({
 const writes = (db: Db) => ({
   /** The photo, its upload spent and the operation's receipt, as one batch: an upload makes one photo. */
   addPhoto: (photo: PhotoRow, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(outfitPhotos).values(photo),
         spendUpload(db, photo.uploadId),
@@ -120,7 +120,7 @@ const writes = (db: Db) => ({
     ),
   /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. */
   deletePhoto: (accountId: string, photoId: string, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning(),
         db.insert(operationReceipts).values(receipt),
@@ -134,12 +134,8 @@ const garmentWrites = (db: Db) => ({
    * found now, in one batch and only while the photo is ready. What the person confirmed, offered or added by hand
    * stays, and a found garment already on the photo (a repeated delivery) is not written twice. */
   replaceGuesses: (photoId: string, found: ReadonlyArray<GarmentRow>) => {
-    const ready = exists(
-      db
-        .select({ id: outfitPhotos.id })
-        .from(outfitPhotos)
-        .where(and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'ready'))),
-    )
+    const isReady = and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'ready'))
+    const ready = exists(db.select({ id: outfitPhotos.id }).from(outfitPhotos).where(isReady))
     const absent = (id: string) =>
       notExists(db.select({ id: photoGarments.id }).from(photoGarments).where(eq(photoGarments.id, id)))
     return query(() =>
@@ -154,7 +150,9 @@ const garmentWrites = (db: Db) => ({
               ready,
             ),
           ),
-        ...found.map((garment) => insertWhen(db, photoGarments, garment, and(ready, absent(garment.id)) ?? ready)),
+        ...found.map((garment) =>
+          insertWhen(db, photoGarments, garment, { table: outfitPhotos, claim: and(isReady, absent(garment.id)) }),
+        ),
       ]),
     ).pipe(Effect.asVoid)
   },
@@ -190,17 +188,10 @@ const garmentWrites = (db: Db) => ({
    * the garments of a photo still being found); whether it was added. */
   addGarment: (garment: GarmentRow) =>
     query(() =>
-      insertWhen(
-        db,
-        photoGarments,
-        garment,
-        exists(
-          db
-            .select({ id: outfitPhotos.id })
-            .from(outfitPhotos)
-            .where(and(ofAccount(garment.accountId, garment.photoId), eq(outfitPhotos.status, 'ready'))),
-        ),
-      ),
+      insertWhen(db, photoGarments, garment, {
+        table: outfitPhotos,
+        claim: and(ofAccount(garment.accountId, garment.photoId), eq(outfitPhotos.status, 'ready')),
+      }),
     ).pipe(Effect.map(({ meta }) => meta.changes > 0)),
   /** A piece added by hand taken off the photo again: it was never found in it, so nothing is left behind. */
   removeAddedGarment: (accountId: string, photoId: string, garmentId: string) =>

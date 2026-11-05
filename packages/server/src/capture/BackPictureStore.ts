@@ -1,6 +1,7 @@
 import { detections, pieceBackPictures, pieces } from '@styld/db'
-import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, ne } from 'drizzle-orm'
 import { Effect } from 'effect'
+import { anyOf } from '../kernel/Conditional.ts'
 import { type Database as Db, first, query } from '../kernel/Db.ts'
 
 type Database = Db['Service']
@@ -48,7 +49,7 @@ export const backPictureRows = (db: Database) => ({
         .onConflictDoUpdate({
           target: pieceBackPictures.pieceId,
           set: { state: 'queued', sourceKey: row.sourceKey, claimedAt: null, updatedAt: at },
-          setWhere: sql`${pieceBackPictures.sourceKey} <> ${row.sourceKey} OR ${pieceBackPictures.state} = 'queued'`,
+          setWhere: anyOf(ne(pieceBackPictures.sourceKey, row.sourceKey), eq(pieceBackPictures.state, 'queued')),
         })
         .returning({ pieceId: pieceBackPictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),

@@ -1,5 +1,5 @@
 import { accounts, importCopies } from '@styld/db'
-import { asc, eq, lt, sql } from 'drizzle-orm'
+import { and, asc, eq, lt, sql } from 'drizzle-orm'
 import { DateTime, Duration, Effect } from 'effect'
 import { Database, fenced, query } from '../kernel/Db.ts'
 import { Media, deleteKeys } from '../kernel/Media.ts'
@@ -12,7 +12,10 @@ export const copyRows = (db: Database['Service']) => ({
       db.insert(importCopies).values({
         objectKey,
         createdAt,
-        accountId: sql`(select ${accounts.id} from ${accounts} where ${accounts.id} = ${accountId} and ${accounts.enabled} = 1)`,
+        accountId: sql`(${db
+          .select({ id: accounts.id })
+          .from(accounts)
+          .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true)))})`,
       }),
     ),
 })

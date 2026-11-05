@@ -9,7 +9,7 @@ import {
   pieces,
   uploads,
 } from '@styld/db'
-import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type { GeneratedGarment, PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
@@ -102,7 +102,12 @@ export const PieceRows = {
           eq(pieces.accountId, accountId),
           eq(pieces.source, 'import'),
           eq(pieces.status, 'failed'),
-          sql`exists (select 1 from ${accounts} where ${accounts.id} = ${accountId} and ${accounts.enabled} = 1)`,
+          exists(
+            db
+              .select({ id: accounts.id })
+              .from(accounts)
+              .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true))),
+          ),
         ),
       ),
   /** The back a guided-camera shot brought, for the account's pieces made from these detections that have none yet:
@@ -132,7 +137,10 @@ export const UploadRows = {
       ...row,
       status: 'used',
       // The NOT NULL constraint fences adoption against account closure in the same batch as the piece.
-      accountId: sql`(select ${accounts.id} from ${accounts} where ${accounts.id} = ${row.accountId} and ${accounts.enabled} = 1 and ${claim})`,
+      accountId: sql`(${db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, row.accountId), eq(accounts.enabled, true), claim))})`,
     }),
   spend: spendUpload,
   restore: (db: Database['Service'], uploadId: string) =>

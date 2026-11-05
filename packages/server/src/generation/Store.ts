@@ -1,8 +1,8 @@
 import { generationJobs, generationPictures, generationPicks, operationReceipts } from '@styld/db'
-import { and, asc, desc, eq, inArray, lt, notExists, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, inArray, lt, notExists } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
-import { Database, first, query } from '../kernel/Db.ts'
+import { Database, fenced, first, query } from '../kernel/Db.ts'
 import { insertWhen } from '../kernel/Conditional.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
@@ -19,7 +19,7 @@ const jobQueries = (db: Drizzle) => ({
   ...receiptRows(db),
   /** The job, a sticker's picture and the operation's receipt, as one batch. */
   insertJob: (job: JobRow, sticker: ReadonlyArray<StickerRow>, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(generationJobs).values(job),
         ...sticker.map((picture) => db.insert(generationPictures).values(picture)),
@@ -113,7 +113,7 @@ const pickQueries = (db: Drizzle) => ({
             db,
             generationPicks,
             { jobId, position, pieceId },
-            sql`exists (select 1 from ${generationJobs} where ${generationJobs.id} = ${jobId} and ${generationJobs.status} = 'planning')`,
+            { table: generationJobs, claim: and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning')) },
           ),
         ),
         db
@@ -152,7 +152,12 @@ const stickerQueries = (db: Drizzle) => ({
             and(
               eq(generationPictures.jobId, jobId),
               eq(generationPictures.status, 'waiting'),
-              sql`exists (select 1 from ${generationJobs} where ${generationJobs.id} = ${jobId} and ${generationJobs.status} = 'drawing')`,
+              exists(
+                db
+                  .select({ id: generationJobs.id })
+                  .from(generationJobs)
+                  .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'drawing'))),
+              ),
             ),
           )
           .returning({ jobId: generationPictures.jobId }),

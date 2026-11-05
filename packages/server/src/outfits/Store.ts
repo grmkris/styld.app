@@ -18,7 +18,7 @@ export const outfitStore = (db: Database['Service']) => ({
         .onConflictDoUpdate({
           target: [thinkingDays.accountId, thinkingDays.day],
           set: { asked: sql`${thinkingDays.asked} + 1` },
-          setWhere: sql`${thinkingDays.asked} < ${perDay}`,
+          setWhere: lt(thinkingDays.asked, perDay),
         })
         .returning({ asked: thinkingDays.asked }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
