@@ -1,11 +1,11 @@
 {
   "browserInitialGzip": {
-    "bytes": 425100,
-    "why": "Foldkit ships every page in the first load; 424,654 on 5 Nov"
+    "bytes": 428300,
+    "why": "the board as Submodels (Add sheet, chrome, editor) and the camera as a ManagedResource; 428,014"
   },
   "browserAllGzip": {
-    "bytes": 721400,
-    "why": "one piece search shared by Ask and the assistants, with its English and Slovenian type words; 721,150"
+    "bytes": 724700,
+    "why": "the board's Submodels and the one piece search with its type words; 724,388"
   },
   "ssrSource": {
     "bytes": 2460000,
