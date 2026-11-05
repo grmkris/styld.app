@@ -41,7 +41,7 @@ export const stylistAgentId = AgentId.make('styld-stylist')
 export const stylistSubmitAgent = { definition: { id: stylistAgentId, input: StylistInput } }
 
 /** The model the chat answers with, as the definitions name it (`Policy.ts` `styldModel`). */
-export const stylistModelName = textModels.deepSeekFlash.id
+export const stylistModelName = textModels.museSpark.id
 
 /** A chat's Thread: the account's id and the chat's, joined by the API Worker from the session, never from the
  * browser. Thread Objects are named by it. */

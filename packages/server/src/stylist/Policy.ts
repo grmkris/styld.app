@@ -4,10 +4,10 @@ import { textModels } from '../providers/Costs.ts'
 
 // How Styld, the stylist in the app, answers (owner, 2026-10-31).
 
-/** The model Styld answers with, on the paid LiteLLM route: DeepSeek V4.1 Flash, each streamed call within the chat
- * deadline. */
+/** The model Styld answers with, on the paid LiteLLM route: Meta Muse Spark 1.3 (owner, 5 November 2026), each
+ * streamed call within the chat deadline. It reasons before it answers, so a call needs at least 1,000 tokens. */
 export const styldModel: TextTask = {
-  model: textModels.deepSeekFlash,
+  model: textModels.museSpark,
   kind: 'chat',
   deadline: deadlines.chat,
   maxTokens: 2048,
