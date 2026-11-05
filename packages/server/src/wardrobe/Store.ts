@@ -11,7 +11,7 @@ import {
 } from '@styld/db'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
-import type { GeneratedGarment, PieceType } from '@styld/protocol'
+import type { GeneratedGarment, Pattern, PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
@@ -396,6 +396,22 @@ export const makeStore = (db: Database['Service']) => ({
   ...deleteQueries(db),
   listPieces: (accountId: string) =>
     query(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
+  /** The account's ready pieces, newest first, of the type and pattern when the search names them (`Search.ts`). */
+  readyPieces: (accountId: string, only: { readonly type?: PieceType; readonly pattern?: Pattern }) =>
+    query(() =>
+      db
+        .select()
+        .from(pieces)
+        .where(
+          and(
+            eq(pieces.accountId, accountId),
+            eq(pieces.status, 'ready'),
+            only.type === undefined ? undefined : eq(pieces.type, only.type),
+            only.pattern === undefined ? undefined : eq(pieces.pattern, only.pattern),
+          ),
+        )
+        .orderBy(desc(pieces.createdAt)),
+    ),
   findPiece: (accountId: string, pieceId: string) =>
     query(() =>
       db

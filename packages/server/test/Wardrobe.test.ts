@@ -59,6 +59,7 @@ const services = (
     services: {
       wardrobe: Wardrobe.of({
         listPieces: notUsed,
+        searchPieces: notUsed,
         getPiece: notUsed,
         newUpload: notUsed,
         createUpload: notUsed,

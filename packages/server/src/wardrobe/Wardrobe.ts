@@ -19,6 +19,7 @@ import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
 import { isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
+import { searching } from './Search.ts'
 import { PieceQueue } from './Processing.ts'
 import { processing } from './Work.ts'
 import {
@@ -444,6 +445,7 @@ const make = Effect.gen(function* () {
   const store = yield* WardrobeStore
   return {
     ...(yield* reads),
+    ...(yield* searching),
     ...(yield* uploads),
     ...(yield* videoUploads),
     ...(yield* adding),
