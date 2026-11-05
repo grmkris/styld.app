@@ -23,7 +23,7 @@ import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObjec
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
-import { receivedUpload } from '../mcp/ImageImport.ts'
+import { receivedUpload } from '../wardrobe/Received.ts'
 import { imageAddresses, SignedMedia } from '../kernel/SignedMedia.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
 import { cutOutPerson } from './Cutout.ts'

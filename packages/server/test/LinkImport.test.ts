@@ -6,7 +6,7 @@ import { productFrom, readProductPage } from '../src/links/LinkImport.ts'
 import { fetchOperation } from '../src/links/Links.ts'
 import { allowedUrl } from '../src/providers/PublicWeb.ts'
 import { pictureFromLink } from '../src/links/LinkPicture.ts'
-import type { Uploads } from '../src/mcp/ImageImport.ts'
+import type { Uploads } from '../src/wardrobe/Received.ts'
 import { serving } from './HttpFixture.ts'
 
 const page = new URL('https://shop.test/products/navy-knit')

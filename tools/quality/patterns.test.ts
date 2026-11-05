@@ -45,7 +45,7 @@ describe('external calls', () => {
   test('an HTTP transport made outside providers/ is caught, as a raw fetch is', () => {
     expect(
       auditServerFile(
-        'mcp/ImageImport.ts',
+        'links/ImageImport.ts',
         `import * as FetchHttpClient from 'effect/http/FetchHttpClient'; FetchHttpClient.layer`,
       ),
     ).toEqual(["effect/http/FetchHttpClient imported outside providers/; send requests through a provider's adapter"])

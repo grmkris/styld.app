@@ -2,7 +2,10 @@ import { byCase, ImageType, maximumImageBytes, refusal } from '@styld/protocol'
 import { Effect, Option, Schema, Stream } from 'effect'
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
 import { fetchPublic, fetchTimeout } from '../providers/PublicWeb.ts'
-import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import { receivedUpload, type Uploads } from '../wardrobe/Received.ts'
+
+// A photo at a public address, fetched into a received upload of the person's: what `Links.ts` and the product pages
+// of `LinkPicture.ts` read, with refusals worded for the person or their assistant.
 
 /** Why a photo address could not be imported, in words an assistant can act on. */
 const ImportRefusal = Schema.Literals(['notHttps', 'tooManyRedirects', 'notReached', 'notAnImage', 'tooLarge'])
@@ -84,31 +87,16 @@ const photoFrom = (response: HttpClientResponse.HttpClientResponse) =>
     }
   })
 
-/** Fetch a photo an assistant points at, through the public web's one transport (`providers/PublicWeb.ts`).
+/** Fetch a photo at an address the person or their assistant gives, through the public web's one transport
+ * (`providers/PublicWeb.ts`).
  * @internal Exported for its tests. */
-export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
+export const importImage = Effect.fn('Styld.Links.importImage')(function* (address: string) {
   const { response } = yield* fetchPublic(address, 'image/*').pipe(
     Effect.catchTag('PublicFetchRefused', ({ reason }) => Effect.fail(refuse(reason))),
   )
   return yield* photoFrom(response)
 })
 
-/** What an import needs of the wardrobe: making an upload and receiving its bytes. */
-export type Uploads = Pick<Wardrobe['Service'], 'newUpload' | 'receiveUpload'>
-
 /** Fetch a photo into a fresh received upload of the person's, through the same checks as one they send. */
 export const importedUpload = (wardrobe: Uploads, address: string) =>
   Effect.flatMap(importImage(address), (image) => receivedUpload(wardrobe, image))
-
-/** Picture bytes Styld holds as a fresh received upload of the person's, through the same checks as one they send. */
-export const receivedUpload = (
-  wardrobe: Uploads,
-  { contentType, bytes }: { readonly contentType: ImageType; readonly bytes: Uint8Array },
-) =>
-  Effect.gen(function* () {
-    const upload = yield* wardrobe.newUpload({ contentType, bytes: bytes.byteLength })
-    // The upload's path carries its one-time token; the origin it is read against does not matter.
-    const token = new URL(upload.path, 'https://styld.invalid').searchParams.get('token') ?? ''
-    yield* wardrobe.receiveUpload({ uploadId: upload.uploadId, token, contentType, body: bytes })
-    return upload.uploadId
-  })
