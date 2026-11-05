@@ -4,9 +4,11 @@ import { parseSync, Visitor } from 'oxc-parser'
 // The server's patterns, each the only way its concern is done (docs/ARCHITECTURE.md, cleanup): one drizzle over the
 // D1 binding (`kernel/Db.ts`), external calls and HTTP transports only in `providers/`, the environment read only in
 // `Config.ts` and `Resources.ts`, queue bodies routed by their tagged union rather than `'x' in body`, no stand-ins in
-// production source, and every table written only by the module that owns it. Names are resolved through the file's
-// imports, so an alias (`drizzle as makeDb`) or a namespace (`import * as tables`) is the same thing it imports. Each
-// allowance below names why it is one.
+// production source, and every table written only by the module that owns it. Every statement is built with Drizzle
+// (owner, 5 November 2026): no whole statement or text subquery in an `sql` template, and no raw D1 client, in the
+// server, auth or tools (`auditRawSql`). Names are resolved through the file's imports, so an alias (`drizzle as
+// makeDb`, `sql as raw`) or a namespace (`import * as tables`) is the same thing it imports. Each allowance below names
+// why it is one.
 
 /** Files an allowance applies to, relative to the server's `src/`, with the reason it is not a breach. */
 type Allowances = Readonly<Record<string, string>>
@@ -30,6 +32,9 @@ const envAllowed: Allowances = {
 const inAllowed: Allowances = {
   'EdgeMeta.ts': "the edge Worker is plain TypeScript, without Effect's Schema or Predicate, to stay small",
 }
+
+/** Raw SQL statements, by repository path: none is needed yet; a file listed here names why Drizzle cannot build it. */
+const rawSqlAllowed: Allowances = {}
 
 /** Modules that make an HTTP transport: whoever imports one sends requests of its own, which only `providers/` do. */
 const transportModules = new Set(['effect/http/FetchHttpClient', 'effect/unstable/http/FetchHttpClient'])
@@ -96,7 +101,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   styleNotes: ['taste/'],
   // Only the payment webhook writes them, in one batch per delivery (`billing/Store.ts`).
   purchases: ['billing/'],
-  premium: ['billing/'],
+  memberships: ['billing/'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }
@@ -133,14 +138,20 @@ interface Binding {
 }
 
 /** What the file's imports name: each local name of a `@styld/db` table with the table it is, the namespaces of
- * `@styld/db`, the local names of `drizzle` and the namespaces of its drivers, and the transports it imports. */
+ * `@styld/db`, the local names of `drizzle` and the namespaces of its drivers, the local names of Drizzle's `sql` tag and
+ * the namespaces it is read from, and the transports it imports. */
 interface Imported {
   readonly tables: Map<string, string>
   readonly tableNamespaces: Set<string>
   readonly drizzles: Set<string>
   readonly drizzleNamespaces: Set<string>
+  readonly sqls: Set<string>
+  readonly sqlNamespaces: Set<string>
   readonly transports: Array<string>
 }
+
+/** Modules whose `sql` is Drizzle's template tag. */
+const sqlModules = new Set(['drizzle-orm', 'drizzle-orm/sql'])
 
 /** Record what one value import binds. */
 const bind = (found: Imported, from: string, { local, imported, namespace }: Binding) => {
@@ -148,6 +159,8 @@ const bind = (found: Imported, from: string, { local, imported, namespace }: Bin
   if (from === '@styld/db' && imported !== undefined) found.tables.set(local, imported)
   if (drizzleModules.has(from) && namespace) found.drizzleNamespaces.add(local)
   if (drizzleModules.has(from) && imported === 'drizzle') found.drizzles.add(local)
+  if (sqlModules.has(from) && namespace) found.sqlNamespaces.add(local)
+  if (sqlModules.has(from) && imported === 'sql') found.sqls.add(local)
 }
 
 const importsIn = (program: Parameters<Visitor['visit']>[0]) => {
@@ -156,6 +169,8 @@ const importsIn = (program: Parameters<Visitor['visit']>[0]) => {
     tableNamespaces: new Set(),
     drizzles: new Set(),
     drizzleNamespaces: new Set(),
+    sqls: new Set(),
+    sqlNamespaces: new Set(),
     transports: [],
   }
   new Visitor({
@@ -225,6 +240,91 @@ export const auditServerFile = (file: string, source: string): ReadonlyArray<str
     BinaryExpression: (node) => {
       if (node.operator === 'in' && node.left.type === 'Literal' && inAllowed[file] === undefined)
         breach(`'${String(node.left.value)}' in …; decode the body's tagged union or use Predicate`)
+    },
+  }).visit(parsed.program)
+  return breaches
+}
+
+/** A whole statement, or a subquery spelled as text (`(select …`, `exists (select …`), at the start of a template's
+ * text. */
+const statementStart = /^\s*(?:not\s+)?(?:exists\s*)?\(*\s*(?:select|insert|update|delete|with)\b/iu
+
+/** A subquery spelled as text anywhere in a template's text. */
+const textSubquery = /\(\s*(?:select|with)\b/iu
+
+/** Calls that run a statement given to them: `db.run(sql`…`)` and its kin. */
+const runners = new Set(['run', 'all', 'get', 'values'])
+
+/** The text pieces of a template literal. */
+const quasisOf = (node: unknown): ReadonlyArray<string> =>
+  Predicate.hasProperty(node, 'quasis') && Array.isArray(node.quasis)
+    ? node.quasis.flatMap((quasi: unknown) =>
+        Predicate.hasProperty(quasi, 'value') &&
+        Predicate.hasProperty(quasi.value, 'raw') &&
+        Predicate.isString(quasi.value.raw)
+          ? [quasi.value.raw]
+          : [],
+      )
+    : []
+
+/** The text a string or template argument spells, if it is one. */
+const spelled = (node: unknown): string | undefined => {
+  if (!Predicate.hasProperty(node, 'type')) return undefined
+  if (node.type === 'Literal' && Predicate.hasProperty(node, 'value') && Predicate.isString(node.value))
+    return node.value
+  return node.type === 'TemplateLiteral' ? quasisOf(node).join('?') : undefined
+}
+
+/** One file's raw SQL, `file` relative to the repository: whole statements in Drizzle's `sql` template (or `sql.raw`),
+ * text subqueries, statements run straight from a template, and the D1 client under Drizzle (`$client`,
+ * `.prepare(…)`). Expression fragments Drizzle has no helper for (`col + 1`, `excluded.x`, CASE, json_*) stay. */
+export const auditRawSql = (file: string, source: string): ReadonlyArray<string> => {
+  if (rawSqlAllowed[file] !== undefined) return []
+  const parsed = parseSync(file, source)
+  if (parsed.errors.length !== 0) throw new Error(`Cannot audit ${file}: ${parsed.errors[0]?.message}`)
+  const imported = importsIn(parsed.program)
+  const breaches: Array<string> = []
+  const isSqlTag = (tag: unknown) => {
+    const name = Predicate.hasProperty(tag, 'type') && tag.type === 'Identifier' ? nameOf(tag) : undefined
+    if (name !== undefined) return imported.sqls.has(name)
+    const member = memberOf(tag)
+    return member !== undefined && imported.sqlNamespaces.has(member.namespace) && member.member === 'sql'
+  }
+  const isSqlTemplate = (node: unknown) =>
+    Predicate.hasProperty(node, 'type') &&
+    node.type === 'TaggedTemplateExpression' &&
+    Predicate.hasProperty(node, 'tag') &&
+    isSqlTag(node.tag)
+  /** `sql.raw(…)`, under any alias of `sql`. */
+  const isSqlRaw = (callee: unknown) => {
+    const member = Predicate.hasProperty(callee, 'object') ? callee : undefined
+    return member !== undefined && isSqlTag(member.object) && calledName(member) === 'raw'
+  }
+  const text = (what: string, spelledText: ReadonlyArray<string>) => {
+    const [head = ''] = spelledText
+    if (statementStart.test(head)) breaches.push(`a whole statement in ${what}; build it with Drizzle`)
+    else if (spelledText.some((piece) => textSubquery.test(piece)))
+      breaches.push(
+        `a subquery spelled as text in ${what}; pass Drizzle's builder (exists(…), inArray(…), sql\`\${…}\`)`,
+      )
+  }
+  new Visitor({
+    TaggedTemplateExpression: (node) => {
+      if (isSqlTag(node.tag)) text('an sql template', quasisOf(node.quasi))
+    },
+    CallExpression: (node) => {
+      const called = calledName(node.callee)
+      const [argument] = node.arguments
+      if (node.callee.type === 'MemberExpression' && runners.has(called ?? '') && isSqlTemplate(argument))
+        breaches.push(`.${called}(sql\`…\`) runs a raw statement; build it with Drizzle`)
+      if (node.callee.type === 'MemberExpression' && called === 'prepare' && spelled(argument) !== undefined)
+        breaches.push('.prepare(…) of an SQL string; build the statement with Drizzle over the Database service')
+      const raw = isSqlRaw(node.callee) ? spelled(argument) : undefined
+      if (raw !== undefined) text('sql.raw', [raw])
+    },
+    MemberExpression: (node) => {
+      if (node.property.type === 'Identifier' && node.property.name === '$client')
+        breaches.push("$client reaches the D1 client under Drizzle; use Drizzle's builder")
     },
   }).visit(parsed.program)
   return breaches

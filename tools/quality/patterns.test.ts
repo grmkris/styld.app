@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { auditServerFile } from './patterns.ts'
+import { auditRawSql, auditServerFile } from './patterns.ts'
 
 // The patterns gate resolves names through imports: a table, a drizzle or a transport is caught under any alias or
 // namespace, and a local of the same spelling that imports nothing is not.
@@ -11,6 +11,12 @@ describe('table ownership', () => {
     const namespaced = `import * as tables from '@styld/db'; db.update(tables.pieces).set({})`
     for (const source of [named, aliased, namespaced])
       expect(auditServerFile('boards/Boards.ts', source)).toEqual(['.update(pieces) outside its owner (wardrobe/)'])
+  })
+
+  test('billing owns memberships', () => {
+    const write = `import { memberships } from '@styld/db'; db.update(memberships).set({})`
+    expect(auditServerFile('billing/Store.ts', write)).toEqual([])
+    expect(auditServerFile('social/Social.ts', write)).toEqual(['.update(memberships) outside its owner (billing/)'])
   })
 
   test('the owner writes its own tables, and a local named like a table is no table', () => {
@@ -61,5 +67,61 @@ describe('external calls', () => {
         `import * as FetchHttpClient from 'effect/http/FetchHttpClient'; fetch(url)`,
       ),
     ).toEqual([])
+  })
+})
+
+describe('Drizzle builds every statement', () => {
+  const file = 'packages/server/src/billing/Store.ts'
+  const whole = 'a whole statement in an sql template; build it with Drizzle'
+
+  test("a whole statement or text subquery in Drizzle's sql template is caught by name, alias and namespace", () => {
+    for (const source of [
+      'import { sql } from "drizzle-orm"; const s = sql`  SELECT id FROM ${pieces}`',
+      'import { sql as raw } from "drizzle-orm"; const s = raw`with x as (select 1) select * from x`',
+      'import * as orm from "drizzle-orm"; const s = orm.sql`delete from ${pieces}`',
+      'import { sql } from "drizzle-orm"; const s = sql`(select ${accounts.id} from ${accounts})`',
+      'import { sql } from "drizzle-orm"; const s = sql`exists (select 1 from ${accounts})`',
+    ])
+      expect(auditRawSql(file, source)).toEqual([whole])
+  })
+
+  test('a statement run straight from a template is caught, with the statement it spells', () => {
+    expect(auditRawSql(file, 'import { sql } from "drizzle-orm"; db.run(sql`update ${accounts} set x = 1`)')).toEqual([
+      '.run(sql`…`) runs a raw statement; build it with Drizzle',
+      whole,
+    ])
+    expect(auditRawSql(file, 'import { sql } from "drizzle-orm"; db.all(sql`${statement}`)')).toEqual([
+      '.all(sql`…`) runs a raw statement; build it with Drizzle',
+    ])
+  })
+
+  test('a text subquery inside an expression, and a statement in sql.raw, are caught', () => {
+    expect(
+      auditRawSql(file, 'import { sql } from "drizzle-orm"; sql`${accounts.id} in (select id from ${accounts})`'),
+    ).toEqual([
+      "a subquery spelled as text in an sql template; pass Drizzle's builder (exists(…), inArray(…), sql`${…}`)",
+    ])
+    expect(auditRawSql(file, 'import { sql } from "drizzle-orm"; sql.raw("insert into t values (1)")')).toEqual([
+      'a whole statement in sql.raw; build it with Drizzle',
+    ])
+  })
+
+  test('the D1 client under Drizzle is caught', () => {
+    expect(auditRawSql('packages/server/src/mcp/OAuth.ts', 'db.$client.prepare("select 1").all()')).toEqual([
+      '.prepare(…) of an SQL string; build the statement with Drizzle over the Database service',
+      "$client reaches the D1 client under Drizzle; use Drizzle's builder",
+    ])
+  })
+
+  test('expression fragments without a helper, builders wrapped as subqueries and look-alikes stay', () => {
+    for (const source of [
+      'import { sql } from "drizzle-orm"; sql`${counts.n} + 1`',
+      'import { sql } from "drizzle-orm"; sql`excluded.until`',
+      "import { sql } from \"drizzle-orm\"; sql`CASE WHEN ${uploads.status} = 'received' THEN 'used' END`",
+      'import { sql } from "drizzle-orm"; sql`(${db.select().from(boards)})`',
+      'auth.prepare({ evidence })',
+      'const sql = (parts) => parts; sql`select 1`; html`<select>`',
+    ])
+      expect(auditRawSql(file, source)).toEqual([])
   })
 })
