@@ -18,6 +18,7 @@ import { usableUpload } from '../wardrobe/Shared.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
 import { captureHold, enqueueCapture } from './Shared.ts'
+import { uploadedCaptureState } from './CaptureLifecycle.ts'
 import type { CaptureRow, DetectionRow, FrameRow, UploadedCapture } from './Store.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
@@ -121,7 +122,7 @@ const baseCapture = (
   trackingStartedAt: null,
   id,
   accountId,
-  status: 'processing',
+  status: uploadedCaptureState,
   uploadId: upload.id,
   garmentId: null,
   originalKey: upload.objectKey,

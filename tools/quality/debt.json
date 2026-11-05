@@ -8,7 +8,7 @@
   "effect.orElseSucceed": 22,
   "errors.causeDropped": 16,
   "json.parse": 0,
-  "lifecycle.statusLiterals": 102,
+  "lifecycle.statusLiterals": 93,
   "mcp.inlineSchemas": 0,
   "modules.cyclePairs": 18,
   "modules.foreignTableImports": 85,

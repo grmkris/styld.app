@@ -1,5 +1,6 @@
 import { Effect, Option } from 'effect'
-import { captureHold, endingOf, enqueueBackPicture, enqueueMatch, forgetCaptureObjects } from './Shared.ts'
+import { captureHold, enqueueBackPicture, enqueueMatch, forgetCaptureObjects } from './Shared.ts'
+import { endingOf } from './CaptureLifecycle.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { Found, type Found as Result, processPhoto } from './Detections.ts'
 import { processVideo } from './VideoPipeline.ts'
@@ -30,8 +31,7 @@ const fail = (captureId: string, why: string, seen?: CaptureRow) =>
     if (Option.isNone(found)) return
     if (found.value.status === 'processing')
       yield* stored(
-        (yield* CaptureStore).retryCapture(found.value.accountId, captureId, found.value, {
-          status: 'failed',
+        (yield* CaptureStore).retryCapture(found.value.accountId, captureId, found.value, 'failed', {
           updatedAt: yield* nowDate,
         }),
       )
@@ -102,8 +102,7 @@ const run = (capture: CaptureRow) =>
       OutcomeUnknown: () =>
         Effect.gen(function* () {
           const moved = yield* stored(
-            (yield* CaptureStore).retryCapture(capture.accountId, capture.id, capture, {
-              status: 'unknown',
+            (yield* CaptureStore).retryCapture(capture.accountId, capture.id, capture, 'unknown', {
               updatedAt: yield* nowDate,
             }),
           )
@@ -120,7 +119,6 @@ const record = (capture: CaptureRow, result: Result) =>
   Effect.gen(function* () {
     const applied = yield* stored(
       (yield* CaptureStore).finishCapture(capture, result.found, {
-        status: 'review',
         route: result.route?.garments ?? null,
         provider: result.provider,
         updatedAt: yield* nowDate,

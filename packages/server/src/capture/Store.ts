@@ -13,6 +13,7 @@ import { Array, Context, Effect, Layer, Option } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
+import { advanceCapture, type CaptureChanges, type CaptureState, intoTray, outOfTray } from './CaptureLifecycle.ts'
 import { matchRows } from './MatchStore.ts'
 import {
   advancePicture,
@@ -55,7 +56,7 @@ const finishCapture = (
   db: Database,
   capture: Pick<CaptureRow, 'id' | 'attempt'>,
   found: ReadonlyArray<DetectionRow>,
-  changes: Partial<CaptureRow>,
+  changes: CaptureChanges,
 ) => {
   const current = and(
     eq(captures.id, capture.id),
@@ -67,7 +68,7 @@ const finishCapture = (
     db.batch([
       db.delete(detections).where(and(eq(detections.captureId, capture.id), eq(detections.status, 'review'), owns)),
       ...found.map((detection) => insertWhen(db, detections, detection, { table: captures, claim: current })),
-      db.update(captures).set(changes).where(current).returning({ id: captures.id }),
+      intoTray(db, capture, changes),
     ]),
   ).pipe(
     Effect.map((results) => {
@@ -151,7 +152,7 @@ const captureRows = (db: Database) => ({
   finishCapture: (
     capture: Pick<CaptureRow, 'id' | 'attempt'>,
     found: ReadonlyArray<DetectionRow>,
-    changes: Partial<CaptureRow>,
+    changes: CaptureChanges,
   ) => finishCapture(db, capture, found, changes),
   deleteCapture: (accountId: string, captureId: string) =>
     query(() =>
@@ -307,10 +308,7 @@ const pairRows = (db: Database) => {
             .update(detections)
             .set({ status: 'discarded' })
             .where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
-          db
-            .update(captures)
-            .set({ status: 'done', updatedAt })
-            .where(and(eq(captures.id, captureId), eq(captures.status, 'review'))),
+          outOfTray(db, eq(captures.id, captureId), updatedAt),
         ]),
       ).pipe(Effect.asVoid),
   }
@@ -319,28 +317,14 @@ const pairRows = (db: Database) => {
 /** Moving a capture between states only from the state it was read in, so two requests or two queue
  * deliveries never both act on it. Each answers whether it moved the capture. */
 const transitionRows = (db: Database) => ({
-  /** Move a capture the person asked to try again, if it is still as they saw it. */
+  /** Move a capture to `to`, if it is still as it was read (`CaptureLifecycle.ts` › `advanceCapture`). */
   retryCapture: (
     accountId: string,
     captureId: string,
-    seen: { readonly status: CaptureRow['status']; readonly attempt: number; readonly updatedAt: Date },
-    changes: Partial<CaptureRow>,
-  ) =>
-    query(() =>
-      db
-        .update(captures)
-        .set(changes)
-        .where(
-          and(
-            eq(captures.id, captureId),
-            eq(captures.accountId, accountId),
-            eq(captures.status, seen.status),
-            eq(captures.attempt, seen.attempt),
-            eq(captures.updatedAt, seen.updatedAt),
-          ),
-        )
-        .returning({ id: captures.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+    seen: Pick<CaptureRow, 'status' | 'attempt' | 'updatedAt'>,
+    to: CaptureState,
+    changes: CaptureChanges,
+  ) => advanceCapture(db, { id: captureId, accountId }, seen, to, changes),
   /** Mark a video as handed to Meta, unless a delivery already did. */
   claimTracking: (capture: Pick<CaptureRow, 'id' | 'attempt'>, at: Date) =>
     query(() =>
@@ -417,9 +401,7 @@ const reviewRows = (db: Database) => ({
             .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
         ),
         ...input.linked.map(({ captureId, pieceId }) => GarmentRows.confirm(db, captureId, pieceId)),
-        ...chunked(input.finished).map((chunk) =>
-          db.update(captures).set({ status: 'done', updatedAt: input.now }).where(inArray(captures.id, chunk)),
-        ),
+        ...chunked(input.finished).map((chunk) => outOfTray(db, inArray(captures.id, chunk), input.now)),
       ]),
     ).pipe(Effect.asVoid),
   /** The content type each of these stored uploads was received as: a photo's, or a video's stills. */
