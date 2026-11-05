@@ -94,8 +94,8 @@ const frontWith = (photo: Option.Option<Rgba>) =>
     side: 'front',
     kind: () => 'first',
     find: (pieceId) => Effect.flatMap(CaptureStore, (store) => answered(store.findPicture(pieceId))),
-    write: (pieceId, from, changes) =>
-      Effect.flatMap(CaptureStore, (store) => answered(store.movePicture(pieceId, from, changes))),
+    write: (pieceId, from, to, changes) =>
+      Effect.flatMap(CaptureStore, (store) => answered(store.movePicture(pieceId, from, to, changes))),
     keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
     cutouts: () => Effect.succeed({ subject: Option.some(cutout), other: Option.none() }),
     drawnWith: (piece) => ({ drawnRotation: piece.rotation }),
@@ -143,16 +143,6 @@ describe("a piece's drawing", () => {
       yield* front.process('pc_1')
       expect(pictureOf(database)).toEqual({ state: 'failed', cleanKey: null, version: 1 })
       expect(stored.size).toBe(0)
-    }).pipe(Effect.provide(layer))
-  })
-
-  it.effect('stored before the 4 November release and waiting for its check, is shown as it is', () => {
-    const key = 'accounts/ac_1/pieces/pc_1/clean-0.png'
-    const { database, drawn, layer } = over('checking', drawnTee, key)
-    return Effect.gen(function* () {
-      yield* front.process('pc_1')
-      expect(pictureOf(database)).toEqual({ state: 'ready', cleanKey: key, version: 0 })
-      expect(drawn).toEqual([])
     }).pipe(Effect.provide(layer))
   })
 })

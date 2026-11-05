@@ -14,7 +14,8 @@ import { Effect, Option, Schedule } from 'effect'
 import { readObject, readPixels, writeObject } from './Shared.ts'
 import { opaqueShare } from './Pixels.ts'
 import { type DrawRequest, type GarmentVision, ImageGenerator, type Picture, PictureWork } from './Providers.ts'
-import type { PictureRow, PictureState } from './Store.ts'
+import type { PictureRow } from './Store.ts'
+import { hasEnded, type PictureState } from './PictureLifecycle.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
@@ -43,7 +44,7 @@ export type Drawing = Pick<
   PictureRow,
   'pieceId' | 'accountId' | 'state' | 'cleanKey' | 'version' | 'keyColour' | 'provider' | 'claimedAt'
 >
-type Changes = Partial<Omit<Drawing, 'pieceId' | 'accountId'>> & {
+type Changes = Partial<Omit<Drawing, 'pieceId' | 'accountId' | 'state'>> & {
   readonly updatedAt?: Date
   readonly drawnRotation?: PictureRow['drawnRotation']
 }
@@ -55,8 +56,13 @@ export interface Slot<Row extends Drawing, E, R> {
   /** How its end is counted (`CaptureMetrics.picture`). */
   readonly kind: (row: Row) => PictureOutcome['kind']
   readonly find: (pieceId: string) => Effect.Effect<Option.Option<Row>, E, R>
-  /** Move it on from one of `from`; whether it moved. */
-  readonly write: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Changes) => Effect.Effect<boolean, E, R>
+  /** Move it from one of `from` to `to` (`PictureLifecycle.ts`); whether it moved. */
+  readonly write: (
+    pieceId: string,
+    from: ReadonlyArray<PictureState>,
+    to: PictureState,
+    changes: Changes,
+  ) => Effect.Effect<boolean, E, R>
   /** Where a version of its drawing is stored. */
   readonly keyOf: (row: Row, version: number) => string
   /** The cut-out it is drawn from, and the piece's other side, for reference. */
@@ -110,32 +116,27 @@ export const photoOf = (piece: Pick<PieceRow, 'originalKey' | 'imageKey' | 'rota
         Effect.orElseSucceed(() => Option.none<Rgba>()),
       )
 
-const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
-
-/** Whether a drawing has ended: shown, offered, dropped, sent for a retake, kept as its photo or failed. */
-export const hasEnded = (state: PictureState): state is (typeof ends)[number] => ends.some((end) => end === state)
-
 export const removeObject = (key: string | null) =>
   key === null ? Effect.void : Effect.flatMap(Media, ({ bucket }) => called(() => bucket.delete(key)))
 
-/** Move a drawing on from one of `from`; whether it moved. Every write goes through here, so two deliveries never both
- * act on one state, and each drawing's end is counted once. */
+/** Move a drawing from one of `from` to `to`; whether it moved. Every write of the job goes through here, so two
+ * deliveries never both act on one state, and each drawing's end is counted once. */
 const move = <Row extends Drawing, E, R>(
   slot: Slot<Row, E, R>,
   row: Row,
   from: ReadonlyArray<PictureState>,
-  changes: Changes,
+  to: PictureState,
+  changes: Changes = {},
 ) =>
   Effect.gen(function* () {
-    const { state } = changes
-    const moved = yield* slot.write(row.pieceId, from, { ...changes, updatedAt: yield* nowDate })
+    const moved = yield* slot.write(row.pieceId, from, to, { ...changes, updatedAt: yield* nowDate })
     // A drawing that shows, stops showing or is dropped changes what others see of a public piece.
     if (moved) yield* (yield* PieceChanged).changed(row.pieceId)
-    if (!moved || state === undefined) return moved
-    yield* Effect.annotateCurrentSpan({ 'styld.picture.state': state, 'styld.picture.side': slot.side })
-    if (hasEnded(state))
+    if (!moved) return moved
+    yield* Effect.annotateCurrentSpan({ 'styld.picture.state': to, 'styld.picture.side': slot.side })
+    if (hasEnded(to))
       yield* (yield* CaptureMetrics).picture({
-        state,
+        state: to,
         provider: changes.provider ?? row.provider ?? 'none',
         kind: slot.kind(row),
       })
@@ -144,12 +145,7 @@ const move = <Row extends Drawing, E, R>(
 
 /** A drawing that cannot finish: the photo stays the piece's picture. Why is on the span, not in the row. */
 const end = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row, from: PictureState, why: string) =>
-  Effect.andThen(Effect.annotateCurrentSpan('styld.picture.failed', why), move(slot, row, [from], { state: 'failed' }))
-
-/** A drawing stored before 4 November's release, still waiting for the check it no longer gets: shown, as one stored
- * now is. */
-const showStored = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
-  move(slot, row, ['checking'], { state: row.cleanKey === null ? 'failed' : 'ready' })
+  Effect.andThen(Effect.annotateCurrentSpan('styld.picture.failed', why), move(slot, row, [from], 'failed'))
 
 /** A drawing claimed for drawing: its row, its piece, the cut-out it is drawn from and the piece's other side. */
 interface Claimed<Row extends Drawing> {
@@ -176,7 +172,7 @@ const ask = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, { claimed, piece,
           // Busy: the claim goes back for the queue's next try.
           Busy: (reason) =>
             Effect.andThen(
-              move(slot, claimed, ['generating'], { state: 'queued', version: claimed.version - 1, claimedAt: null }),
+              move(slot, claimed, ['generating'], 'queued', { version: claimed.version - 1, claimedAt: null }),
               Effect.fail(ProviderError.make({ provider: 'meta-muse', reason })),
             ),
           Refused: onRefused,
@@ -221,7 +217,7 @@ const draw = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, job: Claimed<Row
     )
     if (!written) return yield* end(slot, claimed, 'generating', 'unavailable')
     // A delivery that gave up on the drawing meanwhile has ended it; its drawing goes.
-    if (!(yield* move(slot, claimed, ['generating'], { state: 'ready', cleanKey }))) yield* removeObject(cleanKey)
+    if (!(yield* move(slot, claimed, ['generating'], 'ready', { cleanKey }))) yield* removeObject(cleanKey)
   })
 
 /** A queued drawing: keep the photo when there is no cut-out, ask for a retake when the side's plan says so, or claim
@@ -231,11 +227,9 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
     const piece = yield* stored((yield* WardrobeStore).findPiece(row.accountId, row.pieceId))
     if (Option.isNone(piece)) return
     const { subject, other } = yield* slot.cutouts(piece.value)
-    if (Option.isNone(subject)) return yield* move(slot, row, ['queued'], { state: 'kept-real' })
-    if ((yield* slot.plan(row, subject.value)) === 'retake')
-      return yield* move(slot, row, ['queued'], { state: 'retake' })
+    if (Option.isNone(subject)) return yield* move(slot, row, ['queued'], 'kept-real')
+    if ((yield* slot.plan(row, subject.value)) === 'retake') return yield* move(slot, row, ['queued'], 'retake')
     const claim = {
-      state: 'generating' as const,
       version: row.version + 1,
       keyColour: keyColourFor(subject.value),
       provider: (yield* ImageGenerator).provider,
@@ -243,9 +237,14 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
       cleanKey: null,
       ...slot.drawnWith(piece.value),
     }
-    if (!(yield* move(slot, row, ['queued'], claim))) return
+    if (!(yield* move(slot, row, ['queued'], 'generating', claim))) return
     yield* removeObject(row.cleanKey)
-    yield* draw(slot, { claimed: { ...row, ...claim }, piece: piece.value, subject: subject.value, other })
+    yield* draw(slot, {
+      claimed: { ...row, ...claim, state: 'generating' },
+      piece: piece.value,
+      subject: subject.value,
+      other,
+    })
   })
 
 /** A side's drawing, from its queued state to its end. */
@@ -259,7 +258,6 @@ export const drawingOf = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>) => (
       const row = found.value
       if (!(yield* stored((yield* WardrobeStore).accountEnabled(row.accountId)))) return
       if (row.state === 'queued') yield* start(slot, row)
-      else if (row.state === 'checking') yield* showStored(slot, row)
       else if (isStale(row, yield* nowDate)) yield* end(slot, row, 'generating', 'unknown')
       yield* slot.after(pieceId)
     }),
@@ -271,7 +269,6 @@ export const drawingOf = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>) => (
       const row = found.value
       if (row.state === 'queued') yield* end(slot, row, 'queued', 'gave-up')
       else if (row.state === 'generating') yield* end(slot, row, 'generating', 'unknown')
-      else if (row.state === 'checking') yield* showStored(slot, row)
       yield* slot.after(pieceId)
     }),
 })

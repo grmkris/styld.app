@@ -48,7 +48,7 @@ export interface ReviewDecision {
 
 /** Where a clean picture ended, who drew it (`none` when nothing was drawn), and whether its owner asked for it. */
 export interface PictureOutcome {
-  readonly state: 'ready' | 'proposed' | 'rejected' | 'retake' | 'kept-real' | 'failed'
+  readonly state: 'ready' | 'proposed' | 'retake' | 'kept-real' | 'failed'
   readonly provider: string
   /** A first drawing of the front, one the person asked to redraw, or a back's (from 4 November). */
   readonly kind: 'first' | 'redraw' | 'back'

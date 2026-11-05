@@ -2,6 +2,7 @@ import { Effect, Option } from 'effect'
 import { nowDate, stored } from '../kernel/Db.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { enqueuePicture } from './Shared.ts'
+import { firstPicture } from './PictureLifecycle.ts'
 import { CaptureStore } from './Store.ts'
 import type { CaptureServices } from './Shared.ts'
 
@@ -23,18 +24,7 @@ export const queueImportedPicture = Effect.fn('Styld.Picture.imported')(function
   if ((yield* stored((yield* WardrobeStore).generatedAmong([pieceId]))).has(pieceId)) return
   const store = yield* CaptureStore
   const at = yield* nowDate
-  yield* stored(
-    store.addPicture({
-      pieceId,
-      accountId,
-      state: 'queued',
-      version: 0,
-      redraws: 0,
-      paid: false,
-      createdAt: at,
-      updatedAt: at,
-    }),
-  )
+  yield* stored(store.addPicture(firstPicture({ pieceId, accountId }, at)))
   if ((yield* stored(store.waitingPictures([pieceId]))).length > 0) yield* enqueuePicture(pieceId)
 })
 

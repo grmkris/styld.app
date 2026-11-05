@@ -116,14 +116,14 @@ describe('the turn a piece’s pictures are delivered with', () => {
     expect(grants.get('accounts/ac_1/uploads/photo.jpg')?.rotation).toBe(180)
   })
 
-  test('the back’s drawing comes upright on the page once it passed its check, and not before', () => {
+  test('the back’s drawing comes upright on the page once it is ready, and not before', () => {
     expect(
       grantsOf(drawn('clean'), backDrawn('ready')).get('accounts/ac_1/pieces/pc_1/back-clean-1.png'),
     ).toMatchObject({
       rotation: 0,
       contentType: 'image/png',
     })
-    expect(grantsOf(drawn('clean'), backDrawn('checking')).has('accounts/ac_1/pieces/pc_1/back-clean-1.png')).toBe(
+    expect(grantsOf(drawn('clean'), backDrawn('generating')).has('accounts/ac_1/pieces/pc_1/back-clean-1.png')).toBe(
       false,
     )
   })

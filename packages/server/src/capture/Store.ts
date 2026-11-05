@@ -14,6 +14,13 @@ import { insertWhen } from '../kernel/Conditional.ts'
 import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
 import { matchRows } from './MatchStore.ts'
+import {
+  advancePicture,
+  claimPicture,
+  firstPictureState,
+  type PictureChanges,
+  type PictureState,
+} from './PictureLifecycle.ts'
 import { fileRecord } from './ProviderFiles.ts'
 import { chunked, Database as Db, fenced, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
@@ -28,7 +35,6 @@ export type DetectionRow = typeof detections.$inferSelect
 type PieceRow = typeof pieces.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
 export type PictureRow = typeof piecePictures.$inferSelect
-export type PictureState = PictureRow['state']
 type NewPicture = typeof piecePictures.$inferInsert
 export type TurnRow = typeof pieceTurns.$inferSelect
 export type TurnState = TurnRow['state']
@@ -441,31 +447,16 @@ const pictureRows = (db: Database) => ({
     query(() => db.select().from(piecePictures).where(eq(piecePictures.pieceId, pieceId)).limit(1)).pipe(
       Effect.map(first),
     ),
-  /** Move a picture on from one of `from`, with `changes`; whether it moved. */
-  movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Partial<PictureRow>) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set(changes)
-        .where(and(eq(piecePictures.pieceId, pieceId), inArray(piecePictures.state, [...from])))
-        .returning({ pieceId: piecePictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Claim a picture's next paid redraw, or take back one claimed: move it only from the state and the redraw it was
-   * read in, so of two requests reading the same picture one owns the redraw and its hold; whether it moved. */
-  claimRedraw: (pieceId: string, seen: Pick<PictureRow, 'state' | 'redraws'>, changes: Partial<PictureRow>) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set(changes)
-        .where(
-          and(
-            eq(piecePictures.pieceId, pieceId),
-            eq(piecePictures.state, seen.state),
-            eq(piecePictures.redraws, seen.redraws),
-          ),
-        )
-        .returning({ pieceId: piecePictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move a picture from one of `from` to `to` (`PictureLifecycle.ts`), with `changes`; whether it moved. */
+  movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, to: PictureState, changes: PictureChanges) =>
+    advancePicture(db, pieceId, from, to, changes),
+  /** Claim a picture's next paid redraw, or take back one claimed (`PictureLifecycle.ts` › `claimPicture`). */
+  claimRedraw: (
+    pieceId: string,
+    seen: Pick<PictureRow, 'state' | 'redraws'>,
+    to: PictureState,
+    changes: PictureChanges,
+  ) => claimPicture(db, pieceId, seen, to, changes),
   /** Drop a first picture the owner asked for whose credit could not be held, while it still waits as added. */
   dropPicture: (pieceId: string, redraws: number) =>
     query(() =>
@@ -474,7 +465,7 @@ const pictureRows = (db: Database) => ({
         .where(
           and(
             eq(piecePictures.pieceId, pieceId),
-            eq(piecePictures.state, 'queued'),
+            eq(piecePictures.state, firstPictureState),
             eq(piecePictures.redraws, redraws),
           ),
         ),

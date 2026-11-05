@@ -1,6 +1,7 @@
 import { Effect, Option } from 'effect'
 import { planFor } from './CleanPicture.ts'
-import { drawingOf, frontOf, hasEnded, photoOf } from './Drawing.ts'
+import { drawingOf, frontOf, photoOf } from './Drawing.ts'
+import { drawnStates, hasEnded } from './PictureLifecycle.ts'
 import { pictureKey } from './Shared.ts'
 import { judgedAt } from './Garments.ts'
 import { GarmentVision } from './Providers.ts'
@@ -27,7 +28,7 @@ export const settleHold = (pieceId: string) =>
     yield* (yield* Holds).settle(
       accountId,
       redrawHold(found.value),
-      state === 'ready' || state === 'proposed' ? 'succeeded' : 'failed',
+      drawnStates.some((drawn) => drawn === state) ? 'succeeded' : 'failed',
     )
   })
 
@@ -48,8 +49,8 @@ const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
   side: 'front',
   kind: (picture: PictureRow) => (picture.paid ? 'redraw' : 'first'),
   find: (pieceId) => Effect.flatMap(CaptureStore, (store) => stored(store.findPicture(pieceId))),
-  write: (pieceId, from, changes) =>
-    Effect.flatMap(CaptureStore, (store) => stored(store.movePicture(pieceId, from, changes))),
+  write: (pieceId, from, to, changes) =>
+    Effect.flatMap(CaptureStore, (store) => stored(store.movePicture(pieceId, from, to, changes))),
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   // The front alone: the back added nothing to it and could carry a back print onto the front (owner, 4 November).
   cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: Effect.succeed(Option.none<Rgba>()) }),

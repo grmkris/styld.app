@@ -73,13 +73,13 @@ describe('the sweeps', () => {
     }),
   )
 
-  it.effect('find clean pictures stuck queued, drawing or checking', () =>
+  it.effect('find clean pictures stuck queued or drawing', () =>
     Effect.gen(function* () {
       const database = seeded()
       for (const [id, state, at] of [
         ['pc_q', 'queued', old],
         ['pc_g', 'generating', old + minute],
-        ['pc_c', 'checking', old - minute],
+        ['pc_c', 'queued', old - minute],
         ['pc_r', 'ready', old],
         ['pc_w', 'generating', recent],
       ] as const) {

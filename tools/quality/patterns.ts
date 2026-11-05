@@ -60,8 +60,9 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   uploads: ['wardrobe/'],
   piecePictures: ['capture/'],
   pieceTurns: ['capture/'],
-  // Only the back picture job writes it, through its store (owner, 4 November).
-  pieceBackPictures: ['capture/BackPictureStore.ts'],
+  // Only the back picture job writes it, through its store (owner, 4 November); its state moves along the drawing
+  // lifecycle.
+  pieceBackPictures: ['capture/BackPictureStore.ts', 'capture/PictureLifecycle.ts'],
   captures: ['capture/'],
   captureFrames: ['capture/'],
   detections: ['capture/'],

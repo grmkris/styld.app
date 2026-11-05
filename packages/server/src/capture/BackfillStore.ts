@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, notExists, or } from
 import type { BatchItem } from 'drizzle-orm/batch'
 import { Array, Effect, Schema } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
+import { firstPictureState, pictureMove, redrawable, showProposed } from './PictureLifecycle.ts'
 
 type Database = Db['Service']
 type NewPicture = typeof piecePictures.$inferInsert
@@ -23,14 +24,6 @@ const batchedPieces = <A>(db: Database, items: ReadonlyArray<A>, statement: (ite
     (results) => results.flat(2).map(({ pieceId }) => pieceId),
   )
 
-/** The drawings a run draws again. `every`, after a changed prompt: shown, dropped by the check, or failed. `ended`
- * only those that ended without a picture shown, dropped or failed (owner, 4 November: the fixed prompt and the
- * refusal fallback draw those again and leave every shown drawing alone). A retake and a piece kept as its photo were
- * the judge's call on the cut-out, not the prompt's, and stay; a picture on its way is left to its job. */
-const redrawable = {
-  every: ['ready', 'proposed', 'rejected', 'failed'],
-  ended: ['rejected', 'failed'],
-} as const
 export type Redrawn = keyof typeof redrawable
 
 /** Drawings made before a prompt changed, queued again (owner, 4 November: the pressed prompt). */
@@ -61,17 +54,13 @@ const redrawRows = (db: Database) => ({
     which: Redrawn,
   ) =>
     batchedPieces(db, pictures, ({ pieceId, turn }) =>
-      db
-        .update(piecePictures)
-        .set({ state: 'queued', paid: false, claimedAt: null, updatedAt: turn })
-        .where(
-          and(
-            eq(piecePictures.pieceId, pieceId),
-            inArray(piecePictures.state, [...redrawable[which]]),
-            lt(piecePictures.updatedAt, before),
-          ),
-        )
-        .returning({ pieceId: piecePictures.pieceId }),
+      pictureMove(
+        db,
+        and(eq(piecePictures.pieceId, pieceId), lt(piecePictures.updatedAt, before)),
+        redrawable[which],
+        firstPictureState,
+        { paid: false, claimedAt: null, updatedAt: turn },
+      ),
     ),
 })
 
@@ -143,13 +132,6 @@ export const backfillRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
   /** Show the account's drawings proposed before 4 November, which passed the reject bar (`Policy.ts`); the pieces
    * whose drawing moved. */
-  showProposed: (accountId: string, at: Date) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set({ state: 'ready', updatedAt: at })
-        .where(and(eq(piecePictures.accountId, accountId), eq(piecePictures.state, 'proposed')))
-        .returning({ pieceId: piecePictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
+  showProposed: (accountId: string, at: Date) => showProposed(db, accountId, at),
   ...redrawRows(db),
 })

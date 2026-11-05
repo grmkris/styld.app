@@ -44,8 +44,8 @@ describe('a piece’s back picture', () => {
     Effect.gen(function* () {
       const rows = backPictureRows(drizzle(seeded()))
       expect(yield* rows.queueBackPicture(row('b/one.png'), at(1))).toBe(true)
-      expect(yield* rows.moveBackPicture('pc_back', ['queued'], { state: 'ready', cleanKey: 'd/1.png' })).toBe(true)
-      expect(yield* rows.moveBackPicture('pc_back', ['queued'], { state: 'failed' })).toBe(false)
+      expect(yield* rows.moveBackPicture('pc_back', ['queued'], 'ready', { cleanKey: 'd/1.png' })).toBe(true)
+      expect(yield* rows.moveBackPicture('pc_back', ['queued'], 'failed', {})).toBe(false)
       // The same back again: the drawing stands.
       expect(yield* rows.queueBackPicture(row('b/one.png'), at(2))).toBe(false)
       expect(Option.map(yield* rows.findBackPicture('pc_back'), ({ state }) => state)).toEqual(Option.some('ready'))

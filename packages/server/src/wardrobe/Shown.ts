@@ -49,12 +49,10 @@ export const shownImage = (
 const states: Record<PictureRow['state'], PiecePicture['state']> = {
   queued: 'drawing',
   generating: 'drawing',
-  checking: 'drawing',
   ready: 'ready',
   proposed: 'ready',
   retake: 'retake',
   'kept-real': 'kept',
-  rejected: 'failed',
   failed: 'failed',
 }
 

@@ -7,6 +7,7 @@ import type { DetectionRow } from './Store.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
+import { firstPicture } from './PictureLifecycle.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -62,16 +63,7 @@ const pieceOf = (
 const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date) =>
   pieces
     .filter(({ imageKey, originalKey }) => imageKey !== originalKey)
-    .map(({ id, accountId }) => ({
-      pieceId: id,
-      accountId,
-      state: 'queued' as const,
-      version: 0,
-      redraws: 0,
-      paid: false,
-      createdAt: at,
-      updatedAt: at,
-    }))
+    .map(({ id, accountId }) => firstPicture({ pieceId: id, accountId }, at))
 
 /** Hand pictures to the queue: after the batch that stored them, and again for those still waiting when the same
  * review is replayed, so a send lost between the two is made up. The job draws a picture once however often it is
