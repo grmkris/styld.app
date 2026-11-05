@@ -24,6 +24,8 @@ migration and is checked against a private copy of the preview's real data (owne
 
 ```bash
 bun install --frozen-lockfile
+bunx lefthook install              # once per clone, from the main checkout: the pre-commit fence (lefthook.yml) for
+                                    # every worktree; staged files' format, graph, patterns, suppressions (~2 s)
 heavy --wait bun run check          # the full gate CI runs: format, agents (skills), vendor (hashes), icons, x18n,
                                     # i18n, graph, patterns, style tokens, suppressions, canaries, typecheck, lint,
                                     # Knip, jscpd, build, budgets, unit, native
@@ -38,6 +40,8 @@ bun run icons:generate              # after editing apps/web/src/icons.json (Pho
 bun run deps:outdated               # which pins are behind (npm by channel, and Bun); a report, not a gate
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
+
+The pre-commit hook is the fence every commit passes: never `--no-verify`, `-n`, `LEFTHOOK=0` or another `core.hooksPath` (`.claude/settings.json` denies them). If it fails on a file you did not touch, report it rather than bypass.
 
 `heavy` exit 75 means the box is busy; retry it, never treat it as a failure, and never pipe it. Deploying the isolated preview and reading it back follows `docs/DEPLOYMENT.md`.
 

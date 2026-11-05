@@ -24,8 +24,8 @@ export default {
       ],
       project: ['tools/**/*.ts', '*.ts'],
       // effect-tsrs embeds the plugin named by tsconfig; it is not a JS dependency. tools/typecheck.ts and the canaries
-      // run the effect-tsrs binary by its path.
-      ignoreDependencies: ['@effect/language-service', '@yielded/effect-tsrs'],
+      // run the effect-tsrs binary by its path. Lefthook runs as the pre-commit hook (lefthook.yml), not from a script.
+      ignoreDependencies: ['@effect/language-service', '@yielded/effect-tsrs', 'lefthook'],
     },
     'apps/web': {
       // The zyzz Vite plugin discovers GlobalStyles.ts; nothing imports it.
