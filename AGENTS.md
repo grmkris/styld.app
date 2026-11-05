@@ -43,6 +43,8 @@ bun run --cwd apps/web dev          # Vite dev server; with the page open, foldk
 
 The pre-commit hook is the fence every commit passes: never `--no-verify`, `-n`, `LEFTHOOK=0` or another `core.hooksPath` (`.claude/settings.json` denies them). If it fails on a file you did not touch, report it rather than bypass.
 
+The size budgets live in `tools/budgets.json`, one line each with only its current reason; `bundle:check` measures the browser build, the SSR Worker, and the API and edge Workers' startup code as Alchemy bundles them. A budget raise is its own commit whose message gives the measured cause (before, after, and what added the bytes), never part of a merge or a feature commit.
+
 `heavy` exit 75 means the box is busy; retry it, never treat it as a failure, and never pipe it. Deploying the isolated preview and reading it back follows `docs/DEPLOYMENT.md`.
 
 The `foldkit-devtools` MCP server (`.mcp.json`) reads the running app's Model, Message history and Command arguments, time-travels, and dispatches Messages decoded against `Message`. It sees a Runtime only while the dev server runs and the page is open in a browser tab; the plain Vite server has no API Worker, so session reads fail there. Everything it returns enters the agent's context, so credentials and private data stay out of browser state (the password form keeps them in the DOM, never the Model).

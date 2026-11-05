@@ -1,10 +1,24 @@
 /**
- * The website's size budgets, read from the build `bun run build` writes to `apps/web/dist` (`bun run check` runs
- * the build, then this, then the tests; the native suite serves the same build).
+ * The size budgets in tools/budgets.json, read from the build `bun run build` writes to `apps/web/dist` (`bun run check`
+ * runs the build, then this, then the tests; the native suite serves the same build), and from the API and edge Workers
+ * bundled here as Alchemy bundles them at deploy. A raise is its own commit whose message gives the measured cause
+ * (AGENTS.md › Commands); git log keeps the history of every number.
  */
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
-import { Schema } from 'effect'
+import { WorkerBundle, type WorkerBundleOptions } from '@alchemy.run/cloudflare/Workers/Sources/Rolldown'
+import { NodeServices } from '@effect/platform-node'
+import { Effect, Schema } from 'effect'
+
+const Budget = Schema.Struct({ bytes: Schema.Number, why: Schema.String })
+const Budgets = Schema.Struct({
+  browserInitialGzip: Budget,
+  browserAllGzip: Budget,
+  ssrSource: Budget,
+  apiWorkerStartup: Budget,
+  edgeWorker: Budget,
+})
+const budgets = Schema.decodeUnknownSync(Schema.fromJsonString(Budgets))(await readFile('tools/budgets.json', 'utf8'))
 
 const Chunk = Schema.Struct({
   file: Schema.String,
@@ -43,158 +57,65 @@ initialGzip += Math.max(...(await Promise.all(catalogs.map(([, chunk]) => gzipOf
 let totalGzip = 0
 for (const file of all) totalGzip += await gzipOf(file)
 const server = await readFile('apps/web/dist/server/fetch.js')
-// Raised from 256 and 512 KiB by the owner on 2026-10-30 for Gallery 2 and boards (docs/STATUS.md › Overnight run),
-// and the initial budget once more, to 360 KiB, for boards, profiles and social, because Foldkit ships every page in
-// the first load (owner, 2026-10-30; docs/STATUS.md › Plan: boards, profiles and social). Ratcheted on 2026-11-01 (C6)
-// to the measured 347,259 bytes plus 3%, once the telemetry SDK loaded only after consent. Raised to 359,000 on
-// 2026-11-03 for Ask Styld's live replies: main measured 357,238; following a reply's LiveText adds 963 (the page's
-// subscription and settling, 570; Schema and Stream shared with the lazy decoder chunk, 399), the decoder itself
-// loading only while a reply is written. Styld's own dark theme (T-18, 3 November 2026) adds 1,475: every colour a
-// light/dark token pair in the first stylesheet. With main's Gallery photo work (T-17, 6e5c21d alone measures 358,117)
-// the three measure 361,785, so 362,500. Raised to 363,500 on 2026-11-04: main measured 362,480 before the person's
-// own categories (T-12, b210567), which add 782 (the category field, its chips and their cards), and the add page's
-// own words for a refused upload (3ba3213) add 98, for 363,360. Raised to 364,500 on 2026-11-04 for T-16: keeping a
-// look on a board (6885ee4) adds 23 (its endpoint in the client's API), the collage editor's Select mode 1,090 (its
-// Messages and tick state, the ticked outline, Select/Done and the counted Save, and their words), for 364,473.
-// Raised to 367,700 the same day for T-10: the board's outfits, the two outfit-board endpoints and the complete flag in
-// the client's contract add 279 (364,752 on main at ac0e345), and the outfit cards 2,926 (their submodel with its card
-// states and two Commands, the cards' view and styles, and their words in both catalogs), for 367,678.
-// Raised to 370,300 the same day for F-26 and T-10's chooser: main measured 367,690 at 0eedb27; the new-board sheet
-// adds 2,594 (its submodel with the outfit board's Command, the templates, the piece and season steps, and their words),
-// for 370,284.
-// Raised to 371,970 on 4 November for T-12's category rename and delete: main measured 370,289 at 5e46306; the
-// category page's edit (its state, two Commands, the rename form and the delete question, and their words) adds 1,665,
-// for 371,954.
-// Raised to 372,150 on 4 November for P4's tops by sleeve: main measured 371,987 at 4b35623; the three types that
-// replace Tops & T-shirts (their names, singular names and search words in both catalogs) add 140, for 372,127.
-// Raised to 373,500 on 4 November for a photo's garment chosen from the whole wardrobe (Eva): main measured 372,127 at
-// f999c7c; the shared piece sheet on the Gallery photo page (its state and folds, the search field and its words, each
-// piece's caption, and the photo's sheet Messages) adds 1,330, for 373,457. Raised to 374,000 the same day for a piece
-// added to a photo by hand: its endpoint in the client's contract, the sheet's two purposes, the add button, the empty
-// photo's words and Remove add 458, for 373,915.
-// Raised to 376,000 the same day for Eva's board layouts (B2/B3): the layouts and their arrows in the shared contract,
-// the arrows on the table, Another layout (its state, Command and control, and their words) add 2,004; measured
-// together at 375,823.
-// Raised to 378,000 the same day for deleting several pieces from the wardrobe grid (T-24): main measured 375,823 at
-// c2a1d5f; the batch delete's endpoint in the client's contract and the grid's Select mode (its submodel with the
-// selection, the delete Command and its retry under the same id, the ticks, the bar and the question, their styles and
-// their words in both catalogs) add 2,164, for 377,987.
-// Raised to 379,600 the same day for the piece's picture carousel (P3): its slides, the swipe, the dots and "Use as
-// the main picture", and their words, add 1,583; with the seated-person fallback beside it main measured 379,609.
-// Raised to 383,200 the same day for Eva's Home (docs/archive/PLAN-home-2026-11-04.md): taking Explore's page out saved 4,495
-// (379,609 to 375,114 at dcef50c); What's new, Challenges and the Home layout brought it to 379,531 (M5); the tombola
-// (its submodel, the wheel, the screen and its Mounts, the dice and their words) adds 3,627, for 383,158.
-// Raised to 383,700 the same day for Wear it today (M7): the anchor through Today's outfit run, the swap around it,
-// the "Outfits around" line with its way back, and their words add 545, for 383,691.
-// Raised to 384,600 the same day for the tombola's boards (M8): Make outfits with it and Build my own (their state,
-// the two mapped requests, the board opening, the actions and their words) add 888: HEAD measured 383,692 in a clean
-// worktree at 7fa62f2 and 384,580 with them.
-// Raised to 384,900 the same day for the backs track's carousel (M3, 36a1c027): angles first, the back's drawn slide
-// and its words add 291 over f7852a6f's 384,584, for 384,875.
-// Raised to 385,000 the same day for the house boards' Generated mark (docs/PLAN-house-boards-2026-11-04.md, S2d):
-// `generated` on public pieces, looks and boards in the client's contract, the mark with its hint on board cards,
-// look tiles, the public board, the piece page and What's new, and the hint's words add 175: HEAD measured 384,772 in
-// a clean worktree at 3cdb7a61 and 384,947 with them.
-// Raised to 387,300 the same day for Show me (the house boards' plan, S3): Home's card above What's new, the Account
-// page's choice, their shared program (the preferences read, the answer and its save), their styles and the en/sl
-// words add 2,284: HEAD measured 384,947 in a clean worktree at 376edb41 and 387,231 with them.
-// Raised to 388,000 the same day for Try with my wardrobe (the house boards' plan, S3): the button on a public board
-// that shows generated pieces, its request and retry under the same operation, the count and the way to the new board,
-// and their words add 808: HEAD measured 387,150 in a clean worktree at d377d399 and 387,958 with them.
-// Raised to 388,200 the same day so Show me's card never moves Home: the browser's cookie that it saw an answer, read
-// into the page's flags, and the Account page's choices standing from the first paint add 203 over 42da42aa's 387,958.
-// Raised to 391,400 the same day for Sign in with Google: the auth contract's two OAuth actions (Yielded's sign-in input,
-// authorization and completion schemas reach the browser client), Continue with Google with its mark, the start and
-// the noted return, and their words add 3,154 over 42da42aa (387,958 to 391,112).
-// Raised to 392,300 on 4 November for the first-run polish (Track W): a whole code sending itself and the resend
-// countdown (its Subscription and seconds), the diagnostics prompt waiting for sign-in, Home's first piece, cutting and
-// how-many-more lines with the tray's allowance, the add page's cost line with its allowance read, and their words
-// add 887: main measured 391,351 in a clean worktree at 9b5e923a and 392,238 with them.
-// Raised to 392,400 on 4 November for what Styld knows about the person (taste, L1): the client's contract gains the
-// taste group (its read, the occasions, notes and first-run writes, their schemas and the notes' limit) and adds 87:
-// main measured 392,238 at 03299488 and 392,325 with it.
-// Raised to 392,900 the same day for the wardrobe's address as its only copy (Foldkit's query-sync): the lenient
-// per-parameter codecs, the browse's normalising and ReplaceBrowse add 444 (main 392,390 at 89f4a29 and 392,834 with
-// it, each measured in a clean worktree).
-// Raised to 393,000 the same day for Styld taking Ask's question once (addressInPlace and samePageArrival): 49 more,
-// 392,864 to 392,913 on main.
-// Raised to 395,400 on 4 November for the Account page's What Styld knows about you (taste, L4): its submodel (the
-// read, the occasions' save, a note's removal), the section with its chips, notes and learned lines, their styles and
-// the en/sl words add 2,454: main measured 392,912 in a clean worktree at d64d4d64 and 395,366 with them.
-// Raised by 1,100 the same day for the privacy policy and the terms: their two routes, the footer's two links, the
-// pages' view and styles, the loader of their own words and the titles left in the catalogs add 1,100 (main 392,390 at
-// 89f4a292 and 393,490 with them; 392,913 to 393,989 at d64d4d64). The sections' words (about 3,300 more) load only
-// on those pages (`legal-en.ts`, `legal-sl.ts`).
-// Raised to 394,600 on 4 November for Styld Premium Week (payments): the account's Credits section (its read, the
-// return poll, the checkout's Command and states), the way to more credits beside every refusal of the day's credits,
-// and their words add 1,687 (main 392,913 at d64d4d64 and 394,600 with it).
-// Taste, the legal pages and Premium Week together measured 398,060 on 4 November (merged on 58969964).
-// Raised to 398,600 on 4 November for Challenges' boards on Home (taste, L7): the challenges' read and its submodel,
-// and a card opening its house board with its style, add 524: main measured 398,065 in a clean worktree at 784e2011
-// and 398,589 with them.
-// Raised to 399,700 the same day for the first run's fixes from the preview walk: the empty Home's first piece ahead of
-// the rest, the diagnostics prompt waiting for a piece, Show me pressing nothing it was not told, Google's refusal under
-// Google, and the costs as sentences in en and sl add about 1,000 (396,400 against 395,366 before the merge).
-// Raised to 399,900 the same evening for Ask's search held only by its address (query-sync): the waiting search, its
-// pause and the replace on every key add 265: main measured 398,060 in a clean worktree at 99eae0e1 and 398,325 with it;
-// on top of e2560062 it measured 399,847.
-// Raised to 402,900 on 4 November for the first run over Home (taste, L6): its submodel (the taste read, the house
-// boards, four steps and their saves, the modal Mount), its screen with the boards to pick and the occasions, its styles
-// and the en/sl words add 3,010: main measured 399,850 in a clean worktree at cbcf9b58 (9daa3422 adds no browser code)
-// and 402,860 with them.
-// Raised to 403,200 the same day for Try with my wardrobe's Add these (taste, L7): what the wardrobe lacked, in the
-// board labels' words, and the way to add clothes add 292 over 66f99166's 402,860 (c7b6e51d adds no browser code).
-// Raised by about 5,250 on 4 November for the landing that replaces v1 at styld.app (owner): three heroes, each a film with
-// its poster and words, the one control that follows the film, the three feature screens with the shop's chips, the
-// price and the questions, and their en/sl words (the largest catalog 15,842 to 16,899) add 5,178, less the public
-// boards the old landing read: main measured 399,851 in a clean worktree at 0f92c2ca and 405,029 with them; on top of
-// the first run (402,860) it measures 408,104. No media is bundled; every film and picture loads from /cdn/landing/.
-// Raised to 405,600 the same day for Try on (owner, 4 November): the try-on contract in the client, the Lab's fourth
-// tab and its page (the try-ons, the Gallery photo and pieces or look to choose, This is me, the cost, the poll, before
-// and after, Delete, and Save to board's try-on target) and their en/sl words add 5,773 (391,342 to 397,115 measured
-// in a clean worktree on 4189172c's base); merged with main at 9daa3422 the build measures 405,539.
-// Raised to 407,500 the same day for Try on's review fixes (track B): a try-on's own page at /try-on/:tryOn (its route,
-// page, lens and folds), the start's problem kept as Spent, Refused or Lost with its operation id, the delete's id kept
-// for a retry, the Checkbox for This is me, the alertdialog, captions and piece states, and their words add 1,884 over
-// abcc104c's 405,539, for 407,423.
-// Raised to 408,500 the same day for the try-on card in Styld's chat (track B, B4): the chat's try-ons read with the
-// person's session and followed while drawn (StylistTryOns.ts), the card with its picture and words, add 1,020, for
-// 408,443.
-// Raised to 417,300 the same evening for Try on merged with main's landing (408,104 at c2486ab0): the try-on page, its
-// fixes, its card in Styld's chat and the client's try-on contract add 9,108 together, for 417,212.
-// Raised to 417,600 the same evening for the plans (owner, pricing track): Account › Plans (four plans, Choose, Manage
-// subscription and the portal's command), the landing's four plans and their en/sl words, less the Premium week's
-// button and words, add 188 over 417,212, for 417,400.
-// Raised to 417,800 the same night for the assistants' consent page in Styld's words: the page is rendered by the API
-// Worker, but its en/sl words live in the catalogs the browser loads whole, and add 168 (417,600 to 417,768).
-// Raised to 418,000 the same night for the four Sport types merged with main (Eva: leggings, sports bras): their en/sl
-// names and search words replace Sportswear's, and add 180 (417,768 to 417,948).
-// Raised to 418,100 on 4 November: the ghost-mannequin redraw copy measured 418,001 on main at c8405716, one byte over.
-// Raised to 418,400 the same night for Eva's pre-demo fixes: the outfits sheet's footer, the sparkle on What to wear
-// today and the wheel's tinted wedges add 328 (418,001 to 418,329).
-// Raised to 418,800 on 5 November for "ask instead of guess": the review card's one-tap other type (its chip, the
-// Message and its en/sl words) adds 398 (418,329 to 418,727).
-// Raised to 418,500 on 5 November for the wardrobe's shop sections (Eva: Tops and Bottoms first): five group names in
-// en and sl in place of Clothing, and the picker's chips for groups that hold pieces, add 85 (418,329 to 418,414).
-// Raised to 421,600 on 4 November for the landing's screens (owner's phone review): one full screen per feature, the
-// turning rail with its tour and Styld's answer, in en and sl, add 3,156 (418,328 to 421,484 on a clean main).
-// Raised to 421,800 the same night: the landing's screens declare their grid columns (the rail's row had widened the
-// phone's column past the screen) and the chat's rise ends visible, 179 more (421,478 to 421,657).
-// Raised to 422,300 with the landing, the review card's chip and the shop sections merged: the build measures 422,223.
-// Raised to 422,400 on 5 November: a picture goes up as JPEG where Safari cannot write WebP (every iPhone upload was
-// refused as a PNG declared WebP), 88 more (422,223 to 422,311).
-// Raised to 424,300 on 5 November: the board's one Add sheet (pieces, looks, Gallery photos and try-ons with one search,
-// replacing the pins picker), its two list reads and its words in both languages, 1,865 more (422,315 to 424,180).
-// Raised to 425,100 the same day: the board is edited in place (its title renames it, the public switch sits beside
-// Share, and ⋯ opens tidy, paste, moods, pins and delete) instead of in an Edit sheet, 881 more (424,180 to 425,061
-// on 07ea7c63; 424,714 with the landing's rail player on 62f918e5).
-if (initialGzip > 425100) throw new Error(`Initial browser assets exceed the 425,100-byte gzip budget: ${initialGzip}`)
-// All browser assets were held at 700 KiB until 5 November, when the landing's rail got its own player back (the
-// owner: hover to turn on a wide screen, swipe with momentum on a phone): it loads as its own chunk once the rail is in
-// the page, 3,851 gzip bytes, and the whole build grows by 3,547 (716,352 to 719,899 on main at 10730bc0).
-// Raised to 720,900 the same day with the board edited in place, 903 more on 07ea7c63; 720,875 with it on 62f918e5.
-if (totalGzip > 720900) throw new Error(`All browser assets exceed the 720,900-byte gzip budget: ${totalGzip}`)
-if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
-console.log(
-  `Bundle budgets: initial browser ${initialGzip} gzip bytes; all browser ${totalGzip}; SSR ${server.byteLength} source bytes`,
+
+/**
+ * A Worker's minified startup code: its entry chunk and every chunk it imports statically, as Alchemy's `WorkerBundle`
+ * builds them (rolldown, minified, `strictExecutionOrder`). Workerd evaluates all of it before the first event, under
+ * Cloudflare's startup CPU limit (docs/archive/STATUS-2026-11-05.md › The API Worker's startup); chunks behind a dynamic
+ * `import()` load on first use and are not counted.
+ */
+const workerStartup = (main: string, entry: WorkerBundleOptions['entry']) =>
+  Effect.gen(function* () {
+    const bundler = yield* WorkerBundle
+    const { files } = yield* bundler.build({
+      id: main,
+      main,
+      // Both Workers deploy on this date; Alchemy adds new_module_registry and no nodejs_compat after 2026-08-04.
+      compatibility: { date: '2026-10-19', flags: ['new_module_registry'] },
+      entry,
+      stack: { name: 'StyldAppV2', stage: 'budget' },
+      extraOptions: undefined,
+    })
+    const text = new Map(
+      files.map((file) => [
+        file.path,
+        typeof file.content === 'string' ? file.content : new TextDecoder().decode(file.content),
+      ]),
+    )
+    const eager = new Set<string>()
+    const follow = (path: string) => {
+      const code = text.get(path)
+      if (code === undefined || eager.has(path)) return
+      eager.add(path)
+      for (const [, imported] of code.matchAll(/(?:import|export)\s*(?:[^'"()]*?from\s*)?["']\.\/([^"']+)["']/g))
+        if (imported !== undefined) follow(imported)
+    }
+    follow(files[0].path)
+    const encoder = new TextEncoder()
+    const sizeOf = (path: string) => encoder.encode(text.get(path) ?? '').byteLength
+    let bytes = 0
+    for (const path of eager) bytes += sizeOf(path)
+    return { entry: sizeOf(files[0].path), bytes }
+  })
+const [api, edge] = await Effect.runPromise(
+  Effect.all([
+    workerStartup('packages/server/src/StyldWorker.ts', { kind: 'effect', exports: {} }),
+    workerStartup('packages/server/src/EdgeWorker.ts', { kind: 'external' }),
+  ]).pipe(Effect.provide(NodeServices.layer)),
 )
+
+const measured: ReadonlyArray<readonly [string, number, typeof Budget.Type]> = [
+  ['browserInitialGzip', initialGzip, budgets.browserInitialGzip],
+  ['browserAllGzip', totalGzip, budgets.browserAllGzip],
+  ['ssrSource', server.byteLength, budgets.ssrSource],
+  ['apiWorkerStartup', api.bytes, budgets.apiWorkerStartup],
+  ['edgeWorker', edge.bytes, budgets.edgeWorker],
+]
+const over = measured.flatMap(([name, bytes, budget]) =>
+  bytes > budget.bytes ? [`${name}: ${bytes} bytes over its ${budget.bytes}-byte budget`] : [],
+)
+console.log(
+  `Bundle budgets: initial browser ${initialGzip} gzip bytes; all browser ${totalGzip}; SSR ${server.byteLength} ` +
+    `source bytes; API Worker startup ${api.bytes} (entry ${api.entry}); edge Worker ${edge.bytes}`,
+)
+if (over.length > 0) throw new Error(`Bundle budgets exceeded (tools/budgets.json):\n${over.join('\n')}`)
