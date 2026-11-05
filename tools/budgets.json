@@ -1,7 +1,22 @@
 {
-  "browserInitialGzip": { "bytes": 425100, "why": "Foldkit ships every page in the first load; 424,654 on 5 Nov" },
-  "browserAllGzip": { "bytes": 720900, "why": "the landing rail's player and the board edited in place; 720,864" },
-  "ssrSource": { "bytes": 2460000, "why": "measured 2,403,615 on 5 Nov, plus about 2%" },
-  "apiWorkerStartup": { "bytes": 842000, "why": "Application loads on the first event; entry 174,609 + eager 825,455" },
-  "edgeWorker": { "bytes": 4500, "why": "a thin router over the API, the website and the assets; 4,065" }
+  "browserInitialGzip": {
+    "bytes": 425100,
+    "why": "Foldkit ships every page in the first load; 424,654 on 5 Nov"
+  },
+  "browserAllGzip": {
+    "bytes": 721400,
+    "why": "one piece search shared by Ask and the assistants, with its English and Slovenian type words; 721,150"
+  },
+  "ssrSource": {
+    "bytes": 2460000,
+    "why": "measured 2,403,615 on 5 Nov, plus about 2%"
+  },
+  "apiWorkerStartup": {
+    "bytes": 842000,
+    "why": "Application loads on the first event; entry 174,609 + eager 825,455"
+  },
+  "edgeWorker": {
+    "bytes": 4500,
+    "why": "a thin router over the API, the website and the assets; 4,065"
+  }
 }
