@@ -10,9 +10,9 @@
  * one garment comes back as a transparent cut-out with suggestions and is kept as a piece; the rail
  * frame splits into at least eight cut-outs. Prints a summary without cookies, codes or addresses.
  */
-import { existsSync } from 'node:fs'
-import { chmod, readFile, rm } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { type APIRequestContext, type BrowserContext, chromium } from 'playwright'
+import { signedIn } from './DeployedSession.ts'
 import { Schema } from 'effect'
 import { CaptureCreated, Piece, Reviewed, Tray, Upload } from '../packages/protocol/src/index.ts'
 import { csrf } from '../packages/auth/src/config.ts'
@@ -25,35 +25,6 @@ if (origin === '' || email === '') throw new Error('Set STYLD_PREVIEW_URL and ST
 
 const fixture = (name: string) => readFile(new URL(`../packages/server/test/fixtures/capture/${name}`, import.meta.url))
 const headers = { origin, [csrf.header]: csrf.value }
-
-/** The code the operator wrote down, once it is there. */
-const awaitCode = async () => {
-  for (let attempt = 0; attempt < 600; attempt += 1) {
-    const code = /\b(\d{6})\b/.exec(await readFile(codeFile, 'utf8').catch(() => ''))?.[1]
-    if (code !== undefined) {
-      await rm(codeFile, { force: true })
-      return code
-    }
-    await Bun.sleep(500)
-  }
-  throw new Error('no code arrived')
-}
-
-const signIn = async (context: BrowserContext) => {
-  if ((await context.request.get(`${origin}/api/pieces`)).status() === 200) return
-  await rm(codeFile, { force: true })
-  const page = await context.newPage()
-  await page.goto(`${origin}/login`, { waitUntil: 'networkidle' })
-  await page.getByLabel('Email').fill(email)
-  await page.getByRole('button', { name: 'Send code' }).click()
-  await page.getByRole('heading', { name: 'Check your email' }).waitFor({ state: 'visible' })
-  console.log(`code requested; write it to ${codeFile}`)
-  await page.getByLabel('Enter verification code').fill(await awaitCode())
-  await page.waitForURL(`${origin}/`)
-  await context.storageState({ path: stateFile })
-  await chmod(stateFile, 0o600)
-  await page.close()
-}
 
 /** Upload a photo, make it a capture, and wait for the queue to process it. */
 const captured = async (request: APIRequestContext, name: string, contentType: string) => {
@@ -108,8 +79,7 @@ const transparentShare = async (context: BrowserContext, address: string) => {
 
 const browser = await chromium.launch({ headless: true })
 try {
-  const context = await browser.newContext(existsSync(stateFile) ? { storageState: stateFile } : {})
-  await signIn(context)
+  const context = await signedIn(browser, { origin, email, codeFile, stateFile })
   const request = context.request
 
   const single = await captured(request, 'red-tee.png', 'image/png')

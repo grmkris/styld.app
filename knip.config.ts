@@ -19,6 +19,7 @@ export default {
         'tools/refind-photos.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/seed/Run.ts',
+        'tools/measure/{Run,Report}.ts',
         'tools/**/*.test.ts',
         '*.config.ts',
       ],

@@ -95,6 +95,7 @@
     "@foldkit/devtools-mcp": "catalog:",
     "@foldkit/oxlint-plugin": "0.15.4",
     "@formatjs/icu-messageformat-parser": "catalog:",
+    "@modelcontextprotocol/client": "catalog:",
     "@oxlint/plugins": "1.91.0",
     "@phosphor-icons/core": "2.1.1",
     "@styld/imaging": "workspace:*",
