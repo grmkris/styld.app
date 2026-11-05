@@ -19,12 +19,12 @@ import {
   SetTable,
   SetVisibility,
   UpdateBoard,
-  Url,
+  PinPicture,
 } from '@styld/protocol'
 import { Effect, Match, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import { tool } from './Tools.ts'
-import { fetchOperation, type Links } from '../links/Links.ts'
+import type { Links } from '../links/Links.ts'
 
 /** A pin as assistants see it: what it holds and its page, never an image address. */
 const shownPin = (origin: string) => (pin: Pin) =>
@@ -181,16 +181,11 @@ const pinTools = (boards: Boards['Service'], links: Links['Service'], origin: st
       title: 'Put a picture on a board',
       description:
         'Pin a picture from a public https address on a board, for mood and inspiration. It is pinned, not placed on the collage; place it with collage_arrange using the imageId board_get shows. Choose a new `operationId` for each picture.',
-      parameters: Schema.Struct({ boardId: BoardId, ...Operation.fields, imageUrl: Url }),
+      parameters: Schema.Struct({ boardId: BoardId, ...PinPicture.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      handler: ({ boardId, operationId, imageUrl }) =>
+      handler: ({ boardId, ...input }) =>
         Effect.gen(function* () {
-          // A retry answers from the fetch's receipt, then from the picture's.
-          const uploadId = yield* links.photoFrom({
-            operationId: yield* fetchOperation(operationId, 'picture_pin'),
-            url: imageUrl,
-          })
-          yield* boards.addBoardImage(boardId, { operationId, uploadId })
+          yield* links.pinPicture(boardId, input)
           return show(yield* boards.getBoard(boardId))
         }),
     }),

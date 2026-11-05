@@ -1,5 +1,6 @@
 import {
   AddPiece,
+  AddPieceFromLink,
   CreateUpload,
   ImageType,
   Operation,
@@ -16,7 +17,7 @@ import {
 import { Effect, Option, Schema } from 'effect'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { tool, ToolError, toolSpec } from './Tools.ts'
-import { fetchOperation, type Links } from '../links/Links.ts'
+import type { Links } from '../links/Links.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
@@ -40,12 +41,6 @@ export const searchPage = (
 
 /** The piece's fields as the protocol defines them, so the website and assistants accept the same. */
 const { operationId: _operationId, uploadId: _uploadId, ...PieceFields } = AddPiece.fields
-
-const LinkImport = Schema.Struct({
-  operationId: OperationId,
-  url: Url,
-  ...PieceFields,
-})
 
 const PieceAdd = Schema.Struct({
   operationId: OperationId,
@@ -113,20 +108,16 @@ const writeTools = (
     handler: (input) =>
       Effect.gen(function* () {
         const { imageUrl, uploadId, ...fields } = input
-        if ((imageUrl === undefined) === (uploadId === undefined))
-          return yield* new ToolError({
-            code: 'invalid_arguments',
-            message: 'Give exactly one of imageUrl or uploadId.',
-            recovery: 'Pass imageUrl for a photo on the web, or uploadId after upload_create.',
-            retryable: false,
-          })
-        const target =
-          uploadId ??
-          (yield* links.photoFrom({
-            operationId: yield* fetchOperation(input.operationId, 'piece_add'),
-            url: imageUrl ?? '',
-          }))
-        return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }))
+        if (uploadId !== undefined && imageUrl === undefined)
+          return show(yield* wardrobe.addPiece({ ...fields, uploadId }))
+        if (imageUrl !== undefined && uploadId === undefined)
+          return show(yield* links.addPieceFromPhoto({ ...fields, imageUrl }))
+        return yield* new ToolError({
+          code: 'invalid_arguments',
+          message: 'Give exactly one of imageUrl or uploadId.',
+          recovery: 'Pass imageUrl for a photo on the web, or uploadId after upload_create.',
+          retryable: false,
+        })
       }),
   }),
   tool({
@@ -166,25 +157,9 @@ const linkTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], show:
     title: 'Add a piece from a link',
     description:
       'Add a piece from a shop’s product page: Styld reads the page’s picture and name and adds it straight to the wardrobe. Give the garment type; the name defaults to the page’s. Choose a new `operationId` for each piece. A shop that blocks reading answers `blocked`: then ask for a photo instead.',
-    parameters: LinkImport,
+    parameters: AddPieceFromLink,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    handler: ({ url, name: chosen, ...fields }) =>
-      Effect.gen(function* () {
-        // The same links operation the website calls, under its own id derived from the piece's: a repeat answers
-        // from its receipt, then from the piece's.
-        const picture = yield* links.readLink({
-          operationId: yield* fetchOperation(fields.operationId, 'link_import'),
-          url,
-        })
-        const named = chosen ?? picture.name
-        return show(
-          yield* wardrobe.addPiece({
-            ...fields,
-            uploadId: picture.uploadId,
-            ...(named === null ? {} : { name: named }),
-          }),
-        )
-      }),
+    handler: (input) => links.addPieceFromLink(input).pipe(Effect.map(show)),
   }),
 ]
 

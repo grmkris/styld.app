@@ -1,5 +1,5 @@
 import { maximumColours, maximumImageBytes, maximumVideoBytes, piecesAtOnce } from './Limits.ts'
-import { CategoryName, Hint, Name, Notes } from './Text.ts'
+import { CategoryName, Hint, Name, Notes, Url } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
@@ -222,6 +222,26 @@ export const AddPiece = Schema.Struct({
   ...pieceDetails,
 })
 export type AddPiece = typeof AddPiece.Type
+
+/** A piece added from a shop's product page: Styld reads the page's picture into an upload and adds it; the name
+ * defaults to the page's. The assistants' `link_import`. */
+export const AddPieceFromLink = Schema.Struct({
+  operationId: OperationId,
+  url: Url,
+  type: PieceType,
+  ...pieceDetails,
+})
+export type AddPieceFromLink = typeof AddPieceFromLink.Type
+
+/** A piece added from a photo at a public address: Styld fetches it into an upload and adds it. The assistants'
+ * `piece_add` with an `imageUrl`. */
+export const AddPieceFromPhoto = Schema.Struct({
+  operationId: OperationId,
+  imageUrl: Url,
+  type: PieceType,
+  ...pieceDetails,
+})
+export type AddPieceFromPhoto = typeof AddPieceFromPhoto.Type
 
 /** A piece's fields to change; fields left out stay, and null clears a field that may be empty. */
 export const PieceChanges = Schema.Struct({

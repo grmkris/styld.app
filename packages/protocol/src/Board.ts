@@ -1,5 +1,5 @@
 import { maximumBoardItems, maximumLookPieces, maximumMoods, mostSeen, pinsAtOnce } from './Limits.ts'
-import { Name, textLength, trimmedText } from './Text.ts'
+import { Name, textLength, trimmedText, Url } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
@@ -275,6 +275,11 @@ export type SetTable = typeof SetTable.Type
 /** A received photo upload becomes a picture on the board. */
 export const AddBoardImage = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
 export type AddBoardImage = typeof AddBoardImage.Type
+
+/** A picture at a public address pinned on a board: Styld fetches it into an upload and pins it. The assistants'
+ * `picture_pin`. */
+export const PinPicture = Schema.Struct({ operationId: OperationId, imageUrl: Url })
+export type PinPicture = typeof PinPicture.Type
 
 export const BoardImage = Schema.Struct({ imageId: BoardImageId, image: Schema.optionalKey(BoardImageAddresses) })
 export type BoardImage = typeof BoardImage.Type

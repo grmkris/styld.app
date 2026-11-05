@@ -182,10 +182,14 @@ const discovery = Discovery.of({
   search: () => Effect.succeed({ people: [], boards: [] }),
   challenges: () => Effect.succeed({ challenges: [] }),
 })
-/** What Styld fetches from the web, over the wardrobe above, at no pace. */
+/** What Styld fetches from the web, over the wardrobe and boards above, at no pace. */
 const links = Effect.runSync(
   Links.pipe(
-    Effect.provide(Links.layer.pipe(Layer.provide(Layer.merge(Layer.succeed(Wardrobe, wardrobe), unlimited)))),
+    Effect.provide(
+      Links.layer.pipe(
+        Layer.provide(Layer.mergeAll(Layer.succeed(Wardrobe, wardrobe), Layer.succeed(Boards, boards), unlimited)),
+      ),
+    ),
   ),
 )
 const tools = styldTools('https://styld.test', {
