@@ -4,7 +4,7 @@ import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
-import { Command, Subscription, Update } from 'foldkit'
+import { Command, ManagedResource, Subscription, Update } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
@@ -19,6 +19,7 @@ import * as ServerData from './ServerData.ts'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { ReadYou, You, youOf } from './You.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
+import type * as HeldCamera from './page/HeldCamera.ts'
 import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
 import * as AddPieces from './page/AddPieces/Update.ts'
 import * as Account from './page/Account.ts'
@@ -175,6 +176,7 @@ type Services =
   | StyldClient
   | SecureRandom.SecureRandom
   | PictureEncoder
+  | HeldCamera.LiveCameraService
 type UpdateReturn = Update.Return<Model, Message, Services>
 type Step = Update.Step<Model, Message, Services>
 
@@ -461,6 +463,11 @@ const showsPieces = (model: Model) =>
   )
 
 /** Ongoing work the open page asks for: each runs only while its page is open. */
+/** Handles the open page holds while its state asks for them: the add page's live camera. */
+export const managedResources = ManagedResource.lift(AddPiecesSubscription.managedResources)<Model, Message>(
+  at(lenses.addPieces),
+)
+
 export const subscriptions = Subscription.aggregate(
   Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>(at(lenses.addPieces)),
   Subscription.lift(ServerData.subscriptions)<Model, Message>({ ...data, when: showsPieces }),

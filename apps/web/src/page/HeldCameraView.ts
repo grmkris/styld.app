@@ -7,7 +7,7 @@ import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { checkIcon, loader, retryIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
-import { Camera, type Hint, HoldScreen, Message, type Model, screenId, ShowPhoto, WatchCamera } from './HeldCamera.ts'
+import { Camera, type Hint, HoldScreen, Message, type Model, screenId, ShowPhoto } from './HeldCamera.ts'
 import * as styles from './HeldCameraView.styles.ts'
 
 const hintKey: { readonly [Key in Hint]: MessageKey } = {
@@ -63,6 +63,7 @@ const shutter = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
       h.Type('button'),
       h.DataAttribute('shutter', ''),
       h.AriaLabel(format(locale, 'capture.camera.shutter', {})),
+      h.OnClick(Message.ClickedShutter()),
       ...styled(h, styles.shutter()),
     ],
     [
@@ -171,28 +172,25 @@ const bottom = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
 /** The camera's own picture, edge to edge, with the frame to hold a piece in and the bars over it. A tap
  * on the picture takes a photo. Flipping the camera mounts a new one under a new key. */
 const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.keyed('div')(
-    model.facing,
-    [h.OnMount(WatchCamera({ facing: model.facing })), ...styled(h, styles.stage())],
-    [
-      h.video([
-        h.Attribute('playsinline', ''),
-        h.Attribute('muted', ''),
-        h.Attribute('autoplay', ''),
-        h.DataAttribute('facing', model.facing),
-        h.DataAttribute('shutter', ''),
-        h.AriaHidden(true),
-        ...styled(h, styles.video()),
-      ]),
-      h.div([h.AriaHidden(true), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.guide())]),
-      model.shots === 0
-        ? h.empty
-        : h.keyed('div')(`flash-${model.shots}`, [h.AriaHidden(true), ...styled(h, styles.flash())]),
-      countdown(model, locale, h),
-      top(model, locale, h),
-      bottom(model, locale, h),
-    ],
-  )
+  h.keyed('div')(model.facing, styled(h, styles.stage()), [
+    h.video([
+      h.Attribute('playsinline', ''),
+      h.Attribute('muted', ''),
+      h.Attribute('autoplay', ''),
+      h.DataAttribute('facing', model.facing),
+      h.DataAttribute('shutter', ''),
+      h.OnClick(Message.ClickedShutter()),
+      h.AriaHidden(true),
+      ...styled(h, styles.video()),
+    ]),
+    h.div([h.AriaHidden(true), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.guide())]),
+    model.shots === 0
+      ? h.empty
+      : h.keyed('div')(`flash-${model.shots}`, [h.AriaHidden(true), ...styled(h, styles.flash())]),
+    countdown(model, locale, h),
+    top(model, locale, h),
+    bottom(model, locale, h),
+  ])
 
 /** The camera screen: a modal dialog over the whole page while the camera starts and watches. */
 const screen = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>

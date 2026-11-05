@@ -5,7 +5,7 @@ import { Layer } from 'effect'
 import { browserAuthLayer } from '@styld/auth/client'
 import { loadCatalog, normalizeLocale } from '@styld/i18n'
 import { Runtime } from 'foldkit'
-import { Flags, Message, Model, init, subscriptions, update } from './App.ts'
+import { Flags, managedResources, Message, Model, init, subscriptions, update } from './App.ts'
 import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
 import { isTabChange, routing } from './Navigation.ts'
@@ -33,6 +33,7 @@ const config = {
   update,
   view,
   subscriptions,
+  managedResources,
   container: document.getElementById('root'),
   // Tab pages switch inside the page and cross-fade; every other link loads whole (Navigation.ts).
   routing,
