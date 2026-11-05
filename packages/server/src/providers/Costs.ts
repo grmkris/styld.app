@@ -16,9 +16,9 @@ export const costs = {
  * read 3 November 2026 (model-pricing); estimates deliberately exclude idle-hour and cache discounts. */
 export const textModels = {
   deepSeekFlash: { id: 'styld-deepseek-v4.1-flash', input: 0.283, output: 1.131 },
-  /** Meta Muse Spark 1.3 Standard (Meta does not train on the prompts) on the same LiteLLM route, for Styld's chat
-   * (owner, 5 November 2026). Meta's list price is not read yet: DeepSeek's stands in until it is. */
-  museSpark: { id: 'styld-muse-spark-1.3', input: 0.283, output: 1.131 },
+  /** Meta Muse Spark 1.3 Standard (Meta does not train on the prompts), called on Meta's API directly for Styld's
+   * chat (owner, 5 November 2026). Meta's list price is not read yet: DeepSeek's stands in until it is. */
+  museSpark: { id: 'muse-spark-1.3', input: 0.283, output: 1.131 },
 } as const
 export type TextModel = (typeof textModels)[keyof typeof textModels]
 

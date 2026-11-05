@@ -54,7 +54,7 @@ export default Alchemy.Stack(
     // The media bucket; its name is what the v1 importer uploads bundles to (docs/DEPLOYMENT.md).
     const media = yield* StyldMedia
     const api = yield* StyldWorker
-    // Styld's chats: each a Thread Object in this Worker, asking the chat model over Styld's own LiteLLM route.
+    // Styld's chats: each a Thread Object in this Worker, asking Meta's Muse Spark on Meta's API.
     const threads = yield* Cloudflare.Worker('StyldStylistThreads', {
       ...stylistThreadWorker,
       main: 'packages/server/src/stylist/ThreadWorker.ts',
@@ -65,8 +65,8 @@ export default Alchemy.Stack(
         STYLD_RELEASE: release,
         // Each chat model call is counted where every other provider call is (`kernel/Metrics.ts`).
         AI_CALLS: yield* StyldAiCalls,
-        STYLD_LITELLM_URL: yield* Config.String('STYLD_LITELLM_URL'),
-        STYLD_LITELLM_KEY: yield* Config.Redacted('STYLD_LITELLM_KEY'),
+        // Meta's key, the one SAM and Muse Image use, for the chat's Muse Spark calls.
+        META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
       },
     })
     yield* api.bind('StylistThreads', stylistThreadsOf(threads))

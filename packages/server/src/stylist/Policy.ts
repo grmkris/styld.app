@@ -4,13 +4,15 @@ import { textModels } from '../providers/Costs.ts'
 
 // How Styld, the stylist in the app, answers (owner, 2026-10-31).
 
-/** The model Styld answers with, on the paid LiteLLM route: Meta Muse Spark 1.3 (owner, 5 November 2026), each
- * streamed call within the chat deadline. It reasons before it answers, so a call needs at least 1,000 tokens. */
+/** The model Styld answers with: Meta Muse Spark 1.3 on Meta's API (owner, 5 November 2026), each streamed call within
+ * the chat deadline, thinking as little as Meta allows. It reasons before it answers, so a call needs at least 1,000
+ * tokens. */
 export const styldModel: TextTask = {
   model: textModels.museSpark,
   kind: 'chat',
   deadline: deadlines.chat,
   maxTokens: 2048,
+  reasoningEffort: 'minimal',
 }
 
 /** Model calls a reply may take, each answering the tools the last one called. */

@@ -18,6 +18,9 @@ export interface TextTask {
   readonly kind: ProviderCall['kind']
   readonly deadline: Duration.Input
   readonly maxTokens: number
+  /** How long the model thinks before it answers: DeepSeek takes 'none'; Meta's Muse Spark refuses 'none', and
+   * 'minimal' answers its tool calls in about 3.5 s instead of 10 (probed 5 November 2026). 'none' when unset. */
+  readonly reasoningEffort?: 'none' | 'minimal' | 'low'
 }
 
 const provider = 'litellm'
@@ -193,7 +196,7 @@ const requestOf = (task: TextTask, options: LanguageModel.ProviderOptions) =>
         messages,
         ...toolsOf(options),
         max_tokens: task.maxTokens,
-        reasoning_effort: 'none',
+        reasoning_effort: task.reasoningEffort ?? 'none',
         ...(options.responseFormat.type === 'json' ? { response_format: { type: 'json_object' } } : {}),
       }
     },
