@@ -53,9 +53,11 @@ export const verifyOutfitBoardJourney = async (browser: Browser, origin: string,
     await page.getByText(/^Your wardrobe made \d outfits around this piece\./).waitFor({ state: 'visible' })
     expect(await page.locator('section[data-paper]').getAttribute('data-paper')).toBe('sand')
     // The shorts large in the middle and once in each outfit, every outfit in the derbies.
-    const shortsItems = page.getByRole('button', { name: /^Denim shorts/ })
+    // Counted on the table: the board's title, named after the shorts, is a button too (it renames the board).
+    const table = page.getByRole('region', { name: 'The table' })
+    const shortsItems = table.getByRole('button', { name: /^Denim shorts/ })
     expect(await shortsItems.count()).toBe((await cards.count()) + 1)
-    expect(await page.getByRole('button', { name: /^Derby shoes/ }).count()).toBe(await cards.count())
+    expect(await table.getByRole('button', { name: /^Derby shoes/ }).count()).toBe(await cards.count())
     await shoot(page, 'phone-outfit-board')
 
     // Another layout lays the board out again; arrows lead from the shorts to each outfit whenever the layout has them.
