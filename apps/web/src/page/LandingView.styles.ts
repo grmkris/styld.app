@@ -1,5 +1,15 @@
 import { keyframes } from 'zyzz/web'
-import { style, vars } from '../zyzz.config.ts'
+import {
+  brassRod,
+  filmLineEdge,
+  filmShade,
+  filmShadeWide,
+  filmTitleEdge,
+  heroShade,
+  heroShadeWide,
+  style,
+  vars,
+} from '../zyzz.config.ts'
 
 // The signed-out Home (LandingView.ts), owner's design of 4 November 2026: every screen is one full screen, its film
 // (or the rail, or the chat) above, its words at the bottom; the titles in Anton, the wordmark's own face; and a short
@@ -67,27 +77,23 @@ export const film = style({
     content: '""',
     position: 'absolute',
     inset: '0',
-    backgroundImage:
-      'linear-gradient(to bottom, transparent 42%, oklch(0.18 0.01 50 / 0.38) 62%, oklch(0.18 0.01 50 / 0.74))',
+    backgroundImage: filmShade,
     pointerEvents: 'none',
   },
   '@media (min-aspect-ratio: 4/5)': {
     '::after': {
-      backgroundImage:
-        'linear-gradient(to right, oklch(0.18 0.01 50 / 0.7), oklch(0.18 0.01 50 / 0.2) 48%, transparent 70%), linear-gradient(to bottom, transparent 55%, oklch(0.18 0.01 50 / 0.45))',
+      backgroundImage: filmShadeWide,
     },
   },
 })
 /** The hero's shade is at the top, under its statement. */
 export const heroFilm = style({
   '::after': {
-    backgroundImage:
-      'linear-gradient(to bottom, oklch(0.18 0.01 50 / 0.78), oklch(0.18 0.01 50 / 0.5) 34%, transparent 62%)',
+    backgroundImage: heroShade,
   },
   '@media (min-aspect-ratio: 4/5)': {
     '::after': {
-      backgroundImage:
-        'linear-gradient(to right, oklch(0.18 0.01 50 / 0.62), oklch(0.18 0.01 50 / 0.15) 45%, transparent 65%)',
+      backgroundImage: heroShadeWide,
     },
   },
 })
@@ -123,7 +129,7 @@ export const title = style({
   lineHeight: 0.98,
   letterSpacing: '0.004em',
   textWrap: 'balance',
-  textShadow: '0 1px 1px oklch(0.18 0.01 50 / 0.5), 0 2px 18px oklch(0.18 0.01 50 / 0.45)',
+  textShadow: filmTitleEdge,
 })
 export const line = style({
   margin: '0',
@@ -131,7 +137,7 @@ export const line = style({
   fontSize: 'subheading',
   lineHeight: 1.45,
   textWrap: 'pretty',
-  textShadow: '0 1px 2px oklch(0.18 0.01 50 / 0.7), 0 0 14px oklch(0.18 0.01 50 / 0.5)',
+  textShadow: filmLineEdge,
   '@media (min-aspect-ratio: 4/5)': { maxInlineSize: '34ch' },
 })
 /** On paper the words are ink and need no edge. */
@@ -172,8 +178,9 @@ export const pinned = style({
 /** The pill rises from its resting point, so at the end of the screens it stops above the footer instead of over it. */
 export const pinnedAction = style({ blockSize: 'fit-content', boxShadow: 'lift1', translate: '0 -100%' })
 
-// The rail (RailPlayer.ts): an oak rod across the rack, the pieces hanging from it by their wires. The player sets each
-// piece's place (`left`) and its width (`--garment-width`) through the CSSOM and draws its frames on its canvas.
+// The rail (RailPlayer.ts): an oak rod across the rack, the pieces hanging from it by their wires. The rack sets each
+// piece's width (`--garment-width`) and, on a phone, a row that swipes (`--rail-layout`); the player reads both back,
+// sets each piece's place (`left`) through the CSSOM and draws its frames on its canvas.
 
 export const rack = style({
   position: 'relative',
@@ -186,7 +193,13 @@ export const rack = style({
   userSelect: 'none',
   // The pieces fade out at the screen's edges instead of being cut by them.
   maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)',
+  // A piece at rest shows its side, a narrow target; a phone's row shows every piece at its whole width.
+  '--garment-width': '370px',
+  '--garment-rest': '60px',
+  '--rail-layout': 'hover',
   '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '2', marginInline: '0', blockSize: 'min(100%, 540px)' },
+  '@media (min-width: 1400px)': { '--garment-width': '400px' },
+  '@media (max-width: 700px)': { '--garment-width': '315px', '--garment-rest': '315px', '--rail-layout': 'swipe' },
 })
 export const rod = style({
   position: 'absolute',
@@ -194,8 +207,8 @@ export const rod = style({
   insetInline: '0',
   blockSize: '5px',
   borderRadius: 'pill',
-  backgroundImage: 'linear-gradient(to bottom, #d9b98a, #b48c58 55%, #8f6a3d)',
-  boxShadow: '0 3px 6px oklch(0.3 0.04 60 / 0.18) !custom',
+  backgroundImage: brassRod,
+  boxShadow: 'rod',
 })
 /** A piece: a narrow target while it shows its side, its whole width once it turns to the front. */
 export const garment = style({
@@ -203,15 +216,14 @@ export const garment = style({
   insetBlockStart: '34px',
   insetInlineStart: '0',
   zIndex: 1,
-  inlineSize: '60px',
-  blockSize: 'calc(var(--garment-width, 370px) * 448 / 384)',
+  inlineSize: 'var(--garment-rest)',
+  blockSize: 'calc(var(--garment-width) * 448 / 384)',
   padding: '0',
   borderWidth: '0',
   backgroundColor: 'transparent !custom',
   transform: 'translateX(-50%)',
   cursor: 'pointer',
-  '&[data-active]': { zIndex: 2, inlineSize: 'var(--garment-width, 370px)' },
-  '@media (max-width: 700px)': { inlineSize: 'var(--garment-width, 315px)' },
+  '&[data-active]': { zIndex: 2, inlineSize: 'var(--garment-width)' },
 })
 export const wire = style({
   position: 'absolute',
@@ -224,8 +236,8 @@ export const wire = style({
 export const garmentCanvas = style({
   position: 'absolute',
   insetBlockStart: '24px',
-  insetInlineStart: 'calc(50% - var(--garment-width, 370px) / 2)',
-  inlineSize: 'var(--garment-width, 370px)',
+  insetInlineStart: 'calc(50% - var(--garment-width) / 2)',
+  inlineSize: 'var(--garment-width)',
   blockSize: 'auto',
   pointerEvents: 'none',
 })
