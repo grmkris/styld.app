@@ -26,7 +26,7 @@ export const catalog: Readonly<Record<LegalKey, string>> = {
   'legal.privacy.ai':
     'Da najde tvoja oblačila, Styld pošlje manjšo kopijo fotografije ali tvoj video Metinemu modelu SAM; videe pri Meti izbrišemo, ko so prebrani. Čiste slike iz izrezov nariše Metin Muse Image, in sicer njegova različica Standard, na kateri Meta ne uči svojih modelov. Modeli umetne inteligence pri Cloudflaru (Workers AI) razvrščajo in preverjajo fotografije in slike.',
   'legal.privacy.aiProviders':
-    'Tvoji pogovori s Styldom gredo Metinemu modelu Muse Spark, in sicer njegovi različici Standard, na kateri Meta ne uči svojih modelov. Drugo besedilo, kot so opisi tvojih kosov, gre prek našega lastnega prehoda modelu DeepSeek pri Alibaba Cloud Model Studio. Ko sliko zavrtiš, gre prek Vercel AI Gateway Googlovemu modelu Veo narisana slika, ne tvoja fotografija.',
+    'Tvoji pogovori s Styldom in drugo besedilo, kot so imena in opisi tvojih kosov, stavek, s katerim začneš tablo razpoloženja, in besede, ki jih objaviš, gredo Metinemu modelu Muse Spark, in sicer njegovi različici Standard, na kateri Meta ne uči svojih modelov. Ko sliko zavrtiš, gre prek Vercel AI Gateway Googlovemu modelu Veo narisana slika, ne tvoja fotografija.',
   'legal.privacy.providersHeading': 'Kdo nam pomaga',
   'legal.privacy.providers':
     'Styld gostuje Cloudflare: spletno stran in strežnike, podatkovno zbirko, hrambo fotografij (v EU), obdelavo slik, e-pošto za prijavo in naše dnevnike. Google izvede prijavo z Googlom, če jo izbereš. Dodo Payments sprejema plačila. Zgoraj navedeni ponudniki umetne inteligence obdelajo le, kar posamezno opravilo potrebuje.',

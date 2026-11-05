@@ -159,10 +159,11 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   garments and tracks video; Meta Muse draws clean pictures and stickers; Veo (through the AI Gateway) makes turns.
   Text models go through Effect's `LanguageModel` over one Chat Completions transport (`ai/LanguageModel.ts`,
   `providers/Text.ts`); each text model names its provider (`providers/Costs.ts` › `textModels`), which its errors,
-  counts and prices carry. The paid LiteLLM gateway's isolated Alibaba Model Studio DeepSeek V4.1 Flash alias serves
-  Thinking, mood-board planning and text moderation (`litellm`); Styld's replies stream from its Threads on Meta's
-  own API, Muse Spark 1.3 Standard (`meta-spark`, `providers/StylistModel.ts`, Server-Sent Events, usage in the last
-  chunk). Clef (`providers/ClefCall.ts` › `clefOver`, `askClef`; the garment questions in `providers/Clef.ts`) remains the Workers AI visual judge and garment/attribute model.
+  counts and prices carry. All of Styld's text is Meta's Muse Spark 1.3 Standard on Meta's own API (`meta-spark`,
+  owner, 5 November 2026; `Text.ts` › `metaTextCompletions`, with Meta's key): Thinking, mood-board planning and text
+  moderation ask it for JSON objects from the API Worker, and Styld's replies stream from its Threads
+  (`providers/StylistModel.ts`, Server-Sent Events, usage in the last chunk). `tools/text-live.ts` probes the three
+  object tasks on fixtures before a model, prompt or setting change. Clef (`providers/ClefCall.ts` › `clefOver`, `askClef`; the garment questions in `providers/Clef.ts`) remains the Workers AI visual judge and garment/attribute model.
   A `ProviderError` from a thrown transport or binding error keeps it as its `cause`, never a request or body.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and

@@ -1,5 +1,5 @@
 import { Layer } from 'effect'
-import { makeTextCompletions, TextCompletions } from './Text.ts'
+import { metaTextCompletions, TextCompletions } from './Text.ts'
 import { makeGarmentVision } from './Clef.ts'
 import type { RunClef } from './ClefCall.ts'
 import { makePictureWork } from './CloudflareImages.ts'
@@ -22,7 +22,7 @@ import { Thinking } from '../outfits/Proposer.ts'
 import { ContentJudge, contentJudge } from '../safety/Judge.ts'
 
 // Every provider the application runs on, as layers: the decision model, image work, SAM, the image and video models,
-// the planner and Thinking, the content judge and the paid text gateway. The Worker
+// the planner and Thinking, the content judge and Meta's text API they ask. The Worker
 // passes the live ones; the native test composition passes its fakes (`packages/server/test/fakes/`). Nothing in here
 // reads the environment.
 
@@ -75,7 +75,6 @@ export const providersOver = (
     readonly fetch: Fetch
     readonly metaBase: string
     readonly gatewayBase: string
-    readonly textBase: string
     readonly pollSeconds: number
   },
 ): Layer.Layer<ProviderServices> => {
@@ -94,13 +93,8 @@ export const providersOver = (
     Layer.succeed(PictureWork, makePictureWork(bindings.images, metrics)),
     Layer.succeed(GarmentSegmenter, makeGarmentSegmenter({ ...meta, readVideo })),
   )
-  const text = makeTextCompletions({
-    provider: 'litellm',
-    base: http.textBase,
-    key: deployment.secrets.textKey,
-    fetch: http.fetch,
-  })
-  // Text uses the paid gateway; Clef continues over Workers AI.
+  // Text asks Muse Spark on Meta's API, as the chat does; Clef continues over Workers AI.
+  const text = metaTextCompletions(meta)
   const models = Layer.mergeAll(
     MoodPlanner.layer,
     Thinking.layer,
@@ -121,12 +115,11 @@ export const providersOver = (
   )
 }
 
-/** The Worker's providers: Clef through its binding, Meta and both gateways over the internet. */
+/** The Worker's providers: Clef through its binding, Meta and the Vercel AI Gateway over the internet. */
 export const liveProviders: ProvidersFor = (bindings) =>
   providersOver(bindings, bindings.workersAi, {
     fetch: (input, init) => globalThis.fetch(input, init),
     metaBase,
     gatewayBase,
-    textBase: bindings.deployment.textBase,
     pollSeconds: veoPollSeconds,
   })

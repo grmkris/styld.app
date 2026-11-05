@@ -7,12 +7,12 @@ import { type TextModel, type TextProvider, textCost } from '../providers/Costs.
 import { busy, isOutcomeUnknown, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
 import { TextCompletions } from '../providers/Text.ts'
 
-// Every text task uses Effect's LanguageModel over an OpenAI-compatible Chat Completions API: Styld's paid LiteLLM
-// route (DeepSeek) or, for Styld's chat, Meta's own API (Muse Spark). The task's model names its provider, which every
-// error, count and price of its calls carries. Clef keeps the Workers AI binding. Objects are requested as JSON with
-// an explicit schema in the prompt and decoded by Effect: DeepSeek supports JSON Object mode, rather than
-// provider-enforced JSON Schema. Replies are buffered as before; neither prompts,
-// answers nor reasoning are logged.
+// Every text task uses Effect's LanguageModel over an OpenAI-compatible Chat Completions API: Meta's own, where Muse
+// Spark answers Styld's chat, the public-words check, mood-board plans and Thinking (owner, 5 November 2026). The
+// task's model names its provider, which every error, count and price of its calls carries. Clef keeps the Workers AI
+// binding. Objects are requested in JSON Object mode with an explicit schema in the prompt and decoded by Effect (all
+// three object tasks decoded every answer in the probe of 5 November, `tools/text-live.ts`). Replies are buffered,
+// the chat's streamed; neither prompts, answers nor reasoning are logged.
 
 /** One text task: the model it asks, what its calls are counted as, and how long one call may take. */
 export interface TextTask {
@@ -20,8 +20,8 @@ export interface TextTask {
   readonly kind: ProviderCall['kind']
   readonly deadline: Duration.Input
   readonly maxTokens: number
-  /** How long the model thinks before it answers: DeepSeek takes 'none'; Meta's Muse Spark refuses 'none', and
-   * 'minimal' answers its tool calls in about 3.5 s instead of 10 (probed 5 November 2026). 'none' when unset. */
+  /** How long the model thinks before it answers: Meta's Muse Spark refuses 'none', and 'minimal' answers its tool
+   * calls in about 3.5 s instead of 10 (probed 5 November 2026). 'none' when unset. */
   readonly reasoningEffort?: 'none' | 'minimal' | 'low'
 }
 
@@ -109,8 +109,8 @@ const unfenced = (text: string) =>
     .replace(/^```(?:json)?\s*/u, '')
     .replace(/\s*```$/u, '')
 
-/** The prompt as Chat Completions messages. Styld sends only words, so a file in it is a request The text provider cannot
- * take. */
+/** The prompt as Chat Completions messages. Styld sends only words, so a file in it is a request the text provider
+ * cannot take. */
 const messagesOf = (prompt: Prompt.Prompt) =>
   prompt.content.flatMap((message): ReadonlyArray<Readonly<Record<string, unknown>>> => {
     switch (message.role) {

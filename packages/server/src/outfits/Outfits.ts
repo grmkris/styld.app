@@ -195,7 +195,7 @@ const candidatesFor = (input: MakeOutfit, request: Brief, session: string, accou
         {
           key: `outfits/${accountId}/${input.operationId}`,
           accountId,
-          provider: 'litellm',
+          provider: 'meta-spark',
           result: proposedResult,
         },
         (yield* Thinking).propose({ ...request, ...(yield* tasteFor(accountId)) }, input.count + 2),

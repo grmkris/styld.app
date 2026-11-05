@@ -89,7 +89,14 @@ const textInstructions = [
   'a failed or unsure verdict must have a reason. Do not echo any of the text.',
 ].join(' ')
 
-const guard: TextTask = { model: textModels.deepSeekFlash, kind: 'judge', deadline: deadlines.guard, maxTokens: 256 }
+/** The public-words check on Muse Spark (owner, 5 November 2026), thinking as little as Meta allows. */
+const guard: TextTask = {
+  model: textModels.museSpark,
+  kind: 'judge',
+  deadline: deadlines.guard,
+  maxTokens: 1024,
+  reasoningEffort: 'minimal',
+}
 
 const guarded = (model: LanguageModel.LanguageModel, texts: ReadonlyArray<string>) =>
   model
@@ -122,7 +129,7 @@ const pictured = (runClef: RunClef, metrics: CaptureMetrics['Service'], picture:
     questions: pictureQuestions,
   }).pipe(Effect.map((answer) => pictureVerdict((key) => noulOf(answer, key))))
 
-/** The judge of what people make public: Clef-flash on pictures, DeepSeek on words, each call counted. */
+/** The judge of what people make public: Clef-flash on pictures, Muse Spark on words, each call counted. */
 export const contentJudge = (runClef: RunClef) =>
   Layer.effect(
     ContentJudge,

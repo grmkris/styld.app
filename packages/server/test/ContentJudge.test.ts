@@ -13,7 +13,7 @@ const completion = (content: string, promptTokens = 100, completionTokens = 8) =
   usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens },
 })
 
-/** The judge over a DeepSeek answer and a Clef answer, every call counted. */
+/** The judge over a Muse Spark answer and a Clef answer, every call counted. */
 const judging = (answer: unknown, clef: RunClef) => {
   const calls: Array<Omit<ProviderCall, 'milliseconds'>> = []
   const metrics = Layer.succeed(
@@ -35,22 +35,22 @@ const judging = (answer: unknown, clef: RunClef) => {
 const picture = { bytes: new Uint8Array([1]), contentType: 'image/png' as const }
 
 describe('the content judge', () => {
-  it.effect('asks DeepSeek about words and Clef about each picture, counting every call', () => {
+  it.effect('asks Muse Spark about words and Clef about each picture, counting every call', () => {
     const { calls, judge } = judging(completion('{"state":"failed","reason":"hate"}'), async () => ({
       answers: { sexual: { noul: 0.6 } },
       usage: { input_tokens: 50 },
     }))
     return Effect.gen(function* () {
       const verdict = yield* (yield* ContentJudge).judge({ texts: ['Autumn'], pictures: [picture] })
-      expect(verdict).toEqual({ state: 'failed', reason: 'hate', model: 'styld-deepseek-v4.1-flash' })
+      expect(verdict).toEqual({ state: 'failed', reason: 'hate', model: 'muse-spark-1.3' })
       expect(calls).toEqual([
         {
-          provider: 'litellm',
-          model: 'styld-deepseek-v4.1-flash',
+          provider: 'meta-spark',
+          model: 'muse-spark-1.3',
           kind: 'judge',
           outcome: 'ok',
           units: 108,
-          costMicroUsd: 37,
+          costMicroUsd: 159,
         },
         { provider: 'clef', model: 'clef-flash', kind: 'judge', outcome: 'ok', units: 50, costMicroUsd: 2 },
       ])
@@ -61,7 +61,7 @@ describe('the content judge', () => {
     const { judge } = judging(completion('{"state":"passed","reason":null}'), async () => ({ answers: {} }))
     return Effect.gen(function* () {
       const verdict = yield* (yield* ContentJudge).judge({ texts: ['A wool coat'], pictures: [] })
-      expect(verdict).toEqual({ state: 'passed', reason: null, model: 'styld-deepseek-v4.1-flash' })
+      expect(verdict).toEqual({ state: 'passed', reason: null, model: 'muse-spark-1.3' })
     }).pipe(Effect.provide(judge))
   })
 
@@ -77,7 +77,7 @@ describe('the content judge', () => {
       const { judge } = judging(answer, async () => ({ answers: {} }))
       return Effect.gen(function* () {
         const verdict = yield* (yield* ContentJudge).judge({ texts: ['A wool coat'], pictures: [] })
-        expect(verdict).toEqual({ state: 'unsure', reason: 'other', model: 'styld-deepseek-v4.1-flash' })
+        expect(verdict).toEqual({ state: 'unsure', reason: 'other', model: 'muse-spark-1.3' })
       }).pipe(Effect.provide(judge))
     })
 

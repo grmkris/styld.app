@@ -1137,7 +1137,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'legal.termsTitle': 'Pogoji uporabe',
   'legal.privacyLink': 'Zasebnost',
   'legal.termsLink': 'Pogoji',
-  'legal.updated': 'Zadnja sprememba: 4. november 2026',
+  'legal.updated': 'Zadnja sprememba: 5. november 2026',
   'legal.questions': 'Vprašanja ali zahteve:',
   'firstRun.step': 'Korak {at} od {of}',
   'firstRun.skip': 'Preskoči',

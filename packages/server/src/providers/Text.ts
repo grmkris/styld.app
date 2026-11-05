@@ -1,11 +1,11 @@
-import { Context, Effect, Layer, Schema, Stream } from 'effect'
+import { Context, Effect, Layer, type Redacted, Schema, Stream } from 'effect'
 import * as Sse from 'effect/encoding/Sse'
-import { httpProvider, type HttpProviderSettings } from './Http.ts'
+import { type Fetch, httpProvider, type HttpProviderSettings } from './Http.ts'
 import { busy, outcomeUnknown, refused, type ProviderError } from './Errors.ts'
 import type { TextProvider } from './Costs.ts'
 
-/** Text completions over an OpenAI-compatible API: Styld's own budgeted LiteLLM key, or Meta's API for Styld's chat. HTTP failures stay typed all the way to the attempt
- * owner; losing a paid response is unknown, never a reason to send it again. */
+/** Text completions over an OpenAI-compatible API: Meta's, for every text task. HTTP failures stay typed all the way to
+ * the attempt owner; losing a paid response is unknown, never a reason to send it again. */
 export class TextCompletions extends Context.Service<
   TextCompletions,
   {
@@ -21,7 +21,8 @@ export class TextCompletions extends Context.Service<
 const decodeChunk = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))
 
 /** The live transport for one text provider; tests supply their fixture Worker's fetch and base. The provider's
- * response body never enters an error or log. */
+ * response body never enters an error or log.
+ * @internal Exported for its tests. */
 export const makeTextCompletions = (
   settings: Omit<HttpProviderSettings, 'provider'> & { readonly provider: TextProvider },
 ): TextCompletions['Service'] => {
@@ -66,3 +67,11 @@ export const makeTextCompletions = (
       ),
   })
 }
+
+/** Meta's own OpenAI-compatible API at `base` (`Meta.ts` › `metaBase`, or a test's fixture), where every text task
+ * asks Muse Spark: the chat's Thread Worker and the API Worker's check, plans and Thinking, all with Meta's key. */
+export const metaTextCompletions = (meta: {
+  readonly base: string
+  readonly key: Redacted.Redacted
+  readonly fetch: Fetch
+}) => makeTextCompletions({ provider: 'meta-spark', base: `${meta.base}/v1`, key: meta.key, fetch: meta.fetch })

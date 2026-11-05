@@ -9,7 +9,9 @@
  * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
  * `_sample_interval`; indexes are `call.<provider>.<kind>`, `review.<decision>` (plain `call` and
  * `review` before 2026-10-29 16:00), `picture.<state>`, where each clean picture ended (from 2026-10-30), and
- * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31).
+ * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31). Rows of provider
+ * `litellm` are the DeepSeek V4.1 Flash calls Styld made through Railway's LiteLLM until all its text moved to Muse
+ * Spark (`meta-spark`) on 5 November 2026; nothing writes them any more, so they are labelled as past.
  */
 import { isStageName, stages } from '@styld/server/Resources'
 import { Schema } from 'effect'
@@ -38,7 +40,8 @@ const query = async (sql: string) => {
 const within = `blob1 = '${environment}' AND timestamp > NOW() - INTERVAL '${days}' DAY`
 
 const calls = await query(`
-  SELECT blob3 AS provider, blob4 AS model, blob5 AS kind, blob6 AS outcome,
+  SELECT if(blob3 = 'litellm', 'litellm (DeepSeek, until 5 Nov 2026)', blob3) AS provider,
+         blob4 AS model, blob5 AS kind, blob6 AS outcome,
          SUM(_sample_interval) AS calls,
          SUM(_sample_interval * double1) / SUM(_sample_interval) AS avg_ms,
          SUM(_sample_interval * double2) AS units,

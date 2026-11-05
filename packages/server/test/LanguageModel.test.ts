@@ -9,7 +9,15 @@ import { textCost, textModels } from '../src/providers/Costs.ts'
 import { makeTextCompletions, TextCompletions } from '../src/providers/Text.ts'
 import { Redacted } from 'effect'
 
-const task: TextTask = { model: textModels.deepSeekFlash, kind: 'plan', deadline: deadlines.chat, maxTokens: 1024 }
+const task: TextTask = {
+  model: textModels.museSpark,
+  kind: 'plan',
+  deadline: deadlines.chat,
+  maxTokens: 1024,
+  reasoningEffort: 'minimal',
+}
+/** A text failure as the provider failure a caller handles. */
+const errorOf = providerErrorOf(task.model.provider)
 const usage = { prompt_tokens: 1000, completion_tokens: 100 }
 const completion = (content: string | null, toolCalls: ReadonlyArray<unknown> = [], finish = 'stop') => ({
   choices: [{ message: { content, tool_calls: toolCalls }, finish_reason: finish }],
@@ -66,7 +74,7 @@ const text = Effect.flatMap(LanguageModel.LanguageModel, (model) => model.genera
 const unknownOnce = (answers: ReadonlyArray<unknown>) => {
   const { asked, calls, layer } = gateway(answers)
   return Effect.gen(function* () {
-    expect(providerErrorOf('litellm')(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+    expect(errorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
     expect(asked).toHaveLength(1)
     expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
   }).pipe(Effect.provide(layer))
@@ -74,7 +82,7 @@ const unknownOnce = (answers: ReadonlyArray<unknown>) => {
 
 describe('the paid text route', () => {
   it.effect("counts, prices and fails Meta's model as Meta's, at Meta's price", () => {
-    const chat: TextTask = { ...task, model: textModels.museSpark, kind: 'chat' }
+    const chat: TextTask = { ...task, kind: 'chat' }
     const { calls, layer } = gateway([completion('Hello'), Response.json({}, { status: 400 })], chat)
     return Effect.gen(function* () {
       yield* text
@@ -88,7 +96,7 @@ describe('the paid text route', () => {
           costMicroUsd: 1675,
         },
       ])
-      expect(providerErrorOf('meta-spark')(yield* Effect.flip(text))).toMatchObject({
+      expect(errorOf(yield* Effect.flip(text))).toMatchObject({
         provider: 'meta-spark',
         reason: { _tag: 'Refused' },
       })
@@ -101,16 +109,23 @@ describe('the paid text route', () => {
       return Effect.gen(function* () {
         expect((yield* object).value).toEqual({ ok: true })
         expect(asked[0]).toMatchObject({
-          model: 'styld-deepseek-v4.1-flash',
+          model: 'muse-spark-1.3',
           stream: false,
           max_tokens: 1024,
-          reasoning_effort: 'none',
+          reasoning_effort: 'minimal',
           response_format: { type: 'json_object' },
         })
         expect(JSON.stringify(asked[0]?.['messages'])).toContain('JSON schema')
         expect(JSON.stringify(asked[0]?.['messages'])).toContain('required')
         expect(calls).toEqual([
-          { provider: 'litellm', model: task.model.id, kind: 'plan', outcome: 'ok', units: 1100, costMicroUsd: 396 },
+          {
+            provider: 'meta-spark',
+            model: task.model.id,
+            kind: 'plan',
+            outcome: 'ok',
+            units: 1100,
+            costMicroUsd: 1675,
+          },
         ])
       }).pipe(Effect.provide(layer))
     })
@@ -125,9 +140,7 @@ describe('the paid text route', () => {
     it.effect('rejects unreadable, empty, unpriced and legacy answers without retry', () => {
       const { asked, layer } = gateway([raw])
       return Effect.gen(function* () {
-        expect(providerErrorOf('litellm')(yield* Effect.flip(text))).toMatchObject({
-          reason: { _tag: 'OutcomeUnknown' },
-        })
+        expect(errorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
         expect(asked).toHaveLength(1)
       }).pipe(Effect.provide(layer))
     })
@@ -135,9 +148,7 @@ describe('the paid text route', () => {
   it.effect('rejects valid JSON that violates the requested schema', () => {
     const { asked, layer } = gateway([completion('{"ok":"yes"}')])
     return Effect.gen(function* () {
-      expect(providerErrorOf('litellm')(yield* Effect.flip(object))).toMatchObject({
-        reason: { _tag: 'OutcomeUnknown' },
-      })
+      expect(errorOf(yield* Effect.flip(object))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
       expect(asked).toHaveLength(1)
     }).pipe(Effect.provide(layer))
   })
@@ -146,9 +157,7 @@ describe('the paid text route', () => {
     it.effect(`does not accept a structured answer with finish reason ${finish}`, () => {
       const { asked, calls, layer } = gateway([completion('{"ok":true}', [], finish)])
       return Effect.gen(function* () {
-        expect(providerErrorOf('litellm')(yield* Effect.flip(object))).toMatchObject({
-          reason: { _tag: 'OutcomeUnknown' },
-        })
+        expect(errorOf(yield* Effect.flip(object))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
         expect(asked).toHaveLength(1)
         expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
       }).pipe(Effect.provide(layer))
@@ -175,7 +184,7 @@ describe('the paid text route', () => {
     it.effect(`does not retry an HTTP ${status} refusal`, () => {
       const { asked, layer } = gateway([Response.json({ error: { code: 'refused' } }, { status })])
       return Effect.gen(function* () {
-        expect(providerErrorOf('litellm')(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'Refused' } })
+        expect(errorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'Refused' } })
         expect(asked).toHaveLength(1)
       }).pipe(Effect.provide(layer))
     })
@@ -203,7 +212,7 @@ describe('the paid text route', () => {
     return Effect.gen(function* () {
       const fiber = yield* Effect.forkChild(Effect.flip(text))
       yield* TestClock.adjust(deadlines.chat)
-      expect(providerErrorOf('litellm')(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(errorOf(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
       expect(asked).toHaveLength(1)
       expect(signals[0]?.aborted).toBe(true)
       expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
@@ -359,7 +368,7 @@ describe('the paid text route, streamed (Styld’s replies)', () => {
       expect(asked[0]).toMatchObject({ stream: true, stream_options: { include_usage: true } })
       expect(calls).toEqual([
         expect.objectContaining({
-          provider: 'litellm',
+          provider: 'meta-spark',
           outcome: 'ok',
           units: 1100,
           costMicroUsd: textCost(task.model, 1000, 100),
@@ -373,9 +382,7 @@ describe('the paid text route, streamed (Styld’s replies)', () => {
       sse([delta('Wear the coat.'), { choices: [{ delta: {}, finish_reason: 'stop' }] }]),
     ])
     return Effect.gen(function* () {
-      expect(providerErrorOf('litellm')(yield* Effect.flip(streamedText))).toMatchObject({
-        reason: { _tag: 'OutcomeUnknown' },
-      })
+      expect(errorOf(yield* Effect.flip(streamedText))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
       expect(calls.map(({ outcome, costMicroUsd }) => [outcome, costMicroUsd])).toEqual([['unknown', 0]])
     }).pipe(Effect.provide(layer))
   })
@@ -388,7 +395,7 @@ describe('the paid text route, streamed (Styld’s replies)', () => {
     it.effect(`an HTTP ${String(status)} before any words is ${reason}, sent once`, () => {
       const { asked, layer } = gateway([Response.json({}, { status })])
       return Effect.gen(function* () {
-        expect(providerErrorOf('litellm')(yield* Effect.flip(streamedText))).toMatchObject({ reason: { _tag: reason } })
+        expect(errorOf(yield* Effect.flip(streamedText))).toMatchObject({ reason: { _tag: reason } })
         expect(asked).toHaveLength(1)
       }).pipe(Effect.provide(layer))
     })
@@ -413,7 +420,7 @@ describe('the paid text route, streamed (Styld’s replies)', () => {
       // The request is on its way and its first words in before the clock moves past the deadline.
       yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 50)))
       yield* TestClock.adjust(deadlines.chat)
-      expect(providerErrorOf('litellm')(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(errorOf(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
       expect(asked).toHaveLength(1)
       expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
     }).pipe(Effect.provide(layer))

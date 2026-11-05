@@ -1267,7 +1267,7 @@
     "termsTitle": "Pogoji uporabe",
     "privacyLink": "Zasebnost",
     "termsLink": "Pogoji",
-    "updated": "Zadnja sprememba: 4. november 2026",
+    "updated": "Zadnja sprememba: 5. november 2026",
     "questions": "Vprašanja ali zahteve:",
     "privacy": {
       "whoHeading": "Kdo smo",
@@ -1284,7 +1284,7 @@
       "sharing": "Deljenje je tvoja izbira, za vsako stvar posebej. Ko objaviš profil, lahko tablo narediš javno ali deliš videz. Drugi potem vidijo to tablo ali videz in kose na njem, nikoli cele garderobe. Tablo lahko kadar koli znova narediš zasebno.",
       "aiHeading": "Kako uporabljamo umetno inteligenco",
       "ai": "Da najde tvoja oblačila, Styld pošlje manjšo kopijo fotografije ali tvoj video Metinemu modelu SAM; videe pri Meti izbrišemo, ko so prebrani. Čiste slike iz izrezov nariše Metin Muse Image, in sicer njegova različica Standard, na kateri Meta ne uči svojih modelov. Modeli umetne inteligence pri Cloudflaru (Workers AI) razvrščajo in preverjajo fotografije in slike.",
-      "aiProviders": "Tvoji pogovori s Styldom gredo Metinemu modelu Muse Spark, in sicer njegovi različici Standard, na kateri Meta ne uči svojih modelov. Drugo besedilo, kot so opisi tvojih kosov, gre prek našega lastnega prehoda modelu DeepSeek pri Alibaba Cloud Model Studio. Ko sliko zavrtiš, gre prek Vercel AI Gateway Googlovemu modelu Veo narisana slika, ne tvoja fotografija.",
+      "aiProviders": "Tvoji pogovori s Styldom in drugo besedilo, kot so imena in opisi tvojih kosov, stavek, s katerim začneš tablo razpoloženja, in besede, ki jih objaviš, gredo Metinemu modelu Muse Spark, in sicer njegovi različici Standard, na kateri Meta ne uči svojih modelov. Ko sliko zavrtiš, gre prek Vercel AI Gateway Googlovemu modelu Veo narisana slika, ne tvoja fotografija.",
       "providersHeading": "Kdo nam pomaga",
       "providers": "Styld gostuje Cloudflare: spletno stran in strežnike, podatkovno zbirko, hrambo fotografij (v EU), obdelavo slik, e-pošto za prijavo in naše dnevnike. Google izvede prijavo z Googlom, če jo izbereš. Dodo Payments sprejema plačila. Zgoraj navedeni ponudniki umetne inteligence obdelajo le, kar posamezno opravilo potrebuje.",
       "noSale": "Tvojih osebnih podatkov ne prodajamo.",

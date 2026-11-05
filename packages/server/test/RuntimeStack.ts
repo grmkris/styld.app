@@ -59,8 +59,6 @@ export const makeStack = (generation: string) =>
           TEST_FIXTURES: worker.url,
           META_API_KEY: Redacted.make('native-test-meta-key'),
           VIDEO_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
-          STYLD_LITELLM_URL: 'https://native-text.invalid/v1',
-          STYLD_LITELLM_KEY: Redacted.make('native-test-text-key'),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
             JSON.stringify({

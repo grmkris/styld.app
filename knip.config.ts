@@ -11,6 +11,7 @@ export default {
         'tools/ai-usage-report.ts',
         'tools/preview-capture.ts',
         'tools/provider-live.ts',
+        'tools/text-live.ts',
         'tools/grant-membership.ts',
         'tools/once/[a-z]*.ts',
         'tools/import-v1/{Import,Export}.ts',
