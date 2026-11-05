@@ -137,7 +137,7 @@ export const UpdatePaper = Command.define('UpdatePaper', {
 })
 
 export const WaitForExit = Command.define('WaitForExit', {
-  args: { id: Schema.String },
+  args: { id: BoardItemId },
   messages: [Message.CompletedExit],
   execute: ({ id }) => Effect.sleep(exitDuration).pipe(Effect.as(Message.CompletedExit({ id }))),
 })

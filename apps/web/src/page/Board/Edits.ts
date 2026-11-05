@@ -1,4 +1,4 @@
-import type { Board, BoardItem } from '@styld/protocol'
+import type { Board, BoardItem, BoardItemId } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import type { Update } from 'foldkit'
@@ -112,7 +112,7 @@ export const redone = (model: Model): UpdateReturn =>
 /** Take the next fresh id, asking for more when few are left. */
 export const takeId = (
   model: Model,
-): Option.Option<{ readonly id: string; readonly model: Model; readonly refill: boolean }> =>
+): Option.Option<{ readonly id: BoardItemId; readonly model: Model; readonly refill: boolean }> =>
   Option.map(Array.head(model.ids), (id) => ({
     id,
     model: modifyFields(model, { ids: (ids) => Array.drop(ids, 1) }),

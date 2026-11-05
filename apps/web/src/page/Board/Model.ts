@@ -49,7 +49,7 @@ export const ownBoard = (board: BoardData): Option.Option<{ readonly name: strin
 export const Gesture = defineTaggedUnion({
   Idle: {},
   Dragging: {
-    id: Schema.String,
+    id: BoardItemId,
     isTouch: Schema.Boolean,
     start: Pointer,
     now: Pointer,
@@ -57,7 +57,7 @@ export const Gesture = defineTaggedUnion({
     before: Schema.Array(BoardItem),
   },
   Pinching: {
-    id: Schema.String,
+    id: BoardItemId,
     startA: Pointer,
     startB: Pointer,
     a: Pointer,
@@ -66,7 +66,7 @@ export const Gesture = defineTaggedUnion({
     before: Schema.Array(BoardItem),
   },
   Turning: {
-    id: Schema.String,
+    id: BoardItemId,
     reachX: Schema.Number,
     reachY: Schema.Number,
     start: Pointer,
@@ -125,7 +125,7 @@ export const LookSave = defineTaggedUnion({
 export type LookSave = typeof LookSave.Type
 
 /** Select mode (T-16): taps tick items for a look instead of moving them, and what is ticked, by item id. */
-export const Ticks = defineTaggedUnion({ Off: {}, On: { itemIds: Schema.Array(Schema.String) } })
+export const Ticks = defineTaggedUnion({ Off: {}, On: { itemIds: Schema.Array(BoardItemId) } })
 export type Ticks = typeof Ticks.Type
 
 /** Pinning from the picker, or taking a pin off the board. */
@@ -165,7 +165,7 @@ export const Model = Schema.Struct({
   addSheet: AddSheet.Model,
   /** Items on their way out, kept on the page until their exit animation ends. */
   leaving: Schema.Array(BoardItem),
-  maybeSelectedId: Schema.Option(Schema.String),
+  maybeSelectedId: Schema.Option(BoardItemId),
   ticks: Ticks,
   gesture: Gesture,
   /** How many page pixels one table unit is; the paper reports its width. */

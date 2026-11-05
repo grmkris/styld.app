@@ -36,14 +36,12 @@ import {
 /** The most pictures one paste or drop sends at once. */
 const picturesAtOnce = 4
 
-const itemIdOf = (id: string) => Schema.decodeUnknownSync(BoardItemId)(id)
-
 /** Put a new item on the table with the next fresh id and select it. */
 const added = (model: Model, make: (id: BoardItemId) => BoardItem): UpdateReturn =>
   Option.match(takeId(model), {
     onNone: () => ({ model }),
     onSome: ({ id, model: next, refill }) => {
-      const item = make(itemIdOf(id))
+      const item = make(id)
       const addition = committed(
         modifyFields(next, { maybeSelectedId: () => Option.some(item.id) }),
         model.items,
@@ -53,20 +51,17 @@ const added = (model: Model, make: (id: BoardItemId) => BoardItem): UpdateReturn
     },
   })
 
-export const addedPiece = (model: Model, pieceId: string): UpdateReturn => {
+export const addedPiece = (model: Model, pieceId: PieceId): UpdateReturn => {
   const onTable = Array.filter(model.items, (item) => Schema.is(PieceItem)(item) && item.pieceId === pieceId)
   return Array.match(onTable, {
-    onEmpty: () =>
-      added(model, (id) =>
-        PieceItem.make({ id, pieceId: Schema.decodeUnknownSync(PieceId)(pieceId), ...landing(model.items, 380) }),
-      ),
+    onEmpty: () => added(model, (id) => PieceItem.make({ id, pieceId, ...landing(model.items, 380) })),
     onNonEmpty: ([first]) => ({ model: modifyFields(model, { maybeSelectedId: () => Option.some(first.id) }) }),
   })
 }
 
 /** A look's pieces on the table, as one undo step: those already there stay where they are, and the first new one is
  * selected. */
-export const addedPieces = (model: Model, pieceIds: ReadonlyArray<string>): UpdateReturn => {
+export const addedPieces = (model: Model, pieceIds: ReadonlyArray<PieceId>): UpdateReturn => {
   const onTable = new Set<string>(piecesOnTable(model.items))
   const fresh = Array.dedupe(pieceIds.filter((pieceId) => !onTable.has(pieceId)))
   const placed = Array.reduce(fresh, { model, items: model.items, refill: false }, (state, pieceId) =>
@@ -78,8 +73,8 @@ export const addedPieces = (model: Model, pieceIds: ReadonlyArray<string>): Upda
         items: Array.append(
           state.items,
           PieceItem.make({
-            id: itemIdOf(id),
-            pieceId: Schema.decodeUnknownSync(PieceId)(pieceId),
+            id,
+            pieceId,
             ...landing(state.items, 380),
           }),
         ),
@@ -126,25 +121,26 @@ export const placedPicture = (model: Model, imageId: BoardImageId): UpdateReturn
   added(model, (id) => ImageItem.make({ id, imageId, ...landing(model.items, 420) }))
 
 /** Change one item and keep it selected, as one undo step. */
-const changed = (model: Model, id: string, change: (item: BoardItem) => BoardItem): UpdateReturn =>
+const changed = (model: Model, id: BoardItemId, change: (item: BoardItem) => BoardItem): UpdateReturn =>
   Option.match(findItem(model.items, id), {
     onNone: () => ({ model }),
     onSome: (item) => committed(model, model.items, withItem(model.items, change(item))),
   })
 
-export const flipped = (model: Model, id: string) => changed(model, id, (item) => ({ ...item, flipped: !item.flipped }))
+export const flipped = (model: Model, id: BoardItemId) =>
+  changed(model, id, (item) => ({ ...item, flipped: !item.flipped }))
 
-export const textUpdated = (model: Model, id: string, text: string) =>
+export const textUpdated = (model: Model, id: BoardItemId, text: string) =>
   text.trim().length === 0
     ? { model }
     : changed(model, id, (item) => (Schema.is(TextItem)(item) ? { ...item, text } : item))
 
-export const styleSelected = (model: Model, id: string, style: TextStyle) =>
+export const styleSelected = (model: Model, id: BoardItemId, style: TextStyle) =>
   changed(model, id, (item) => (Schema.is(TextItem)(item) ? { ...item, style } : item))
 
-export const layered = (model: Model, id: string) => committed(model, model.items, toggledLayer(model.items, id))
+export const layered = (model: Model, id: BoardItemId) => committed(model, model.items, toggledLayer(model.items, id))
 
-export const duplicated = (model: Model, id: string): UpdateReturn =>
+export const duplicated = (model: Model, id: BoardItemId): UpdateReturn =>
   Option.match(findItem(model.items, id), {
     onNone: () => ({ model }),
     onSome: (item) =>
@@ -152,7 +148,7 @@ export const duplicated = (model: Model, id: string): UpdateReturn =>
   })
 
 /** Take an item off: it plays its exit, and "Removed. Undo" offers the table back for a few seconds. */
-export const removed = (model: Model, id: string): UpdateReturn =>
+export const removed = (model: Model, id: BoardItemId): UpdateReturn =>
   Option.match(findItem(model.items, id), {
     onNone: () => ({ model }),
     onSome: (item) => {
@@ -185,7 +181,7 @@ export const toastElapsed = (model: Model, generation: number): UpdateReturn =>
     ? { model: modifyFields(model, { toast: () => Toast.Hidden() }) }
     : { model }
 
-export const exited = (model: Model, id: string): UpdateReturn => ({
+export const exited = (model: Model, id: BoardItemId): UpdateReturn => ({
   model: modifyFields(model, { leaving: (leaving) => Array.filter(leaving, (item) => item.id !== id) }),
 })
 
@@ -279,7 +275,7 @@ export const lookRequested = (model: Model): UpdateReturn => {
 }
 
 /** A tap in select mode ticks the item, or unticks it. */
-export const tickToggled = (model: Model, id: string): UpdateReturn =>
+export const tickToggled = (model: Model, id: BoardItemId): UpdateReturn =>
   Ticks.match(model.ticks, {
     Off: () => ({ model }),
     On: ({ itemIds }) => ({
