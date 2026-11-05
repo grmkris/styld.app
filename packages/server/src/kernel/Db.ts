@@ -25,12 +25,14 @@ const messagesOf = (cause: unknown): ReadonlyArray<string> => {
 
 const constraintFailed = /\b(?:UNIQUE|FOREIGN KEY|NOT NULL|CHECK) constraint failed\b|SQLITE_CONSTRAINT/
 
-/** Whether D1 refused a row by a table's constraint, rather than not answering. */
+/** Whether D1 refused a row by a table's constraint, rather than not answering.
+ * @internal Exported for its tests. */
 export const refusedByConstraint = (cause: unknown) =>
   messagesOf(cause).some((message) => constraintFailed.test(message))
 
 /** The kind of a D1 failure, bounded for a log line: SQLite's result code or D1's phrase, never the message, which
- * carries the statement. */
+ * carries the statement.
+ * @internal Exported for its tests. */
 export const reasonOf = (cause: unknown) => {
   for (const message of messagesOf(cause)) {
     const code = /\bSQLITE_[A-Z_]+\b/.exec(message) ?? /\bD1_[A-Z_]+\b/.exec(message)

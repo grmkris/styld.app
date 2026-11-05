@@ -107,7 +107,8 @@ type FetchingWrite = 'piece_add' | 'link_import' | 'picture_pin'
 
 /** The operation a write's fetch runs under, derived from the write's whole id and the write: a piece added from a
  * photo or a shop's page, or a picture pinned from the web, fetches once, and its repeat answers from both receipts. A
- * digest, so two ids that differ anywhere name two fetches (a 64-character id cut short would not). */
+ * digest, so two ids that differ anywhere name two fetches (a 64-character id cut short would not).
+ * @internal Exported for its tests. */
 export const fetchOperation = (operationId: OperationId, tool: FetchingWrite) =>
   Effect.map(digestOf(JSON.stringify([tool, operationId])), (digest) => OperationId.make(`link-${digest}`))
 
