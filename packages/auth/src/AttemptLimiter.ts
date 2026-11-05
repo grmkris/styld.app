@@ -1,4 +1,7 @@
+import { authAttemptBuckets } from '@styld/db'
 import { Password } from '@yielded/auth'
+import { asc, inArray, lte, sql } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/d1'
 import { EmailEntryBudget, emailBudgets } from './EmailEntry.ts'
 import { Effect, Layer, Redacted, Schema } from 'effect'
 import type * as D1Client from '@effect/sql-d1/D1Client'
@@ -6,25 +9,60 @@ import type * as D1Client from '@effect/sql-d1/D1Client'
 // @effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter defines the native Worker database binding.
 export type D1Source<R = never> = Effect.Effect<D1Client.D1ClientConfig['db'], never, R>
 
-const encoder = new TextEncoder()
-const databaseNow = "CAST(unixepoch('subsec') * 1000 AS INTEGER)"
-// D1 serializes this single conditional write across Workers. A rejected attempt
-// does not debit below zero; expiry means the bucket has had time to refill fully.
-const consume = `
-INSERT INTO auth_attempt_buckets (key, tokens, updated_at, expires_at)
-VALUES (?, ? - 1, ${databaseNow}, ${databaseNow} + ?)
-ON CONFLICT(key) DO UPDATE SET
-  tokens = min(?, auth_attempt_buckets.tokens + max(0, excluded.updated_at - auth_attempt_buckets.updated_at) * 1.0 * ? / ?) - 1,
-  updated_at = max(excluded.updated_at, auth_attempt_buckets.updated_at),
-  expires_at = max(excluded.expires_at, auth_attempt_buckets.expires_at)
-WHERE min(?, auth_attempt_buckets.tokens + max(0, excluded.updated_at - auth_attempt_buckets.updated_at) * 1.0 * ? / ?) >= 1
-RETURNING key`
-const cleanup = `DELETE FROM auth_attempt_buckets WHERE key IN (
-  SELECT key FROM auth_attempt_buckets WHERE expires_at <= ${databaseNow} ORDER BY expires_at LIMIT 64
-)`
+type Database = ReturnType<typeof drizzle>
 
-/** The attempt buckets could not be read or written. */
-class AttemptStoreUnavailable extends Schema.TaggedError<AttemptStoreUnavailable>()('AttemptStoreUnavailable', {}) {}
+const encoder = new TextEncoder()
+const buckets = authAttemptBuckets
+/** D1's clock in epoch milliseconds, so every Worker's write is measured by the same clock. */
+const databaseNow = sql<number>`CAST(unixepoch('subsec') * 1000 AS INTEGER)`
+
+/** The statements that take one token from a bucket, for one batch: up to 64 expired buckets are swept, then the token
+ * is taken. D1 serializes this single conditional write across Workers. A rejected attempt does not debit below zero
+ * (the update's condition refuses it and nothing is returned); expiry means the bucket has had time to refill fully. */
+const consume = (
+  db: Database,
+  bucket: string,
+  { limit, windowMillis }: { readonly limit: number; readonly windowMillis: number },
+) => {
+  const refilled = sql<number>`min(${limit}, ${buckets.tokens} + max(0, excluded.updated_at - ${buckets.updatedAt}) * 1.0 * ${limit} / ${windowMillis})`
+  return [
+    db
+      .delete(buckets)
+      .where(
+        inArray(
+          buckets.key,
+          db
+            .select({ key: buckets.key })
+            .from(buckets)
+            .where(lte(buckets.expiresAt, databaseNow))
+            .orderBy(asc(buckets.expiresAt))
+            .limit(64),
+        ),
+      ),
+    db
+      .insert(buckets)
+      .values({
+        key: bucket,
+        tokens: limit - 1,
+        updatedAt: databaseNow,
+        expiresAt: sql<number>`${databaseNow} + ${windowMillis}`,
+      })
+      .onConflictDoUpdate({
+        target: buckets.key,
+        set: {
+          tokens: sql<number>`${refilled} - 1`,
+          updatedAt: sql<number>`max(excluded.updated_at, ${buckets.updatedAt})`,
+          expiresAt: sql<number>`max(excluded.expires_at, ${buckets.expiresAt})`,
+        },
+        setWhere: sql`${refilled} >= 1`,
+      })
+      .returning({ key: buckets.key }),
+  ] as const
+}
+
+/** The bucket a digest names: lower-case hex, so D1 never holds the identifier itself. */
+const hex = (digest: ArrayBuffer) =>
+  Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 
 const hmacKey = (secret: Redacted.Redacted) =>
   Effect.tryPromise(() =>
@@ -36,7 +74,7 @@ const hmacKey = (secret: Redacted.Redacted) =>
 /** Take one token from the D1 bucket named by `parts`: true when there was one. The bucket key is
  * an HMAC of the parts, so D1 never holds the identifier itself. */
 const takeToken = (
-  db: Effect.Success<D1Source>,
+  db: Database,
   key: CryptoKey,
   parts: ReadonlyArray<string>,
   budget: { readonly limit: number; readonly windowMillis: number },
@@ -45,16 +83,8 @@ const takeToken = (
     const digest = yield* Effect.tryPromise(() =>
       crypto.subtle.sign('HMAC', key, encoder.encode(JSON.stringify(parts))),
     )
-    const bucket = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-    const { limit, windowMillis } = budget
-    const result = yield* Effect.tryPromise(() =>
-      db.batch([
-        db.prepare(cleanup),
-        db.prepare(consume).bind(bucket, limit, windowMillis, limit, limit, windowMillis, limit, limit, windowMillis),
-      ]),
-    )
-    if (!result.every((part) => part.success)) return yield* AttemptStoreUnavailable.make({})
-    return result[1]?.results.length === 1
+    const [, taken] = yield* Effect.tryPromise(() => db.batch(consume(db, hex(digest), budget)))
+    return taken.length === 1
   })
 
 /** Email entry's durable per-address budgets: codes asked for, and codes tried. They hold across
@@ -63,7 +93,7 @@ export const emailEntryBudgetLayer = <R>(raw: D1Source<R>, secret: Redacted.Reda
   Layer.effect(
     EmailEntryBudget,
     Effect.gen(function* () {
-      const db = yield* raw
+      const db = drizzle(yield* raw)
       const key = yield* hmacKey(secret).pipe(Effect.orDie)
       const take = (kind: string, email: string, budget: { readonly limit: number; readonly windowMillis: number }) =>
         takeToken(db, key, ['styld/email-entry/v1', kind, email], budget).pipe(Effect.orElseSucceed(() => false))
@@ -78,7 +108,7 @@ export const passwordAttemptLimiter = <R>(raw: D1Source<R>, secret: Redacted.Red
   Layer.effect(
     Password.PasswordAttemptLimiter,
     Effect.gen(function* () {
-      const db = yield* raw
+      const db = drizzle(yield* raw)
       const key = yield* Effect.tryPromise({
         try: () =>
           crypto.subtle.importKey(
@@ -106,29 +136,11 @@ export const passwordAttemptLimiter = <R>(raw: D1Source<R>, secret: Redacted.Red
               ),
             catch: () => Password.PasswordUnavailable.make({}),
           })
-          const bucket = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-          const result = yield* Effect.tryPromise({
-            try: () =>
-              db.batch([
-                db.prepare(cleanup),
-                db
-                  .prepare(consume)
-                  .bind(
-                    bucket,
-                    budget.limit,
-                    budget.windowMillis,
-                    budget.limit,
-                    budget.limit,
-                    budget.windowMillis,
-                    budget.limit,
-                    budget.limit,
-                    budget.windowMillis,
-                  ),
-              ]),
+          const [, taken] = yield* Effect.tryPromise({
+            try: () => db.batch(consume(db, hex(digest), budget)),
             catch: () => Password.PasswordUnavailable.make({}),
           })
-          if (!result.every((part) => part.success)) return yield* Password.PasswordUnavailable.make({})
-          if (result[1]?.results.length !== 1) return yield* Password.PasswordRejected.make({})
+          if (taken.length !== 1) return yield* Password.PasswordRejected.make({})
         }),
       })
     }),

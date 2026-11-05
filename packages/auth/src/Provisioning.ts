@@ -1,7 +1,7 @@
-import { accounts } from '@styld/db'
-import { sql } from 'drizzle-orm'
+import { accounts, authMirror } from '@styld/db'
+import { and, eq, isNotNull } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
-import { AppAuth, credentials, emailCredentials, identifiers } from './storage.ts'
+import { AppAuth, emailCredentials } from './storage.ts'
 
 // An account the person has not made yet, made for them the way email-code registration makes one (EmailPersistence.ts
 // `makeRegistrationMapping`): the enabled account, its verified `email` identifier, the authority credential and the
@@ -10,28 +10,39 @@ import { AppAuth, credentials, emailCredentials, identifiers } from './storage.t
 
 type Database = ReturnType<typeof drizzle>
 
+const { identifiers, credentials } = authMirror
+
 /** The email module's id: the namespace Yielded's code sign-in and registration are bound to. */
 const emailModuleId = AppAuth.strategies.email.moduleId
 
 /** An address as the sign-in form decodes it: trimmed and lower-cased. */
 const normalized = (email: string) => email.trim().toLowerCase()
 
+/** An active, verified email identifier of an enabled account. */
+const verifiedEmailOfEnabled = and(
+  eq(identifiers.namespace, 'email'),
+  eq(identifiers.active, true),
+  isNotNull(identifiers.verifiedAt),
+  eq(accounts.enabled, true),
+)
+
 /** The enabled account a verified email signs in to, as a query for its id. */
 export const accountOfEmail = (db: Database, email: string) =>
-  // The managed identifier table is typed generically, so its columns are named in SQL (as EmailPersistence.ts does).
-  db.all<{ readonly accountId: string }>(
-    sql`select a.id as accountId from ${identifiers} i join ${accounts} a on a.id = i.subject_id
-        where i.namespace = 'email' and i.value = ${normalized(email)} and i.active = 1
-          and i.verified_at is not null and a.enabled = 1 limit 1`,
-  )
+  db
+    .select({ accountId: accounts.id })
+    .from(identifiers)
+    .innerJoin(accounts, eq(accounts.id, identifiers.subjectId))
+    .where(and(eq(identifiers.value, normalized(email)), verifiedEmailOfEnabled))
+    .limit(1)
 
 /** The verified address an enabled account signs in with, as a query. */
 export const emailOfAccount = (db: Database, accountId: string) =>
-  db.all<{ readonly email: string }>(
-    sql`select i.value as email from ${identifiers} i join ${accounts} a on a.id = i.subject_id
-        where i.subject_id = ${accountId} and i.namespace = 'email' and i.active = 1
-          and i.verified_at is not null and a.enabled = 1 limit 1`,
-  )
+  db
+    .select({ email: identifiers.value })
+    .from(identifiers)
+    .innerJoin(accounts, eq(accounts.id, identifiers.subjectId))
+    .where(and(eq(identifiers.subjectId, accountId), verifiedEmailOfEnabled))
+    .limit(1)
 
 /** What a new account is made of: its ids and revisions, random like registration's, and when its email counts as
  * verified (the operator vouches for it: it is the address the person used on v1). */
@@ -58,14 +69,20 @@ export const createEmailAccount = (db: Database, account: NewEmailAccount) => {
       displayName: account.displayName,
       createdAt: account.at,
     }),
-    db.run(
-      sql`insert into ${identifiers} (namespace, value, subject_id, revision, verified_at, active)
-          values ('email', ${email}, ${account.accountId}, ${account.bindingRevision}, ${account.at.getTime()}, 1)`,
-    ),
-    db.run(
-      sql`insert into ${credentials} (credential_id, subject_id, revision, active)
-          values (${account.credentialId}, ${account.accountId}, ${account.credentialRevision}, 1)`,
-    ),
+    db.insert(identifiers).values({
+      namespace: 'email',
+      value: email,
+      subjectId: account.accountId,
+      revision: account.bindingRevision,
+      verifiedAt: account.at.getTime(),
+      active: true,
+    }),
+    db.insert(credentials).values({
+      credentialId: account.credentialId,
+      subjectId: account.accountId,
+      revision: account.credentialRevision,
+      active: true,
+    }),
     db.insert(emailCredentials).values({
       moduleId: emailModuleId,
       subjectId: account.accountId,
