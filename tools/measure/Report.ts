@@ -12,7 +12,7 @@ import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { Schema } from 'effect'
-import { escaped } from '../../packages/server/src/EdgeMeta.ts'
+import { escapeHtml } from '@styld/protocol/html'
 import { headline, metricNames } from '../quality/census.ts'
 
 const [a, b] = process.argv.slice(2)
@@ -197,6 +197,6 @@ if (htmlAt > 0) {
   const file = process.argv[htmlAt + 1] ?? 'report.html'
   await writeFile(
     file,
-    `<meta charset="utf-8"><title>Styld measurement</title><pre style="font: 14px/1.5 ui-monospace, monospace; padding: 1rem; white-space: pre-wrap">${escaped(markdown)}</pre>`,
+    `<meta charset="utf-8"><title>Styld measurement</title><pre style="font: 14px/1.5 ui-monospace, monospace; padding: 1rem; white-space: pre-wrap">${escapeHtml(markdown)}</pre>`,
   )
 }

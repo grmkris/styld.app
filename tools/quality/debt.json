@@ -1,5 +1,5 @@
 {
-  "dup.htmlEscapes": 4,
+  "dup.htmlEscapes": 1,
   "dup.patienceMillis": 3,
   "dup.unavailableHelpers": 48,
   "effect.catchCause": 3,
@@ -15,7 +15,7 @@
   "promise.runPromise": 3,
   "sql.fragments": 55,
   "sql.textSubqueries": 27,
-  "sql.wholeStatements": 47,
+  "sql.wholeStatements": 45,
   "web.colourLiterals": 21,
   "web.messageVariantsMax": 101,
   "web.stringIds": 122

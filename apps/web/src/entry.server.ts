@@ -6,6 +6,7 @@ import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/Cloud
 import * as Server from 'foldkit/experimental/server'
 import { SessionHttp } from '@styld/auth/config'
 import { catalogVersion, format } from '@styld/i18n'
+import { escapeHtml } from '@styld/protocol/html'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
@@ -94,12 +95,9 @@ const documentHead =
  * production's. */
 const shareImage = 'https://styld.app/og.jpg'
 
-const attribute = (value: string) =>
-  value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-
 const shareHead = (title: string, lang: string | undefined) => {
-  const description = attribute(format(lang === 'sl' ? 'sl' : 'en', 'landing.hero.lede', {}))
-  const name = attribute(title)
+  const description = escapeHtml(format(lang === 'sl' ? 'sl' : 'en', 'landing.hero.lede', {}))
+  const name = escapeHtml(title)
   return [
     `<meta name="description" content="${description}">`,
     '<meta property="og:site_name" content="Styld">',

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { decodeMeta, escaped, hasPreview, headTags } from '../src/EdgeMeta.ts'
+import { escapeHtml } from '@styld/protocol/html'
+import { decodeMeta, hasPreview, headTags } from '../src/EdgeMeta.ts'
 
 describe('link previews at the edge', () => {
   test.each([
@@ -14,7 +15,7 @@ describe('link previews at the edge', () => {
   )
 
   test('escapes what people wrote, so a name never closes the attribute or opens a tag', () => {
-    expect(escaped(`"><script>alert('x')</script>&`)).toBe(
+    expect(escapeHtml(`"><script>alert('x')</script>&`)).toBe(
       '&quot;&gt;&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;&amp;',
     )
     const tags = headTags(

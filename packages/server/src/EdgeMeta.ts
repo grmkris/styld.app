@@ -1,6 +1,8 @@
 // Link previews for public pages, at the edge: which pages get one, how to read it from the API Worker, and the tags
 // it adds to the page's head. Plain TypeScript, like the rest of the edge.
 
+import { escapeHtml } from '@styld/protocol/html'
+
 /** What a preview shows: the API Worker's `PageMeta`. */
 export interface PageMeta {
   readonly title: string
@@ -23,31 +25,19 @@ export const decodeMeta = (body: unknown): PageMeta | undefined => {
   return { title, description, image }
 }
 
-const entities: Readonly<Record<string, string>> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-}
-
-/** Text made safe inside a quoted HTML attribute.
- * @internal Exported for its tests. */
-export const escaped = (text: string): string => text.replace(/[&<>"']/gu, (character) => entities[character] ?? '')
-
 /** The head's tags for a preview of the page at `url`: description, Open Graph, Twitter's card and the canonical
  * address. The image is made absolute on the page's own origin. */
 export const headTags = (meta: PageMeta, url: string): string => {
   const image = meta.image === null ? undefined : new URL(meta.image, url).href
   return [
-    `<meta name="description" content="${escaped(meta.description)}">`,
+    `<meta name="description" content="${escapeHtml(meta.description)}">`,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="Styld">',
-    `<meta property="og:title" content="${escaped(meta.title)}">`,
-    `<meta property="og:description" content="${escaped(meta.description)}">`,
-    `<meta property="og:url" content="${escaped(url)}">`,
-    ...(image === undefined ? [] : [`<meta property="og:image" content="${escaped(image)}">`]),
+    `<meta property="og:title" content="${escapeHtml(meta.title)}">`,
+    `<meta property="og:description" content="${escapeHtml(meta.description)}">`,
+    `<meta property="og:url" content="${escapeHtml(url)}">`,
+    ...(image === undefined ? [] : [`<meta property="og:image" content="${escapeHtml(image)}">`]),
     `<meta name="twitter:card" content="${image === undefined ? 'summary' : 'summary_large_image'}">`,
-    `<link rel="canonical" href="${escaped(url)}">`,
+    `<link rel="canonical" href="${escapeHtml(url)}">`,
   ].join('')
 }
