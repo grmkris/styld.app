@@ -228,7 +228,8 @@ try {
   const phone = await browser.newContext({ ...devices['iPhone 13'], storageState: join(out, 'state.json') })
   const visitor = await browser.newContext({ ...devices['iPhone 13'] })
   const pages: Record<string, ReadonlyArray<PageReading>> = {}
-  const pageRuns = Math.max(3, Math.round(warm / 4))
+  // Fifteen loads a page at least: five were too few, and runtime noise on Cloudflare read as an SSR regression (5 Nov).
+  const pageRuns = Math.max(15, warm)
   for (const [name, path] of [['landing', '/'] as const, ...Object.entries(pageSteps(boardId))]) {
     const readings: PageReading[] = []
     for (let index = 0; index < pageRuns; index += 1)
