@@ -16,7 +16,7 @@ import { Schema } from 'effect'
 
 const [stage = 'preview', days = '7'] = process.argv.slice(2)
 const token = process.env['CLOUDFLARE_API_TOKEN']
-const account = process.env['CLOUDFLARE_ACCOUNT_ID'] ?? 'bceaeae4788dce3493514fde194b4a7e'
+const account = process.env['CLOUDFLARE_ACCOUNT_ID'] ?? '849414470335f8f59091e26df5ae86c5'
 if (token === undefined) throw new Error('Set CLOUDFLARE_API_TOKEN')
 if (!isStageName(stage) || !/^\d{1,3}$/.test(days))
   throw new Error(`Usage: bun tools/ai-usage-report.ts [${Object.keys(stages).join('|')}] [days]`)

@@ -6,7 +6,7 @@ Read `docs/DELIVERY.md`, `docs/ARCHITECTURE.md` and `docs/STATUS.md` before subs
 
 Work on main. Commit each coherent green change using explicit paths. Preserve concurrent work. Never stash, reset, restore foreign edits, bypass hooks, or replace unfinished features with placeholders. Run expensive work through `heavy --wait`; retain real exit status. Follow the machine-wide instructions in the parent workspace.
 
-Only isolated v2 Cloudflare resources and a workers.dev preview are authorized. Preserve v1, production DNS, mail records and provider resources. Do not copy production personal data into a public preview. Keep all secret values outside Git and tool output.
+Only isolated v2 Cloudflare resources are authorized: production at styld.app and the preview at dev.styld.app (its workers.dev URL too). Production is frozen while the Meta hackathon is judged: no promotions. v1 on Railway is being sunset (owner, 5 November 2026): its data is archived before anything is turned off, and irreversible deletes wait for the owner. Preserve mail records, the shared Railway LiteLLM gateway and provider resources. Do not copy production personal data into a public preview. Keep all secret values outside Git and tool output.
 
 ## Parallel work
 

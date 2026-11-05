@@ -5,12 +5,14 @@ import { verifyBrowser } from '../packages/server/test/BrowserAcceptance.ts'
 import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = new URL(process.env.STYLD_PREVIEW_URL ?? '')
-/** The v2 stages this readback may run against: the preview and production on their workers.dev URLs, and styld.app. */
+/** The v2 stages this readback may run against: the preview (dev.styld.app) and production (styld.app), and either
+ * on its workers.dev URL. */
 const isStageEdge = (hostname: string) =>
   hostname === 'styld.app' ||
+  hostname === 'dev.styld.app' ||
   (/^styldappv2-styldedge-(preview|production)-/.test(hostname) && hostname.endsWith('.workers.dev'))
 if (!isStageEdge(origin.hostname)) {
-  throw new Error('Acceptance requires a v2 stage URL: the preview, production, or styld.app')
+  throw new Error('Acceptance requires a v2 stage URL: dev.styld.app, styld.app, or a stage edge on workers.dev')
 }
 /** The release being read back: `STYLD_EXPECTED_RELEASE`, or the checkout's HEAD (what the deploy passes as `STYLD_RELEASE`). */
 const expectedRelease = (() => {

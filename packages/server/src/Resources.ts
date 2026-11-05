@@ -46,8 +46,8 @@ const dodoLive = {
 } as const
 
 /**
- * Every stage the stack is deployed or run as (docs/DEPLOYMENT.md). `preview` is the isolated workers.dev preview;
- * `production` is defined for the cutover and is not created before it; `local` (`alchemy dev`) and `local-native` (the
+ * Every stage the stack is deployed or run as (docs/DEPLOYMENT.md). `preview` is the isolated preview at dev.styld.app;
+ * `production` serves styld.app; `local` (`alchemy dev`) and `local-native` (the
  * native suite) run in workerd on this machine. Any other stage name stops the plan.
  */
 export const stages = {
@@ -71,6 +71,7 @@ export const stages = {
     aiCalls: 'styld_preview_ai_calls',
     firstRateLimitNamespace: 2610281,
     billing: dodoTest,
+    domain: 'dev.styld.app',
   },
   production: {
     environment: 'production',

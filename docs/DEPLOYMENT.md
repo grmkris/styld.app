@@ -5,16 +5,18 @@ deployment's facts (`packages/server/src/Resources.ts` › `stages`): `STYLD_ENV
 engines may index it (the edge's `ROBOTS`), the Analytics Engine dataset its provider calls are counted in, and the
 block of Workers RateLimit namespace ids its paces use. Any other stage name stops the plan.
 
-| Stage          | Environment | Robots  | Analytics dataset           | Rate-limit namespaces | Deployed                                             |
-| -------------- | ----------- | ------- | --------------------------- | --------------------- | ---------------------------------------------------- |
-| `preview`      | preview     | noindex | `styld_preview_ai_calls`    | 2610281–2610289       | yes: the isolated workers.dev preview                |
-| `production`   | production  | index   | `styld_production_ai_calls` | 2611001–2611009       | no: defined for the cutover, never created before it |
-| `local`        | local       | noindex | `styld_local_ai_calls`      | 2619001–2619009       | `alchemy dev` on this machine                        |
-| `local-native` | local       | noindex | `styld_local_ai_calls`      | 2619101–2619109       | the native suite, in workerd                         |
+| Stage          | Environment | Robots  | Analytics dataset           | Rate-limit namespaces | Deployed                                               |
+| -------------- | ----------- | ------- | --------------------------- | --------------------- | ------------------------------------------------------ |
+| `preview`      | preview     | noindex | `styld_preview_ai_calls`    | 2610281–2610289       | yes: `https://dev.styld.app` (and its workers.dev URL) |
+| `production`   | production  | index   | `styld_production_ai_calls` | 2611001–2611009       | yes: `https://styld.app` (frozen while judged)         |
+| `local`        | local       | noindex | `styld_local_ai_calls`      | 2619001–2619009       | `alchemy dev` on this machine                          |
+| `local-native` | local       | noindex | `styld_local_ai_calls`      | 2619101–2619109       | the native suite, in workerd                           |
 
-Only isolated v2 Cloudflare resources and the preview's workers.dev URL are authorized. Each stage has its own D1
-database, R2 bucket (EU jurisdiction), queues and Durable Object namespaces; the API and SSR Workers have no public
-URL, the edge Worker owns the workers.dev URL, and no custom domain is attached.
+Each stage has its own D1 database, R2 bucket (EU jurisdiction), queues and Durable Object namespaces; the API and SSR
+Workers have no public URL. The edge Worker serves the stage's custom domain (`domain` in `Resources.ts`: styld.app,
+dev.styld.app) and keeps its workers.dev URL for operator readbacks. The auth origin is the custom domain, so a session
+made on one host is not valid on the other. dev.styld.app was v1's Railway dev host until 5 November 2026; the zone
+export from before the switch is `~/private/styld-prod/zone-2026-11-05.txt`.
 
 ## State
 
