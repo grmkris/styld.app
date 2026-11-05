@@ -82,14 +82,20 @@ export type Context = { readonly signedIn: boolean }
 export const load = (model: Model, { signedIn }: Context): ReadonlyArray<Command.Command<Message, never, Services>> =>
   signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
 
-const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+const foldPeople = Update.foldChild({
+  update: People.update,
+  ...People.heldBy<Model, Message>((message) => Message.GotPeopleMessage({ message })),
+})
 const foldTryIt = Update.foldChild({
   update: TryIt.update,
   read: (model: Model) => Option.some(model.tryIt),
   write: (model: Model, tryIt: TryIt.Model) => modifyFields(model, { tryIt: () => tryIt }),
   toParentMessage: (message: TryIt.Message) => Message.GotTryItMessage({ message }),
 })
-const foldShare = Share.foldInto<Model, Message>((message) => Message.GotShareMessage({ message }))
+const foldShare = Update.foldChild({
+  update: Share.update,
+  ...Share.heldBy<Model, Message>((message) => Message.GotShareMessage({ message })),
+})
 
 /** Make with Styld: once an ask ends, the board reloads to show what it added. */
 const foldMake = Update.foldChild({

@@ -181,8 +181,14 @@ const readAgain = (model: Model): UpdateReturn =>
     onSome: (shown) => ({ model: modifyFields(model, { shown: () => shown }), commands: [loadTarget(model.target)] }),
   })
 
-const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
-const foldShare = Share.foldInto<Model, Message>((message) => Message.GotShareMessage({ message }))
+const foldPeople = Update.foldChild({
+  update: People.update,
+  ...People.heldBy<Model, Message>((message) => Message.GotPeopleMessage({ message })),
+})
+const foldShare = Update.foldChild({
+  update: Share.update,
+  ...Share.heldBy<Model, Message>((message) => Message.GotShareMessage({ message })),
+})
 
 /** A read that did not come: the page keeps what it showed and says why. */
 const failed = (model: Model, error: LoadError): UpdateReturn => ({

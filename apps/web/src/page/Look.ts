@@ -144,9 +144,12 @@ export const load = (model: Model) => [GetLook({ lookId: model.lookId })]
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
-const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+const foldPeople = Update.foldChild({
+  update: People.update,
+  ...People.heldBy<Model, Message>((message) => Message.GotPeopleMessage({ message })),
+})
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+const foldSaveToBoard = SaveToBoard.fold<Model, Message, OutMessage>(
   (message) => Message.GotSaveToBoardMessage({ message }),
   () => OutMessage.RequestedBoards(),
 )

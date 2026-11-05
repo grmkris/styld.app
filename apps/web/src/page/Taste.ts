@@ -5,6 +5,7 @@ import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { heldIn } from './Held.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { drawOperationId } from '../OperationIds.ts'
 
@@ -102,11 +103,7 @@ type UpdateReturn = Update.Return<Model, Message, StyldClient | SecureRandom.Sec
 /** How the Account page holds it: in its `taste`, its Messages wrapped in the page's. */
 export const heldBy = <Parent extends { readonly taste: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) => ({
-  read: (parent: Parent) => Option.some(parent.taste),
-  write: (parent: Parent, taste: Model): Parent => ({ ...parent, taste }),
-  toParentMessage,
-})
+) => heldIn<Parent, 'taste', Model, Message, ParentMessage>('taste', toParentMessage)
 
 /** Opening the Account page: what Styld knows, kept on screen while it is read again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>

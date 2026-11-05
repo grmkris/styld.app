@@ -327,7 +327,7 @@ const pieceCache = (revalidate: (piece: PieceData) => Option.Option<PieceData>) 
     load: GetPiece({ pieceId: model.pieceId }),
   })(model)
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+const foldSaveToBoard = SaveToBoard.fold<Model, Message, OutMessage>(
   (message) => Message.GotSaveToBoardMessage({ message }),
   () => OutMessage.RequestedBoards(),
 )
@@ -349,7 +349,10 @@ const foldBack = Update.foldChild({
   }),
 })
 
-const foldLooks = PieceLooks.foldInto<Model, Message>((message) => Message.GotLooksMessage({ message }))
+const foldLooks = Update.foldChild({
+  update: PieceLooks.update,
+  ...PieceLooks.heldBy<Model, Message>((message) => Message.GotLooksMessage({ message })),
+})
 
 const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn => ({
   model: modifyFields(model, {
@@ -365,21 +368,16 @@ const editDetails = (model: Model, change: (details: Details) => Details): Updat
 const submittedEdit = (model: Model): UpdateReturn =>
   Option.match(model.draft, {
     onNone: () => ({ model }),
-    onSome: (draft) =>
-      DraftSave.guards.Saving(draft.save)
-        ? { model }
-        : !shopUrlSendable(draft.shopUrl)
-          ? {
-              model: modifyFields(model, {
-                draft: () => Option.some(modifyFields(draft, { save: () => DraftSave.ShopUrlRefused() })),
-              }),
-            }
-          : {
-              model: modifyFields(model, {
-                draft: () => Option.some(modifyFields(draft, { save: () => DraftSave.Saving() })),
-              }),
-              commands: [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })],
-            },
+    onSome: (draft) => {
+      if (DraftSave.guards.Saving(draft.save)) return { model }
+      // A shop link that is not an https address holds the form back: nothing is sent until it is.
+      const sendable = shopUrlSendable(draft.shopUrl)
+      const save = sendable ? DraftSave.Saving() : DraftSave.ShopUrlRefused()
+      return {
+        model: modifyFields(model, { draft: () => Option.some(modifyFields(draft, { save: () => save })) }),
+        commands: sendable ? [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })] : [],
+      }
+    },
   })
 
 /** The piece as the server last answered it, a read's or a change's. The page's own work stays as it is, except that

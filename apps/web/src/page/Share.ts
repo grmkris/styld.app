@@ -1,6 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import { Command, Submodel, Update } from 'foldkit'
+import { heldIn } from './Held.ts'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction, smallAction } from '../Actions.styles.ts'
@@ -74,15 +75,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   })
 
 /** Sharing inside a page whose model keeps it as `sharing`. */
-export const foldInto = <Parent extends { readonly sharing: Model }, ParentMessage>(
+export const heldBy = <Parent extends { readonly sharing: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) =>
-  Update.foldChild({
-    update,
-    read: (parent: Parent) => Option.some(parent.sharing),
-    write: (parent: Parent, sharing: Model): Parent => ({ ...parent, sharing }),
-    toParentMessage,
-  })
+) => heldIn<Parent, 'sharing', Model, Message, ParentMessage>('sharing', toParentMessage)
 
 // VIEW
 
