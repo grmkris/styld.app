@@ -102,7 +102,7 @@ const guarded = (model: LanguageModel.LanguageModel, texts: ReadonlyArray<string
       schema: TextVerdict,
     })
     .pipe(
-      Effect.mapError(providerErrorOf),
+      Effect.mapError(providerErrorOf(guard.model.provider)),
       Effect.map(({ value }): Verdict => ({ ...value, model: guard.model.id })),
       // A paid response that was lost or unreadable must stay out of discovery without being sent again. A definite
       // throttle/refusal still fails so the queue can apply its normal retry policy.

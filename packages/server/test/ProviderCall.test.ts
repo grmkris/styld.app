@@ -4,6 +4,8 @@ import { TestClock } from 'effect/testing'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { providerCall } from '../src/providers/Call.ts'
 import { broken, busy, outcomeUnknown, refused } from '../src/providers/Errors.ts'
+import { httpProvider } from '../src/providers/Http.ts'
+import { Redacted } from 'effect'
 
 /** A counter that keeps every call it was told of. */
 const counting = () => {
@@ -27,6 +29,21 @@ const tries = (answers: ReadonlyArray<Effect.Effect<string, ReturnType<typeof bu
 const priced = () => ({ units: 1, costMicroUsd: 2500 })
 
 describe('a provider call', () => {
+  it.effect('that got no answer keeps the transport error as its cause, and nothing of the request', () =>
+    Effect.gen(function* () {
+      const http = httpProvider({
+        provider: 'meta-sam',
+        base: 'https://provider.invalid',
+        key: Redacted.make('secret-key'),
+        fetch: () => Promise.reject(new TypeError('Network connection lost')),
+      })
+      const error = yield* Effect.flip(http.postJson('/segment', { prompt: 'private words' }, 'unknown'))
+      expect(error).toMatchObject({ provider: 'meta-sam', reason: { _tag: 'OutcomeUnknown' } })
+      expect(error.cause).toBeInstanceOf(TypeError)
+      expect(JSON.stringify(error)).not.toMatch(/private words|secret-key/u)
+    }),
+  )
+
   it.effect('is tried again only while the provider is busy, and counted once with its outcome', () =>
     Effect.gen(function* () {
       const { calls, metrics } = counting()

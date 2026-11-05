@@ -11,7 +11,7 @@ import { collect } from '../Streams.ts'
 type ImageTransform = Parameters<ReturnType<ImagesBinding['input']>['transform']>[0]
 type ImageOutput = Parameters<ReturnType<ImagesBinding['input']>['output']>[0]
 
-const failed = () => busy('cloudflare-images')
+const failed = (cause?: unknown) => busy('cloudflare-images', cause)
 
 /** The bytes as the stream the Images binding reads. */
 const streamOf = (bytes: Uint8Array) =>

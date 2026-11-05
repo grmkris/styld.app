@@ -18,7 +18,8 @@ export interface MetaSettings extends Omit<HttpProviderSettings, 'provider' | 'h
 }
 
 const model = 'sam-3.1'
-const failed = (retryable: boolean) => (retryable ? busy('meta-sam') : refused('meta-sam'))
+const failed = (retryable: boolean, cause?: unknown) =>
+  retryable ? busy('meta-sam', cause) : refused('meta-sam', cause)
 const unknown = () => outcomeUnknown('meta-sam')
 
 /** 4xx means Meta refused the request as sent. Throttling, server errors and `model_not_found` (Meta's
@@ -123,7 +124,10 @@ const sendVideo = (
   frame: ReturnType<typeof multipartFrame>,
 ) =>
   Effect.gen(function* () {
-    const source = yield* Effect.tryPromise({ try: () => settings.readVideo(video.key), catch: () => failed(true) })
+    const source = yield* Effect.tryPromise({
+      try: () => settings.readVideo(video.key),
+      catch: (cause) => failed(true, cause),
+    })
     // The stored video is gone; trying again cannot bring it back.
     if (source === null) return yield* failed(false)
     const { readable, writable } = new FixedLengthStream(frame.head.byteLength + video.bytes + frame.tail.byteLength)

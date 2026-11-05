@@ -17,8 +17,9 @@ import {
   type Verdict,
 } from '../capture/Providers.ts'
 
-/** A Clef-flash request (Workers AI `@cf/cloudflare/clef-flash`, the System One API). */
-export interface ClefRequest {
+/** A Clef-flash request (Workers AI `@cf/cloudflare/clef-flash`, the System One API). A type, not an interface: Workers
+ * AI takes it as the plain record its unlisted models are sent. */
+export type ClefRequest = {
   readonly model: 'clef-flash'
   readonly state: string
   readonly images: ReadonlyArray<{ readonly content_type: string; readonly base64: string }>
@@ -28,6 +29,16 @@ export interface ClefRequest {
 /** The Workers AI binding narrowed to Clef-flash. */
 export type RunClef = (request: ClefRequest) => Promise<unknown>
 
+/** Clef-flash's Workers AI model, newer than the pinned workers-types model list: the binding takes it as an unlisted
+ * model, whose answer `askClef` decodes. */
+const clefModel = '@cf/cloudflare/clef-flash'
+
+/** Clef over the Worker's `AI` binding. */
+export const clefOver =
+  (ai: Ai): RunClef =>
+  (request) =>
+    ai.run(clefModel, request)
+
 const Choice = Schema.Struct({ choice: Schema.String, probabilities: Schema.Record(Schema.String, Schema.Number) })
 const Noul = Schema.Struct({ noul: Schema.Number })
 const Answer = Schema.Struct({
@@ -36,7 +47,7 @@ const Answer = Schema.Struct({
 })
 export type ClefAnswer = typeof Answer.Type
 
-const failed = (retryable: boolean) => (retryable ? busy('clef') : refused('clef'))
+const failed = (retryable: boolean, cause?: unknown) => (retryable ? busy('clef', cause) : refused('clef', cause))
 
 /** A picture as Clef reads it. */
 export const imageOf = (picture: Picture) => ({
@@ -127,7 +138,7 @@ export const askClef = (
   providerCall(
     metrics,
     { provider: 'clef', model: 'clef-flash', kind, deadline: deadlines.clef, replaySafe: true },
-    Effect.tryPromise({ try: () => run(request), catch: () => failed(true) }).pipe(
+    Effect.tryPromise({ try: () => run(request), catch: (cause) => failed(true, cause) }).pipe(
       Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => broken('clef')))),
     ),
     clefCost,

@@ -156,17 +156,21 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Providers** (`server/src/providers/`): Clef (Workers AI) routes, describes, judges and ranks; Cloudflare Images
   re-encodes every upload (EXIF and location stripped) and cuts out single garments; Meta SAM 3.1 splits several
   garments and tracks video; Meta Muse draws clean pictures and stickers; Veo (through the AI Gateway) makes turns.
-  Text models go through Effect's `LanguageModel` over the paid LiteLLM gateway (`ai/LanguageModel.ts`): one isolated
-  Alibaba Model Studio DeepSeek V4.1 Flash alias serves Styld, Thinking, mood-board planning and text moderation.
-  Styld's replies stream over the same transport (Server-Sent Events, usage in the last chunk) from its Threads.
-  Clef remains the Workers AI visual judge and garment/attribute model.
+  Text models go through Effect's `LanguageModel` over one Chat Completions transport (`ai/LanguageModel.ts`,
+  `providers/Text.ts`); each text model names its provider (`providers/Costs.ts` › `textModels`), which its errors,
+  counts and prices carry. The paid LiteLLM gateway's isolated Alibaba Model Studio DeepSeek V4.1 Flash alias serves
+  Thinking, mood-board planning and text moderation (`litellm`); Styld's replies stream from its Threads on Meta's
+  own API, Muse Spark 1.3 Standard (`meta-spark`, `providers/StylistModel.ts`, Server-Sent Events, usage in the last
+  chunk). Clef (`providers/Clef.ts` › `clefOver`) remains the Workers AI visual judge and garment/attribute model.
+  A `ProviderError` from a thrown transport or binding error keeps it as its `cause`, never a request or body.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and
   priced from one cost table (`providers/Costs.ts`). Paid HTTP text calls treat gateway timeouts, server failures,
   lost responses and unreadable completions as `OutcomeUnknown` and never resubmit them. `fetch` appears only in
   `providers/` (gated).
 - **Configuration is deployment facts only** (`server/src/Config.ts`): stage, release, origin, auth secrets, admin
-  emails, Meta's and the gateway's keys, decoded once. Model ids, thresholds, prices, the allowance, paces and which
+  emails, Meta's and the gateway's keys, decoded once; the Thread Worker's stage, release and Meta key are decoded by
+  `threadDeploymentOf`. Model ids, thresholds, prices, the allowance, paces and which
   provider does which task are constants in their owning module; changing one is a commit. **No feature flags, no
   switches, no stand-ins in `src`:** tests swap layers (`test/NativeWorker.ts` passes `test/fakes/*`), never env.
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The

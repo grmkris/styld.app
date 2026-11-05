@@ -27,6 +27,7 @@ import { analyticsEngine, CaptureMetrics } from './kernel/Metrics.ts'
 import type { ConsumerUsesOf, SweepUsesOf } from './kernel/Module.ts'
 import { Pacing } from './kernel/Pacing.ts'
 import { modules } from './Modules.ts'
+import { clefOver } from './providers/Clef.ts'
 import type { ProvidersFor, WorkersAiCalls } from './providers/Live.ts'
 import { emailSender } from './Resources.ts'
 import { CheckQueue } from './safety/Checks.ts'
@@ -50,12 +51,6 @@ provideAllCatalogs()
 // as one string. Requests log structured objects instead, so Workers Logs indexes every field.
 const structuredLogs: ReadonlySet<Logger.Logger<unknown, unknown>> = new Set([Logger.consoleStructured])
 
-/** Clef over the Worker's `AI` binding. */
-const workersAiCalls = (ai: Effect.Success<Bindings['ai']['raw']>): WorkersAiCalls => ({
-  // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
-  runClef: (request) => ai.run('@cf/cloudflare/clef-flash' as never, request as never),
-})
-
 /** What every module is built over, once per runtime: the Worker's bindings as services, credits, pacing, the call
  * counter, auth, the deployment and the composition's providers. */
 const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<Record<string, unknown>>) =>
@@ -69,7 +64,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
     const metrics = analyticsEngine(yield* bindings.calls.raw, observabilityBase)
     const bucket = yield* bindings.media.raw
     const images = yield* bindings.images.raw
-    const workersAi = workersAiCalls(yield* bindings.ai.raw)
+    const workersAi: WorkersAiCalls = { runClef: clefOver(yield* bindings.ai.raw) }
     const auth = makeAuthHttp(bindings.database, authOptions(deployment.auth, yield* bindings.email.raw, emailSender))
     const writers = bindings.writers
     const database = Database.layer(yield* bindings.database.raw)

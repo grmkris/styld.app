@@ -96,7 +96,7 @@ export class MoodPlanner extends Context.Service<
         plan: Effect.fn('Styld.Generation.plan')(function* (request: PlanRequest) {
           const answer = yield* model
             .generateObject({ objectName: 'mood_board', prompt: planPrompt(request), schema: Answer })
-            .pipe(Effect.mapError(providerErrorOf))
+            .pipe(Effect.mapError(providerErrorOf(planner.model.provider)))
           return planOf(answer.value, request)
         }),
       })
