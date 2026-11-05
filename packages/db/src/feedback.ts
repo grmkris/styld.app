@@ -3,7 +3,7 @@ import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqli
 import { oneOf } from './checks.ts'
 import { accounts } from './identity.ts'
 
-// What assistants tell Styld about Styld (owner, 4 November 2026; the MCP module owns it): one row per note a day, its
+// What assistants tell Styld about Styld (owner, 4 November 2026; the feedback module owns it): one row per note a day, its
 // repeats counted, kept 180 days, read and marked handled only by admins.
 
 export const assistantFeedback = sqliteTable(

@@ -83,7 +83,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   generationPicks: ['generation/'],
   tryOns: ['generation/'],
   tryOnPieces: ['generation/'],
-  assistantFeedback: ['mcp/'],
+  assistantFeedback: ['feedback/'],
   thinkingDays: ['outfits/'],
   wornPieces: ['worn/'],
   stylistChats: ['stylist/'],

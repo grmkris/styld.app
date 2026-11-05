@@ -19,7 +19,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 ## The API Worker: a list of modules over one kernel
 
 - **Modules** (`server/src/Modules.ts`): platform, account, social, wardrobe, capture, photos, generation, outfits,
-  links, stylist, mcp, imports, seed. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
+  links, stylist, feedback, mcp, imports, seed, billing. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
   `Application.ts` builds the kernel once per runtime from the Worker's bindings and every module over it, and checks
   at the type level that no module needs a service nobody provides. Adding a module is one entry in that list. A
   module provides the layers of the modules it uses by reference; Effect builds each layer once. The entry,

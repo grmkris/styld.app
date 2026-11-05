@@ -1,6 +1,7 @@
 import { account } from './Account.ts'
 import { billing } from './billing/Module.ts'
 import { capture } from './capture/Module.ts'
+import { feedback } from './feedback/Module.ts'
 import { generation } from './generation/Module.ts'
 import { imports } from './imports/Module.ts'
 import { seed } from './seed/Module.ts'
@@ -26,6 +27,7 @@ export const modules = [
   outfits,
   links,
   stylist,
+  feedback,
   mcp,
   imports,
   seed,
