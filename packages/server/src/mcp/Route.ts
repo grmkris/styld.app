@@ -66,7 +66,9 @@ const answerFor = Effect.fnUntraced(function* (
   const services = yield* Effect.context()
   const sdk = yield* Effect.promise(() => import('./Sdk.ts'))
   const web = yield* HttpServerRequest.toWeb(request).pipe(Effect.orDie)
-  const response = yield* Effect.promise(() =>
+  // The SDK answers over promises. A tool call runs as a fiber of this request's services that is interrupted when
+  // the client cancels the call or this request is interrupted (the client went away), so its work stops with it.
+  const response = yield* Effect.promise((requestGone) =>
     sdk.answer(
       web,
       {
@@ -75,12 +77,13 @@ const answerFor = Effect.fnUntraced(function* (
         tools: toolList,
         resources,
         read: readResource,
-        call: (name, args) =>
+        call: (name, args, cancelled) =>
           Effect.runPromiseWith(services)(
             callTool(tools, name, args).pipe(
               Effect.provideService(CurrentAccount, account),
               Effect.provideService(ReaderLocale, readerLocaleOf(request.headers)),
             ),
+            { signal: AbortSignal.any([cancelled, requestGone]) },
           ),
       },
       body,

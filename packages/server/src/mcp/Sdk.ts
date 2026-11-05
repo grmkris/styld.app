@@ -19,7 +19,8 @@ export type McpApp = {
   readonly serverInfo: { readonly name: string; readonly version: string }
   readonly instructions: string
   readonly tools: ReadonlyArray<object>
-  readonly call: (name: string, args: unknown) => Promise<CallToolResult>
+  /** A tool call; `signal` aborts when the client cancels it, and the call stops. */
+  readonly call: (name: string, args: unknown, signal: AbortSignal) => Promise<CallToolResult>
   /** The MCP Apps views (`ui://`), which hosts read to render tool results. */
   readonly resources: ReadonlyArray<object>
   readonly read: (uri: string) => ReadResourceResult | undefined
@@ -33,7 +34,9 @@ const serverFor = (app: McpApp) => {
   })
   // SAFETY: tools/list serves the app's own rendered tool entries -- the SDK Tool type is narrower than these JSON Schema descriptors, which must pass through byte for byte
   server.setRequestHandler('tools/list', () => Promise.resolve({ tools: app.tools as never }))
-  server.setRequestHandler('tools/call', (request) => app.call(request.params.name, request.params.arguments ?? {}))
+  server.setRequestHandler('tools/call', (request, ctx) =>
+    app.call(request.params.name, request.params.arguments ?? {}, ctx.mcpReq.signal),
+  )
   // SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare
   server.setRequestHandler('resources/list', () => Promise.resolve({ resources: app.resources as never }))
   server.setRequestHandler('resources/templates/list', () => Promise.resolve({ resourceTemplates: [] }))
