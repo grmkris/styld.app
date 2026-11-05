@@ -1,9 +1,9 @@
 import { boardPins, boards, boardTags, follows, looks } from '@styld/db'
-import { type Audience, type Author, type FeedItem, type PublicBoard, Unavailable } from '@styld/protocol'
+import { type Audience, type Author, type FeedItem, type PublicBoard } from '@styld/protocol'
 import { and, desc, eq, exists, gt, inArray, isNotNull, lt, ne, not, or, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import { Array, DateTime, Effect, Option } from 'effect'
-import { Database, query } from '../kernel/Db.ts'
+import { Database, query, stored } from '../kernel/Db.ts'
 import { Checks } from '../safety/Checks.ts'
 import { PublicPages, summaryOf } from './Public.ts'
 import { savedAestheticsOf } from '../taste/Taste.ts'
@@ -21,9 +21,8 @@ import { visibleAt } from './Visibility.ts'
 const pageSize = 20
 const maxRun = 2
 
-const unavailable = () => Unavailable.make({})
 /** A D1 read; a store that does not answer is unavailable. */
-const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+const read = <A>(run: () => Promise<A>) => stored(query(run))
 
 interface Candidate {
   readonly kind: 'board' | 'pin' | 'look'
@@ -260,7 +259,7 @@ export const pageFrom = (db: Database['Service'], viewer: string, start: Positio
 const discoverable = (checks: Checks['Service'], social: SocialStore['Service'], found: ReadonlyArray<Candidate>) =>
   Effect.gen(function* () {
     const owners = [...new Set(found.map(({ accountId }) => accountId))]
-    const reported = yield* social.reportedProfiles(owners).pipe(Effect.mapError(unavailable))
+    const reported = yield* stored(social.reportedProfiles(owners))
     const profileChecks = yield* checks.statuses('profile', owners)
     const ids = (kind: 'board' | 'look') =>
       found
@@ -290,42 +289,25 @@ const fromBoard = (candidate: Candidate, board: PublicBoard): FeedItem | undefin
     : { _tag: 'PinnedOnBoard', pin, boardId: board.id, boardName: board.name, by, at }
 }
 
-/** Every candidate as the feed shows it, read through the public pages' rules for this reader: a board or look they
- * may not see (a block, an unpublished profile) drops out. */
+/** Every candidate as the feed shows it, read through the public pages' rules for this reader, its boards and looks
+ * all at once: a board or look they may not see (a block, an unpublished profile) drops out, and a store that does
+ * not answer fails the page rather than emptying it. */
 const shown = (pages: PublicPages['Service'], passed: ReadonlyArray<Candidate>, viewer: string) =>
   Effect.gen(function* () {
-    const reader = Option.some(viewer)
-    const boardIds = [...new Set(passed.filter(({ kind }) => kind !== 'look').map(({ boardId }) => boardId))]
-    const boardsRead = yield* Effect.forEach(
-      boardIds,
-      (boardId) =>
-        pages.board(boardId, reader).pipe(
-          Effect.map((board) => [boardId, Option.some(board)] as const),
-          Effect.orElseSucceed(() => [boardId, Option.none<PublicBoard>()] as const),
-        ),
-      { concurrency: 8 },
+    const { boards: boardsRead, looks: looksRead } = yield* pages.feed(
+      passed.filter(({ kind }) => kind !== 'look').map(({ boardId }) => boardId),
+      passed.filter(({ kind }) => kind === 'look').map(({ id }) => id),
+      Option.some(viewer),
     )
-    const byBoard = new Map(boardsRead)
-    const items = yield* Effect.forEach(
-      passed,
-      (candidate): Effect.Effect<Option.Option<FeedItem>> =>
-        candidate.kind === 'look'
-          ? pages.look(candidate.id, reader).pipe(
-              Effect.map(({ look, by }) =>
-                Option.some<FeedItem>({ _tag: 'SharedLook', look, by, at: candidate.at.toISOString() }),
-              ),
-              Effect.orElseSucceed(() => Option.none<FeedItem>()),
-            )
-          : Effect.succeed(
-              Option.flatMap(Option.fromNullishOr(byBoard.get(candidate.boardId)), (board) =>
-                Option.flatMap(board, (seen) => Option.fromNullishOr(fromBoard(candidate, seen))),
-              ),
-            ),
-      { concurrency: 8 },
-    )
-    return passed.flatMap((candidate, index) =>
-      Option.toArray(Option.map(Option.flatten(Option.fromNullishOr(items[index])), (item) => ({ candidate, item }))),
-    )
+    return passed.flatMap((candidate) => {
+      const at = candidate.at.toISOString()
+      const look = candidate.kind === 'look' ? looksRead.get(candidate.id) : undefined
+      if (look !== undefined)
+        return [{ candidate, item: { _tag: 'SharedLook', look: look.look, by: look.by, at } satisfies FeedItem }]
+      const board = candidate.kind === 'look' ? undefined : boardsRead.get(candidate.boardId)
+      const item = board === undefined ? undefined : fromBoard(candidate, board)
+      return item === undefined ? [] : [{ candidate, item }]
+    })
   })
 
 /** What's new for the account, from `cursor` on: the bands of their Show me in turn, each newest first, and on each
@@ -338,7 +320,7 @@ export const feedFor = (viewer: string, cursor: string | undefined) =>
     const { found, next } = yield* pageFrom(db, viewer, positionOf(cursor), bandsFor(db, viewer, showMe))
     const passed = yield* discoverable(yield* Checks, social, found)
     const items = yield* shown(yield* PublicPages, passed, viewer)
-    const followed = new Set(yield* social.followees(viewer).pipe(Effect.mapError(unavailable)))
+    const followed = new Set(yield* stored(social.followees(viewer)))
     const shared = yield* sharedAesthetics(db, viewer, [
       ...new Set(items.filter(({ candidate }) => candidate.kind !== 'look').map(({ candidate }) => candidate.boardId)),
     ])

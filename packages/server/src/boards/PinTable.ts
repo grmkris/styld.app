@@ -12,14 +12,15 @@ import {
   type PieceId,
   PinRefused,
   landing,
+  Unavailable,
 } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
-import { Database, nowDate } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { Looks } from '../looks/Looks.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
-import { itemRow, lookTarget, newPins, one, pieceTarget, priorOf, stored, unavailable } from './Shared.ts'
+import { itemRow, lookTarget, newPins, one, pieceTarget, priorOf } from './Shared.ts'
 import { BoardStore } from './Store.ts'
 
 /** Add the requested pieces and a look's pieces without moving anything already laid out. Pins, placements,
@@ -73,11 +74,11 @@ export const placePins = Effect.fn('Styld.Boards.placePins')(function* (
     if (Option.isSome(counted) || Option.isSome(yield* priorOf(operation))) return yield* one(accountId, boardId)
     const latest = yield* one(accountId, boardId)
     return yield* latest.version === board.version
-      ? unavailable()
+      ? Unavailable.make({})
       : BoardVersionConflict.make({ version: latest.version })
   })
   return yield* attempt.pipe(
     Effect.retry({ while: (error) => Predicate.isTagged(error, 'BoardVersionConflict'), times: 2 }),
-    Effect.catchTag('BoardVersionConflict', () => Effect.fail(unavailable())),
+    Effect.catchTag('BoardVersionConflict', () => Effect.fail(Unavailable.make({}))),
   )
 })

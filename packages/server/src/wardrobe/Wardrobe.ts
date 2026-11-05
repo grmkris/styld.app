@@ -14,6 +14,7 @@ import {
   Upload,
   UploadId,
   UploadRefused,
+  Unavailable,
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
@@ -27,14 +28,12 @@ import {
   ownPiece,
   pictureRow,
   refused,
-  stored,
   spelled,
   toPiece,
-  unavailable,
   usableUpload,
   type WardrobeServices,
 } from './Shared.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { admitUpload } from './Admission.ts'
 import { type PieceRow, type ReceiptRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
@@ -42,6 +41,7 @@ import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { deleting, once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { keysUnder, Media } from '../kernel/Media.ts'
+import { called } from '../kernel/Bindings.ts'
 
 /** An upload path stays valid this long after it is handed out. */
 const uploadLifetime = { minutes: 15 }
@@ -77,9 +77,7 @@ const videoRefusal = (
 }
 
 const enqueue = (pieceId: string) =>
-  Effect.flatMap(PieceQueue, (queue) =>
-    Effect.tryPromise({ try: () => queue.send({ _tag: 'ProcessPiece', pieceId }), catch: unavailable }),
-  )
+  Effect.flatMap(PieceQueue, (queue) => called(() => queue.send({ _tag: 'ProcessPiece', pieceId })))
 
 const reads = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   listPieces: Effect.fn('Styld.Wardrobe.listPieces')(function* () {
@@ -186,10 +184,7 @@ const uploads = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
     const refusal = receiveRefusal(upload, input, DateTime.toEpochMillis(yield* DateTime.now))
     if (Option.isSome(refusal)) return yield* refused(refusal.value)
     const { bucket } = yield* Media
-    yield* Effect.tryPromise({
-      try: () => bucket.put(upload.objectKey, input.body, { httpMetadata: { contentType: upload.contentType } }),
-      catch: unavailable,
-    })
+    yield* called(() => bucket.put(upload.objectKey, input.body, { httpMetadata: { contentType: upload.contentType } }))
     yield* stored((yield* WardrobeStore).markUploadReceived(upload.id))
   }, Effect.provide(context)),
 }))
@@ -198,29 +193,23 @@ const uploads = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
  * and fails if the body is any other length. */
 const streamInto = (key: string, contentType: string, bytes: number, body: ByteStream) =>
   Effect.flatMap(Media, ({ bucket }) =>
-    Effect.tryPromise({
-      try: async () => {
-        const { readable, writable } = new FixedLengthStream(bytes)
-        const writer = writable.getWriter()
-        await Promise.all([
-          // SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here
-          bucket.put(key, readable as never, { httpMetadata: { contentType } }),
-          pump(body, { write: (chunk) => writer.write(chunk), close: () => writer.close() }),
-        ])
-      },
-      catch: unavailable,
+    called(async () => {
+      const { readable, writable } = new FixedLengthStream(bytes)
+      const writer = writable.getWriter()
+      await Promise.all([
+        // SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here
+        bucket.put(key, readable as never, { httpMetadata: { contentType } }),
+        pump(body, { write: (chunk) => writer.write(chunk), close: () => writer.close() }),
+      ])
     }),
   )
 
 /** The first bytes of a stored object, enough for a container signature. */
 const storedHead = (key: string) =>
   Effect.flatMap(Media, ({ bucket }) =>
-    Effect.tryPromise({
-      try: async () => {
-        const object = await bucket.get(key, { range: { offset: 0, length: 12 } })
-        return object === null ? new Uint8Array() : new Uint8Array(await object.arrayBuffer())
-      },
-      catch: unavailable,
+    called(async () => {
+      const object = await bucket.get(key, { range: { offset: 0, length: 12 } })
+      return object === null ? new Uint8Array() : new Uint8Array(await object.arrayBuffer())
     }),
   )
 
@@ -240,7 +229,7 @@ const videoUploads = Effect.map(Effect.context<WardrobeServices>(), (context) =>
     yield* streamInto(upload.objectKey, upload.contentType, input.bytes, input.body)
     if (!isVideoContainer(yield* storedHead(upload.objectKey))) {
       const { bucket } = yield* Media
-      yield* Effect.tryPromise({ try: () => bucket.delete(upload.objectKey), catch: unavailable })
+      yield* called(() => bucket.delete(upload.objectKey))
       return yield* refused('notAnImage')
     }
     yield* stored((yield* WardrobeStore).markUploadReceived(upload.id))
@@ -268,7 +257,9 @@ const addFailure = (operation: Identified, uploadId: string) =>
     )
     if (Option.isSome(prior)) return yield* replay(operation.accountId, prior.value)
     const latest = yield* stored((yield* WardrobeStore).findUpload(uploadId))
-    return yield* Option.exists(latest, ({ status }) => status === 'used') ? refused('alreadyUsed') : unavailable()
+    return yield* Option.exists(latest, ({ status }) => status === 'used')
+      ? refused('alreadyUsed')
+      : Unavailable.make({})
   })
 
 const newPiece = (

@@ -16,11 +16,12 @@ import {
   type SetTable,
   settle,
   TextItem,
+  Unavailable,
 } from '@styld/protocol'
 import { Array, Effect, Match, Option, Predicate, Schema } from 'effect'
 import { ownPieceIds } from '../wardrobe/Store.ts'
-import { itemRow, newPins, one, ownBoard, pieceTarget, priorOf, stored, unavailable } from './Shared.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { itemRow, newPins, one, ownBoard, pieceTarget, priorOf } from './Shared.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { BoardStore } from './Store.ts'
@@ -50,7 +51,9 @@ const tableRefusal = (accountId: string, boardId: string, items: ReadonlyArray<B
 const lostSave = (accountId: string, boardId: string, version: number) =>
   Effect.gen(function* () {
     const board = yield* ownBoard(accountId, boardId)
-    return yield* board.version === version ? unavailable() : BoardVersionConflict.make({ version: board.version })
+    return yield* board.version === version
+      ? Unavailable.make({})
+      : BoardVersionConflict.make({ version: board.version })
   })
 
 /** Save a table from a version under an operation, pinning the pieces it places; a board saved since answers its

@@ -12,13 +12,13 @@ import {
 } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
-import { Database, nowDate } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { Looks } from '../looks/Looks.ts'
 import { lookRows } from '../looks/Store.ts'
 import { outfitKept } from '../outfits/Outfits.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
-import { lookTarget, newPins, one, ownBoard, stored, type BoardServices } from './Shared.ts'
+import { lookTarget, newPins, one, ownBoard, type BoardServices } from './Shared.ts'
 import { type BoardOutfitRow, BoardStore } from './Store.ts'
 
 // Keeping a look on a board (T-16): pieces the person put together on a board become a look in The Lab, pinned on the

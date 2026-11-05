@@ -270,4 +270,16 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
     body: JSON.stringify(signInBody('native-farewell')),
   })
   expect(await again.json()).toMatchObject({ _tag: 'Failure' })
+  // Every auth row of the account went with it: its address, credential, password, sessions and any Google identity.
+  const authRows = await fetch(`${fixtures}/test/identity/auth-rows?subject=native-farewell`)
+  expect(await authRows.json()).toEqual({
+    identifiers: 0,
+    credentials: 0,
+    passwords: 0,
+    sessions: 0,
+    pending: 0,
+    oauthIdentities: 0,
+    oauthCredentials: 0,
+    oauthSignInFlows: 0,
+  })
 }

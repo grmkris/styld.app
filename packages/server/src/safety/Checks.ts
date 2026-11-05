@@ -8,11 +8,12 @@ import { deliverImage } from '../wardrobe/Delivery.ts'
 import { reachedThrough } from '../social/PublicStore.ts'
 import { profileOf } from '../social/ProfileStore.ts'
 import { boardTranslationsIn, profileTranslationIn } from '../social/Translated.ts'
-import { type Database as Db, Database, inChunks, nowDate, query } from '../kernel/Db.ts'
+import { type Database as Db, Database, inChunks, nowDate, query, stored } from '../kernel/Db.ts'
 import { Media } from '../kernel/Media.ts'
 import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
 import { digestOf } from '../kernel/Ids.ts'
 import { heldBackOrigin, piecesWithPictures, publicImage } from '../social/Visibility.ts'
+import { called } from '../kernel/Bindings.ts'
 
 /** What a check is of: a profile (by account), a board, a look or a piece. */
 export const CheckTarget = Schema.Struct({
@@ -35,8 +36,7 @@ export class CheckQueue extends Context.Service<
 /** A queue takes at most this many messages a call. */
 const queueBatch = 100
 
-const unavailable = () => Unavailable.make({})
-const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+const read = <A>(run: () => Promise<A>) => query(run).pipe(stored)
 type Drizzle = Db['Service']
 
 /** What a target shows others: its words, where its pictures are kept (read only when judged), and whether its
@@ -53,9 +53,9 @@ const nothing = (texts: ReadonlyArray<string | null>) => texts.filter((text): te
 /** A profile shows its name, handle, city and bio, and the translation of its name and bio that is shown with it. */
 const profileShows = (db: Drizzle, accountId: string) =>
   Effect.gen(function* () {
-    const row = yield* profileOf(db, accountId).pipe(Effect.mapError(unavailable))
+    const row = yield* profileOf(db, accountId).pipe(stored)
     if (Option.isNone(row)) return Option.none<Shown>()
-    const translated = yield* profileTranslationIn(db, 'sl', row.value).pipe(Effect.mapError(unavailable))
+    const translated = yield* profileTranslationIn(db, 'sl', row.value).pipe(stored)
     return Option.some<Shown>({
       accountId,
       texts: nothing([
@@ -89,7 +89,7 @@ const boardShows = (db: Drizzle, boardId: string) =>
     const words = labels.flatMap(({ id, text }) => (text === null ? [] : [{ id, text }]))
     const translated = (yield* boardTranslationsIn(db, 'sl', [
       { id: boardId, name: row.value.name, labels: words },
-    ]).pipe(Effect.mapError(unavailable))).get(boardId)
+    ]).pipe(stored)).get(boardId)
     const pictures = yield* read(() =>
       db
         .select({ key: boardImages.objectKey, contentType: boardImages.contentType })
@@ -127,9 +127,9 @@ const lookShows = (db: Drizzle, lookId: string) =>
 const pieceReachable = (db: Drizzle, piece: typeof pieces.$inferSelect) =>
   Effect.gen(function* () {
     if (piece.status !== 'ready') return false
-    const owner = yield* profileOf(db, piece.accountId).pipe(Effect.mapError(unavailable))
+    const owner = yield* profileOf(db, piece.accountId).pipe(stored)
     if (Option.isNone(owner) || !owner.value.published) return false
-    return yield* reachedThrough(db, piece.accountId, piece.id, false).pipe(Effect.mapError(unavailable))
+    return yield* reachedThrough(db, piece.accountId, piece.id, false).pipe(stored)
   })
 
 /** A piece shows others its name and its public rendition: the cut-out or the clean drawing, never the photo it came
@@ -163,14 +163,14 @@ const picturesPerJudgement = 3
 
 /** The pictures' bytes as the judge reads them: small WebP copies, every one of them. */
 const picturesOf = (media: Media['Service'], shown: Shown) =>
-  Effect.forEach(shown.pictures, (stored) =>
-    deliverImage(media, stored, 'thumb', { fallback: 'none' }).pipe(
+  Effect.forEach(shown.pictures, (picture) =>
+    deliverImage(media, picture, 'thumb', { fallback: 'none' }).pipe(
       Effect.flatMap(
         Option.match({
           onNone: () => Effect.succeed(Option.none<Picture>()),
           onSome: ({ body, contentType }) =>
             Effect.map(
-              Effect.tryPromise({ try: () => collect(body), catch: unavailable }),
+              called(() => collect(body)),
               (bytes): Option.Option<Picture> =>
                 contentType === 'image/webp' || contentType === 'image/png' || contentType === 'image/jpeg'
                   ? Option.some({ bytes, contentType })
@@ -326,7 +326,7 @@ export const checkRows = (db: Drizzle) => ({
           .select()
           .from(contentChecks)
           .where(and(eq(contentChecks.targetKind, kind), inArray(contentChecks.targetId, chunk))),
-      ).pipe(Effect.mapError(unavailable)),
+      ).pipe(stored),
       (rows) => new Map(rows.map((row) => [row.targetId, statusOf(row)])),
     ),
   /** Hide the target from others whatever the model says, until an admin restores it. */
@@ -410,7 +410,7 @@ const make = Effect.gen(function* () {
       const known = yield* rows.pending(target, shown.value.accountId, digest)
       if (Option.isSome(known)) return known
       if (!(yield* judged(target, shown.value, digest))) {
-        if (unanswered === 'fail') return yield* unavailable()
+        if (unanswered === 'fail') return yield* Unavailable.make({})
         yield* enqueue([target])
       }
       return yield* rows.kept(target)

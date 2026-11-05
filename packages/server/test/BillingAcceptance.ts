@@ -1,6 +1,7 @@
 import { expect } from 'bun:test'
 import { freeCredits, memberDailyCredits } from '@styld/protocol'
 import { client, send, seedAccounts, signIn } from './Accounts.ts'
+import { billingNow } from './BillingFixture.ts'
 import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 /** The account the billing journey reads its credits as: an id starting `native-free` is seeded without a plan
@@ -53,5 +54,73 @@ export const verifyBillingOff = async (origin: string, fixtures: string) => {
   expect(await (await owner('/api/credits')).json()).toMatchObject({
     daily: memberDailyCredits,
     membership: { plan: 'lifetime', until: null, renews: false },
+  })
+  await verifyBillingStatements(fixtures)
+}
+
+const day = 86_400_000
+const iso = (at: number) => new Date(at).toISOString()
+
+/** The membership a step leaves, for Dodo's one customer. */
+const member = (plan: string, until: number | null, status: string, subscriptionId: string | null = null) => ({
+  plan,
+  until: until === null ? null : iso(until),
+  status,
+  subscriptionId,
+  customerId: 'cus_native',
+})
+
+/** Every statement of the billing store on workerd's D1 (`BillingFixture.ts`), as a member's payments, refunds and
+ * subscription events arrive: a payment counted once, a second week without a customer keeping the first one's, a
+ * refund taken back once and never before now, a subscription that runs, is cancelled and ends while an older event
+ * changes nothing, the operator's lifetime over it, and a payment for an account gone meanwhile writing nothing. */
+const verifyBillingStatements = async (fixtures: string) => {
+  const response = await fetch(`${fixtures}/test/billing/statements`, { method: 'POST' })
+  expect(response.status).toBe(200)
+  const body: unknown = await response.json()
+  const one = [{ paymentId: 'pay_native_1', status: 'succeeded' }]
+  const both = (second: string) => [...one, { paymentId: 'pay_native_2', status: second }]
+  const subscribedUntil = billingNow + 40 * day
+  expect(body).toEqual({
+    steps: [
+      { step: 'week', state: { membership: member('week', billingNow + 7 * day, 'active'), purchases: one } },
+      { step: 'week again', state: { membership: member('week', billingNow + 7 * day, 'active'), purchases: one } },
+      {
+        step: 'second week, no customer',
+        state: { membership: member('week', billingNow + 14 * day, 'active'), purchases: both('succeeded') },
+      },
+      {
+        step: 'second week refunded',
+        state: { membership: member('week', billingNow + 7 * day, 'active'), purchases: both('refunded') },
+      },
+      {
+        step: 'refunded again',
+        state: { membership: member('week', billingNow + 7 * day, 'active'), purchases: both('refunded') },
+      },
+      {
+        step: 'subscribed',
+        state: { membership: member('monthly', subscribedUntil, 'active', 'sub_native'), purchases: both('refunded') },
+      },
+      {
+        step: 'cancelled',
+        state: {
+          membership: member('monthly', subscribedUntil, 'cancelled', 'sub_native'),
+          purchases: both('refunded'),
+        },
+      },
+      {
+        step: 'ended',
+        state: { membership: member('monthly', billingNow, 'ended', 'sub_native'), purchases: both('refunded') },
+      },
+      {
+        step: 'older event',
+        state: { membership: member('monthly', billingNow, 'ended', 'sub_native'), purchases: both('refunded') },
+      },
+      {
+        step: 'granted',
+        state: { membership: member('lifetime', null, 'active', 'sub_native'), purchases: both('refunded') },
+      },
+    ],
+    gone: { failed: true, rows: 0 },
   })
 }

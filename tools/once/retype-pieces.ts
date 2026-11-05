@@ -26,7 +26,7 @@ import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
 import type { Picture } from '../../packages/server/src/capture/Providers.ts'
 import { makeGarmentVision } from '../../packages/server/src/providers/Clef.ts'
-import { built, cloudflareStage, stageOptions, statements } from '../CloudflareRest.ts'
+import { cloudflareStage, stageOptions, statements } from '../CloudflareRest.ts'
 
 const { values } = parseArgs({ options: { ...stageOptions } })
 const token = process.env['CLOUDFLARE_API_TOKEN']
@@ -131,7 +131,7 @@ const changeOf = (piece: Stored) =>
   })
 
 const stored = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
-  await built(query)(
+  await query(
     statements
       .select({
         id: pieces.id,
@@ -150,8 +150,7 @@ const stored = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
           ne(pieces.imageKey, pieces.originalKey),
         ),
       )
-      .orderBy(pieces.createdAt)
-      .toSQL(),
+      .orderBy(pieces.createdAt),
   ),
 )
 
@@ -183,7 +182,7 @@ if (values.apply) {
   const now = Date.now()
   let written = 0
   for (const { id, from, to } of changes) {
-    const rows = await built(query)(
+    const rows = await query(
       statements
         .update(pieces)
         .set({ type: to.type, colours: to.colours, updatedAt: new Date(now) })
@@ -195,8 +194,7 @@ if (values.apply) {
             eq(pieces.colours, from.colours),
           ),
         )
-        .returning({ id: pieces.id })
-        .toSQL(),
+        .returning({ id: pieces.id }),
     )
     written += rows.length
   }

@@ -9,14 +9,14 @@ import {
   pieces,
   uploads,
 } from '@styld/db'
-import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type { GeneratedGarment, PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
 import { forgetChecks } from '../safety/Checks.ts'
-import { chunked, Database, first, inChunks, query, StoreUnavailable } from '../kernel/Db.ts'
+import { chunked, Database, fenced, first, inChunks, query } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
@@ -102,7 +102,12 @@ export const PieceRows = {
           eq(pieces.accountId, accountId),
           eq(pieces.source, 'import'),
           eq(pieces.status, 'failed'),
-          sql`exists (select 1 from ${accounts} where ${accounts.id} = ${accountId} and ${accounts.enabled} = 1)`,
+          exists(
+            db
+              .select({ id: accounts.id })
+              .from(accounts)
+              .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true))),
+          ),
         ),
       ),
   /** The back a guided-camera shot brought, for the account's pieces made from these detections that have none yet:
@@ -132,7 +137,10 @@ export const UploadRows = {
       ...row,
       status: 'used',
       // The NOT NULL constraint fences adoption against account closure in the same batch as the piece.
-      accountId: sql`(select ${accounts.id} from ${accounts} where ${accounts.id} = ${row.accountId} and ${accounts.enabled} = 1 and ${claim})`,
+      accountId: sql`(${db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, row.accountId), eq(accounts.enabled, true), claim))})`,
     }),
   spend: spendUpload,
   restore: (db: Database['Service'], uploadId: string) =>
@@ -304,19 +312,17 @@ const backQueries = (db: Database['Service']) => ({
     back: { readonly key: string; readonly uploadId: string; readonly at: Date },
     receipt: ReceiptRow,
   ) =>
-    Effect.tryPromise({
-      try: () =>
-        db.batch([
-          db
-            .update(pieces)
-            .set({ backImageKey: back.key, updatedAt: back.at })
-            .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-            .returning(),
-          spendUpload(db, back.uploadId),
-          db.insert(operationReceipts).values(receipt),
-        ]),
-      catch: () => StoreUnavailable.make({}),
-    }).pipe(Effect.map(([updated]) => first(updated))),
+    fenced(() =>
+      db.batch([
+        db
+          .update(pieces)
+          .set({ backImageKey: back.key, updatedAt: back.at })
+          .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
+          .returning(),
+        spendUpload(db, back.uploadId),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.map(([updated]) => first(updated))),
 })
 
 /** Which of these pieces are house garments the seed generated (owner, 4 November 2026), for every module that reads
@@ -372,15 +378,13 @@ export const makeStore = (db: Database['Service']) => ({
   /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
    * upload id fails the whole batch when the upload already made a piece. */
   addPiece: (piece: PieceRow, receipt: ReceiptRow) =>
-    Effect.tryPromise({
-      try: () =>
-        db.batch([
-          db.insert(pieces).values(piece),
-          spendUpload(db, piece.uploadId ?? ''),
-          db.insert(operationReceipts).values(receipt),
-        ]),
-      catch: () => StoreUnavailable.make({}),
-    }).pipe(Effect.asVoid),
+    fenced(() =>
+      db.batch([
+        db.insert(pieces).values(piece),
+        spendUpload(db, piece.uploadId ?? ''),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.asVoid),
   /** How the account already spells one of its categories under a type, whatever the case it is asked in, so "ski
    * pants" joins "Ski pants" rather than making a second card (T-12). */
   categorySpelling: (accountId: string, type: PieceType, name: string) =>
@@ -415,7 +419,7 @@ export const makeStore = (db: Database['Service']) => ({
    * batch; the ids go in chunks under D1's parameter limit. What the pieces were in goes with them (looks, pins, worn
    * days, pictures), and a photo's garment matched to one keeps its place, matched to nothing. */
   deletePieces: (accountId: string, rows: ReadonlyArray<PieceRow>, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(receipt),
         ...chunked(rows.map(({ id }) => id)).flatMap((chunk) => [

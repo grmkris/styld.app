@@ -8,21 +8,17 @@ import {
   type OperationId,
   type PieceId,
   type ShareLook,
-  Unavailable,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Shared.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
-import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { type LookRow, LookStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
 import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import { deleting, identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
-
-const unavailable = () => Unavailable.make({})
-const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** The services the look operations work through, provided once by the `Looks` layer. */
 type LookServices = Database | Checks | LookStore | SignedMedia

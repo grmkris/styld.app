@@ -15,7 +15,7 @@ import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
 import { matchRows } from './MatchStore.ts'
 import { fileRecord } from './ProviderFiles.ts'
-import { chunked, Database as Db, first, query } from '../kernel/Db.ts'
+import { chunked, Database as Db, fenced, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
 import { GarmentRows } from '../photos/Rows.ts'
 import { PieceRows, UploadRows } from '../wardrobe/Store.ts'
@@ -60,7 +60,7 @@ const finishCapture = (
   return query(() =>
     db.batch([
       db.delete(detections).where(and(eq(detections.captureId, capture.id), eq(detections.status, 'review'), owns)),
-      ...found.map((detection) => insertWhen(db, detections, detection, owns)),
+      ...found.map((detection) => insertWhen(db, detections, detection, { table: captures, claim: current })),
       db.update(captures).set(changes).where(current).returning({ id: captures.id }),
     ]),
   ).pipe(
@@ -75,7 +75,7 @@ const captureRows = (db: Database) => ({
   /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch: an upload already
    * spent fails it whole (`spendUpload`). */
   createCapture: (capture: UploadedCapture, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(captures).values(capture),
         ...frames.map((frame) => db.insert(captureFrames).values(frame)),
@@ -393,7 +393,7 @@ const reviewRows = (db: Database) => ({
     readonly receipt: ReceiptRow
     readonly now: Date
   }) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => PieceRows.insert(db, piece)),

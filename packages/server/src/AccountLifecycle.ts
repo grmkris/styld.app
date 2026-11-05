@@ -1,15 +1,16 @@
-import { authTables } from '@styld/auth/storage'
-import { accountDeletions, accounts, oauthGrants } from '@styld/db'
+import { emailCredentials, proofs } from '@styld/auth/storage'
+import { accountDeletions, accounts, authMirror, oauthGrants } from '@styld/db'
 import { CurrentAccount, NotFound, Unavailable } from '@styld/protocol'
-import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
-import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
+import { and, asc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm'
+import type { AnySQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core'
 import { Context, DateTime, Duration, Effect, Layer, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { forgetFilesOf } from './capture/ProviderFiles.ts'
 import { GarmentSegmenter } from './capture/Providers.ts'
 import { accountPrefix } from './wardrobe/Media.ts'
-import { Database, nowDate } from './kernel/Db.ts'
+import { called } from './kernel/Bindings.ts'
+import { Database, nowDate, query, stored } from './kernel/Db.ts'
 import { deletePrefix, type Listing, Media } from './kernel/Media.ts'
 import { chatIndex } from './stylist/Index.ts'
 import { StylistThreads } from './stylist/Threads.ts'
@@ -22,9 +23,8 @@ import { PieceQueue } from './wardrobe/Processing.ts'
 // prefix and the chats a last time, and goes. From the first moment the account is closed, nothing of it is shown to
 // others (`social/ProfileStore.ts`).
 
-const unavailable = () => Unavailable.make({})
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+/** A D1 call of the lifecycle: the store being unavailable answers `Unavailable`. */
+const attempt = <A>(run: () => Promise<A>) => stored(query(run))
 
 /** A deletion the queue has not finished within this is finished by the sweep. */
 const queuedPatience = Duration.minutes(10)
@@ -63,21 +63,24 @@ const ago = (patience: Duration.Duration) =>
 
 type Drizzle = Database['Service']
 
-// The managed auth tables are typed generically, so their subject column is named in SQL.
-const ofSubject = (db: Drizzle, table: SQLiteTable, accountId: string) =>
-  db.run(sql`delete from ${table} where ${sql.identifier('subject_id')} = ${accountId}`)
+/** The statement that deletes the subject's rows of an auth table. */
+const ofSubject = <Table extends SQLiteTable & { readonly subjectId: AnySQLiteColumn }>(
+  db: Drizzle,
+  table: Table,
+  accountId: string,
+) => db.delete(table).where(eq(table.subjectId, accountId))
 
 /** Delete every object under the account's prefix. */
 const sweepPhotos = (bucket: Listing, accountId: string) =>
   deletePrefix(bucket, accountPrefix(accountId)).pipe(
-    Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
+    Effect.catchTag('MediaUnavailable', () => Effect.fail(Unavailable.make({}))),
   )
 
 /** Every store outside D1: the objects under the prefix, the chats and the videos at Meta. */
 const purgeOutside = Effect.fnUntraced(function* (bucket: Listing, outside: OutsideStores, accountId: string) {
   yield* sweepPhotos(bucket, accountId)
-  yield* outside.chats(accountId).pipe(Effect.mapError(unavailable))
-  yield* outside.providerFiles(accountId).pipe(Effect.mapError(unavailable))
+  yield* outside.chats(accountId).pipe(Effect.mapError(() => Unavailable.make({})))
+  yield* outside.providerFiles(accountId).pipe(Effect.mapError(() => Unavailable.make({})))
 })
 
 /** Access ends at once, and the deletion is recorded in the same batch: disabled, a new security revision, no
@@ -90,7 +93,7 @@ const closeAccount = Effect.fnUntraced(function* (db: Drizzle, accountId: string
     db.batch([
       db.insert(accountDeletions).values({ accountId, requestedAt }).onConflictDoNothing(),
       db.update(accounts).set({ enabled: false, securityRevision: revision }).where(eq(accounts.id, accountId)),
-      ofSubject(db, authTables.sessions, accountId),
+      ofSubject(db, authMirror.sessions, accountId),
       db.delete(oauthGrants).where(eq(oauthGrants.subjectId, accountId)),
     ]),
   )
@@ -99,26 +102,23 @@ const closeAccount = Effect.fnUntraced(function* (db: Drizzle, accountId: string
 /** The account's auth rows, the codes sent to its addresses and the account itself (its pieces, uploads, receipts,
  * captures, looks, boards and worn days cascade). */
 const deleteRows = Effect.fnUntraced(function* (db: Drizzle, accountId: string) {
+  const { identifiers } = authMirror
   const addresses = yield* attempt(() =>
-    db.all<{ value: string }>(
-      sql`select ${sql.identifier('value')} as value from ${authTables.identifiers} where ${sql.identifier('subject_id')} = ${accountId}`,
-    ),
+    db.select({ value: identifiers.value }).from(identifiers).where(eq(identifiers.subjectId, accountId)),
   )
   yield* attempt(() =>
     db.batch([
-      ofSubject(db, authTables.pending, accountId),
-      ofSubject(db, authTables.emailCredentials, accountId),
-      ofSubject(db, authTables.passwords, accountId),
+      ofSubject(db, authMirror.pending, accountId),
+      ofSubject(db, emailCredentials, accountId),
+      ofSubject(db, authMirror.passwords, accountId),
       // The account's Google identity and its credential; a Google sign-in later starts a new account.
-      ofSubject(db, authTables.oauthCredentials, accountId),
-      ofSubject(db, authTables.oauthIdentities, accountId),
-      ofSubject(db, authTables.credentials, accountId),
-      ofSubject(db, authTables.identifiers, accountId),
+      ofSubject(db, authMirror.oauthCredentials, accountId),
+      ofSubject(db, authMirror.oauthIdentities, accountId),
+      ofSubject(db, authMirror.credentials, accountId),
+      ofSubject(db, identifiers, accountId),
       // Codes keep the address in their binding; they go with the account.
       ...addresses.map(({ value }) =>
-        db.run(
-          sql`delete from ${authTables.proofs} where json_extract(${sql.identifier('binding')}, '$.identifier.value') = ${value}`,
-        ),
+        db.delete(proofs).where(eq(sql`json_extract(${proofs.binding}, '$.identifier.value')`, value)),
       ),
       db.delete(accounts).where(eq(accounts.id, accountId)),
     ]),
@@ -164,7 +164,7 @@ const make = (bindings: LifecycleBindings, outside: OutsideStores) =>
      * queued as well as tried at once; what neither finishes, the sweep does. */
     const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
       yield* closeAccount(db, accountId).pipe(Effect.provideService(SecureRandom.SecureRandom, random))
-      yield* attempt(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(Effect.ignore)
+      yield* called(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(Effect.ignore)
       yield* finishDeletion(accountId).pipe(Effect.ignore)
     })
 
@@ -197,14 +197,28 @@ const make = (bindings: LifecycleBindings, outside: OutsideStores) =>
      * assistant's grant still stands and is an admin's. A closed account is `NotFound`. */
     const readAccount = Effect.fn('Styld.Account.read')(function* () {
       const { accountId } = yield* CurrentAccount
+      const { identifiers } = authMirror
+      const email = db
+        .select({ value: identifiers.value })
+        .from(identifiers)
+        .where(
+          and(
+            eq(identifiers.subjectId, accounts.id),
+            eq(identifiers.active, true),
+            eq(identifiers.namespace, 'email'),
+            isNotNull(identifiers.verifiedAt),
+          ),
+        )
+        .limit(1)
       const rows = yield* attempt(() =>
-        db.all(
-          sql`select a.id as accountId, a.display_name as displayName, (select i.value from ${authTables.identifiers} i where i.subject_id = a.id and i.active = 1 and i.namespace = 'email' and i.verified_at is not null limit 1) as email from ${accounts} a where a.id = ${accountId} and a.enabled = 1`,
-        ),
+        db
+          .select({ accountId: accounts.id, displayName: accounts.displayName, email: sql<string | null>`(${email})` })
+          .from(accounts)
+          .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true))),
       )
       const [row] = rows
       if (row === undefined) return yield* NotFound.make({})
-      return yield* Schema.decodeUnknownEffect(AccountRow)(row).pipe(Effect.mapError(unavailable))
+      return yield* Schema.decodeUnknownEffect(AccountRow)(row).pipe(Effect.mapError(() => Unavailable.make({})))
     })
 
     return { deleteAccount, finishDeletion, sweepDeletions, readAccount }

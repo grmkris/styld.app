@@ -25,13 +25,14 @@ import {
   type PieceType,
   type PlacedOutfitPiece,
   searchText,
+  Unavailable,
 } from '@styld/protocol'
 import { Array, Effect, Option } from 'effect'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, type Identified, receiptRow } from '../kernel/Receipts.ts'
 import { Outfits } from '../outfits/Outfits.ts'
-import { newPins, one, ownBoard, pieceTarget, priorOf, stored, unavailable, type BoardServices } from './Shared.ts'
+import { newPins, one, ownBoard, pieceTarget, priorOf, type BoardServices } from './Shared.ts'
 import {
   type BoardItemRow,
   type BoardOutfitRow,
@@ -66,7 +67,9 @@ const madeOutfits = (asked: Omit<MakeOutfit, 'mode' | 'lockedPieceIds' | 'comple
   Effect.gen(function* () {
     const batch = yield* (yield* Outfits)
       .make({ ...asked, mode: 'fast', lockedPieceIds: [], complete: true })
-      .pipe(Effect.catchTags({ LimitReached: unavailable, ThinkingUnanswered: unavailable }))
+      .pipe(
+        Effect.catchTags({ LimitReached: () => Unavailable.make({}), ThinkingUnanswered: () => Unavailable.make({}) }),
+      )
     if (Array.isReadonlyArrayEmpty(batch.proposals))
       return yield* OutfitRefused.make({ reason: 'noOutfits', missing: batch.missing })
     return batch
@@ -191,7 +194,7 @@ const savedOutfitBoard = Effect.fnUntraced(function* (operation: Identified, mad
   const committed = yield* Effect.option((yield* BoardStore).createOutfitBoard(made))
   if (Option.isSome(committed)) return yield* one(operation.accountId, made.board.id)
   const repeat = yield* madeBefore(operation)
-  return Option.isSome(repeat) ? repeat.value : yield* unavailable()
+  return Option.isSome(repeat) ? repeat.value : yield* Unavailable.make({})
 })
 
 /** The account's template board with its anchor and outfits: not found unless it is one, refused once its anchor is
@@ -358,7 +361,7 @@ const anotherLayout = Effect.fn('Styld.Boards.anotherLayout')(function* (boardId
   const committed = yield* Effect.option((yield* BoardStore).relayOut(change))
   if (Option.isSome(committed) || Option.isSome(yield* priorOf(operation))) return yield* one(accountId, boardId)
   // The board was saved meanwhile; asked again, it is laid out from how it is now.
-  return yield* unavailable()
+  return yield* Unavailable.make({})
 })
 
 /** Every "One piece, many outfits" board of the account laid out again in its own layout, its outfits kept and
@@ -474,7 +477,7 @@ export const template = Effect.map(Effect.context<BoardServices | Outfits>(), (c
     const committed = yield* Effect.option((yield* BoardStore).replaceOutfit(change))
     if (Option.isSome(committed) || Option.isSome(yield* priorOf(operation))) return yield* one(accountId, boardId)
     // The board was saved or the outfit kept meanwhile; asked again, it is read as it is now.
-    return yield* unavailable()
+    return yield* Unavailable.make({})
   }, Effect.provide(context)),
   /** The board's outfits laid out in another layout (`anotherLayout`). */
   anotherLayout: (boardId: BoardId, input: AnotherLayout) =>

@@ -190,7 +190,7 @@ describe('the sweeps', () => {
         `INSERT INTO oauth_assertions (namespace, receipt, expires_at) VALUES ('mcp', 'gone', ${now - minute}),
            ('mcp', 'live', ${now + minute})`,
       )
-      expect(yield* forgetExpiredAssertions(database, 500)).toBe(1)
+      expect(yield* forgetExpiredAssertions(drizzle(database), 500)).toBe(1)
       expect(database.sqlite.prepare('SELECT receipt FROM oauth_assertions').all()).toEqual([{ receipt: 'live' }])
     }),
   )

@@ -3,9 +3,10 @@ import { Array, DateTime, Duration, Effect, Option } from 'effect'
 import { PieceQueue, type WorkMessage } from '../wardrobe/Processing.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import type { Redrawn } from './BackfillStore.ts'
-import { storedAs, unavailable } from './Shared.ts'
 import { CaptureStore } from './Store.ts'
 import type { CaptureServices } from './Shared.ts'
+import { stored } from '../kernel/Db.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // A clean picture for every piece (owner, 4 November 2026). Most of a tester's 370 pieces were kept before pictures
 // were drawn, or came over from v1, and never had one; the operator asks for them, one account at a time. Each piece
@@ -42,7 +43,7 @@ const sendPaced = (bodies: ReadonlyArray<WorkMessage>) =>
         bodies.map((body, index) => ({ body, delaySeconds: delayOf(index) })),
         sendBatch,
       ),
-      (chunk) => Effect.tryPromise({ try: () => queue.sendBatch(chunk), catch: unavailable }),
+      (chunk) => called(() => queue.sendBatch(chunk)),
       { discard: true },
     )
   })
@@ -55,7 +56,7 @@ const send = (pieceIds: ReadonlyArray<string>) =>
  * 4 November), at most `perRun`; the job brings each piece's row in line, so a repeat draws nothing twice. */
 const backfillBacks = (accountId: string) =>
   Effect.gen(function* () {
-    const undrawn = yield* storedAs((yield* CaptureStore).undrawnBacks(accountId))
+    const undrawn = yield* stored((yield* CaptureStore).undrawnBacks(accountId))
     const chosen = undrawn.slice(0, perRun)
     yield* sendPaced(chosen.map((pieceId) => ({ _tag: 'DrawBackPicture' as const, accountId, pieceId })))
     yield* Effect.annotateCurrentSpan('styld.backfill.backs', chosen.length)
@@ -78,20 +79,20 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
     const store = yield* CaptureStore
     const now = yield* DateTime.now
     const at = DateTime.toDateUtc(now)
-    const shown = yield* storedAs(store.showProposed(accountId, at))
+    const shown = yield* stored(store.showProposed(accountId, at))
     // What others see of a public piece changed.
     const changes = yield* PieceChanged
     yield* Effect.forEach(shown, (pieceId) => changes.changed(pieceId), { discard: true })
-    const overdue = yield* storedAs(
+    const overdue = yield* stored(
       store.overduePictures(accountId, DateTime.toDateUtc(DateTime.subtractDuration(now, overdueAfter))),
     )
     const turnOf = (index: number) =>
       DateTime.toDateUtc(DateTime.addDuration(now, Duration.seconds(delayOf(overdue.length + index))))
     if (Option.isSome(redraw)) {
       const { before, which } = redraw.value
-      const stale = yield* storedAs(store.staleDrawings(accountId, before, which))
+      const stale = yield* stored(store.staleDrawings(accountId, before, which))
       const again = stale.slice(0, perRedraw)
-      const requeued = yield* storedAs(
+      const requeued = yield* stored(
         store.requeueDrawings(
           again.map((pieceId, index) => ({ pieceId, turn: turnOf(index) })),
           before,
@@ -107,11 +108,11 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
       })
       return { queued: requeued.length, shown: shown.length, remaining: stale.length - again.length }
     }
-    const undrawn = yield* storedAs(store.undrawnPieces(accountId))
+    const undrawn = yield* stored(store.undrawnPieces(accountId))
     const chosen = undrawn.slice(0, perRun)
     // A picture's turn is when it was last moved: the sweep gives up on one still queued half an hour after its turn,
     // not after the run.
-    const added = yield* storedAs(
+    const added = yield* stored(
       store.addPictures(
         chosen.map((pieceId, index) => ({
           pieceId,

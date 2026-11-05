@@ -40,7 +40,7 @@ export const toolset = AssistantToolset.layer.pipe(
 /** Each sweep runs on its own: assistants' notes past 180 days, and expired OAuth assertions. */
 const sweeps: ReadonlyArray<Sweep<Feedback | Database>> = [
   { name: 'feedback', run: Effect.flatMap(Feedback, (feedback) => feedback.sweep()) },
-  { name: 'assertions', run: Effect.flatMap(Database, (db) => forgetExpiredAssertions(db.$client, forgetBatch)) },
+  { name: 'assertions', run: Effect.flatMap(Database, (db) => forgetExpiredAssertions(db, forgetBatch)) },
 ]
 
 /** Assistants over MCP: the OAuth server that authorizes them, `/mcp` and its tools. */

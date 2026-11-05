@@ -1,5 +1,6 @@
 import { Context, DateTime, Duration, Effect, Layer } from 'effect'
-import { type GenerationServices, send, stored } from './Shared.ts'
+import { stored } from '../kernel/Db.ts'
+import { type GenerationServices, send } from './Shared.ts'
 import { generations } from './Generation.ts'
 import { GenerationStore } from './Store.ts'
 import { giveUp, work } from './Work.ts'

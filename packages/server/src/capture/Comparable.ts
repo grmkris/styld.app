@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect'
 import type { Picture } from './Providers.ts'
-import { unavailable } from './Shared.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // Matching compares a sighting with up to ten sightings of its import and six wardrobe pieces, and the next sighting
 // with mostly the same ones. Making a stored cut-out into the picture the model compares (decode, shrink, flatten,
@@ -42,10 +42,9 @@ export const comparablePictures = (capacity: number, make: (bytes: Uint8Array) =
   return (bucket: ComparableBucket, key: string) =>
     Effect.gen(function* () {
       const known = kept.get(key)
-      const object = yield* Effect.tryPromise({
-        try: () => bucket.get(key, known === undefined ? undefined : { onlyIf: { etagDoesNotMatch: known.etag } }),
-        catch: unavailable,
-      })
+      const object = yield* called(() =>
+        bucket.get(key, known === undefined ? undefined : { onlyIf: { etagDoesNotMatch: known.etag } }),
+      )
       if (object === null) {
         kept.delete(key)
         return Option.none<Picture>()
@@ -57,7 +56,7 @@ export const comparablePictures = (capacity: number, make: (bytes: Uint8Array) =
         keep(key, known)
         return Option.some(known.picture)
       }
-      const bytes = new Uint8Array(yield* Effect.tryPromise({ try: () => read.call(object), catch: unavailable }))
+      const bytes = new Uint8Array(yield* called(() => read.call(object)))
       const picture = make(bytes)
       if (Option.isSome(picture)) keep(key, { etag: object.etag, picture: picture.value })
       else kept.delete(key)

@@ -4,7 +4,6 @@ import {
   NotFound,
   type OperationId,
   PieceId,
-  Unavailable,
   type WearPieces,
   type WornDay,
   type WornRange,
@@ -12,15 +11,12 @@ import {
 import { Context, Effect, Layer } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { outfitKept } from '../outfits/Outfits.ts'
-import { Database, type StoreUnavailable } from '../kernel/Db.ts'
+import { Database, stored } from '../kernel/Db.ts'
 import { recorded } from '../kernel/Receipts.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { wornStore } from './Store.ts'
 
 type Range = typeof WornRange.Type
-
-const unavailable = () => Unavailable.make({})
-const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** The most days one read spans, after its first. */
 const longestRange = 62

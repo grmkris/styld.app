@@ -11,17 +11,18 @@ import {
   turned,
 } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
-import { readObject, readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
+import { readObject, readPixels, writeObject } from './Shared.ts'
 import { opaqueShare } from './Pixels.ts'
 import { type DrawRequest, type GarmentVision, ImageGenerator, type Picture, PictureWork } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
 import { isStale } from '../wardrobe/Shown.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Media } from '../kernel/Media.ts'
 import { CaptureMetrics, type PictureOutcome } from '../kernel/Metrics.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // One drawing lifecycle for either side of a piece (owner, 4 November 2026: a pressed back, drawn only from a real
 // one, beside the front's clean picture): plan, claim, draw with the image model, key the background out, store and
@@ -115,9 +116,7 @@ const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] 
 export const hasEnded = (state: PictureState): state is (typeof ends)[number] => ends.some((end) => end === state)
 
 export const removeObject = (key: string | null) =>
-  key === null
-    ? Effect.void
-    : Effect.flatMap(Media, ({ bucket }) => Effect.tryPromise({ try: () => bucket.delete(key), catch: unavailable }))
+  key === null ? Effect.void : Effect.flatMap(Media, ({ bucket }) => called(() => bucket.delete(key)))
 
 /** Move a drawing on from one of `from`; whether it moved. Every write goes through here, so two deliveries never both
  * act on one state, and each drawing's end is counted once. */
@@ -229,7 +228,7 @@ const draw = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, job: Claimed<Row
  * and draw it. The claim drops the last drawing: a redraw replaces it. */
 const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
   Effect.gen(function* () {
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(row.accountId, row.pieceId))
+    const piece = yield* stored((yield* WardrobeStore).findPiece(row.accountId, row.pieceId))
     if (Option.isNone(piece)) return
     const { subject, other } = yield* slot.cutouts(piece.value)
     if (Option.isNone(subject)) return yield* move(slot, row, ['queued'], { state: 'kept-real' })
@@ -258,7 +257,7 @@ export const drawingOf = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>) => (
       const found = yield* slot.find(pieceId)
       if (Option.isNone(found)) return
       const row = found.value
-      if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(row.accountId)))) return
+      if (!(yield* stored((yield* WardrobeStore).accountEnabled(row.accountId)))) return
       if (row.state === 'queued') yield* start(slot, row)
       else if (row.state === 'checking') yield* showStored(slot, row)
       else if (isStale(row, yield* nowDate)) yield* end(slot, row, 'generating', 'unknown')

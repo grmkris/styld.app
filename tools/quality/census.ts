@@ -49,8 +49,7 @@ const textual: ReadonlyArray<{
   {
     name: 'sql.wholeStatements',
     where: (p) => p.startsWith('packages/') || p.startsWith('tools/'),
-    pattern:
-      /\.(?:run|all|get|values)\(\s*sql`|\.prepare\(|\$client\b|\bquery\(\s*`\s*(?:select|insert|update|delete)\b/giu,
+    pattern: /\.(?:run|all|get|values)\(\s*sql`|\.prepare\(\s*['"`]|\$client\b/giu,
   },
   {
     name: 'sql.textSubqueries',
@@ -182,7 +181,11 @@ const serverModulesImported = (path: string, source: string): ReadonlyArray<stri
 
 const censusFiles = async () =>
   (await sourceFiles()).filter(
-    (path) => !isTest(path) && !path.endsWith('.generated.ts') && !path.startsWith('tools/quality/census'),
+    (path) =>
+      !isTest(path) &&
+      !path.endsWith('.generated.ts') &&
+      !path.startsWith('tools/quality/census') &&
+      path !== 'tools/quality/patterns.ts',
   )
 
 const sorted = (census: Tally): Census =>

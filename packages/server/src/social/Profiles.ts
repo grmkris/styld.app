@@ -15,12 +15,9 @@ import {
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Checks } from '../safety/Checks.ts'
-import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { type Operation, recorded } from '../kernel/Receipts.ts'
 import { handleOwner, profileOf, type ProfileRow, profileWrite } from './ProfileStore.ts'
-
-const unavailable = () => Unavailable.make({})
-const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** A tone that stays the same for an account until the person picks another. */
 const toneFor = (accountId: string): Tone => {
@@ -78,9 +75,9 @@ const claimable = (db: Database['Service'], accountId: string, handle: Handle) =
 /** A profile write that did not land: a handle taken between the check and the write is still taken. */
 const lostWrite = (db: Database['Service'], accountId: string, handle: Handle | undefined) =>
   handle === undefined
-    ? Effect.fail(unavailable())
+    ? Effect.fail(Unavailable.make({}))
     : Effect.flatMap(stored(handleOwner(db, handle)), (owner) =>
-        Effect.fail(Option.isSome(owner) && owner.value !== accountId ? HandleTaken.make({}) : unavailable()),
+        Effect.fail(Option.isSome(owner) && owner.value !== accountId ? HandleTaken.make({}) : Unavailable.make({})),
       )
 
 const make = Effect.gen(function* () {

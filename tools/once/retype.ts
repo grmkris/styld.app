@@ -28,7 +28,7 @@ import type { Picture } from '../../packages/server/src/capture/Providers.ts'
 import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
 import { askClef, imageOf } from '../../packages/server/src/providers/Clef.ts'
-import { built, cloudflareStage, readEach, stageOptions, statements } from '../CloudflareRest.ts'
+import { cloudflareStage, readEach, stageOptions, statements } from '../CloudflareRest.ts'
 import {
   isQuestionSetName,
   type QuestionRead,
@@ -80,11 +80,9 @@ const { query, object, runClef } = await cloudflareStage({ token, cloudflareAcco
 // The two statements, kept apart from the reading and the report.
 
 /** The ready pieces of `from` with a cut-out of their own, of one account and made before a time when given. */
-const statement = built(query)
-
 const selectPieces = async (from: PieceType, filter: { readonly account?: string; readonly before?: number }) =>
   Schema.decodeUnknownPromise(Schema.Array(Stored))(
-    await statement(
+    await query(
       statements
         .select({
           id: pieces.id,
@@ -104,8 +102,7 @@ const selectPieces = async (from: PieceType, filter: { readonly account?: string
             filter.before === undefined ? undefined : lt(pieces.createdAt, new Date(filter.before)),
           ),
         )
-        .orderBy(pieces.createdAt)
-        .toSQL(),
+        .orderBy(pieces.createdAt),
     ),
   )
 
@@ -116,13 +113,12 @@ const movePiece = async (
   to: PieceType,
   at: number,
 ) =>
-  statement(
+  query(
     statements
       .update(pieces)
       .set({ type: to, updatedAt: new Date(at) })
       .where(and(eq(pieces.id, move.id), eq(pieces.accountId, move.accountId), eq(pieces.type, from)))
-      .returning({ id: pieces.id })
-      .toSQL(),
+      .returning({ id: pieces.id }),
   )
 
 interface Read extends QuestionRead {

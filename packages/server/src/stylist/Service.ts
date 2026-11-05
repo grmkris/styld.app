@@ -1,7 +1,7 @@
 import { ChatId, CurrentAccount, Day, NotFound, type SendChatMessage, Unavailable, prices } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, type Stream } from 'effect'
 import { digestOf } from '../kernel/Ids.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -54,8 +54,6 @@ export class StylistTools extends Context.Service<
   { readonly forAccount: (accountId: string) => ReadonlyArray<AssistantTool<never>> }
 >()('@styld/server/stylist/StylistTools') {}
 
-const unavailable = () => Unavailable.make({})
-
 /** An operation for an account, as an assistant acts for it. */
 const asAccount = (accountId: string) => Effect.provideService(CurrentAccount, { accountId, via: 'assistant' as const })
 
@@ -78,7 +76,10 @@ const aboutOf = (tastes: Tastes['Service'], accountId: string) =>
 const inputFor =
   (wardrobe: Wardrobe['Service'], tastes: Tastes['Service']) => (accountId: string, input: SendChatMessage) =>
     Effect.gen(function* () {
-      const pieces = yield* wardrobe.listPieces().pipe(asAccount(accountId), Effect.mapError(unavailable))
+      const pieces = yield* wardrobe.listPieces().pipe(
+        asAccount(accountId),
+        Effect.mapError(() => Unavailable.make({})),
+      )
       const about = yield* aboutOf(tastes, accountId)
       return {
         text: input.text,
@@ -100,7 +101,7 @@ const chatting = Effect.gen(function* () {
 
   /** The account's own chat, or `NotFound`. */
   const ownChat = (accountId: string, chatId: string) =>
-    Effect.flatMap(Effect.mapError(index.find(accountId, chatId), unavailable), (found) =>
+    Effect.flatMap(stored(index.find(accountId, chatId)), (found) =>
       Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
     )
 
@@ -115,16 +116,14 @@ const chatting = Effect.gen(function* () {
     if (input.chatId !== undefined) yield* ownChat(accountId, input.chatId)
     const message = yield* inputOf(accountId, input)
     yield* holds.reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
-    yield* index
-      .touch({ accountId, chatId, title: titleOf(input.text), at: yield* nowDate })
-      .pipe(Effect.mapError(unavailable))
+    yield* index.touch({ accountId, chatId, title: titleOf(input.text), at: yield* nowDate }).pipe(stored)
     yield* threads
       .submit(accountId, chatId, input.operationId, message)
       .pipe(
         Effect.catchTag('Refused', () =>
           Effect.andThen(
             holds.settle(accountId, holdOf(turnId), 'failed').pipe(Effect.ignore),
-            Effect.fail(unavailable()),
+            Effect.fail(Unavailable.make({})),
           ),
         ),
       )
@@ -136,7 +135,7 @@ const chatting = Effect.gen(function* () {
     /** The person's chats, the latest first. */
     chats: Effect.fn('Styld.Stylist.chats')(function* () {
       const { accountId } = yield* CurrentAccount
-      const rows = yield* Effect.mapError(index.list(accountId, listed), unavailable)
+      const rows = yield* stored(index.list(accountId, listed))
       return {
         chats: rows.map((row) => ({
           id: ChatId.make(row.id),

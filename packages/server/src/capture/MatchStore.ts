@@ -127,7 +127,7 @@ const candidateRows = (db: Database) => ({
   wardrobeCandidates: (
     accountId: string,
     types: ReadonlyArray<PieceType>,
-    like: { readonly type: string | null; readonly colour: string | undefined },
+    like: { readonly type: PieceType | null; readonly colour: string | undefined },
     limit: number,
   ) =>
     query(() =>
@@ -145,7 +145,7 @@ const candidateRows = (db: Database) => ({
         )
         // A term left out, not ordered by a constant: SQLite reads `ORDER BY 0` as a column number and refuses it.
         .orderBy(
-          ...(like.type === null ? [] : [desc(sql`${pieces.type} = ${like.type}`)]),
+          ...(like.type === null ? [] : [desc(eq(pieces.type, like.type))]),
           ...(like.colour === undefined
             ? []
             : [desc(sql`instr(${pieces.colours}, ${JSON.stringify(like.colour)}) > 0`)]),

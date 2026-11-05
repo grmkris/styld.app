@@ -1,7 +1,7 @@
 import type { PaidAttempts } from '../usage/Attempts.ts'
 import type { Pacing } from '../kernel/Pacing.ts'
 import type { Holds } from '../usage/Holds.ts'
-import { CurrentAccount, NotFound, Piece, PieceType, Unavailable, UploadRefused } from '@styld/protocol'
+import { CurrentAccount, NotFound, Piece, PieceType, UploadRefused } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { GarmentCutout, PieceQueue } from './Processing.ts'
@@ -9,7 +9,7 @@ import { pictureView } from './Shown.ts'
 import { pieceImages, shownTurn } from './Images.ts'
 import { type PictureRow, type PieceRow, type TurnRow, type UploadRow, WardrobeStore } from './Store.ts'
 import type { BackPictureRow } from '../capture/BackPictureStore.ts'
-import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import type { SignedMedia } from '../kernel/SignedMedia.ts'
 
@@ -29,9 +29,7 @@ export type WardrobeServices =
   | PaidAttempts
   | Pacing
 
-export const unavailable = () => Unavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
-export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 
 /** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for, and, for the
  * owner's browser, the signed addresses of its pictures (`Images.ts`): all of them on its own `page`. */

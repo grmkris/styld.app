@@ -92,20 +92,41 @@ export interface ProfileWords {
   readonly bio: string | null
 }
 
+/** A profile's words in the reader's language. */
+export interface TranslatedProfile {
+  readonly name: string
+  readonly bio: string | null
+}
+
+/** The translations of these profiles into `locale` that still translate their originals, by account. */
+export const profileTranslationsIn = (
+  db: Database['Service'],
+  locale: Language,
+  profiles: ReadonlyArray<ProfileWords>,
+) =>
+  Effect.gen(function* () {
+    const fresh = new Map<string, TranslatedProfile>()
+    if (locale === 'en' || profiles.length === 0) return fresh
+    const rows = yield* inChunks(
+      profiles.map(({ accountId }) => accountId),
+      (chunk) =>
+        db
+          .select()
+          .from(profileTranslations)
+          .where(and(inArray(profileTranslations.accountId, chunk), eq(profileTranslations.locale, locale))),
+    )
+    const originals = new Map(profiles.map((profile) => [profile.accountId, profile]))
+    for (const row of rows) {
+      const original = originals.get(row.accountId)
+      if (original !== undefined && (yield* profileSourceDigest(original.name, original.bio)) === row.sourceDigest)
+        fresh.set(row.accountId, { name: row.name, bio: row.bio })
+    }
+    return fresh
+  })
+
 /** The translation of this profile into `locale`, while it still translates its original. */
 export const profileTranslationIn = (db: Database['Service'], locale: Language, profile: ProfileWords) =>
-  Effect.gen(function* () {
-    if (locale === 'en') return undefined
-    const [row] = yield* inChunks([profile.accountId], (chunk) =>
-      db
-        .select()
-        .from(profileTranslations)
-        .where(and(inArray(profileTranslations.accountId, chunk), eq(profileTranslations.locale, locale))),
-    )
-    if (row === undefined) return undefined
-    const current = yield* profileSourceDigest(profile.name, profile.bio)
-    return current === row.sourceDigest ? { name: row.name, bio: row.bio } : undefined
-  })
+  Effect.map(profileTranslationsIn(db, locale, [profile]), (fresh) => fresh.get(profile.accountId))
 
 /** A table's items with its labels in the reader's language, where the translation has them (it holds only labels,
  * by their items). */

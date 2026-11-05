@@ -9,14 +9,14 @@ import {
   requiredProofConstraints,
 } from '@yielded/auth-persistence-drizzle'
 import * as D1 from '@yielded/auth-persistence-drizzle/D1'
-import { sql, type SQL } from 'drizzle-orm'
+import { and, eq, isNotNull, sql, type SQL } from 'drizzle-orm'
 import * as Drizzle from 'drizzle-orm/effect-d1'
 import { Effect, Layer, Schema } from 'effect'
 import * as Digest from 'effect/crypto/Digest'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import * as Struct from 'effect/Struct'
-import { accounts } from '@styld/db'
+import { accounts, authMirror } from '@styld/db'
 
 import { requirement } from './config.ts'
 import type { EmailRegistration } from './EmailEntry.ts'
@@ -181,7 +181,14 @@ const registrationIdentifier = {
   ...identifierRead,
   isMutableTarget: () => false,
   d1CurrentCondition: ({ bindingRevision }: { readonly bindingRevision: Sessions.SecurityRevision }) =>
-    sql`${sql.identifier('active')} = 1 and ${sql.identifier('verified_at')} is not null and ${sql.identifier('revision')} = ${bindingRevision}`,
+    sql.join(
+      [
+        eq(authMirror.identifiers.active, true),
+        isNotNull(authMirror.identifiers.verifiedAt),
+        eq(authMirror.identifiers.revision, bindingRevision),
+      ],
+      sql` and `,
+    ),
   encodeVerifiedInsert: (row: {
     readonly identifier: Identity.LoginIdentifier
     readonly subjectId: string
@@ -231,12 +238,14 @@ const makeRegistrationMapping = Effect.gen(function* () {
     readonly registration: EmailRegistration
   }) =>
     Effect.gen(function* () {
-      // The managed identifier table is typed generically, so its columns are named in SQL.
       const rows = yield* drizzle
-        .select({ found: sql<number>`1` })
-        .from(identifiers)
+        .select({ value: authMirror.identifiers.value })
+        .from(authMirror.identifiers)
         .where(
-          sql`${sql.identifier('namespace')} = ${input.identifier.namespace} and ${sql.identifier('value')} = ${input.identifier.value}`,
+          and(
+            eq(authMirror.identifiers.namespace, input.identifier.namespace),
+            eq(authMirror.identifiers.value, input.identifier.value),
+          ),
         )
         .limit(1)
       const bytes = yield* digest.digest(

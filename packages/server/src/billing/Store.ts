@@ -1,8 +1,9 @@
 import { accountOfEmail } from '@styld/auth/provisioning'
 import { accounts, memberships, purchases } from '@styld/db'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNotNull, isNull, lte, ne, notExists, sql } from 'drizzle-orm'
 import { Effect, Option } from 'effect'
-import { type Database, first, query } from '../kernel/Db.ts'
+import { allOf, anyOf } from '../kernel/Conditional.ts'
+import { type Database, fenced, first, query } from '../kernel/Db.ts'
 import { weekMillis } from './Membership.ts'
 
 // The webhook's and the operator's writes, each one D1 batch (one transaction) whose statements check the purchase row
@@ -53,7 +54,39 @@ export interface Payer {
 
 /** A subscription event applies to a row that is not lifetime and has seen no newer event. */
 const subscriptionMayChange = (at: Date) =>
-  sql`${memberships.until} is not null and coalesce(${memberships.subscriptionEventAt}, 0) <= ${at.getTime()}`
+  allOf(
+    isNotNull(memberships.until),
+    anyOf(isNull(memberships.subscriptionEventAt), lte(memberships.subscriptionEventAt, at)),
+  )
+
+/** The customer the event names, else the one the membership already has. */
+const customerOf = (customerId: string | null) => customerId ?? memberships.customerId
+
+/** A week more on a membership already there: from the later of its end and now (a lifetime's none stays none), and
+ * a running subscription keeps its plan and status. */
+const weekMore = (now: Date, customerId: string | null) => {
+  const running = and(
+    inArray(memberships.plan, ['monthly', 'yearly']),
+    ne(memberships.status, 'ended'),
+    gt(memberships.until, now),
+  )
+  return {
+    until: sql`max(max(${memberships.until}, ${now.getTime()}) + ${weekMillis}, ${now.getTime() + weekMillis})`,
+    plan: sql`case when ${isNull(memberships.until)} then ${memberships.plan} when ${running} then ${memberships.plan} else 'week' end`,
+    status: sql`case when ${isNull(memberships.until)} then ${memberships.status} when ${running} then ${memberships.status} else 'active' end`,
+    customerId: customerOf(customerId),
+    updatedAt: now,
+  }
+}
+
+/** Lifetime over whatever membership is there. */
+const lifetime = (now: Date, customerId: string | null) => ({
+  plan: 'lifetime' as const,
+  until: null,
+  status: 'active' as const,
+  customerId: customerOf(customerId),
+  updatedAt: now,
+})
 
 /** The account with this id, if it still exists. */
 const accountById = (db: Database['Service'], id: string) =>
@@ -75,6 +108,107 @@ const accountBySubscription = (db: Database['Service'], subscription: string) =>
 const accountByEmail = (db: Database['Service'], email: string) =>
   query(() => accountOfEmail(db, email)).pipe(Effect.map((rows) => Option.map(first(rows), (row) => row.accountId)))
 
+/** Count a one-time payment, only if it is not already recorded: a week more (from the later of now and the current
+ * end; a running subscription keeps its plan and status) or lifetime, and its purchase row. The membership is
+ * selected from the account's row, so an account gone meanwhile writes no membership; the purchase row's foreign key
+ * then fails the whole batch, as before, which `fenced` answers as the store being unavailable (Dodo retries). */
+const creditBatch = (db: Database['Service'], payment: Payment, now: Date) =>
+  db.batch([
+    db
+      .insert(memberships)
+      .select(
+        db
+          .select({
+            accountId: accounts.id,
+            plan: sql`${payment.plan}`.as('plan'),
+            until: sql`${payment.plan === 'week' ? now.getTime() + weekMillis : null}`.as('until'),
+            status: sql`'active'`.as('status'),
+            customerId: sql`${payment.customerId}`.as('customer_id'),
+            updatedAt: sql`${now.getTime()}`.as('updated_at'),
+          })
+          .from(accounts)
+          .where(
+            and(
+              eq(accounts.id, payment.accountId),
+              notExists(
+                db
+                  .select({ paymentId: purchases.paymentId })
+                  .from(purchases)
+                  .where(eq(purchases.paymentId, payment.paymentId)),
+              ),
+            ),
+          ),
+      )
+      .onConflictDoUpdate({
+        target: memberships.accountId,
+        set: payment.plan === 'week' ? weekMore(now, payment.customerId) : lifetime(now, payment.customerId),
+      }),
+    db
+      .insert(purchases)
+      .values({
+        paymentId: payment.paymentId,
+        accountId: payment.accountId,
+        productId: payment.productId,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: 'succeeded',
+        plan: payment.plan,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing({ target: purchases.paymentId }),
+  ])
+
+/** The one statement a subscription event writes. */
+const subscriptionWrite = (db: Database['Service'], change: SubscriptionChange, now: Date) => {
+  const { accountId, subscriptionId, customerId, plan, at } = change
+  const ofSubscription = and(
+    eq(memberships.accountId, accountId),
+    eq(memberships.subscriptionId, subscriptionId),
+    subscriptionMayChange(at),
+  )
+  if (change.kind === 'active')
+    return db
+      .insert(memberships)
+      .values({
+        accountId,
+        plan,
+        until: change.until,
+        status: 'active',
+        subscriptionId,
+        customerId,
+        subscriptionEventAt: at,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: memberships.accountId,
+        set: {
+          plan,
+          until: sql`max(case when ${eq(memberships.status, 'ended')} then 0 else ${memberships.until} end, ${change.until.getTime()})`,
+          status: 'active',
+          subscriptionId,
+          customerId: customerOf(customerId),
+          subscriptionEventAt: at,
+          updatedAt: now,
+        },
+        setWhere: subscriptionMayChange(at),
+      })
+  if (change.kind === 'cancelled')
+    return db
+      .update(memberships)
+      .set({ status: 'cancelled', subscriptionEventAt: at, updatedAt: now })
+      .where(and(ofSubscription, eq(memberships.status, 'active')))
+  return db
+    .update(memberships)
+    .set({
+      status: 'ended',
+      until: sql`min(${memberships.until}, ${now.getTime()})`,
+      subscriptionEventAt: at,
+      updatedAt: now,
+    })
+    .where(ofSubscription)
+}
+
 export const billingStore = (db: Database['Service']) => ({
   /** The account a delivery is for, if it still exists (one deleted since its checkout has nothing to credit). */
   accountOf: (payer: Payer) => {
@@ -94,61 +228,52 @@ export const billingStore = (db: Database['Service']) => ({
   /** The account an email signs in to. */
   accountOfEmail: (email: string) => accountByEmail(db, email),
   /** Count a one-time payment, only if it is not already recorded: a week more (from the later of now and the current
-   * end; a running subscription keeps its plan and status) or lifetime, and its purchase row. */
-  credit: (payment: Payment, now: Date) =>
-    query(() =>
-      db.batch([
-        payment.plan === 'week'
-          ? db.run(
-              sql`insert into ${memberships} (account_id, plan, until, status, customer_id, updated_at) select ${payment.accountId}, 'week', ${now.getTime() + weekMillis}, 'active', ${payment.customerId}, ${now.getTime()} where not exists (select 1 from ${purchases} where payment_id = ${payment.paymentId}) on conflict (account_id) do update set until = max(max(${memberships.until}, ${now.getTime()}) + ${weekMillis}, excluded.until), plan = case when ${memberships.until} is null then ${memberships.plan} when ${memberships.plan} in ('monthly', 'yearly') and ${memberships.status} != 'ended' and ${memberships.until} > ${now.getTime()} then ${memberships.plan} else 'week' end, status = case when ${memberships.until} is null then ${memberships.status} when ${memberships.plan} in ('monthly', 'yearly') and ${memberships.status} != 'ended' and ${memberships.until} > ${now.getTime()} then ${memberships.status} else 'active' end, customer_id = coalesce(excluded.customer_id, ${memberships.customerId}), updated_at = excluded.updated_at`,
-            )
-          : db.run(
-              sql`insert into ${memberships} (account_id, plan, until, status, customer_id, updated_at) select ${payment.accountId}, 'lifetime', null, 'active', ${payment.customerId}, ${now.getTime()} where not exists (select 1 from ${purchases} where payment_id = ${payment.paymentId}) on conflict (account_id) do update set plan = 'lifetime', until = null, status = 'active', customer_id = coalesce(excluded.customer_id, ${memberships.customerId}), updated_at = excluded.updated_at`,
-            ),
-        db.run(
-          sql`insert into ${purchases} (payment_id, account_id, product_id, amount, currency, status, plan, created_at, updated_at) values (${payment.paymentId}, ${payment.accountId}, ${payment.productId}, ${payment.amount}, ${payment.currency}, 'succeeded', ${payment.plan}, ${now.getTime()}, ${now.getTime()}) on conflict (payment_id) do nothing`,
-        ),
-      ]),
-    ),
+   * end; a running subscription keeps its plan and status) or lifetime, and its purchase row. The membership is
+   * selected from the account's row, so an account gone meanwhile writes no membership; the purchase row's foreign key
+   * then fails the whole batch, as before, which `fenced` answers as the store being unavailable (Dodo retries). */
+  credit: (payment: Payment, now: Date) => fenced(() => creditBatch(db, payment, now)),
   /** Take a counted payment back, only while it still stands as succeeded: a week's comes off the end (never before
    * now; a lifetime membership keeps its none), a lifetime ends now. A payment Styld never counted changes nothing. */
-  takeBack: (paymentId: string, status: TakenBack, now: Date) =>
-    query(() =>
-      db.batch([
-        db.run(
-          sql`update ${memberships} set until = max(${now.getTime()}, ${memberships.until} - ${weekMillis}), updated_at = ${now.getTime()} where ${memberships.until} is not null and account_id = (select account_id from ${purchases} where payment_id = ${paymentId} and status = 'succeeded' and plan = 'week')`,
-        ),
-        db.run(
-          sql`update ${memberships} set until = ${now.getTime()}, status = 'ended', updated_at = ${now.getTime()} where ${memberships.until} is null and account_id = (select account_id from ${purchases} where payment_id = ${paymentId} and status = 'succeeded' and plan = 'lifetime')`,
-        ),
-        db.run(
-          sql`update ${purchases} set status = ${status}, updated_at = ${now.getTime()} where payment_id = ${paymentId} and status = 'succeeded'`,
-        ),
-      ]),
-    ),
-  /** Apply one subscription event. Running, it makes (or moves) the membership that subscription's, until the later of
-   * its end and the current one; cancelled, it stops renewing and keeps its end; ended, its access stops now. */
-  subscription: (change: SubscriptionChange, now: Date) => {
-    const { accountId, subscriptionId, customerId, plan, at } = change
-    return query(() => {
-      if (change.kind === 'active')
-        return db.run(
-          sql`insert into ${memberships} (account_id, plan, until, status, subscription_id, customer_id, subscription_event_at, updated_at) values (${accountId}, ${plan}, ${change.until.getTime()}, 'active', ${subscriptionId}, ${customerId}, ${at.getTime()}, ${now.getTime()}) on conflict (account_id) do update set plan = excluded.plan, until = max(case when ${memberships.status} = 'ended' then 0 else ${memberships.until} end, excluded.until), status = 'active', subscription_id = excluded.subscription_id, customer_id = coalesce(excluded.customer_id, ${memberships.customerId}), subscription_event_at = excluded.subscription_event_at, updated_at = excluded.updated_at where ${subscriptionMayChange(at)}`,
-        )
-      if (change.kind === 'cancelled')
-        return db.run(
-          sql`update ${memberships} set status = 'cancelled', subscription_event_at = ${at.getTime()}, updated_at = ${now.getTime()} where account_id = ${accountId} and subscription_id = ${subscriptionId} and status = 'active' and ${subscriptionMayChange(at)}`,
-        )
-      return db.run(
-        sql`update ${memberships} set status = 'ended', until = min(${memberships.until}, ${now.getTime()}), subscription_event_at = ${at.getTime()}, updated_at = ${now.getTime()} where account_id = ${accountId} and subscription_id = ${subscriptionId} and ${subscriptionMayChange(at)}`,
+  takeBack: (paymentId: string, status: TakenBack, now: Date) => {
+    const payerOf = (plan: Payment['plan']) =>
+      inArray(
+        memberships.accountId,
+        db
+          .select({ accountId: purchases.accountId })
+          .from(purchases)
+          .where(and(eq(purchases.paymentId, paymentId), eq(purchases.status, 'succeeded'), eq(purchases.plan, plan))),
       )
-    }).pipe(Effect.asVoid)
+    return query(() =>
+      db.batch([
+        db
+          .update(memberships)
+          .set({ until: sql`max(${now.getTime()}, ${memberships.until} - ${weekMillis})`, updatedAt: now })
+          .where(and(isNotNull(memberships.until), payerOf('week'))),
+        db
+          .update(memberships)
+          .set({ until: now, status: 'ended', updatedAt: now })
+          .where(and(isNull(memberships.until), payerOf('lifetime'))),
+        db
+          .update(purchases)
+          .set({ status, updatedAt: now })
+          .where(and(eq(purchases.paymentId, paymentId), eq(purchases.status, 'succeeded'))),
+      ]),
+    )
   },
+  /** Apply one subscription event. Running, it makes (or moves) the membership that subscription's, until the later of
+   * its end and the current one; cancelled, it stops renewing and keeps its end; ended, its access stops now. A
+   * running event for an account gone meanwhile fails on the foreign key, answered as the store being unavailable. */
+  subscription: (change: SubscriptionChange, now: Date) =>
+    fenced(() => subscriptionWrite(db, change, now)).pipe(Effect.asVoid),
   /** The operator's grant: lifetime, whatever the account had; granting again changes nothing. */
   grantLifetime: (accountId: string, now: Date) =>
     query(() =>
-      db.run(
-        sql`insert into ${memberships} (account_id, plan, until, status, updated_at) values (${accountId}, 'lifetime', null, 'active', ${now.getTime()}) on conflict (account_id) do update set plan = 'lifetime', until = null, status = 'active', updated_at = excluded.updated_at`,
-      ),
+      db
+        .insert(memberships)
+        .values({ accountId, plan: 'lifetime', until: null, status: 'active', updatedAt: now })
+        .onConflictDoUpdate({
+          target: memberships.accountId,
+          set: { plan: 'lifetime', until: null, status: 'active', updatedAt: now },
+        }),
     ).pipe(Effect.asVoid),
 })

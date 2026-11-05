@@ -10,8 +10,6 @@ import { pictureFromLink } from './LinkPicture.ts'
 
 const LinkPictureJson = Schema.fromJsonString(LinkPicture)
 
-const unavailable = () => Unavailable.make({})
-
 /** What Styld fetches from the web for the person, at the account's `link` pace: a shop's product page and a photo's
  * address, each read into a received upload. The website, the assistants and Styld's tools share it. */
 const make = Effect.gen(function* () {
@@ -27,10 +25,11 @@ const make = Effect.gen(function* () {
       return yield* wardrobe.once(
         { operationId: input.operationId, command: 'readLink', input: input.url },
         {
-          replay: (result) => Schema.decodeUnknownEffect(LinkPictureJson)(result).pipe(Effect.mapError(unavailable)),
+          replay: (result) =>
+            Schema.decodeUnknownEffect(LinkPictureJson)(result).pipe(Effect.mapError(() => Unavailable.make({}))),
           run: Effect.flatMap(fetched(pictureFromLink(wardrobe, input.url)), (picture) =>
             Effect.map(
-              Schema.encodeEffect(LinkPictureJson)(picture).pipe(Effect.mapError(unavailable)),
+              Schema.encodeEffect(LinkPictureJson)(picture).pipe(Effect.mapError(() => Unavailable.make({}))),
               (result) => [picture, result] as const,
             ),
           ),
@@ -43,7 +42,8 @@ const make = Effect.gen(function* () {
       return yield* wardrobe.once(
         { operationId: input.operationId, command: 'importPhoto', input: input.url },
         {
-          replay: (result) => Schema.decodeUnknownEffect(UploadId)(result).pipe(Effect.mapError(unavailable)),
+          replay: (result) =>
+            Schema.decodeUnknownEffect(UploadId)(result).pipe(Effect.mapError(() => Unavailable.make({}))),
           run: Effect.map(fetched(importedUpload(wardrobe, input.url)), (uploadId) => [uploadId, uploadId] as const),
         },
       )

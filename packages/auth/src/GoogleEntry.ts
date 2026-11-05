@@ -1,7 +1,8 @@
 import { Google, OAuth, Schema as AuthSchema } from '@yielded/auth'
 import type { ProviderDefinition } from '@yielded/auth/OAuth'
 import { type IdentityImport, IdentityImports } from '@yielded/auth-persistence/OAuthPersistence'
-import { sql } from 'drizzle-orm'
+import { authMirror } from '@styld/db'
+import { and, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { DateTime, Effect, Option, Predicate, type Redacted } from 'effect'
 import * as Base64Url from 'effect/encoding/Base64Url'
@@ -9,7 +10,7 @@ import * as SecureRandom from 'effect/crypto/SecureRandom'
 
 import type { D1Source } from './AttemptLimiter.ts'
 import { accountOfEmail, createEmailAccount } from './Provisioning.ts'
-import { AppAuth, oauthIdentities } from './storage.ts'
+import { AppAuth } from './storage.ts'
 
 /** The Google OAuth client (v1's, reused): its id and secret. */
 export interface GoogleClient {
@@ -35,6 +36,8 @@ const unavailable: OAuth.OAuthProtocol['Service'] = {
 
 type Database = ReturnType<typeof drizzle>
 
+const { oauthIdentities } = authMirror
+
 /**
  * Attaches a Google identity Yielded does not know yet to the account of the address Google verified, making that
  * account first when there is none (as email-code registration makes one, so a later code reaches it too). A known
@@ -47,11 +50,17 @@ export const googleAdopter = (
 ) => {
   const ownerOf = (identity: Verified['identity']) =>
     Effect.tryPromise(() =>
-      db.all<{ readonly subjectId: string }>(
-        sql`select subject_id as subjectId from ${oauthIdentities}
-            where provider = ${identity.provider} and issuer = ${identity.issuer}
-              and external_subject = ${identity.subject} limit 1`,
-      ),
+      db
+        .select({ subjectId: oauthIdentities.subjectId })
+        .from(oauthIdentities)
+        .where(
+          and(
+            eq(oauthIdentities.provider, identity.provider),
+            eq(oauthIdentities.issuer, identity.issuer),
+            eq(oauthIdentities.externalSubject, identity.subject),
+          ),
+        )
+        .limit(1),
     ).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]?.subjectId)))
 
   const accountFor = (email: string, profile: Verified['profile']) =>

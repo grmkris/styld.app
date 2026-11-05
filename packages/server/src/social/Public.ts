@@ -6,7 +6,6 @@ import {
   PublicLook,
   NotFound,
   PublicPiece,
-  Unavailable,
 } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { shownItem } from '../boards/Shared.ts'
@@ -17,22 +16,20 @@ import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import type { PieceRow } from '../wardrobe/Store.ts'
-import { Database, type StoreUnavailable } from '../kernel/Db.ts'
+import { Database, stored } from '../kernel/Db.ts'
 import { Media } from '../kernel/Media.ts'
-import { profileOf, type ProfileRow } from './ProfileStore.ts'
+import { profilesOf, type ProfileRow } from './ProfileStore.ts'
 import { PublicStore } from './PublicStore.ts'
 import { SocialStore } from './SocialStore.ts'
 import { heldBack, type PieceWithPicture, publicImage, visibleAt } from './Visibility.ts'
 import { digestOf } from '../kernel/Ids.ts'
-import { boardTranslationsIn, profileTranslationIn, ReaderLocale, translatedItems } from './Translated.ts'
+import { boardTranslationsIn, profileTranslationsIn, ReaderLocale, translatedItems } from './Translated.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
 // owner made it public, and Styld's check of it passed or was unsure (unsure stays on its own links; discovery,
 // which comes later, asks for a pass). A piece also needs a picture of its own: a cut-out or a clean drawing, never
 // the photo it came from.
 
-const unavailable = () => Unavailable.make({})
-const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const notFound = () => NotFound.make({})
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(notFound()), onSome: Effect.succeed })
@@ -116,36 +113,72 @@ interface ShownProfile {
   readonly bio: string | null
 }
 
+/** The owners' profiles others may see, by account, each with its byline and bio in the reader's language: one read
+ * of each kind for them all. */
+const shownProfiles = (viewer: Viewer, rows: ReadonlyArray<ProfileRow>) =>
+  Effect.gen(function* () {
+    const published = rows.flatMap((row) => Option.toArray(Option.map(authorOf(row), (author) => ({ row, author }))))
+    const checks = yield* (yield* Checks).statuses(
+      'profile',
+      published.map(({ row }) => row.accountId),
+    )
+    const visible = published.filter(({ row }) => visibleAt('link', checks.get(row.accountId)))
+    const reader = Option.getOrNull(viewer)
+    const others = visible.map(({ row }) => row.accountId).filter((accountId) => accountId !== reader)
+    const blocked =
+      reader === null || others.length === 0
+        ? new Set<string>()
+        : yield* stored((yield* SocialStore).blockedAmong(reader, others))
+    const shown = visible.filter(({ row }) => !blocked.has(row.accountId))
+    const translations = yield* stored(
+      profileTranslationsIn(
+        yield* Database,
+        yield* ReaderLocale,
+        shown.map(({ row }) => row),
+      ),
+    )
+    return new Map(
+      shown.map(({ row, author }): [string, ShownProfile] => {
+        const translated = translations.get(row.accountId)
+        return [
+          row.accountId,
+          {
+            row,
+            author: translated === undefined ? author : { ...author, name: translated.name },
+            bio: translated?.bio ?? row.bio,
+          },
+        ]
+      }),
+    )
+  })
+
 /** The owner's profile and byline, while others may see the profile. */
 const shownProfile = (viewer: Viewer, row: ProfileRow) =>
-  Effect.gen(function* () {
-    const author = authorOf(row)
-    if (Option.isNone(author)) return Option.none<ShownProfile>()
-    const check = (yield* (yield* Checks).statuses('profile', [row.accountId])).get(row.accountId)
-    if (!visibleAt('link', check)) return Option.none()
-    const reader = Option.getOrNull(viewer)
-    const blocked =
-      reader !== null &&
-      reader !== row.accountId &&
-      (yield* stored((yield* SocialStore).blockedBetween(reader, row.accountId)))
-    if (blocked) return Option.none()
-    const translated = yield* stored(profileTranslationIn(yield* Database, yield* ReaderLocale, row))
-    return Option.some<ShownProfile>({
-      row,
-      author: translated === undefined ? author.value : { ...author.value, name: translated.name },
-      bio: translated?.bio ?? row.bio,
-    })
-  })
-const ownerOf = (viewer: Viewer, accountId: string) =>
-  Effect.flatMap(stored(Effect.flatMap(Database, (db) => profileOf(db, accountId))), (row) =>
-    Option.isNone(row) ? Effect.succeed(Option.none()) : shownProfile(viewer, row.value),
-  )
+  Effect.map(shownProfiles(viewer, [row]), (shown) => Option.fromNullishOr(shown.get(row.accountId)))
 
-/** Those of the account's pieces others may see, by id. */
-const shownPieces = (accountId: string, rows: ReadonlyArray<PieceWithPicture>) =>
+/** The owners others may see, by account. */
+const ownersOf = (viewer: Viewer, accountIds: ReadonlyArray<string>) =>
+  Effect.flatMap(stored(Effect.flatMap(Database, (db) => profilesOf(db, [...new Set(accountIds)]))), (rows) =>
+    shownProfiles(viewer, rows),
+  )
+const ownerOf = (viewer: Viewer, accountId: string) =>
+  Effect.map(ownersOf(viewer, [accountId]), (owners) => Option.fromNullishOr(owners.get(accountId)))
+
+/** A thing others may see, with the account it is whose. */
+interface Owned<A> {
+  readonly owner: string
+  readonly value: A
+}
+
+/** Of things others may see, those of one owner, by id. */
+const ownedBy = <A>(things: ReadonlyMap<string, Owned<A>>, owner: string): ReadonlyMap<string, A> =>
+  new Map([...things].flatMap(([id, thing]) => (thing.owner === owner ? [[id, thing.value] as const] : [])))
+
+/** Those of the owners' pieces others may see, by id. */
+const shownPieces = (owners: ReadonlySet<string>, rows: ReadonlyArray<PieceWithPicture>) =>
   Effect.gen(function* () {
     const ready = rows.filter(
-      (row) => row.piece.accountId === accountId && row.piece.status === 'ready' && Option.isSome(publicImage(row)),
+      (row) => owners.has(row.piece.accountId) && row.piece.status === 'ready' && Option.isSome(publicImage(row)),
     )
     const statuses = yield* (yield* Checks).statuses(
       'piece',
@@ -153,20 +186,25 @@ const shownPieces = (accountId: string, rows: ReadonlyArray<PieceWithPicture>) =
     )
     const kept = ready.filter(({ piece }) => visibleAt('link', statuses.get(piece.id)))
     const generated = yield* stored((yield* PublicStore).generatedAmong(kept.map(({ piece }) => piece.id)))
-    const shown = yield* Effect.forEach(kept, ({ piece }) => publicPiece(piece, generated.has(piece.id)))
-    return new Map<string, PublicPiece>(shown.map((piece) => [piece.id, piece]))
+    const shown = yield* Effect.forEach(kept, ({ piece }) =>
+      Effect.map(publicPiece(piece, generated.has(piece.id)), (value): [string, Owned<PublicPiece>] => [
+        piece.id,
+        { owner: piece.accountId, value },
+      ]),
+    )
+    return new Map(shown)
   })
-const piecesById = (accountId: string, pieceIds: ReadonlyArray<string>) =>
+const piecesById = (owners: ReadonlySet<string>, pieceIds: ReadonlyArray<string>) =>
   pieceIds.length === 0
-    ? Effect.succeed(new Map<string, PublicPiece>())
+    ? Effect.succeed(new Map<string, Owned<PublicPiece>>())
     : Effect.flatMap(stored(Effect.flatMap(PublicStore, (store) => store.pieces([...new Set(pieceIds)]))), (rows) =>
-        shownPieces(accountId, rows),
+        shownPieces(owners, rows),
       )
 
-/** Those of the account's shared looks others may see, each with the pieces others may see. */
-const shownLooks = (accountId: string, rows: ReadonlyArray<LookRow>) =>
+/** Those of the owners' shared looks others may see, each with the pieces of its owner others may see. */
+const shownLooks = (owners: ReadonlySet<string>, rows: ReadonlyArray<LookRow>) =>
   Effect.gen(function* () {
-    const shared = rows.filter((row) => row.accountId === accountId && row.sharedAt !== null)
+    const shared = rows.filter((row) => owners.has(row.accountId) && row.sharedAt !== null)
     const statuses = yield* (yield* Checks).statuses(
       'look',
       shared.map(({ id }) => id),
@@ -174,27 +212,41 @@ const shownLooks = (accountId: string, rows: ReadonlyArray<LookRow>) =>
     const kept = shared.filter(({ id }) => visibleAt('link', statuses.get(id)))
     const found = yield* stored((yield* LookStore).piecesOf(kept.map(({ id }) => id)))
     const pieces = yield* piecesById(
-      accountId,
+      owners,
       found.map(({ piece }) => piece.id),
     )
     return yield* Effect.forEach(kept, (row) => {
       const its = found.flatMap(({ lookId, piece }) => {
         const shown = lookId === row.id ? pieces.get(piece.id) : undefined
-        return shown === undefined ? [] : [shown]
+        return shown === undefined || shown.owner !== row.accountId ? [] : [shown.value]
       })
-      return decoded(PublicLook, {
-        id: row.id,
-        name: row.name,
-        occasion: row.occasion,
-        pieces: its,
-        sharedAt: (row.sharedAt ?? row.createdAt).toISOString(),
-        generated: its.some(({ generated }) => generated),
-      })
+      return Effect.map(
+        decoded(PublicLook, {
+          id: row.id,
+          name: row.name,
+          occasion: row.occasion,
+          pieces: its,
+          sharedAt: (row.sharedAt ?? row.createdAt).toISOString(),
+          generated: its.some(({ generated }) => generated),
+        }),
+        (value): Owned<PublicLook> => ({ owner: row.accountId, value }),
+      )
     })
   })
 
-/** What others may see of these boards' pins and tables. */
-const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
+/** Those of the account's shared looks others may see. */
+const looksOf = (accountId: string, rows: ReadonlyArray<LookRow>) =>
+  Effect.map(shownLooks(new Set([accountId]), rows), (looks) => looks.map(({ value }) => value))
+
+/** What others may see of the owners' pins and tables, each with whose it is. */
+interface SeenAmong {
+  readonly pieces: ReadonlyMap<string, Owned<PublicPiece>>
+  readonly looks: ReadonlyMap<string, Owned<PublicLook>>
+  readonly generated: ReadonlySet<string>
+}
+
+/** What others may see of these boards' pins and tables, the boards of any of `owners`. */
+const seenAmong = (owners: ReadonlySet<string>, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
   Effect.gen(function* () {
     const pieceIds = [
       ...pins.flatMap(({ pin }) => (pin.pieceId === null ? [] : [pin.pieceId])),
@@ -202,14 +254,25 @@ const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyA
     ]
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     const looks =
-      lookIds.length === 0 ? [] : yield* shownLooks(accountId, yield* stored((yield* LookStore).looksById(lookIds)))
-    const seen: Seen = {
-      pieces: yield* piecesById(accountId, pieceIds),
-      looks: new Map<string, PublicLook>(looks.map((look) => [look.id, look])),
+      lookIds.length === 0 ? [] : yield* shownLooks(owners, yield* stored((yield* LookStore).looksById(lookIds)))
+    const seen: SeenAmong = {
+      pieces: yield* piecesById(owners, pieceIds),
+      looks: new Map(looks.map((look) => [look.value.id, look])),
       generated: yield* stored((yield* PublicStore).generatedAmong([...new Set(pieceIds)])),
     }
     return seen
   })
+
+/** What others may see of one owner's boards' pins and tables. */
+const seenBy = (seen: SeenAmong, owner: string): Seen => ({
+  pieces: ownedBy(seen.pieces, owner),
+  looks: ownedBy(seen.looks, owner),
+  generated: seen.generated,
+})
+
+/** What others may see of the account's boards' pins and tables. */
+const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
+  Effect.map(seenAmong(new Set([accountId]), pins, items), (seen) => seenBy(seen, accountId))
 
 /** Whether the board holds a generated piece: pinned, on its table, or in a look pinned on it. It is marked so
  * whatever others may see of the piece yet: a piece still being checked is generated all the same. */
@@ -283,6 +346,68 @@ const summaries = (accountId: string, rows: ReadonlyArray<BoardRow>) =>
     })
   })
 
+/** These public boards as their pages show them to this reader, by id: a board the reader may not see is not there.
+ * One read of each kind for them all, so a page of the feed reads its boards at once. */
+const shownBoards = (viewer: Viewer, boardIds: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    if (boardIds.length === 0) return new Map<string, PublicBoard>()
+    const rows = (yield* stored((yield* PublicStore).boards([...new Set(boardIds)]))).filter(
+      (row) => row.visibility === 'public',
+    )
+    const owners = yield* ownersOf(
+      viewer,
+      rows.map(({ accountId }) => accountId),
+    )
+    const checks = yield* (yield* Checks).statuses(
+      'board',
+      rows.map(({ id }) => id),
+    )
+    const kept = rows.filter((row) => owners.has(row.accountId) && visibleAt('link', checks.get(row.id)))
+    const ids = kept.map(({ id }) => id)
+    const items = yield* stored((yield* BoardStore).itemsOf(ids))
+    const pins = yield* stored((yield* BoardStore).pinsOf(ids))
+    const seenAll = yield* seenAmong(new Set(kept.map(({ accountId }) => accountId)), pins, items)
+    const translations = yield* translationsOf(kept, items)
+    const shown = yield* Effect.forEach(kept, (row) => {
+      const its = {
+        items: items.filter(({ boardId }) => boardId === row.id),
+        pins: pins.filter(({ pin }) => pin.boardId === row.id),
+      }
+      const seen = seenBy(seenAll, row.accountId)
+      const translated = translations.get(row.id)
+      return decoded(PublicBoard, {
+        id: row.id,
+        name: translated?.name ?? row.name,
+        paper: row.paper,
+        items: translatedItems(publicItems(seen, its.items, heldBackImages(its.pins)), translated?.labels),
+        pins: publicPins(seen, its.pins),
+        by: owners.get(row.accountId)?.author,
+        publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
+        generated: showsGenerated(seen, its.pins, its.items),
+      })
+    })
+    return new Map(shown.map((board) => [board.id, board]))
+  })
+
+/** These shared looks as their pages show them to this reader, with their owners' bylines, by id: a look the reader
+ * may not see is not there. One read of each kind for them all. */
+const shownLooksById = (viewer: Viewer, lookIds: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    if (lookIds.length === 0) return new Map<string, { readonly look: PublicLook; readonly by: Author }>()
+    const rows = yield* stored((yield* LookStore).looksById([...new Set(lookIds)]))
+    const owners = yield* ownersOf(
+      viewer,
+      rows.map(({ accountId }) => accountId),
+    )
+    const looks = yield* shownLooks(new Set(owners.keys()), rows)
+    return new Map(
+      looks.flatMap(({ owner, value }) => {
+        const by = owners.get(owner)
+        return by === undefined ? [] : [[value.id, { look: value, by: by.author }] as const]
+      }),
+    )
+  })
+
 /** A piece others may see on its own page: it is on one of its owner's public boards or shared looks that others may
  * see. Publishing a profile never shows the whole wardrobe (owner, 2026-10-31). */
 const shownPiece = (viewer: Viewer, pieceId: string) =>
@@ -291,7 +416,8 @@ const shownPiece = (viewer: Viewer, pieceId: string) =>
       orNotFound(Array.head(rows)),
     )
     const owner = yield* Effect.flatMap(ownerOf(viewer, row.piece.accountId), orNotFound)
-    const piece = yield* orNotFound(Option.fromNullishOr((yield* shownPieces(owner.row.accountId, [row])).get(pieceId)))
+    const shown = (yield* shownPieces(new Set([owner.row.accountId]), [row])).get(pieceId)
+    const piece = yield* orNotFound(Option.fromNullishOr(shown?.value))
     if (!(yield* stored((yield* PublicStore).onShownBoardOrLook(owner.row.accountId, pieceId))))
       return yield* notFound()
     return { row, piece, owner }
@@ -336,7 +462,7 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
     const row = yield* Effect.flatMap(stored(store.publishedProfile(handle)), orNotFound)
     const { author, bio } = yield* Effect.flatMap(shownProfile(viewer, row), orNotFound)
     const boards = yield* summaries(row.accountId, yield* stored(store.publicBoards(row.accountId)))
-    const looks = yield* shownLooks(row.accountId, yield* stored(store.sharedLooks(row.accountId)))
+    const looks = yield* looksOf(row.accountId, yield* stored(store.sharedLooks(row.accountId)))
     return {
       ...author,
       city: row.city,
@@ -347,27 +473,19 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
     }
   }, Effect.provide(context)),
   board: Effect.fn('Styld.Public.board')(function* (boardId: string, viewer: Option.Option<string> = Option.none()) {
-    const { row, owner } = yield* shownBoard(viewer, boardId)
-    const items = yield* stored((yield* BoardStore).itemsOf([row.id]))
-    const pins = yield* stored((yield* BoardStore).pinsOf([row.id]))
-    const seen = yield* seenOn(row.accountId, pins, items)
-    const translated = (yield* translationsOf([row], items)).get(row.id)
-    return yield* decoded(PublicBoard, {
-      id: row.id,
-      name: translated?.name ?? row.name,
-      paper: row.paper,
-      items: translatedItems(publicItems(seen, items, heldBackImages(pins)), translated?.labels),
-      pins: publicPins(seen, pins),
-      by: owner.author,
-      publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
-      generated: showsGenerated(seen, pins, items),
-    })
+    return yield* orNotFound(Option.fromNullishOr((yield* shownBoards(viewer, [boardId])).get(boardId)))
   }, Effect.provide(context)),
   look: Effect.fn('Styld.Public.look')(function* (lookId: string, viewer: Option.Option<string> = Option.none()) {
-    const row = yield* Effect.flatMap(stored((yield* PublicStore).look(lookId)), orNotFound)
-    const owner = yield* Effect.flatMap(ownerOf(viewer, row.accountId), orNotFound)
-    const [look] = yield* shownLooks(row.accountId, [row])
-    return { look: yield* orNotFound(Option.fromNullishOr(look)), by: owner.author }
+    return yield* orNotFound(Option.fromNullishOr((yield* shownLooksById(viewer, [lookId])).get(lookId)))
+  }, Effect.provide(context)),
+  /** The boards and looks of a page of the feed as their pages show them to this reader, all read at once: one the
+   * reader may not see is not there, and a store that does not answer fails the page. */
+  feed: Effect.fn('Styld.Public.feed')(function* (
+    boardIds: ReadonlyArray<string>,
+    lookIds: ReadonlyArray<string>,
+    viewer: Option.Option<string>,
+  ) {
+    return { boards: yield* shownBoards(viewer, boardIds), looks: yield* shownLooksById(viewer, lookIds) }
   }, Effect.provide(context)),
   /** Boards for Explore and search, gated as discovery is. */
   discover: (rows: ReadonlyArray<BoardRow>, viewer: Viewer) => discovered(viewer, rows).pipe(Effect.provide(context)),

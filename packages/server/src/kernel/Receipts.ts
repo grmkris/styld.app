@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import type { drizzle } from 'drizzle-orm/d1'
 import { DateTime, Duration, Effect, Exit, Option, Predicate } from 'effect'
-import { first, nowDate, query } from './Db.ts'
+import { fenced, first, nowDate, query, stored } from './Db.ts'
 import { digestOf } from './Ids.ts'
 
 // Every idempotent write answers a repeat the same way: the account's operation id names one command and one input.
@@ -83,8 +83,6 @@ export const receiptRow = (operation: Identified, result: string) =>
     createdAt,
   }))
 
-const unavailable = () => Unavailable.make({})
-
 /** A receipt answers repeats for this long; after it, the same operation id is a new operation. */
 const receiptLifetime = Duration.days(30)
 
@@ -130,14 +128,14 @@ export const receiptRows = (db: Database) => ({
         .values(receipt)
         .onConflictDoNothing()
         .returning({ operationId: operationReceipts.operationId }),
-    ).pipe(Effect.mapError(unavailable))
+    ).pipe(stored)
     if (written.length > 0) return
-    const stored = yield* query(() => receiptQuery(db, receipt.accountId, receipt.operationId)).pipe(
+    const held = yield* query(() => receiptQuery(db, receipt.accountId, receipt.operationId)).pipe(
       Effect.map(first),
-      Effect.mapError(unavailable),
+      stored,
     )
     const operation = { ...receipt, digest: receipt.inputDigest }
-    if (Option.isNone(stored) || !sameOperation(operation, stored.value)) return yield* OperationConflict.make({})
+    if (Option.isNone(held) || !sameOperation(operation, held.value)) return yield* OperationConflict.make({})
   }),
   /** Claim an operation id for work about to run: a pending receipt, unless one is there; whether it was claimed. */
   claimReceipt: (receipt: ReceiptRow) =>
@@ -181,9 +179,8 @@ export const recordedWrites = (db: Database) => ({
 
 /** What the operation already made, by the receipt stored under its id (`priorResult`). */
 export const madeBefore = (receipts: ReceiptRows, operation: Identified) =>
-  Effect.flatMap(
-    receipts.findReceipt(operation.accountId, operation.operationId).pipe(Effect.mapError(unavailable)),
-    (receipt) => priorResult(operation, receipt),
+  Effect.flatMap(receipts.findReceipt(operation.accountId, operation.operationId).pipe(stored), (receipt) =>
+    priorResult(operation, receipt),
   )
 
 /** A receipt as stored, for the batch of the operation it records. */
@@ -208,9 +205,7 @@ export const deleting = Effect.fnUntraced(function* <E, R>(
   remove: (receipt: ReceiptRow) => Effect.Effect<void, E, R>,
 ) {
   const identified = yield* identify({ ...deletion, input: deletion.target })
-  const receipt = yield* receipts
-    .findReceipt(deletion.accountId, deletion.operationId)
-    .pipe(Effect.mapError(unavailable))
+  const receipt = yield* receipts.findReceipt(deletion.accountId, deletion.operationId).pipe(stored)
   if (Option.isSome(yield* priorResult(identified, receipt))) return
   const result = typeof deletion.target === 'string' ? deletion.target : deletion.target.join(' ')
   yield* remove(yield* receiptRow(identified, result))
@@ -241,18 +236,18 @@ export const recorded = Effect.fnUntraced(function* <A, E, R, E2, R2>(
   steps: RecordedSteps<A, E, R, E2, R2>,
 ) {
   const identified = yield* identify(operation)
-  const stored = Effect.flatMap(
-    query(() => receiptQuery(db, operation.accountId, operation.operationId)).pipe(Effect.mapError(unavailable)),
+  const answered = Effect.flatMap(
+    query(() => receiptQuery(db, operation.accountId, operation.operationId)).pipe(stored),
     (rows) => priorResult(identified, first(rows)),
   )
-  const prior = yield* stored
+  const prior = yield* answered
   if (Option.isSome(prior)) return yield* steps.answer(prior.value)
   const { statements, result } = yield* steps.write
   const receipt = db.insert(operationReceipts).values(yield* receiptRow(identified, result))
-  const committed = yield* query(() => db.batch([receipt, ...statements])).pipe(Effect.option)
+  const committed = yield* fenced(() => db.batch([receipt, ...statements])).pipe(Effect.option)
   if (Option.isSome(committed)) return yield* steps.answer(result)
-  const raced = yield* stored
-  return yield* Option.isSome(raced) ? steps.answer(raced.value) : Effect.fail(unavailable())
+  const raced = yield* answered
+  return yield* Option.isSome(raced) ? steps.answer(raced.value) : Effect.fail(Unavailable.make({}))
 })
 
 /** A pending receipt older than this belongs to a request that died before it answered: every operation run by
@@ -270,17 +265,14 @@ type Found =
  * (`OperationConflict`). */
 const claimed = Effect.fnUntraced(function* (receipts: ReceiptRows, operation: Identified) {
   const pending = { ...(yield* receiptRow(operation, '')), result: null }
-  if (yield* receipts.claimReceipt(pending).pipe(Effect.mapError(unavailable)))
-    return { _tag: 'Claimed' } satisfies Found
-  const stored = yield* receipts
-    .findReceipt(operation.accountId, operation.operationId)
-    .pipe(Effect.mapError(unavailable))
-  if (Option.isNone(stored)) return yield* unavailable()
-  if (!sameOperation(operation, stored.value)) return yield* OperationConflict.make({})
-  const { result, createdAt } = stored.value
+  if (yield* receipts.claimReceipt(pending).pipe(stored)) return { _tag: 'Claimed' } satisfies Found
+  const held = yield* receipts.findReceipt(operation.accountId, operation.operationId).pipe(stored)
+  if (Option.isNone(held)) return yield* Unavailable.make({})
+  if (!sameOperation(operation, held.value)) return yield* OperationConflict.make({})
+  const { result, createdAt } = held.value
   if (result !== null) return { _tag: 'Made', result } satisfies Found
   if (pending.createdAt.getTime() - createdAt.getTime() < Duration.toMillis(pendingPatience))
-    return yield* unavailable()
+    return yield* Unavailable.make({})
   return { _tag: 'Lost' } satisfies Found
 })
 
@@ -318,14 +310,14 @@ export const once = <A, E, R, E2, R2, E3 = never, R3 = never>(
     const resume = resumed(found, answer.resume)
     if (Option.isSome(resume)) return yield* resume.value
     if (lost) {
-      const stored = yield* receipts.findReceipt(accountId, operationId).pipe(Effect.mapError(unavailable))
+      const held = yield* receipts.findReceipt(accountId, operationId).pipe(stored)
       const again = { ...(yield* receiptRow(identified, '')), result: null }
-      const seen = Option.map(stored, ({ createdAt }) => createdAt)
+      const seen = Option.map(held, ({ createdAt }) => createdAt)
       const reclaimed = yield* Option.match(seen, {
         onNone: () => Effect.succeed(false),
-        onSome: (createdAt) => receipts.reclaimReceipt(again, createdAt).pipe(Effect.mapError(unavailable)),
+        onSome: (createdAt) => receipts.reclaimReceipt(again, createdAt).pipe(stored),
       })
-      if (!reclaimed) return yield* unavailable()
+      if (!reclaimed) return yield* Unavailable.make({})
     }
     const exit = yield* Effect.exit(answer.run)
     if (Exit.isFailure(exit)) {

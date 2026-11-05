@@ -1,13 +1,5 @@
 [
   {
-    "file": "packages/auth/src/AttemptLimiter.ts",
-    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter defines the native Worker database binding."
-  },
-  {
-    "file": "packages/auth/src/live.ts",
-    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter is the Worker persistence boundary."
-  },
-  {
     "file": "apps/web/src/entry.ts",
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only SecureRandom provider."
   },
@@ -16,24 +8,28 @@
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- the browser Web Crypto layer draws operation ids, as entry.ts does"
   },
   {
-    "file": "packages/server/test/RuntimeWorker.ts",
-    "comment": "oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker."
+    "file": "packages/auth/src/AttemptLimiter.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter defines the native Worker database binding."
   },
   {
-    "file": "packages/server/src/mcp/Sdk.ts",
-    "comment": "SAFETY: tools/list serves the app's own rendered tool entries -- the SDK Tool type is narrower than these JSON Schema descriptors, which must pass through byte for byte"
+    "file": "packages/auth/src/live.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter is the Worker persistence boundary."
   },
   {
-    "file": "packages/server/src/wardrobe/Delivery.ts",
-    "comment": "SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>"
+    "file": "packages/server/src/Application.ts",
+    "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
+  },
+  {
+    "file": "packages/server/src/kernel/Conditional.ts",
+    "comment": "SAFETY: the selection is the row's own columns, keyed as the table keys them -- Drizzle cannot check a selection built from a generic table's columns"
   },
   {
     "file": "packages/server/src/mcp/Sdk.ts",
     "comment": "SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare"
   },
   {
-    "file": "packages/server/src/Application.ts",
-    "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
+    "file": "packages/server/src/mcp/Sdk.ts",
+    "comment": "SAFETY: tools/list serves the app's own rendered tool entries -- the SDK Tool type is narrower than these JSON Schema descriptors, which must pass through byte for byte"
   },
   {
     "file": "packages/server/src/providers/CloudflareImages.ts",
@@ -44,6 +40,14 @@
     "comment": "SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream"
   },
   {
+    "file": "packages/server/src/providers/Text.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's Server-Sent Events parser reads the streamed completion"
+  },
+  {
+    "file": "packages/server/src/wardrobe/Delivery.ts",
+    "comment": "SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>"
+  },
+  {
     "file": "packages/server/src/wardrobe/Wardrobe.ts",
     "comment": "SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here"
   },
@@ -52,8 +56,24 @@
     "comment": "SAFETY: the fake implements the bucket read and the Images transform the judge's picture reads call -- the rest of R2 and Images is never called by a check"
   },
   {
+    "file": "packages/server/test/LocalD1.ts",
+    "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
+  },
+  {
     "file": "packages/server/test/Media.test.ts",
     "comment": "SAFETY: the fake implements the bucket read and the Images transform delivery calls -- the rest of R2 and Images is never called by a delivery"
+  },
+  {
+    "file": "packages/server/test/Media.test.ts",
+    "comment": "SAFETY: the stubs implement bucket.get and images.input -- the transform under test calls nothing else of R2 or Images"
+  },
+  {
+    "file": "packages/server/test/OutfitRanking.test.ts",
+    "comment": "SAFETY: every judging picture is already kept beside its piece -- judgingPicture calls only bucket.get, which the fake answers"
+  },
+  {
+    "file": "packages/server/test/OutfitService.test.ts",
+    "comment": "SAFETY: no picture is ever read here -- every piece's read fails over to an unjudged outfit, as a missing picture does"
   },
   {
     "file": "packages/server/test/PassingChecks.ts",
@@ -64,27 +84,11 @@
     "comment": "SAFETY: the fake segmenter implements only forget -- the sweep and account deletion call nothing else of it"
   },
   {
-    "file": "packages/server/test/OutfitService.test.ts",
-    "comment": "SAFETY: no picture is ever read here -- every piece's read fails over to an unjudged outfit, as a missing picture does"
-  },
-  {
-    "file": "packages/server/test/OutfitRanking.test.ts",
-    "comment": "SAFETY: every judging picture is already kept beside its piece -- judgingPicture calls only bucket.get, which the fake answers"
-  },
-  {
-    "file": "packages/server/test/LocalD1.ts",
-    "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
+    "file": "packages/server/test/RuntimeWorker.ts",
+    "comment": "oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker."
   },
   {
     "file": "packages/server/test/fakes/Bucket.ts",
     "comment": "SAFETY: the fake implements the bucket get, put and delete that cut-outs and drawings call -- the rest of R2 and Images is never called by them"
-  },
-  {
-    "file": "packages/server/src/providers/Text.ts",
-    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's Server-Sent Events parser reads the streamed completion"
-  },
-  {
-    "file": "packages/server/test/Media.test.ts",
-    "comment": "SAFETY: the stubs implement bucket.get and images.input -- the transform under test calls nothing else of R2 or Images"
   }
 ]

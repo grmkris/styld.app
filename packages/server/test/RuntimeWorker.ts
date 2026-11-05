@@ -14,6 +14,7 @@ import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
+import { authRowsRoute, billingRoutes } from './BillingFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { pictureRoutes } from './PictureFixture.ts'
 import { mediaLoadRoutes } from './MediaLoadFixture.ts'
@@ -95,6 +96,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       socialRoutes(database, media),
       importRoutes(database, media),
       seedRoutes(database, media),
+      billingRoutes(database),
+      authRowsRoute(database),
       // Accounts for a test: `{ ids }`, each with a verified email and the test password (test/Accounts.ts).
       HttpRouter.add(
         'POST',

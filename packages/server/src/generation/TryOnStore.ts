@@ -2,7 +2,7 @@ import { operationReceipts, tryOnPieces, tryOns } from '@styld/db'
 import { and, asc, desc, eq, inArray, isNull, lt, notExists } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { receiptRows, type ReceiptRow } from '../kernel/Receipts.ts'
-import { Database, first, query } from '../kernel/Db.ts'
+import { Database, fenced, first, query } from '../kernel/Db.ts'
 
 export type TryOnRow = typeof tryOns.$inferSelect
 type Drizzle = Database['Service']
@@ -18,7 +18,7 @@ const ownerQueries = (db: Drizzle) => ({
   ...receiptRows(db),
   /** The try-on, its pieces in order and the operation's receipt, as one batch. */
   insertTryOn: (row: TryOnRow, pieceIds: ReadonlyArray<string>, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(tryOns).values(row),
         ...pieceIds.map((pieceId, position) => db.insert(tryOnPieces).values({ tryOnId: row.id, position, pieceId })),
@@ -110,7 +110,7 @@ const workQueries = (db: Drizzle) => ({
   /** Delete the account's try-on and write the receipt of the delete, as one batch; its pieces go with it. The try-on
    * as it was, or none when it was not the account's. */
   deleteTryOn: (accountId: string, tryOnId: string, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db
           .delete(tryOns)

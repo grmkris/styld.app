@@ -4,7 +4,9 @@ import { headline, metricNames, takeCensus } from './quality/census.ts'
 
 // The debt ledger: each census count (`quality/census.ts`) has a ceiling in `quality/debt.json` that it may never
 // rise above. When a change lowers a count, lower its ceiling in the same commit (`bun tools/debt-check.ts --write`);
-// a ceiling is never raised to let a change through.
+// a ceiling is never raised to let a change through. The one exception: debt that was there but hidden from the
+// census (a status written inside an SQL string, now a builder call) is re-baselined in the commit that reveals it,
+// and that commit's message says so.
 //   bun tools/debt-check.ts           the gate
 //   bun tools/debt-check.ts --json    the full census, per module (for tools/measure)
 //   bun tools/debt-check.ts --write   ceilings lowered to today's counts (never raised)

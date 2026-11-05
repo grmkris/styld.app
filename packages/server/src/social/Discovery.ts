@@ -10,12 +10,11 @@ import {
   type SearchResults,
   stem,
   type SuggestedPerson,
-  Unavailable,
   wordsIn,
 } from '@styld/protocol'
-import { and, desc, eq, exists, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, isNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
-import { Database, query } from '../kernel/Db.ts'
+import { Database, query, stored } from '../kernel/Db.ts'
 import { shownToOthers } from './ProfileStore.ts'
 import { PublicPages } from './Public.ts'
 import { otherAudience, preferencesOf } from './ShowMe.ts'
@@ -24,9 +23,8 @@ import { SocialStore } from './SocialStore.ts'
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
 // for discovery: passed checks only, and no profile three people reported.
 
-const unavailable = () => Unavailable.make({})
 /** A D1 read; a store that does not answer is unavailable. */
-const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+const read = <A>(run: () => Promise<A>) => query(run).pipe(stored)
 
 /** How many boards and people each part of Explore and a search shows. */
 const rowLimit = 24
@@ -62,8 +60,15 @@ const moodWords: Readonly<Record<string, Mood>> = {
   sport: 'sport',
 }
 
-/** A board that has this mood among its own. */
-const withMood = (mood: Mood) => sql`exists (select 1 from json_each(${boards.moods}) where value = ${mood})`
+/** A board that has this mood among its own: one of the elements of its moods' JSON array (`json_each`, a table
+ * Drizzle has no builder for, so it and its `value` column are named in SQL). */
+const withMood = (db: Database['Service'], mood: Mood) =>
+  exists(
+    db
+      .select({ value: sql`value` })
+      .from(sql`json_each(${boards.moods})`)
+      .where(eq(sql`value`, mood)),
+  )
 
 /** A board's place for a reader who chose Show me: their choice first, the boards for everyone or nobody in particular
  * next, the others last (`showMeRank`, in SQL). */
@@ -117,10 +122,10 @@ const makeQueries = (db: Database['Service']) => {
       ),
     featuredBoards: () => publicBoards(isNotNull(boards.featuredAt), desc(boards.featuredAt)),
     newestBoards: (mood: Option.Option<Mood>) =>
-      publicBoards(Option.isSome(mood) ? withMood(mood.value) : undefined, desc(boards.publishedAt)),
+      publicBoards(Option.isSome(mood) ? withMood(db, mood.value) : undefined, desc(boards.publishedAt)),
     boardsMatching: (words: ReadonlyArray<string>, moods: ReadonlyArray<Mood>) =>
       publicBoards(
-        or(and(...words.map((word) => wordLike(boards.searchText, word))), ...moods.map(withMood)),
+        or(and(...words.map((word) => wordLike(boards.searchText, word))), ...moods.map((mood) => withMood(db, mood))),
         desc(boards.publishedAt),
       ),
     /** People to follow: featured first, then the most recently published, leaving out whoever the reader already
@@ -143,7 +148,7 @@ const makeQueries = (db: Database['Service']) => {
                 : undefined,
             ),
           )
-          .orderBy(sql`${profiles.featuredAt} is null`, desc(profiles.featuredAt), desc(profiles.publishedAt))
+          .orderBy(isNull(profiles.featuredAt), desc(profiles.featuredAt), desc(profiles.publishedAt))
           .limit(peopleLimit * 2),
       ),
     peopleMatching: (words: ReadonlyArray<string>) =>
@@ -163,8 +168,7 @@ const make = Effect.gen(function* () {
   const queries = makeQueries(db)
   const pages = yield* PublicPages
   const social = yield* SocialStore
-  const reported = (accountIds: ReadonlyArray<string>) =>
-    social.reportedProfiles(accountIds).pipe(Effect.mapError(unavailable))
+  const reported = (accountIds: ReadonlyArray<string>) => social.reportedProfiles(accountIds).pipe(stored)
   /** Boards for discovery, without any of a reported profile, each with its moods as the protocol names them. */
   const found = (rows: ReadonlyArray<typeof boards.$inferSelect>, viewer: Option.Option<string>) =>
     Effect.gen(function* () {

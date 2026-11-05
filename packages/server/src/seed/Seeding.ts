@@ -17,7 +17,7 @@ import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Boards } from '../boards/Boards.ts'
 import { Deployment } from '../Config.ts'
 import { ImportStore } from '../imports/Store.ts'
-import { Database, nowDate, query, StoreUnavailable } from '../kernel/Db.ts'
+import { Database, nowDate, query, StoreUnavailable, stored } from '../kernel/Db.ts'
 import { digestOf } from '../kernel/Ids.ts'
 import { wearablesOf } from '../outfits/Wearables.ts'
 import { Curation } from '../social/Curation.ts'
@@ -33,9 +33,6 @@ import { seedPrefix, SeedStore } from './Store.ts'
 // through the app's own services: its profile by `Profiles`, its boards by `Boards`, its house mark by `Curation`. A
 // catalogue entry becomes one board for good (`seeded_boards`): the same entry again changes nothing, a changed one
 // changes the same board. Its garments must be imported, ready and cut out; otherwise the entry is refused and named.
-
-/** A store that does not answer: the seed is unavailable. */
-const stored = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, () => Unavailable.make({}))
 
 /** The house account an email signs in to: only a configured house email, and only an account that exists. */
 const houseAccount = Effect.fnUntraced(function* (email: string) {

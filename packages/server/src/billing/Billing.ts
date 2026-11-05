@@ -2,7 +2,7 @@ import { CurrentAccount, CurrentOperator, NotFound, type PlanName, plans, Unavai
 import { Context, DateTime, Effect, Layer, Match, Option } from 'effect'
 import { AccountLifecycle } from '../AccountLifecycle.ts'
 import { Deployment } from '../Config.ts'
-import { Database } from '../kernel/Db.ts'
+import { Database, logUnavailable, stored } from '../kernel/Db.ts'
 import { type Balance, Holds } from '../usage/Holds.ts'
 import { Checkouts } from './Checkouts.ts'
 import { isActiveAt } from './Membership.ts'
@@ -13,8 +13,6 @@ import { actionOf, type WebhookAction } from './Webhook.ts'
 // Plans (owner, 4 November 2026): the person opens Dodo's checkout for a plan from the account page; Dodo's webhook,
 // and only it, gives or moves the membership. The operator grants lifetime memberships by hand. A stage without Dodo's
 // settings sells nothing: no checkout, no portal, no webhook.
-
-const unavailable = () => Unavailable.make({})
 
 /** The name Dodo shows on the checkout: the display name, else the email's local part, never empty.
  * @internal Exported for its tests. */
@@ -156,7 +154,7 @@ export const makeBilling = (
     checkout: Effect.fn('Styld.Billing.checkout')(function* (plan: PlanName) {
       if (Option.isNone(billing)) return yield* NotFound.make({})
       yield* Effect.annotateCurrentSpan('styld.billing.plan', plan)
-      const account = yield* lifecycle.readAccount().pipe(Effect.mapError(unavailable))
+      const account = yield* lifecycle.readAccount().pipe(Effect.mapError(() => Unavailable.make({})))
       // An account without an email address gives none, and Dodo asks for it on its page.
       return yield* checkouts
         .open({
@@ -168,7 +166,7 @@ export const makeBilling = (
               : { email: account.email, name: customerName(account.displayName, account.email) },
           returnUrl: `${settings.origin}/account?premium=1#plans`,
         })
-        .pipe(Effect.mapError(unavailable))
+        .pipe(Effect.mapError(() => Unavailable.make({})))
     }),
     portal: Effect.fn('Styld.Billing.portal')(function* () {
       if (Option.isNone(billing)) return yield* NotFound.make({})
@@ -178,7 +176,7 @@ export const makeBilling = (
       if (Option.isNone(customer)) return yield* NotFound.make({})
       return yield* checkouts
         .portal(customer.value, `${settings.origin}/account#plans`)
-        .pipe(Effect.mapError(unavailable))
+        .pipe(Effect.mapError(() => Unavailable.make({})))
     }),
     webhook: Effect.fn('Styld.Billing.webhook')(
       function* (headers: WebhookHeaders, body: string) {
@@ -197,15 +195,13 @@ export const makeBilling = (
         const at = DateTime.toDateUtc(now)
         return yield* carryOut(store, actionOf(body, billing.value.products, at), at)
       },
-      Effect.catchTag('StoreUnavailable', () => Effect.succeed(503 as const)),
+      Effect.catchTag('StoreUnavailable', (error) => Effect.as(logUnavailable(error), 503 as const)),
     ),
     grant: Effect.fn('Styld.Billing.grant')(function* (email: string) {
       yield* CurrentOperator
-      const account = yield* store.accountOfEmail(email.trim().toLowerCase()).pipe(Effect.mapError(unavailable))
+      const account = yield* stored(store.accountOfEmail(email.trim().toLowerCase()))
       if (Option.isNone(account)) return yield* NotFound.make({})
-      yield* store
-        .grantLifetime(account.value, yield* Effect.map(DateTime.now, DateTime.toDateUtc))
-        .pipe(Effect.mapError(unavailable))
+      yield* stored(store.grantLifetime(account.value, yield* Effect.map(DateTime.now, DateTime.toDateUtc)))
       return { accountId: account.value }
     }),
   })

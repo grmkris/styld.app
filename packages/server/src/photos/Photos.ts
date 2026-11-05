@@ -17,9 +17,10 @@ import {
   prices,
   UploadRefused,
   type WearAgain,
+  Unavailable,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Predicate, Schema } from 'effect'
-import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Shared.ts'
+import { captureKey, enqueueMatch, readObject, writeObject } from '../capture/Shared.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
@@ -32,13 +33,14 @@ import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.t
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleting, identify, madeBefore, once, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { PhotoStore } from './Store.ts'
 import { Holds } from '../usage/Holds.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -108,14 +110,14 @@ const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyAr
 /** Photos as the protocol shows them, each with its garments. */
 const photosOf = (rows: ReadonlyArray<PhotoRow>) =>
   Effect.gen(function* () {
-    const garments = yield* storedAs((yield* PhotoStore).garmentsOf(rows.map(({ id }) => id)))
+    const garments = yield* stored((yield* PhotoStore).garmentsOf(rows.map(({ id }) => id)))
     return yield* Effect.forEach(rows, (row) => toPhoto(row, garments))
   })
 
 /** The account's own photo, or `NotFound`, as if another account's did not exist. */
 const ownPhoto = (accountId: string, photoId: string) =>
   Effect.flatMap(
-    storedAs(Effect.flatMap(PhotoStore, (store) => store.findPhoto(accountId, photoId))),
+    stored(Effect.flatMap(PhotoStore, (store) => store.findPhoto(accountId, photoId))),
     Option.match({ onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
@@ -167,9 +169,7 @@ const usableUpload = (accountId: string, uploadId: string) =>
   )
 
 const enqueue = (photoId: string) =>
-  Effect.flatMap(PieceQueue, (queue) =>
-    Effect.tryPromise({ try: () => queue.send({ _tag: 'FindGarments', photoId }), catch: unavailable }),
-  )
+  Effect.flatMap(PieceQueue, (queue) => called(() => queue.send({ _tag: 'FindGarments', photoId })))
 
 /** The photo an operation already made, for the same upload; a conflict for another. A photo still being found goes
  * to the queue again, in case the first message never left. */
@@ -178,7 +178,7 @@ const replayed = (operation: Identified) =>
     const made = yield* madeBefore(yield* WardrobeStore, operation)
     if (Option.isNone(made)) return Option.none<PhotoRow>()
     const { accountId } = operation
-    const photo = yield* ownPhoto(accountId, made.value).pipe(Effect.mapError(unavailable))
+    const photo = yield* ownPhoto(accountId, made.value).pipe(Effect.mapError(() => Unavailable.make({})))
     // Its credit is held again first (the same hold): the first request may have stopped before holding it.
     if (photo.status === 'finding') {
       yield* (yield* Holds).reserve({ accountId, hold: photoHold(photo.id), credits: prices.galleryPhoto })
@@ -209,12 +209,12 @@ const added = (operation: Identified, input: AddPhoto) =>
     }
     // The photo first, then its credit: every hold has a row its sweep can settle. Past the daily limit the photo is
     // undone and its upload can be used again.
-    yield* storedAs((yield* PhotoStore).addPhoto(row, yield* receiptRow(operation, id)))
+    yield* stored((yield* PhotoStore).addPhoto(row, yield* receiptRow(operation, id)))
     yield* (yield* Holds)
       .reserve({ accountId, hold: photoHold(id), credits: prices.galleryPhoto })
       .pipe(
         Effect.tapErrorTag('LimitReached', () =>
-          storedAs(Effect.flatMap(PhotoStore, (store) => store.undoPhoto(row, operation.operationId))).pipe(
+          stored(Effect.flatMap(PhotoStore, (store) => store.undoPhoto(row, operation.operationId))).pipe(
             Effect.ignore({ log: true, message: 'Styld.Photos.add could not undo a photo past the limit' }),
           ),
         ),
@@ -240,7 +240,7 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
     const detectionId = yield* newId('dt')
     // A garment added by hand has no cut-out to offer yet.
     const bytes = garment.cutoutKey === null ? Option.none() : yield* readObject(garment.cutoutKey)
-    if (Option.isNone(bytes)) return yield* unavailable()
+    if (Option.isNone(bytes)) return yield* Unavailable.make({})
     const contentType = 'image/png'
     const key = captureKey(photo.accountId, captureId, `${detectionId}.png`)
     yield* writeObject(key, bytes.value, contentType)
@@ -297,7 +297,7 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
       matchClaimedAt: null,
       createdAt: at,
     } satisfies DetectionRow
-    yield* storedAs((yield* PhotoStore).offerGarment(garment.id, capture, detection))
+    yield* stored((yield* PhotoStore).offerGarment(garment.id, capture, detection))
     if (detection.matching === 'waiting') yield* enqueueMatch(captureId)
   })
 
@@ -305,7 +305,7 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
 const reading = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   listPhotos: Effect.fn('Styld.Photos.list')(function* () {
     const { accountId } = yield* CurrentAccount
-    return yield* photosOf(yield* storedAs((yield* PhotoStore).listPhotos(accountId)))
+    return yield* photosOf(yield* stored((yield* PhotoStore).listPhotos(accountId)))
   }, Effect.provide(context)),
   addPhoto: Effect.fn('Styld.Photos.add')(function* (input: AddPhoto) {
     const { accountId } = yield* CurrentAccount
@@ -331,7 +331,7 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: typeof UpdatePhoto.Type) {
     const { accountId } = yield* CurrentAccount
     const change = Effect.gen(function* () {
-      const updated = yield* storedAs(
+      const updated = yield* stored(
         (yield* PhotoStore).setFavourite(accountId, photoId, input.favourite, yield* nowDate),
       )
       if (Option.isNone(updated)) return yield* NotFound.make({})
@@ -345,7 +345,7 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const deletion = { accountId, operationId, command: 'deletePhoto', target: photoId }
     yield* deleting(yield* WardrobeStore, deletion, (receipt) =>
       Effect.gen(function* () {
-        const deleted = yield* storedAs((yield* PhotoStore).deletePhoto(accountId, photoId, receipt))
+        const deleted = yield* stored((yield* PhotoStore).deletePhoto(accountId, photoId, receipt))
         if (Option.isNone(deleted)) return yield* NotFound.make({})
         // A photo deleted while its garments were being found gets its credit back: no delivery will settle it now.
         if (deleted.value.status === 'finding') yield* (yield* Holds).settle(accountId, photoHold(photoId), 'failed')
@@ -358,7 +358,7 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   wearAgain: Effect.fn('Styld.Photos.wearAgain')(function* (photoId: string, input: WearAgain) {
     const { accountId } = yield* CurrentAccount
     yield* ownPhoto(accountId, photoId)
-    const garments = yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))
+    const garments = yield* stored((yield* PhotoStore).garmentsOf([photoId]))
     const pieceIds = [
       ...new Set(
         garments.flatMap(({ state, pieceId }) => (state === 'confirmed' && pieceId !== null ? [pieceId] : [])),
@@ -371,8 +371,8 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
         name: input.name,
         pieceIds: pieceIds.map((id) => PieceId.make(id)),
       })
-      .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'OperationConflict') ? error : unavailable())))
-    yield* storedAs((yield* PhotoStore).setLook(accountId, photoId, look.id, yield* nowDate))
+      .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'OperationConflict') ? error : Unavailable.make({}))))
+    yield* stored((yield* PhotoStore).setLook(accountId, photoId, look.id, yield* nowDate))
     return look
   }, Effect.provide(context)),
 }))
@@ -382,7 +382,7 @@ const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   piecePhotos: Effect.fn('Styld.Photos.ofPiece')(function* (pieceId: string) {
     const { accountId } = yield* CurrentAccount
     yield* ownPiece(accountId, pieceId)
-    return yield* photosOf(yield* storedAs((yield* PhotoStore).photosOfPiece(accountId, pieceId)))
+    return yield* photosOf(yield* stored((yield* PhotoStore).photosOfPiece(accountId, pieceId)))
   }, Effect.provide(context)),
 }))
 
@@ -402,20 +402,20 @@ const boardOperations = (photoId: string, picture: PhotoPicture, boardId: string
 const photoUpload = (photo: PhotoRow, picture: PhotoPicture) =>
   Effect.gen(function* () {
     const key = picture === 'cutout' ? photo.cutoutKey : photo.originalKey
-    if (key === null) return yield* unavailable()
+    if (key === null) return yield* Unavailable.make({})
     const bytes = yield* readObject(key)
-    if (Option.isNone(bytes)) return yield* unavailable()
+    if (Option.isNone(bytes)) return yield* Unavailable.make({})
     const contentType = yield* Schema.decodeUnknownEffect(ImageType)(
       picture === 'cutout' ? 'image/png' : photo.contentType,
-    ).pipe(Effect.mapError(unavailable))
+    ).pipe(Effect.mapError(() => Unavailable.make({})))
     return yield* receivedUpload(yield* Wardrobe, { contentType, bytes: bytes.value }).pipe(
-      Effect.mapError(unavailable),
+      Effect.mapError(() => Unavailable.make({})),
     )
   })
 
 /** A board's refusal as the photo's: a board that is not the person's stays so, anything else is unavailable. */
 const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
-  effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'NotFound') ? error : unavailable())))
+  effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'NotFound') ? error : Unavailable.make({}))))
 
 /** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the photo or its
  * cut-out, as the person chose), held back from visitors, with the look worn from it. A retried request whose picture is on the board
@@ -484,13 +484,13 @@ const matching = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const change = Effect.gen(function* () {
       yield* ownPhoto(accountId, photoId)
       const store = yield* PhotoStore
-      const garment = (yield* storedAs(store.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      const garment = (yield* stored(store.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
       if (garment === undefined) return yield* NotFound.make({})
       if (garment.state === 'offered') return
       if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
       if (garment.cutoutKey === null && input.pieceId === null)
-        return yield* storedAs(store.removeAddedGarment(accountId, photoId, garmentId))
-      yield* storedAs(store.matchGarment(accountId, photoId, garmentId, input.pieceId))
+        return yield* stored(store.removeAddedGarment(accountId, photoId, garmentId))
+      yield* stored(store.matchGarment(accountId, photoId, garmentId, input.pieceId))
     })
     const operation = {
       operationId: input.operationId,
@@ -507,9 +507,9 @@ const matching = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const change = Effect.gen(function* () {
       const photo = yield* ownPhoto(accountId, photoId)
       const piece = yield* ownPiece(accountId, input.pieceId)
-      if (photo.status !== 'ready') return yield* unavailable()
+      if (photo.status !== 'ready') return yield* Unavailable.make({})
       const store = yield* PhotoStore
-      const garments = yield* storedAs(store.garmentsOf([photoId]))
+      const garments = yield* stored(store.garmentsOf([photoId]))
       if (garments.some(({ state, pieceId }) => state === 'confirmed' && pieceId === piece.id)) return
       const garment: GarmentRow = {
         id: yield* newId('pg'),
@@ -522,7 +522,7 @@ const matching = Effect.map(Effect.context<PhotoServices>(), (context) => ({
         pieceId: piece.id,
         state: 'confirmed',
       }
-      if (!(yield* storedAs(store.addGarment(garment)))) return yield* unavailable()
+      if (!(yield* stored(store.addGarment(garment)))) return yield* Unavailable.make({})
     })
     const operation = { operationId: input.operationId, command: 'addPhotoPiece', input: [photoId, input.pieceId] }
     return yield* changedOnce(operation, photoId, change)
@@ -532,7 +532,7 @@ const matching = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const { accountId } = yield* CurrentAccount
     const change = Effect.gen(function* () {
       const photo = yield* ownPhoto(accountId, photoId)
-      const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      const garment = (yield* stored((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
       if (garment === undefined) return yield* NotFound.make({})
       if (garment.state !== 'offered') yield* offered(photo, garment)
     })

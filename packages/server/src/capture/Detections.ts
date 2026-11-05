@@ -1,9 +1,9 @@
-import { Pattern, PieceType, Season } from '@styld/protocol'
+import { Pattern, PieceType, Season, Unavailable } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { newId } from '../kernel/Ids.ts'
 import { type Garment } from './Garments.ts'
 import { verdictOf } from './GarmentRules.ts'
-import { captureKey, readObject, unavailable, writeObject } from './Shared.ts'
+import { captureKey, readObject, writeObject } from './Shared.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { Garments } from './Garments.ts'
 
@@ -99,7 +99,7 @@ export const detectionsOf = (
 /** Cut a photo into the garments it shows, as detections. */
 export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (capture: CaptureRow) {
   const original = yield* readObject(capture.originalKey)
-  if (Option.isNone(original)) return yield* unavailable()
+  if (Option.isNone(original)) return yield* Unavailable.make({})
   const finding = yield* (yield* Garments).find(original.value, {
     for: 'tray',
     camera: capture.source === 'camera',

@@ -1,9 +1,16 @@
-import { type BoardId, CurrentAccount, type Generate, type GenerationKind, NotFound } from '@styld/protocol'
+import {
+  type BoardId,
+  CurrentAccount,
+  type Generate,
+  type GenerationKind,
+  NotFound,
+  Unavailable,
+} from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
-import { type GenerationServices, send, stored, unavailable, view } from './Shared.ts'
+import { type GenerationServices, send, view } from './Shared.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
 import { GenerationStore, type JobRow, type StickerRow } from './Store.ts'
 import { Boards } from '../boards/Boards.ts'
@@ -69,7 +76,7 @@ const resume = Effect.fnUntraced(function* (job: JobRow, operationId: string) {
     yield* admitJob(job, operationId)
     yield* send(job.id).pipe(Effect.ignore)
   }
-  return yield* get(job.id).pipe(Effect.catchTag('NotFound', () => Effect.fail(unavailable())))
+  return yield* get(job.id).pipe(Effect.catchTag('NotFound', () => Effect.fail(Unavailable.make({}))))
 })
 
 /** Asking for pictures, and reading how they are going. */
@@ -89,7 +96,7 @@ export const generations = Effect.map(Effect.context<GenerationServices>(), (con
     const earlier = yield* priorResult(operation, receipt)
     if (Option.isSome(earlier)) {
       const job = yield* stored(store.findJob(accountId, earlier.value))
-      if (Option.isNone(job)) return yield* unavailable()
+      if (Option.isNone(job)) return yield* Unavailable.make({})
       return yield* resume(job.value, input.operationId)
     }
     // A new ask, from the website, an assistant or Styld, at the account's pace.

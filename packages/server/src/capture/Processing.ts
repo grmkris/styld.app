@@ -1,9 +1,9 @@
 import { Effect, Option } from 'effect'
-import { captureHold, endingOf, enqueueBackPicture, enqueueMatch, forgetCaptureObjects, storedAs } from './Shared.ts'
+import { captureHold, endingOf, enqueueBackPicture, enqueueMatch, forgetCaptureObjects } from './Shared.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { Found, type Found as Result, processPhoto } from './Detections.ts'
 import { processVideo } from './VideoPipeline.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Holds } from '../usage/Holds.ts'
@@ -26,16 +26,16 @@ const fail = (captureId: string, why: string, seen?: CaptureRow) =>
   Effect.gen(function* () {
     yield* Effect.annotateCurrentSpan('styld.capture.failed', why)
     const found =
-      seen === undefined ? yield* storedAs((yield* CaptureStore).captureForProcessing(captureId)) : Option.some(seen)
+      seen === undefined ? yield* stored((yield* CaptureStore).captureForProcessing(captureId)) : Option.some(seen)
     if (Option.isNone(found)) return
     if (found.value.status === 'processing')
-      yield* storedAs(
+      yield* stored(
         (yield* CaptureStore).retryCapture(found.value.accountId, captureId, found.value, {
           status: 'failed',
           updatedAt: yield* nowDate,
         }),
       )
-    const latest = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
+    const latest = yield* stored((yield* CaptureStore).captureForProcessing(captureId))
     if (Option.isSome(latest)) yield* settleEnded(latest.value)
   })
 
@@ -53,10 +53,10 @@ const attachBack = (
     if (back === undefined) return false
     // The front may already be kept: its piece takes the back when it has none, else the back waits in the tray.
     const store = yield* CaptureStore
-    const attached = yield* storedAs(store.attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey))
+    const attached = yield* stored(store.attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey))
     // A kept piece that took the back has its back drawn (owner, 4 November); a card's back is drawn once kept.
     if (attached) {
-      const backed = yield* storedAs(store.backedPiecesOf(accountId, frontCaptureId))
+      const backed = yield* stored(store.backedPiecesOf(accountId, frontCaptureId))
       yield* Effect.forEach(backed, (pieceId) => enqueueBackPicture(accountId, pieceId), { discard: true })
     }
     return attached
@@ -67,10 +67,10 @@ const attachBack = (
  * harmless. */
 const pairBack = (accountId: string, frontCaptureId: string) =>
   Effect.gen(function* () {
-    const waiting = yield* storedAs((yield* CaptureStore).waitingBack(accountId, frontCaptureId))
+    const waiting = yield* stored((yield* CaptureStore).waitingBack(accountId, frontCaptureId))
     if (Option.isNone(waiting)) return
     if (yield* attachBack(accountId, frontCaptureId, waiting.value.detections))
-      yield* storedAs((yield* CaptureStore).foldBack(waiting.value.capture.id, yield* nowDate))
+      yield* stored((yield* CaptureStore).foldBack(waiting.value.capture.id, yield* nowDate))
   })
 
 /** The capture's paid work, run once per attempt the person asked for (`PaidAttempts`): a redelivery records what the
@@ -81,7 +81,7 @@ const pipeline = (capture: CaptureRow) =>
     const found =
       capture.kind === 'photo'
         ? processPhoto(capture)
-        : Effect.flatMap(storedAs(Effect.flatMap(CaptureStore, (store) => store.frames(capture.id))), (frames) =>
+        : Effect.flatMap(stored(Effect.flatMap(CaptureStore, (store) => store.frames(capture.id))), (frames) =>
             processVideo(capture, frames),
           )
     return yield* (yield* PaidAttempts).run({ ...work, result: Found }, found)
@@ -101,7 +101,7 @@ const run = (capture: CaptureRow) =>
     Effect.catchReasons('ProviderError', {
       OutcomeUnknown: () =>
         Effect.gen(function* () {
-          const moved = yield* storedAs(
+          const moved = yield* stored(
             (yield* CaptureStore).retryCapture(capture.accountId, capture.id, capture, {
               status: 'unknown',
               updatedAt: yield* nowDate,
@@ -118,7 +118,7 @@ const run = (capture: CaptureRow) =>
 /** Store what the pipeline found, consume the held credits, and pair a camera shot with its other side. */
 const record = (capture: CaptureRow, result: Result) =>
   Effect.gen(function* () {
-    const applied = yield* storedAs(
+    const applied = yield* stored(
       (yield* CaptureStore).finishCapture(capture, result.found, {
         status: 'review',
         route: result.route?.garments ?? null,
@@ -132,7 +132,7 @@ const record = (capture: CaptureRow, result: Result) =>
     // are cut from its stills, and the stills none was cut from.
     yield* forgetCaptureObjects(
       capture,
-      capture.kind === 'video' ? yield* storedAs((yield* CaptureStore).frames(capture.id)) : [],
+      capture.kind === 'video' ? yield* stored((yield* CaptureStore).frames(capture.id)) : [],
     )
     if (result.found.some(({ matching }) => matching === 'waiting')) yield* enqueueMatch(capture.id)
     // A back shot of the garment before it becomes that piece's back and stops waiting on its own.
@@ -145,11 +145,11 @@ export const processing = Effect.map(Effect.context<CaptureServices>(), (context
   /** Process a capture the queue delivered. A capture already finished only has its credits settled, and
    * one whose account was closed is left for the deletion sweep. */
   processCapture: Effect.fn('Styld.Capture.process')(function* (captureId: string) {
-    const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
+    const found = yield* stored((yield* CaptureStore).captureForProcessing(captureId))
     if (Option.isNone(found)) return
     const capture = found.value
     if (capture.status !== 'processing') return yield* settleEnded(capture)
-    if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(capture.accountId)))) return
+    if (!(yield* stored((yield* WardrobeStore).accountEnabled(capture.accountId)))) return
     const result = yield* run(capture)
     if (Option.isSome(result)) yield* record(capture, result.value)
   }, Effect.provide(context)),

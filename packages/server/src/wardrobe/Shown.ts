@@ -1,14 +1,14 @@
 import type { PictureChoice, PiecePicture, PieceRotation, PieceTurn } from '@styld/protocol'
+import { drawingPatienceMillis } from '../kernel/Patience.ts'
 import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 
-// A claim older than Muse's 90 s timeout plus the keying belongs to a delivery that died: its drawing may have been
-// made and billed, so it is never drawn again on its own, and the piece shows its photo.
-const patienceMillis = 3 * 60 * 1000
+// A claim past the drawing patience belongs to a delivery that died: its drawing may have been made and billed, so it
+// is never drawn again on its own, and the piece shows its photo.
 
 /** Whether a claimed drawing has outlived any delivery that could still finish it. */
 export const isStale = (picture: Pick<PictureRow, 'state' | 'claimedAt'>, at: Date) =>
   picture.state === 'generating' &&
-  (picture.claimedAt === null || at.getTime() - picture.claimedAt.getTime() > patienceMillis)
+  (picture.claimedAt === null || at.getTime() - picture.claimedAt.getTime() > drawingPatienceMillis)
 
 /** Whether a picture holds a drawing to show: ready, or proposed (a drawing that waited for its owner's tap until 4
  * November and is shown like any other, `Policy.ts`). */

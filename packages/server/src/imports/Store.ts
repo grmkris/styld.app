@@ -1,6 +1,6 @@
 import { accountOfEmail, createEmailAccount, type NewEmailAccount } from '@styld/auth'
 import { Context, Effect, Layer } from 'effect'
-import { Database, first, query } from '../kernel/Db.ts'
+import { Database, fenced, first, query } from '../kernel/Db.ts'
 import { importedRows } from './Imported.ts'
 import { receiptRows } from '../kernel/Receipts.ts'
 
@@ -13,7 +13,7 @@ const importStore = (db: Database['Service']) => ({
   accountOf: (email: string) => query(() => accountOfEmail(db, email)).pipe(Effect.map(first)),
   /** Make the account for an email that has none, as one batch: an address taken meanwhile fails it. */
   createAccount: (account: NewEmailAccount) =>
-    query(() => db.batch(createEmailAccount(db, account))).pipe(Effect.asVoid),
+    fenced(() => db.batch(createEmailAccount(db, account))).pipe(Effect.asVoid),
 })
 
 /** The import's store over the application's one database. */

@@ -1,9 +1,9 @@
-import { NoPersonFound } from '@styld/protocol'
+import { NoPersonFound, Unavailable } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import { readObject, storedAs, unavailable, writeObject } from '../capture/Shared.ts'
+import { readObject, writeObject } from '../capture/Shared.ts'
 import { photoPrefix } from './Finding.ts'
 import type { PhotoRow } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { PhotoStore } from './Store.ts'
 import { Garments } from '../capture/Garments.ts'
@@ -34,15 +34,15 @@ export const cutOutPerson = (photo: PhotoRow) =>
     if (photo.cutoutKey !== null) return
     yield* (yield* Pacing).account('cutout')
     const original = yield* readObject(photo.originalKey)
-    if (Option.isNone(original)) return yield* unavailable()
+    if (Option.isNone(original)) return yield* Unavailable.make({})
     const attempts = yield* PaidAttempts
     const work = { key: `person/${photo.id}`, accountId: photo.accountId, provider: 'meta-sam', result: PersonCut }
     const made = yield* attempts.run(work, cut(photo, original.value)).pipe(
       Effect.catchTags({
-        AttemptElsewhere: () => unavailable(),
-        ProviderError: () => unavailable(),
+        AttemptElsewhere: () => Unavailable.make({}),
+        ProviderError: () => Unavailable.make({}),
       }),
     )
     if (made.key === null) return yield* NoPersonFound.make({})
-    yield* storedAs((yield* PhotoStore).setCutout(photo.accountId, photo.id, made.key, yield* nowDate))
+    yield* stored((yield* PhotoStore).setCutout(photo.accountId, photo.id, made.key, yield* nowDate))
   })

@@ -2,10 +2,10 @@ import type { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import type { BackPictureRow } from './BackPictureStore.ts'
 import { cutoutAt, drawingOf, frontOf, removeObject } from './Drawing.ts'
-import { backPictureKey, storedAs } from './Shared.ts'
+import { backPictureKey } from './Shared.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import type { CaptureServices } from './Shared.ts'
 
 // A pressed picture of a piece's back (owner, 4 November 2026: Eva wants to see a piece turned, not three pictures of
@@ -19,9 +19,9 @@ import type { CaptureServices } from './Shared.ts'
 const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
   side: 'back',
   kind: () => 'back',
-  find: (pieceId) => Effect.flatMap(CaptureStore, (store) => storedAs(store.findBackPicture(pieceId))),
+  find: (pieceId) => Effect.flatMap(CaptureStore, (store) => stored(store.findBackPicture(pieceId))),
   write: (pieceId, from, changes) =>
-    Effect.flatMap(CaptureStore, (store) => storedAs(store.moveBackPicture(pieceId, from, changes))),
+    Effect.flatMap(CaptureStore, (store) => stored(store.moveBackPicture(pieceId, from, changes))),
   keyOf: (row, version) => backPictureKey(row.accountId, row.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: cutoutAt(piece.backImageKey), other: frontOf(piece) }),
   // A back is its own photo, never turned by the front's rotation.
@@ -38,16 +38,16 @@ const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
 const reconcile = (accountId: string, pieceId: string) =>
   Effect.gen(function* () {
     const store = yield* CaptureStore
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(accountId, pieceId))
+    const piece = yield* stored((yield* WardrobeStore).findPiece(accountId, pieceId))
     const sourceKey = Option.flatMap(piece, (row) => Option.fromNullishOr(row.backImageKey))
     if (Option.isNone(sourceKey)) {
-      const dropped = yield* storedAs(store.dropBackPicture(pieceId))
+      const dropped = yield* stored(store.dropBackPicture(pieceId))
       yield* Effect.forEach(dropped, removeObject, { discard: true })
       return
     }
-    const current = yield* storedAs(store.findBackPicture(pieceId))
+    const current = yield* stored(store.findBackPicture(pieceId))
     if (Option.isSome(current) && current.value.sourceKey === sourceKey.value) return
-    yield* storedAs(store.queueBackPicture({ pieceId, accountId, sourceKey: sourceKey.value }, yield* nowDate))
+    yield* stored(store.queueBackPicture({ pieceId, accountId, sourceKey: sourceKey.value }, yield* nowDate))
   })
 
 /** The queue side of back pictures. */

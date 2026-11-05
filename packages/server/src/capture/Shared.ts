@@ -6,7 +6,6 @@ import type { Garments } from './Garments.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { readPng } from '@styld/imaging'
-import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
@@ -14,6 +13,8 @@ import { PieceQueue } from '../wardrobe/Processing.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import type { CaptureRow, CaptureStore } from './Store.ts'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
+import { stored } from '../kernel/Db.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // What capture's operations share: the services they act through, where a capture's objects live, reading and writing
 // them, the piece queue's messages, and how a capture's status ends its hold. Every operation yields the services it
@@ -37,8 +38,6 @@ export type CaptureServices =
   | CaptureMetrics
   | PieceChanged
 
-export const unavailable = () => Unavailable.make({})
-
 /** Where a capture's own objects live, under the account's prefix so deletion sweeps them. */
 export const captureKey = (accountId: string, captureId: string, name: string) =>
   `${accountPrefix(accountId)}captures/${captureId}/${name}`
@@ -46,12 +45,9 @@ export const captureKey = (accountId: string, captureId: string, name: string) =
 /** A stored object's bytes, or none when it is gone. */
 export const readObject = Effect.fnUntraced(function* (key: string) {
   const { bucket } = yield* Media
-  return yield* Effect.tryPromise({
-    try: async () => {
-      const object = await bucket.get(key)
-      return object === null ? Option.none<Uint8Array>() : Option.some(new Uint8Array(await object.arrayBuffer()))
-    },
-    catch: unavailable,
+  return yield* called(async () => {
+    const object = await bucket.get(key)
+    return object === null ? Option.none<Uint8Array>() : Option.some(new Uint8Array(await object.arrayBuffer()))
   })
 })
 
@@ -60,10 +56,7 @@ export const readPixels = (key: string) => readObject(key).pipe(Effect.map(Optio
 
 export const writeObject = Effect.fnUntraced(function* (key: string, bytes: Uint8Array, contentType: string) {
   const { bucket } = yield* Media
-  yield* Effect.tryPromise({
-    try: () => bucket.put(key, bytes, { httpMetadata: { contentType } }),
-    catch: unavailable,
-  })
+  yield* called(() => bucket.put(key, bytes, { httpMetadata: { contentType } }))
 })
 
 /** The objects of a capture whose rows were deleted or decided: everything under its own folder, its photo or video
@@ -77,7 +70,7 @@ export const forgetCaptureObjects = (
     const { bucket } = yield* Media
     const listed = yield* keysUnder(bucket, captureKey(capture.accountId, capture.id, ''))
     const candidates = [...new Set([...listed, capture.originalKey, ...frames.map(({ objectKey }) => objectKey)])]
-    const inUse = yield* storedAs((yield* WardrobeStore).keysInUse(capture.accountId, candidates))
+    const inUse = yield* stored((yield* WardrobeStore).keysInUse(capture.accountId, candidates))
     yield* deleteAfterRows(
       bucket,
       candidates.filter((key) => !inUse.has(key)),
@@ -103,10 +96,7 @@ export const turnKey = (
 /** Send the piece queue a message, now or after `delaySeconds`. */
 const enqueue = (message: Parameters<PieceQueue['Service']['send']>[0], delaySeconds?: number) =>
   Effect.flatMap(PieceQueue, (queue) =>
-    Effect.tryPromise({
-      try: () => queue.send(message, delaySeconds === undefined ? undefined : { delaySeconds }),
-      catch: unavailable,
-    }),
+    called(() => queue.send(message, delaySeconds === undefined ? undefined : { delaySeconds })),
   ).pipe(Effect.asVoid)
 
 /** Tell the queue a piece's turn has a step waiting, now or after `delaySeconds` (polling the video model). */
@@ -127,8 +117,6 @@ export const enqueueMatch = (captureId: string, delaySeconds?: number) =>
 
 /** Tell the queue a capture is ready to process. */
 export const enqueueCapture = (captureId: string) => enqueue({ _tag: 'ProcessCapture', captureId })
-
-export const storedAs = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
 
 /** How a capture's status ended its hold, once it ended: in the tray or done it succeeded. A capture still
  * processing has not ended. */

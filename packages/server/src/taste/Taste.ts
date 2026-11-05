@@ -26,7 +26,7 @@ import {
 } from '@styld/protocol'
 import { and, asc, count, eq, gte, isNotNull } from 'drizzle-orm'
 import { Context, DateTime, Effect, Layer, Option, Schema } from 'effect'
-import { Database, first, nowDate, query } from '../kernel/Db.ts'
+import { Database, fenced, first, nowDate, query, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleting, receiptRows, recorded } from '../kernel/Receipts.ts'
 import { preferencesOf } from '../social/ShowMe.ts'
@@ -37,8 +37,7 @@ import { learnedFrom, type Wearing } from './Learned.ts'
 // kept and loved, and the boards they saved, never stored, so it follows every delete by itself. Show me stays with
 // the social module (`ShowMe.ts`); this reads it.
 
-const unavailable = () => Unavailable.make({})
-const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+const read = <A>(run: () => Promise<A>) => query(run).pipe(stored)
 
 /** How far back worn days count, and the most rows one signal reads. */
 const wornDays = 90
@@ -142,11 +141,11 @@ const tasteOf = Effect.fn('Styld.Taste.read')(function* (db: Database['Service']
     ],
     { concurrency: 'unbounded' },
   )
-  const stored = first(answers)
+  const told = first(answers)
   return {
     showMe: preferences.showMe,
-    occasions: Option.match(stored, { onNone: () => [], onSome: (row) => row.occasions.filter(isOccasion) }),
-    firstRunDone: Option.exists(stored, (row) => row.firstRunAt !== null),
+    occasions: Option.match(told, { onNone: () => [], onSome: (row) => row.occasions.filter(isOccasion) }),
+    firstRunDone: Option.exists(told, (row) => row.firstRunAt !== null),
     notes: notes.map(noteOf),
     learned: learnedFrom(signals),
   } satisfies Taste
@@ -233,7 +232,7 @@ const make = Effect.gen(function* () {
             read(() => db.select().from(styleNotes).where(eq(styleNotes.id, id)).limit(1)).pipe(
               Effect.flatMap((rows) =>
                 Option.match(first(rows), {
-                  onNone: () => Effect.fail(unavailable()),
+                  onNone: () => Effect.fail(Unavailable.make({})),
                   onSome: (row) => Effect.succeed(noteOf(row)),
                 }),
               ),
@@ -245,14 +244,16 @@ const make = Effect.gen(function* () {
     deleteStyleNote: Effect.fn('Styld.Taste.deleteNote')(function* (noteId: string, operationId: string) {
       const { accountId } = yield* CurrentAccount
       yield* deleting(receipts, { accountId, operationId, command: 'deleteStyleNote', target: noteId }, (receipt) =>
-        read(() =>
-          db.batch([
-            db
-              .delete(styleNotes)
-              .where(and(eq(styleNotes.id, noteId), eq(styleNotes.accountId, accountId)))
-              .returning({ id: styleNotes.id }),
-            db.insert(operationReceipts).values(receipt),
-          ]),
+        stored(
+          fenced(() =>
+            db.batch([
+              db
+                .delete(styleNotes)
+                .where(and(eq(styleNotes.id, noteId), eq(styleNotes.accountId, accountId)))
+                .returning({ id: styleNotes.id }),
+              db.insert(operationReceipts).values(receipt),
+            ]),
+          ),
         ).pipe(Effect.flatMap(([deleted]) => (deleted.length > 0 ? Effect.void : Effect.fail(NotFound.make({}))))),
       )
     }),
