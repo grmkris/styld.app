@@ -122,7 +122,8 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   their patience; generation jobs are re-sent; unused uploads, old receipts, expired OAuth assertions and checks of
   gone targets are forgotten.
 - **Media goes with its owner:** rows first, then every object nothing else shows (one in-use check, paginated
-  deletes).
+  deletes). A deleted piece's or photo's own prefix is recorded as owed (`media_deletions`, `kernel/MediaDeletions.ts`)
+  in the batch that deletes its row; the request empties it, and the `mediaDeletions` sweep empties what R2 could not.
 
 ## Styld's chat
 

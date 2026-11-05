@@ -97,6 +97,8 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   // Only the payment webhook writes them, in one batch per delivery (`billing/Store.ts`).
   purchases: ['billing/'],
   premium: ['billing/'],
+  // Deleted rows' prefixes still owed a delete, written in their row's batch (`kernel/MediaDeletions.ts`).
+  mediaDeletions: ['kernel/MediaDeletions.ts'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

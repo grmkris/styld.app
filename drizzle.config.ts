@@ -22,6 +22,7 @@ const modules = [
   'taste',
   'billing',
   'feedback',
+  'media',
 ]
 
 export default defineConfig({

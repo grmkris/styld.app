@@ -28,16 +28,17 @@ import { imageAddresses, SignedMedia } from '../kernel/SignedMedia.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
 import { cutOutPerson } from './Cutout.ts'
 import { refinding } from './Refind.ts'
-import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.ts'
+import { finding, type PhotoServices, photoHold } from './Finding.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleting, identify, madeBefore, once, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
+import { clearOwed } from '../kernel/MediaDeletions.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { PhotoStore } from './Store.ts'
+import { owedPhotoOf, PhotoStore } from './Store.ts'
 import { Holds } from '../usage/Holds.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
@@ -223,12 +224,13 @@ const added = (operation: Identified, input: AddPhoto) =>
     return row
   })
 
-/** The photo's objects, once its row is gone: its original upload, and everything under its own prefix. */
+/** The photo's objects, once its row is gone: its original upload, and everything under its own prefix, which its
+ * delete recorded as owed (`kernel/MediaDeletions.ts`), so what R2 cannot remove now the sweep removes later. */
 const deleteObjects = (row: PhotoRow) =>
   Effect.gen(function* () {
     const bucket = (yield* Media).bucket
-    const listed = yield* keysUnder(bucket, photoPrefix(row.accountId, row.id)).pipe(Effect.orElseSucceed(() => []))
-    yield* deleteAfterRows(bucket, [row.originalKey, ...listed], 'photo')
+    yield* deleteAfterRows(bucket, [row.originalKey], 'photo')
+    yield* clearOwed((yield* PhotoStore).owedMedia, bucket, [owedPhotoOf(row.accountId, row.id)])
   })
 
 /** A garment offered to the review tray, as a capture of its own (source `photos`, no credit). Its picture is copied

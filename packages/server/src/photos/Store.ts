@@ -8,6 +8,8 @@ import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
 import { Database, first, inChunks, query } from '../kernel/Db.ts'
+import { type OwedPrefix, owedMedia } from '../kernel/MediaDeletions.ts'
+import { photoPrefix } from './Finding.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
 export type GarmentRow = typeof photoGarments.$inferSelect
@@ -19,6 +21,13 @@ type Db = Database['Service']
 
 const ofAccount = (accountId: string, photoId: string) =>
   and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.accountId, accountId))
+
+/** A deleted photo's own prefix, owed a delete. */
+export const owedPhotoOf = (accountId: string, photoId: string): OwedPrefix => ({
+  prefix: photoPrefix(accountId, photoId),
+  accountId,
+  owner: 'photo',
+})
 
 const finishFinding = (db: Db, photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) => {
   const current = and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'finding'))
@@ -118,12 +127,17 @@ const writes = (db: Db) => ({
     query(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
       Effect.asVoid,
     ),
-  /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. */
+  /** The record of deleted photos' prefixes still owed a delete. */
+  owedMedia: owedMedia(db),
+  /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. Its
+   * own prefix (under the account's) is recorded as owed a delete in the same batch (`kernel/MediaDeletions.ts`), so
+   * its objects go even when R2 cannot remove them now. */
   deletePhoto: (accountId: string, photoId: string, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning(),
         db.insert(operationReceipts).values(receipt),
+        ...owedMedia(db).owe([owedPhotoOf(accountId, photoId)], receipt.createdAt),
       ]),
     ).pipe(Effect.map(([deleted]) => first(deleted))),
 })

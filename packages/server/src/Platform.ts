@@ -8,6 +8,8 @@ import { health } from './Health.ts'
 import { landingMediaRoute } from './LandingMedia.ts'
 import { Database, query } from './kernel/Db.ts'
 import { module } from './kernel/Module.ts'
+import { Media } from './kernel/Media.ts'
+import { owedMediaSweep } from './kernel/MediaDeletions.ts'
 import { Pacing } from './kernel/Pacing.ts'
 import { forgetOldReceipts } from './kernel/Receipts.ts'
 import { Holds } from './usage/Holds.ts'
@@ -26,14 +28,15 @@ const forgetGoogleFlows = Effect.gen(function* () {
   return gone.meta.changes
 })
 
-const sweeps: ReadonlyArray<Sweep<Database | Holds>> = [
+const sweeps: ReadonlyArray<Sweep<Database | Holds | Media>> = [
   { name: 'receipts', run: Effect.flatMap(Database, (db) => forgetOldReceipts(db, forgetBatch)) },
   { name: 'googleSignIns', run: forgetGoogleFlows },
   { name: 'settlements', run: Effect.flatMap(Holds, (holds) => holds.sweep) },
+  owedMediaSweep,
 ]
 
 /** What every deployment serves besides its modules: health, the browser telemetry relay, the landing's films, forgetting receipts past
- * their lifetime and Google sign-ins never finished, settling the credit holds the Wallet has not confirmed settled, and forgetting finished paid work. */
+ * their lifetime and Google sign-ins never finished, emptying deleted rows' prefixes R2 could not empty at once, settling the credit holds the Wallet has not confirmed settled, and forgetting finished paid work. */
 export const platform = module({
   layer: Layer.empty,
   routes: Layer.unwrap(
