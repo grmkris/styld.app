@@ -15,7 +15,7 @@
   "promise.runPromise": 3,
   "sql.fragments": 55,
   "sql.textSubqueries": 27,
-  "sql.wholeStatements": 45,
+  "sql.wholeStatements": 41,
   "web.colourLiterals": 21,
   "web.messageVariantsMax": 101,
   "web.stringIds": 122

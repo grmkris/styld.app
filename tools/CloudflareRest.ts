@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/sqlite-proxy'
 import { Effect, Option, Schema } from 'effect'
 import type { RunClef } from '../packages/server/src/providers/Clef.ts'
 
@@ -101,3 +102,23 @@ export const readEach = async <Piece extends { readonly id: string }, Read>(
       ),
     )
   ).flatMap((read) => Option.toArray(read))
+
+const refuse = async (): Promise<never> => {
+  throw new Error('statements run through the D1 REST API (`built`), never through this instance')
+}
+
+/** Drizzle that only builds statements (`.toSQL()`): the scripts write no SQL by hand, and run what it builds with
+ * `built`. */
+export const statements = drizzle({ get: refuse, all: refuse, run: refuse })
+
+/** A built statement run through the stage's D1 REST `query`; its parameters are each a string or a number. */
+export const built =
+  (query: (sql: string, params: ReadonlyArray<string | number>) => Promise<ReadonlyArray<unknown>>) =>
+  ({ sql, params }: { readonly sql: string; readonly params: ReadonlyArray<unknown> }) =>
+    query(
+      sql,
+      params.map((param) => {
+        if (typeof param === 'string' || typeof param === 'number') return param
+        throw new Error(`a parameter D1 cannot take: ${typeof param}`)
+      }),
+    )

@@ -21,12 +21,14 @@ import { writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import type { PieceType } from '@styld/protocol'
 import { modelPicture, readPng } from '@styld/imaging'
+import { pieces } from '@styld/db'
+import { and, eq, isNotNull, lt, ne } from 'drizzle-orm'
 import { Effect, Option, Schema } from 'effect'
 import type { Picture } from '../../packages/server/src/capture/Providers.ts'
 import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
 import { askClef, imageOf } from '../../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, readEach, stageOptions } from '../CloudflareRest.ts'
+import { built, cloudflareStage, readEach, stageOptions, statements } from '../CloudflareRest.ts'
 import {
   isQuestionSetName,
   type QuestionRead,
@@ -78,21 +80,34 @@ const { query, object, runClef } = await cloudflareStage({ token, cloudflareAcco
 // The two statements, kept apart from the reading and the report.
 
 /** The ready pieces of `from` with a cut-out of their own, of one account and made before a time when given. */
-const selectPieces = async (from: PieceType, filter: { readonly account?: string; readonly before?: number }) => {
-  const filters = [
-    ...(filter.account === undefined ? [] : [{ sql: 'account_id = ?', value: filter.account }]),
-    ...(filter.before === undefined ? [] : [{ sql: 'created_at < ?', value: filter.before }]),
-  ]
-  return Schema.decodeUnknownPromise(Schema.Array(Stored))(
-    await query(
-      `SELECT id, account_id, image_key, original_key, content_type FROM pieces
-         WHERE type = ? AND status = 'ready' AND image_key IS NOT NULL AND image_key <> original_key
-           ${filters.map(({ sql }) => `AND ${sql}`).join(' ')}
-         ORDER BY created_at`,
-      [from, ...filters.map(({ value }) => value)],
+const statement = built(query)
+
+const selectPieces = async (from: PieceType, filter: { readonly account?: string; readonly before?: number }) =>
+  Schema.decodeUnknownPromise(Schema.Array(Stored))(
+    await statement(
+      statements
+        .select({
+          id: pieces.id,
+          account_id: pieces.accountId,
+          image_key: pieces.imageKey,
+          original_key: pieces.originalKey,
+          content_type: pieces.contentType,
+        })
+        .from(pieces)
+        .where(
+          and(
+            eq(pieces.type, from),
+            eq(pieces.status, 'ready'),
+            isNotNull(pieces.imageKey),
+            ne(pieces.imageKey, pieces.originalKey),
+            filter.account === undefined ? undefined : eq(pieces.accountId, filter.account),
+            filter.before === undefined ? undefined : lt(pieces.createdAt, new Date(filter.before)),
+          ),
+        )
+        .orderBy(pieces.createdAt)
+        .toSQL(),
     ),
   )
-}
 
 /** Moves one piece to `to` while it still has `from`; the ids it moved (none when it was edited meanwhile). */
 const movePiece = async (
@@ -101,13 +116,14 @@ const movePiece = async (
   to: PieceType,
   at: number,
 ) =>
-  query(`UPDATE pieces SET type = ?, updated_at = ? WHERE id = ? AND account_id = ? AND type = ? RETURNING id`, [
-    to,
-    at,
-    move.id,
-    move.accountId,
-    from,
-  ])
+  statement(
+    statements
+      .update(pieces)
+      .set({ type: to, updatedAt: new Date(at) })
+      .where(and(eq(pieces.id, move.id), eq(pieces.accountId, move.accountId), eq(pieces.type, from)))
+      .returning({ id: pieces.id })
+      .toSQL(),
+  )
 
 interface Read extends QuestionRead {
   readonly id: string
@@ -147,20 +163,20 @@ const readOf = (piece: Stored) =>
     })
   })
 
-const pieces = await selectPieces(set.from, {
+const stored = await selectPieces(set.from, {
   ...(account === undefined ? {} : { account }),
   ...(before === undefined ? {} : { before }),
 })
-const reads = await readEach(pieces, readOf)
+const reads = await readEach(stored, readOf)
 const moves = reads.filter((read) => read.to !== undefined)
 const unsure = reads.filter((read) => read.unsure)
 
 const report = values.out ?? `/tmp/retype-${setName}-${account ?? 'all'}.json`
-await writeFile(report, JSON.stringify({ account: account ?? null, read: pieces.length, moves, unsure }, null, 2))
+await writeFile(report, JSON.stringify({ account: account ?? null, read: stored.length, moves, unsure }, null, 2))
 const targets = [...new Set(moves.flatMap(({ to }) => (to === undefined ? [] : [to])))]
 const movedTo = targets.map((type) => `${moves.filter(({ to }) => to === type).length} to ${type}`).join(', ')
 console.log(
-  `${pieces.length} ${set.pieces} read, ${reads.length} answered (${reads.filter(({ withPhoto }) => withPhoto).length} ` +
+  `${stored.length} ${set.pieces} read, ${reads.length} answered (${reads.filter(({ withPhoto }) => withPhoto).length} ` +
     `with their photo); ${moves.length} move (${movedTo || 'none'}), ${unsure.length} left as they are on an unsure ` +
     `answer. Report: ${report}`,
 )

@@ -19,12 +19,14 @@ import { writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import { Colour, PieceType, slotOf } from '@styld/protocol'
 import { modelPicture, readPng } from '@styld/imaging'
+import { pieces } from '@styld/db'
+import { and, eq, isNotNull, ne } from 'drizzle-orm'
 import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
 import type { Picture } from '../../packages/server/src/capture/Providers.ts'
 import { makeGarmentVision } from '../../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, stageOptions } from '../CloudflareRest.ts'
+import { built, cloudflareStage, stageOptions, statements } from '../CloudflareRest.ts'
 
 const { values } = parseArgs({ options: { ...stageOptions } })
 const token = process.env['CLOUDFLARE_API_TOKEN']
@@ -128,18 +130,34 @@ const changeOf = (piece: Stored) =>
         })
   })
 
-const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
-  await query(
-    `SELECT id, type, colours, image_key, original_key, content_type FROM pieces
-       WHERE account_id = ? AND status = 'ready' AND image_key IS NOT NULL AND image_key <> original_key
-       ORDER BY created_at`,
-    [account],
+const stored = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
+  await built(query)(
+    statements
+      .select({
+        id: pieces.id,
+        type: pieces.type,
+        colours: pieces.colours,
+        image_key: pieces.imageKey,
+        original_key: pieces.originalKey,
+        content_type: pieces.contentType,
+      })
+      .from(pieces)
+      .where(
+        and(
+          eq(pieces.accountId, account),
+          eq(pieces.status, 'ready'),
+          isNotNull(pieces.imageKey),
+          ne(pieces.imageKey, pieces.originalKey),
+        ),
+      )
+      .orderBy(pieces.createdAt)
+      .toSQL(),
   ),
 )
 
 const found = await Effect.runPromise(
   Effect.forEach(
-    pieces,
+    stored,
     (piece) =>
       changeOf(piece).pipe(
         Effect.orElseSucceed(() => {
@@ -153,10 +171,10 @@ const found = await Effect.runPromise(
 const changes = found.flatMap((change) => Option.toArray(change))
 
 const out = values.out ?? `/tmp/retype-${account}.json`
-await writeFile(out, JSON.stringify({ account, read: pieces.length, changes }, null, 2))
+await writeFile(out, JSON.stringify({ account, read: stored.length, changes }, null, 2))
 const count = (test: (change: Change) => boolean) => changes.filter(test).length
 console.log(
-  `${pieces.length} pieces read; ${count(({ from, to }) => from.type !== to.type)} re-typed, ` +
+  `${stored.length} pieces read; ${count(({ from, to }) => from.type !== to.type)} re-typed, ` +
     `${count(({ from, to }) => from.colours.length !== to.colours.length)} pairs of shoes lose a trim's colour. ` +
     `Report: ${out}`,
 )
@@ -165,10 +183,20 @@ if (values.apply) {
   const now = Date.now()
   let written = 0
   for (const { id, from, to } of changes) {
-    const rows = await query(
-      `UPDATE pieces SET type = ?, colours = ?, updated_at = ?
-         WHERE id = ? AND account_id = ? AND type = ? AND colours = ? RETURNING id`,
-      [to.type, JSON.stringify(to.colours), now, id, account, from.type, JSON.stringify(from.colours)],
+    const rows = await built(query)(
+      statements
+        .update(pieces)
+        .set({ type: to.type, colours: to.colours, updatedAt: new Date(now) })
+        .where(
+          and(
+            eq(pieces.id, id),
+            eq(pieces.accountId, account),
+            eq(pieces.type, from.type),
+            eq(pieces.colours, from.colours),
+          ),
+        )
+        .returning({ id: pieces.id })
+        .toSQL(),
     )
     written += rows.length
   }
