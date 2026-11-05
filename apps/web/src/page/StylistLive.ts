@@ -46,6 +46,9 @@ const keyOf = (event: {
 }) => [event.attemptId, event.runId, event.turnId, event.generation].map((part) => JSON.stringify(part)).join(',')
 
 /** The reply so far from the chat's live words, as they come. */
+/** The chat's live words, at the API's \`live\` route of its stylist group (\`/stylist/chats/:chatId/live\` under \`/api\`). */
+export const livePath = (chatId: string) => `/api/stylist/chats/${encodeURIComponent(chatId)}/live`
+
 export const followLive = <E>(thread: string, bytes: Stream.Stream<Uint8Array, E>) =>
   decodeLiveText(ThreadId.make(thread), bytes).pipe(
     Stream.mapAccum(
