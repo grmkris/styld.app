@@ -1,14 +1,13 @@
 import { detections, pieceBackPictures, pieces } from '@styld/db'
-import { and, eq, inArray, isNotNull, ne } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { Effect } from 'effect'
-import { anyOf } from '../kernel/Conditional.ts'
 import { type Database as Db, first, query } from '../kernel/Db.ts'
+import { advanceBackPicture, type BackPictureChanges, type PictureState, queueBackPicture } from './PictureLifecycle.ts'
 
 type Database = Db['Service']
 
 /** A piece's back picture row (`piece_back_pictures`). */
 export type BackPictureRow = typeof pieceBackPictures.$inferSelect
-type BackPictureState = BackPictureRow['state']
 
 /** Pieces' back pictures (owner, 4 November 2026): drawn only from a back the person photographed. Only the back picture
  * job and a back being set or removed write them, and the job moves one on only from a state it was read in. */
@@ -27,32 +26,18 @@ export const backPictureRows = (db: Database) => ({
             .from(pieceBackPictures)
             .where(inArray(pieceBackPictures.pieceId, [...pieceIds])),
         ),
-  /** Move a back picture on from one of `from`, with `changes`; whether it moved. */
-  moveBackPicture: (pieceId: string, from: ReadonlyArray<BackPictureState>, changes: Partial<BackPictureRow>) =>
-    query(() =>
-      db
-        .update(pieceBackPictures)
-        .set(changes)
-        .where(and(eq(pieceBackPictures.pieceId, pieceId), inArray(pieceBackPictures.state, [...from])))
-        .returning({ pieceId: pieceBackPictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** A back picture to draw from the piece's back `sourceKey`: added, or queued again when the back changed (a drawing
-   * on its way of the old back then fails its next move and is dropped). Whether one waits to be drawn. */
+  /** Move a back picture from one of `from` to `to` (`PictureLifecycle.ts`), with `changes`; whether it moved. */
+  moveBackPicture: (
+    pieceId: string,
+    from: ReadonlyArray<PictureState>,
+    to: PictureState,
+    changes: BackPictureChanges,
+  ) => advanceBackPicture(db, pieceId, from, to, changes),
+  /** A back picture to draw from the piece's back `sourceKey` (`PictureLifecycle.ts` › `queueBackPicture`). */
   queueBackPicture: (
     row: { readonly pieceId: string; readonly accountId: string; readonly sourceKey: string },
     at: Date,
-  ) =>
-    query(() =>
-      db
-        .insert(pieceBackPictures)
-        .values({ ...row, state: 'queued', version: 0, createdAt: at, updatedAt: at })
-        .onConflictDoUpdate({
-          target: pieceBackPictures.pieceId,
-          set: { state: 'queued', sourceKey: row.sourceKey, claimedAt: null, updatedAt: at },
-          setWhere: anyOf(ne(pieceBackPictures.sourceKey, row.sourceKey), eq(pieceBackPictures.state, 'queued')),
-        })
-        .returning({ pieceId: pieceBackPictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  ) => queueBackPicture(db, row, at),
   /** The account's pieces kept from a capture's detections that have a back: a camera back shot that finished after
    * its front was kept gave them theirs. */
   backedPiecesOf: (accountId: string, captureId: string) =>

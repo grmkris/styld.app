@@ -19,8 +19,9 @@ import { allowanceAt, membershipOf, type MembershipRecord } from '../billing/Mem
 // never reused: the Wallet's receipts would answer a reused id as already reserved, and the work would run unpaid.
 // Every hold is kept in D1 (`pending_settlements`) from before it is reserved until the Wallet confirms it settled.
 
-/** What a hold pays for. A back held a photo's credit until 4 November; `back` names those holds until they settle. */
-export type HoldKind = 'capture' | 'piece' | 'back' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist' | 'tryOn'
+/** What a hold pays for. Holds named `back/…` (a back's photo credit until 4 November) are no longer made; any still
+ * pending is settled by id like every other (`settlementRows`), never by its kind. */
+export type HoldKind = 'capture' | 'piece' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist' | 'tryOn'
 
 export const HoldId = Schema.String.pipe(Schema.brand('Styld/HoldId'))
 export type HoldId = typeof HoldId.Type

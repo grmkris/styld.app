@@ -6,12 +6,13 @@ import type { Pacing } from '../kernel/Pacing.ts'
 import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import { photoPrefix } from '../photos/Finding.ts'
 import type { PhotoStore } from '../photos/Store.ts'
-import { type Ending, Holds, holdId } from '../usage/Holds.ts'
+import { Holds, holdId } from '../usage/Holds.ts'
 import type { WardrobeStore } from '../wardrobe/Store.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { GenerationQueue } from './Queue.ts'
 import type { TryOnPainter } from './TryOnPainter.ts'
 import type { TryOnRow, TryOnStore } from './TryOnStore.ts'
+import { tryOnEnding } from './TryOnLifecycle.ts'
 import { called } from '../kernel/Bindings.ts'
 
 // What the try-on operations share: the services they act through, a try-on's hold, where its result is kept, its
@@ -58,17 +59,9 @@ export const sendTryOn = (tryOnId: string) =>
     Effect.asVoid,
   )
 
-/** How a try-on that ended settles its credits: spent once its result is stored, given back otherwise. */
-const endingOf = (status: TryOnRow['status']): Option.Option<Ending> =>
-  status === 'done'
-    ? Option.some('succeeded')
-    : status === 'refused' || status === 'failed'
-      ? Option.some('failed')
-      : Option.none()
-
 /** Settle a try-on's credits by how it ended; the first settlement stands, so a later delivery may settle again. */
 export const settleTryOn = (row: Pick<TryOnRow, 'id' | 'accountId' | 'status'>) =>
-  Option.match(endingOf(row.status), {
+  Option.match(tryOnEnding(row.status), {
     onNone: () => Effect.void,
     onSome: (ending) => Effect.flatMap(Holds, (holds) => holds.settle(row.accountId, tryOnHold(row.id), ending)),
   })

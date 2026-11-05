@@ -23,6 +23,7 @@ import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { drawingPatienceMillis, sendTryOn, tryOnHold, type TryOnServices } from './TryOnShared.ts'
 import { TryOnStore, type TryOnRow } from './TryOnStore.ts'
+import { firstTryOnState } from './TryOnLifecycle.ts'
 import { admitTryOn, giveUpTryOn, workTryOn } from './TryOnWork.ts'
 import { Holds } from '../usage/Holds.ts'
 
@@ -135,7 +136,7 @@ const start = Effect.fn('Styld.TryOn.start')(function* (input: StartTryOn) {
     id: yield* newId('to'),
     accountId,
     photoId: photo.value.id,
-    status: 'admitting',
+    status: firstTryOnState,
     startedAt: null,
     resultKey: null,
     createdAt: at,

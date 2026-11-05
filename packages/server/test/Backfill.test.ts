@@ -109,7 +109,7 @@ describe("the operator's backfill of clean pictures", () => {
         database.sqlite.exec(`
         INSERT INTO piece_pictures (piece_id, account_id, state, clean_key, version, redraws, paid, created_at, updated_at)
         VALUES ('pc_old', 'ac_1', 'retake', NULL, 0, 0, 0, 0, 0),
-               ('pc_new', 'ac_1', 'rejected', NULL, 1, 0, 1, 0, 9000),
+               ('pc_new', 'ac_1', 'failed', NULL, 1, 0, 1, 0, 9000),
                ('pc_processing', 'ac_1', 'failed', NULL, 1, 0, 0, 0, 0),
                ('pc_bob', 'ac_2', 'ready', 'c/bob', 1, 0, 0, 0, 0);
       `)
@@ -138,17 +138,17 @@ describe("the operator's backfill of clean pictures", () => {
       }),
   )
 
-  // Owner, 4 November 2026: after the prompt fix and the refusal fallback, only the drawings that ended dropped or
-  // failed are drawn again; a shown one is left alone, and a run resumed with the same moment never widens the set.
-  it.effect('queues again only the drawings dropped or failed before a moment, once, leaving shown ones', () =>
+  // Owner, 4 November 2026: after the prompt fix and the refusal fallback, only the drawings that failed are drawn
+  // again; a shown one is left alone, and a run resumed with the same moment never widens the set.
+  it.effect('queues again only the drawings failed before a moment, once, leaving shown ones', () =>
     Effect.gen(function* () {
       const database = seeded()
       database.sqlite.exec(`
         INSERT INTO piece_pictures (piece_id, account_id, state, clean_key, version, redraws, paid, created_at, updated_at)
-        VALUES ('pc_old', 'ac_1', 'rejected', NULL, 1, 0, 0, 0, 0),
+        VALUES ('pc_old', 'ac_1', 'failed', NULL, 1, 0, 0, 0, 0),
                ('pc_new', 'ac_1', 'failed', NULL, 1, 0, 0, 0, 0),
                ('pc_photo', 'ac_1', 'failed', NULL, 1, 0, 0, 0, 9000),
-               ('pc_bob', 'ac_2', 'rejected', NULL, 1, 0, 0, 0, 0);
+               ('pc_bob', 'ac_2', 'failed', NULL, 1, 0, 0, 0, 0);
       `)
       const rows = backfillRows(drizzle(database))
       const ended = yield* rows.staleDrawings('ac_1', before, 'ended')
@@ -163,7 +163,7 @@ describe("the operator's backfill of clean pictures", () => {
       const states = () =>
         database.sqlite.prepare('SELECT piece_id AS pieceId, state FROM piece_pictures ORDER BY piece_id').all()
       expect(states()).toEqual([
-        { pieceId: 'pc_bob', state: 'rejected' },
+        { pieceId: 'pc_bob', state: 'failed' },
         { pieceId: 'pc_drawn', state: 'ready' },
         { pieceId: 'pc_new', state: 'queued' },
         { pieceId: 'pc_old', state: 'queued' },

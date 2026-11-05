@@ -193,7 +193,14 @@ const pieceOwned = () => ({
     .references(() => accounts.id, { onDelete: 'cascade' }),
 })
 
-const pictureStates = [
+/** The states a drawing is in. */
+const pictureStates = ['queued', 'generating', 'ready', 'proposed', 'retake', 'kept-real', 'failed'] as const
+/** What the state's CHECK admits: the states, and two a drawing was left in before 4 November 2026, when the check
+ * against the cut-out was dropped: `checking` (drawn, waiting for the check) and `rejected` (dropped by it). Migration
+ * `20261105145014_picture_legacy_states` moved every such row to `ready` or `failed`, and no code writes or reads them
+ * since; the CHECK still admits them, in its first order, because changing it would rebuild the table on D1, and a
+ * rebuild cascades away rows that reference it. */
+const admittedPictureStates = [
   'queued',
   'generating',
   'checking',
@@ -203,12 +210,13 @@ const pictureStates = [
   'retake',
   'kept-real',
   'failed',
-] as const
+] as const satisfies ReadonlyArray<(typeof pictureStates)[number] | 'checking' | 'rejected'>
 const keyColours = ['green', 'magenta'] as const
 
 /** A piece's clean picture: an image model's drawing of the garment from its kept cut-out (owner, 2026-10-30), shown
- * without a check against it (owner, 2026-11-04; `rejected` and `checking` rows are from before). One row per piece, written only by the picture job and the person's choice; the real
- * photo on the piece is never replaced. `state` moves only from the state it was read in. */
+ * without a check against it (owner, 2026-11-04). One row per piece, written only by the picture job and the person's
+ * choice; the real photo on the piece is never replaced. `state` moves only from the state it was read in, along
+ * `server/src/capture/PictureLifecycle.ts`. */
 export const piecePictures = sqliteTable(
   'piece_pictures',
   {
@@ -243,7 +251,7 @@ export const piecePictures = sqliteTable(
   (table) => [
     index('piece_pictures_account').on(table.accountId),
     index('piece_pictures_state_updated').on(table.state, table.updatedAt),
-    oneOf('piece_pictures_state', table.state, pictureStates),
+    oneOf('piece_pictures_state', table.state, admittedPictureStates),
     oneOf('piece_pictures_shown', table.shown, PictureChoice.literals),
     oneOf('piece_pictures_key_colour', table.keyColour, keyColours),
     check('piece_pictures_drawn_rotation', sql`${table.drawnRotation} IN (0, 90, 180, 270)`),
@@ -276,7 +284,7 @@ export const pieceBackPictures = sqliteTable(
   (table) => [
     index('piece_back_pictures_account').on(table.accountId),
     index('piece_back_pictures_state_updated').on(table.state, table.updatedAt),
-    oneOf('piece_back_pictures_state', table.state, pictureStates),
+    oneOf('piece_back_pictures_state', table.state, admittedPictureStates),
     oneOf('piece_back_pictures_key_colour', table.keyColour, keyColours),
   ],
 )

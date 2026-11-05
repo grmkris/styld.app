@@ -3,6 +3,7 @@ import { Effect, Option } from 'effect'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture } from './Shared.ts'
 import { redrawHold, settleHold } from './Pictures.ts'
+import { firstPictureState, hasEnded } from './PictureLifecycle.ts'
 import type { PictureRow } from './Store.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
@@ -22,19 +23,14 @@ const settledPicture = (pieceId: string, at: Date) =>
   Effect.gen(function* () {
     const found = yield* stored((yield* CaptureStore).findPicture(pieceId))
     if (Option.isSome(found) && isStale(found.value, at))
-      yield* stored(
-        (yield* CaptureStore).movePicture(pieceId, ['generating'], {
-          state: 'failed',
-          updatedAt: at,
-        }),
-      )
+      yield* stored((yield* CaptureStore).movePicture(pieceId, ['generating'], 'failed', { updatedAt: at }))
     yield* settleHold(pieceId)
     return yield* stored((yield* CaptureStore).findPicture(pieceId))
   })
 
 /** Why the piece's picture cannot be redrawn nowDate, if it cannot. */
 const refusal = (picture: PictureRow): Option.Option<PictureRefused['reason']> =>
-  ['queued', 'generating', 'checking'].includes(picture.state) ? Option.some('busy') : Option.none()
+  hasEnded(picture.state) ? Option.none() : Option.some('busy')
 
 /** The owner's piece, if it can be drawn: clean pictures are on and it shows a cut-out. */
 const drawablePiece = (accountId: string, pieceId: string) =>
@@ -55,7 +51,7 @@ const unclaimed = (accountId: string, current: Option.Option<PictureRow>, claime
     yield* Option.match(current, {
       onNone: () => store.dropPicture(pieceId, redraws),
       onSome: ({ state, hint, paid, shown, updatedAt }) =>
-        store.claimRedraw(pieceId, { state: 'queued', redraws }, { state, hint, paid, shown, updatedAt }),
+        store.claimRedraw(pieceId, { state: firstPictureState, redraws }, state, { hint, paid, shown, updatedAt }),
     })
   }).pipe(Effect.ignore({ log: true, message: 'Styld.Picture.redraw could not take back a claim' }))
 
@@ -72,7 +68,6 @@ const queueRedraw = (
     const redraws = Option.match(current, { onNone: () => 1, onSome: (picture) => picture.redraws + 1 })
     const at = yield* nowDate
     const queued = {
-      state: 'queued' as const,
       hint: hint ?? null,
       redraws,
       paid: true,
@@ -82,8 +77,8 @@ const queueRedraw = (
     const store = yield* CaptureStore
     const claimed = yield* stored(
       Option.isSome(current)
-        ? store.claimRedraw(pieceId, current.value, queued)
-        : store.addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }),
+        ? store.claimRedraw(pieceId, current.value, firstPictureState, queued)
+        : store.addPicture({ ...queued, state: firstPictureState, pieceId, accountId, version: 0, createdAt: at }),
     )
     if (!claimed) return yield* PictureRefused.make({ reason: 'busy' })
     yield* (yield* Holds)
@@ -100,7 +95,7 @@ const replayedRedraw = (pieceId: string) =>
     const at = yield* nowDate
     const current = yield* stored((yield* CaptureStore).findPicture(pieceId))
     if (Option.isNone(current)) return yield* NotFound.make({})
-    if (current.value.state === 'queued') yield* enqueuePicture(pieceId)
+    if (current.value.state === firstPictureState) yield* enqueuePicture(pieceId)
     return pictureView(current.value, at)
   })
 

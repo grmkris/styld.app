@@ -1,7 +1,8 @@
 import { deleting, once } from '../kernel/Receipts.ts'
 import { type CaptureId, CurrentAccount, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option, Predicate } from 'effect'
-import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects } from './Shared.ts'
+import { captureHold, enqueueCapture, forgetCaptureObjects } from './Shared.ts'
+import { endingOf, uploadedCaptureState } from './CaptureLifecycle.ts'
 import type { CaptureRow } from './Store.ts'
 import { type Ending } from '../usage/Holds.ts'
 import { CaptureStore } from './Store.ts'
@@ -37,9 +38,9 @@ const unretried = (accountId: string, capture: CaptureRow, claimed: Date, refuse
     yield* (yield* CaptureStore).retryCapture(
       accountId,
       capture.id,
-      { status: 'processing', attempt, updatedAt: claimed },
+      { status: uploadedCaptureState, attempt, updatedAt: claimed },
+      capture.status,
       {
-        status: capture.status,
         attempt: refused ? capture.attempt : attempt,
         trackingStartedAt: capture.trackingStartedAt,
         providerFileId: capture.providerFileId,
@@ -60,8 +61,7 @@ const retried = (accountId: string, captureId: CaptureId) =>
     const claimed = DateTime.toDateUtc(now)
     const next = { ...capture, attempt: capture.attempt + 1 }
     const moved = yield* stored(
-      (yield* CaptureStore).retryCapture(accountId, capture.id, capture, {
-        status: 'processing',
+      (yield* CaptureStore).retryCapture(accountId, capture.id, capture, uploadedCaptureState, {
         attempt: next.attempt,
         // The person asked again, so a video may be tracked again.
         trackingStartedAt: null,

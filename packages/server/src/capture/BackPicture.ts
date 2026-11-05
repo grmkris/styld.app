@@ -20,8 +20,8 @@ const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
   side: 'back',
   kind: () => 'back',
   find: (pieceId) => Effect.flatMap(CaptureStore, (store) => stored(store.findBackPicture(pieceId))),
-  write: (pieceId, from, changes) =>
-    Effect.flatMap(CaptureStore, (store) => stored(store.moveBackPicture(pieceId, from, changes))),
+  write: (pieceId, from, to, changes) =>
+    Effect.flatMap(CaptureStore, (store) => stored(store.moveBackPicture(pieceId, from, to, changes))),
   keyOf: (row, version) => backPictureKey(row.accountId, row.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: cutoutAt(piece.backImageKey), other: frontOf(piece) }),
   // A back is its own photo, never turned by the front's rotation.

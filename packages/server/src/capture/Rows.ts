@@ -1,6 +1,7 @@
 import { captures, detections, piecePictures } from '@styld/db'
 import { and, eq, inArray } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
+import { drawnStates } from './PictureLifecycle.ts'
 
 /** Capture's statements for another module's batch: a garment offered from an outfit photo, as a capture of its own
  * with its one detection waiting in the tray. */
@@ -23,7 +24,7 @@ export const PictureRows = {
         and(
           eq(piecePictures.pieceId, pieceId),
           eq(piecePictures.accountId, accountId),
-          inArray(piecePictures.state, ['ready', 'proposed']),
+          inArray(piecePictures.state, [...drawnStates]),
         ),
       )
       .returning(),

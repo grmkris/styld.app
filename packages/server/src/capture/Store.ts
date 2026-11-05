@@ -13,7 +13,17 @@ import { Array, Context, Effect, Layer, Option } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
+import { decideDetections } from './DetectionLifecycle.ts'
+import { advanceCapture, type CaptureChanges, type CaptureState, intoTray, outOfTray } from './CaptureLifecycle.ts'
 import { matchRows } from './MatchStore.ts'
+import { advanceTurn, claimTurn, firstTurnState, type TurnChanges, type TurnState } from './TurnLifecycle.ts'
+import {
+  advancePicture,
+  claimPicture,
+  firstPictureState,
+  type PictureChanges,
+  type PictureState,
+} from './PictureLifecycle.ts'
 import { fileRecord } from './ProviderFiles.ts'
 import { chunked, Database as Db, fenced, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
@@ -28,10 +38,8 @@ export type DetectionRow = typeof detections.$inferSelect
 type PieceRow = typeof pieces.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
 export type PictureRow = typeof piecePictures.$inferSelect
-export type PictureState = PictureRow['state']
 type NewPicture = typeof piecePictures.$inferInsert
 export type TurnRow = typeof pieceTurns.$inferSelect
-export type TurnState = TurnRow['state']
 
 type Database = Db['Service']
 
@@ -49,7 +57,7 @@ const finishCapture = (
   db: Database,
   capture: Pick<CaptureRow, 'id' | 'attempt'>,
   found: ReadonlyArray<DetectionRow>,
-  changes: Partial<CaptureRow>,
+  changes: CaptureChanges,
 ) => {
   const current = and(
     eq(captures.id, capture.id),
@@ -61,7 +69,7 @@ const finishCapture = (
     db.batch([
       db.delete(detections).where(and(eq(detections.captureId, capture.id), eq(detections.status, 'review'), owns)),
       ...found.map((detection) => insertWhen(db, detections, detection, { table: captures, claim: current })),
-      db.update(captures).set(changes).where(current).returning({ id: captures.id }),
+      intoTray(db, capture, changes),
     ]),
   ).pipe(
     Effect.map((results) => {
@@ -145,7 +153,7 @@ const captureRows = (db: Database) => ({
   finishCapture: (
     capture: Pick<CaptureRow, 'id' | 'attempt'>,
     found: ReadonlyArray<DetectionRow>,
-    changes: Partial<CaptureRow>,
+    changes: CaptureChanges,
   ) => finishCapture(db, capture, found, changes),
   deleteCapture: (accountId: string, captureId: string) =>
     query(() =>
@@ -297,14 +305,8 @@ const pairRows = (db: Database) => {
     foldBack: (captureId: string, updatedAt: Date) =>
       query(() =>
         db.batch([
-          db
-            .update(detections)
-            .set({ status: 'discarded' })
-            .where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
-          db
-            .update(captures)
-            .set({ status: 'done', updatedAt })
-            .where(and(eq(captures.id, captureId), eq(captures.status, 'review'))),
+          decideDetections(db, eq(detections.captureId, captureId), 'discarded'),
+          outOfTray(db, eq(captures.id, captureId), updatedAt),
         ]),
       ).pipe(Effect.asVoid),
   }
@@ -313,28 +315,14 @@ const pairRows = (db: Database) => {
 /** Moving a capture between states only from the state it was read in, so two requests or two queue
  * deliveries never both act on it. Each answers whether it moved the capture. */
 const transitionRows = (db: Database) => ({
-  /** Move a capture the person asked to try again, if it is still as they saw it. */
+  /** Move a capture to `to`, if it is still as it was read (`CaptureLifecycle.ts` › `advanceCapture`). */
   retryCapture: (
     accountId: string,
     captureId: string,
-    seen: { readonly status: CaptureRow['status']; readonly attempt: number; readonly updatedAt: Date },
-    changes: Partial<CaptureRow>,
-  ) =>
-    query(() =>
-      db
-        .update(captures)
-        .set(changes)
-        .where(
-          and(
-            eq(captures.id, captureId),
-            eq(captures.accountId, accountId),
-            eq(captures.status, seen.status),
-            eq(captures.attempt, seen.attempt),
-            eq(captures.updatedAt, seen.updatedAt),
-          ),
-        )
-        .returning({ id: captures.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+    seen: Pick<CaptureRow, 'status' | 'attempt' | 'updatedAt'>,
+    to: CaptureState,
+    changes: CaptureChanges,
+  ) => advanceCapture(db, { id: captureId, accountId }, seen, to, changes),
   /** Mark a video as handed to Meta, unless a delivery already did. */
   claimTracking: (capture: Pick<CaptureRow, 'id' | 'attempt'>, at: Date) =>
     query(() =>
@@ -398,22 +386,10 @@ const reviewRows = (db: Database) => ({
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => PieceRows.insert(db, piece)),
         ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
-        ...chunked(input.kept).map((chunk) =>
-          db
-            .update(detections)
-            .set({ status: 'kept' })
-            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
-        ),
-        ...chunked(input.discarded).map((chunk) =>
-          db
-            .update(detections)
-            .set({ status: 'discarded' })
-            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
-        ),
+        ...chunked(input.kept).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'kept')),
+        ...chunked(input.discarded).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'discarded')),
         ...input.linked.map(({ captureId, pieceId }) => GarmentRows.confirm(db, captureId, pieceId)),
-        ...chunked(input.finished).map((chunk) =>
-          db.update(captures).set({ status: 'done', updatedAt: input.now }).where(inArray(captures.id, chunk)),
-        ),
+        ...chunked(input.finished).map((chunk) => outOfTray(db, inArray(captures.id, chunk), input.now)),
       ]),
     ).pipe(Effect.asVoid),
   /** The content type each of these stored uploads was received as: a photo's, or a video's stills. */
@@ -441,31 +417,16 @@ const pictureRows = (db: Database) => ({
     query(() => db.select().from(piecePictures).where(eq(piecePictures.pieceId, pieceId)).limit(1)).pipe(
       Effect.map(first),
     ),
-  /** Move a picture on from one of `from`, with `changes`; whether it moved. */
-  movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Partial<PictureRow>) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set(changes)
-        .where(and(eq(piecePictures.pieceId, pieceId), inArray(piecePictures.state, [...from])))
-        .returning({ pieceId: piecePictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Claim a picture's next paid redraw, or take back one claimed: move it only from the state and the redraw it was
-   * read in, so of two requests reading the same picture one owns the redraw and its hold; whether it moved. */
-  claimRedraw: (pieceId: string, seen: Pick<PictureRow, 'state' | 'redraws'>, changes: Partial<PictureRow>) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set(changes)
-        .where(
-          and(
-            eq(piecePictures.pieceId, pieceId),
-            eq(piecePictures.state, seen.state),
-            eq(piecePictures.redraws, seen.redraws),
-          ),
-        )
-        .returning({ pieceId: piecePictures.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move a picture from one of `from` to `to` (`PictureLifecycle.ts`), with `changes`; whether it moved. */
+  movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, to: PictureState, changes: PictureChanges) =>
+    advancePicture(db, pieceId, from, to, changes),
+  /** Claim a picture's next paid redraw, or take back one claimed (`PictureLifecycle.ts` › `claimPicture`). */
+  claimRedraw: (
+    pieceId: string,
+    seen: Pick<PictureRow, 'state' | 'redraws'>,
+    to: PictureState,
+    changes: PictureChanges,
+  ) => claimPicture(db, pieceId, seen, to, changes),
   /** Drop a first picture the owner asked for whose credit could not be held, while it still waits as added. */
   dropPicture: (pieceId: string, redraws: number) =>
     query(() =>
@@ -474,7 +435,7 @@ const pictureRows = (db: Database) => ({
         .where(
           and(
             eq(piecePictures.pieceId, pieceId),
-            eq(piecePictures.state, 'queued'),
+            eq(piecePictures.state, firstPictureState),
             eq(piecePictures.redraws, redraws),
           ),
         ),
@@ -498,34 +459,19 @@ const pictureRows = (db: Database) => ({
 const turnRows = (db: Database) => ({
   findTurn: (pieceId: string) =>
     query(() => db.select().from(pieceTurns).where(eq(pieceTurns.pieceId, pieceId)).limit(1)).pipe(Effect.map(first)),
-  /** Move a turn on from one of `from`, with `changes`; whether it moved. */
-  moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
-    query(() =>
-      db
-        .update(pieceTurns)
-        .set(changes)
-        .where(and(eq(pieceTurns.pieceId, pieceId), inArray(pieceTurns.state, [...from])))
-        .returning({ pieceId: pieceTurns.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Claim a piece's next turn, or take back one claimed: move it only from the state and the attempt it was read in,
-   * so of two requests reading the same turn one owns the attempt and its hold; whether it moved. */
-  claimTurn: (pieceId: string, seen: Pick<TurnRow, 'state' | 'attempt'>, changes: Partial<TurnRow>) =>
-    query(() =>
-      db
-        .update(pieceTurns)
-        .set(changes)
-        .where(
-          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, seen.state), eq(pieceTurns.attempt, seen.attempt)),
-        )
-        .returning({ pieceId: pieceTurns.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move a turn from one of `from` to `to` (`TurnLifecycle.ts`), with `changes`; whether it moved. */
+  moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, to: TurnState, changes: TurnChanges) =>
+    advanceTurn(db, pieceId, from, to, changes),
+  /** Claim a piece's next turn, or take back one claimed (`TurnLifecycle.ts` › `claimTurn`). */
+  claimTurn: (pieceId: string, seen: Pick<TurnRow, 'state' | 'attempt'>, to: TurnState, changes: TurnChanges) =>
+    claimTurn(db, pieceId, seen, to, changes),
   /** Drop a first turn whose credits could not be held, while it still waits as added. */
   dropTurn: (pieceId: string, attempt: number) =>
     query(() =>
       db
         .delete(pieceTurns)
         .where(
-          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, 'requested'), eq(pieceTurns.attempt, attempt)),
+          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, firstTurnState), eq(pieceTurns.attempt, attempt)),
         ),
     ).pipe(Effect.asVoid),
   /** A turn the owner asked for, unless the piece already has one; whether it was added. */

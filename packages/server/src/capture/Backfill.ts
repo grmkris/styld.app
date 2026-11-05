@@ -3,6 +3,7 @@ import { Array, DateTime, Duration, Effect, Option } from 'effect'
 import { PieceQueue, type WorkMessage } from '../wardrobe/Processing.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import type { Redrawn } from './BackfillStore.ts'
+import { firstPicture } from './PictureLifecycle.ts'
 import { CaptureStore } from './Store.ts'
 import type { CaptureServices } from './Shared.ts'
 import { stored } from '../kernel/Db.ts'
@@ -113,18 +114,7 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
     // A picture's turn is when it was last moved: the sweep gives up on one still queued half an hour after its turn,
     // not after the run.
     const added = yield* stored(
-      store.addPictures(
-        chosen.map((pieceId, index) => ({
-          pieceId,
-          accountId,
-          state: 'queued' as const,
-          version: 0,
-          redraws: 0,
-          paid: false,
-          createdAt: at,
-          updatedAt: turnOf(index),
-        })),
-      ),
+      store.addPictures(chosen.map((pieceId, index) => firstPicture({ pieceId, accountId }, at, turnOf(index)))),
     )
     yield* send([...overdue, ...added])
     yield* Effect.annotateCurrentSpan({

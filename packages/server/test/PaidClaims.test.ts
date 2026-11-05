@@ -30,18 +30,18 @@ describe('claiming a paid attempt', () => {
     Effect.gen(function* () {
       const store = yield* CaptureStore
       const seen = { state: 'ready' as const, redraws: 2 }
-      const queued = { state: 'queued' as const, redraws: 3, paid: true, updatedAt: at }
+      const queued = { redraws: 3, paid: true, updatedAt: at }
       const claims = yield* Effect.all([
-        store.claimRedraw('pc_1', seen, queued),
-        store.claimRedraw('pc_1', seen, queued),
+        store.claimRedraw('pc_1', seen, 'queued', queued),
+        store.claimRedraw('pc_1', seen, 'queued', queued),
       ])
       expect(claims).toEqual([true, false])
       // Its credit could not be held: the picture is as it was, but the redraw's number is spent.
-      expect(yield* store.claimRedraw('pc_1', { state: 'queued', redraws: 3 }, { state: 'ready' })).toBe(true)
+      expect(yield* store.claimRedraw('pc_1', { state: 'queued', redraws: 3 }, 'ready', {})).toBe(true)
       const picture = yield* store.findPicture('pc_1')
       expect(Option.map(picture, ({ state, redraws }) => [state, redraws])).toEqual(Option.some(['ready', 3]))
       // A request that read the picture before the claim cannot claim the same redraw again.
-      expect(yield* store.claimRedraw('pc_1', seen, queued)).toBe(false)
+      expect(yield* store.claimRedraw('pc_1', seen, 'queued', queued)).toBe(false)
     }).pipe(Effect.provide(over())),
   )
 
@@ -49,10 +49,10 @@ describe('claiming a paid attempt', () => {
     Effect.gen(function* () {
       const store = yield* CaptureStore
       const seen = { state: 'ready' as const, attempt: 0 }
-      const requested = { state: 'requested' as const, attempt: 1, operation: null, layout: null, updatedAt: at }
+      const requested = { attempt: 1, operation: null, layout: null, updatedAt: at }
       const claims = yield* Effect.all([
-        store.claimTurn('pc_1', seen, requested),
-        store.claimTurn('pc_1', seen, requested),
+        store.claimTurn('pc_1', seen, 'requested', requested),
+        store.claimTurn('pc_1', seen, 'requested', requested),
       ])
       expect(claims).toEqual([true, false])
       yield* store.dropTurn('pc_1', 0)

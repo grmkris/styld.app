@@ -72,7 +72,7 @@ const stuckDrawings = (db: Database['Service'], table: typeof piecePictures | ty
     db
       .select({ id: table.pieceId })
       .from(table)
-      .where(and(inArray(table.state, ['queued', 'generating', 'checking']), lt(table.updatedAt, until)))
+      .where(and(inArray(table.state, ['queued', 'generating']), lt(table.updatedAt, until)))
       .orderBy(asc(table.updatedAt))
       .limit(sweepBatch),
   ).pipe(Effect.map(ids))

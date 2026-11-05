@@ -85,7 +85,7 @@ const plan = (job: JobRow) =>
     const planned = attempt.value
     const at = yield* nowDate
     if (Option.isNone(planned)) {
-      yield* stored(store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }))
+      yield* stored(store.advanceJob(job.id, ['planning'], 'refused', { reason: 'unclear', updatedAt: at }))
       yield* attempts.forget(paidKey).pipe(Effect.ignore)
       return
     }
@@ -160,8 +160,7 @@ const draw = (job: JobRow) =>
     const status = Option.match(sticker, { onNone: () => 'waiting' as const, onSome: (row) => row.status })
     if (status === 'waiting' || status === 'drawing') return
     yield* stored(
-      store.advanceJob(job.id, ['drawing'], {
-        status: status === 'drawn' ? 'done' : 'refused',
+      store.advanceJob(job.id, ['drawing'], status === 'drawn' ? 'done' : 'refused', {
         reason: status === 'drawn' ? null : 'refused',
         updatedAt: yield* nowDate,
       }),
@@ -193,9 +192,7 @@ const arrange = (job: JobRow) =>
           add: picks.map((pieceId) => ({ _tag: 'TablePiece' as const, pieceId })),
         })
         .pipe(Effect.mapError(() => Unavailable.make({})))
-    yield* stored(
-      (yield* GenerationStore).advanceJob(job.id, ['arranging'], { status: 'done', updatedAt: yield* nowDate }),
-    )
+    yield* stored((yield* GenerationStore).advanceJob(job.id, ['arranging'], 'done', { updatedAt: yield* nowDate }))
   })
 
 /** Take the job as far as it goes now, acting for its account; a job that ended has its credit settled, by this

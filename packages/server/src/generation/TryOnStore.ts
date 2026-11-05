@@ -3,12 +3,10 @@ import { and, asc, desc, eq, inArray, isNull, lt, notExists } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { receiptRows, type ReceiptRow } from '../kernel/Receipts.ts'
 import { Database, fenced, first, query } from '../kernel/Db.ts'
+import { advanceTryOn, runningTryOn, type TryOnChanges, type TryOnState } from './TryOnLifecycle.ts'
 
 export type TryOnRow = typeof tryOns.$inferSelect
 type Drizzle = Database['Service']
-
-/** The statuses of a try-on not yet ended. */
-const running = ['admitting', 'drawing'] as const
 
 /** The most try-ons a list reads, newest first. */
 const listed = 200
@@ -78,15 +76,9 @@ const workQueries = (db: Drizzle) => ({
   /** For the queue, which acts for the try-on's account. */
   tryOnForWork: (tryOnId: string) =>
     query(() => db.select().from(tryOns).where(eq(tryOns.id, tryOnId)).limit(1)).pipe(Effect.map(first)),
-  /** Move the try-on on only from a status it is still at. */
-  advance: (tryOnId: string, from: ReadonlyArray<TryOnRow['status']>, change: Partial<TryOnRow>) =>
-    query(() =>
-      db
-        .update(tryOns)
-        .set(change)
-        .where(and(eq(tryOns.id, tryOnId), inArray(tryOns.status, [...from])))
-        .returning({ id: tryOns.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move the try-on from one of `from` to `to` (`TryOnLifecycle.ts`), only from a status it is still at. */
+  advance: (tryOnId: string, from: ReadonlyArray<TryOnState>, to: TryOnState, changes: TryOnChanges) =>
+    advanceTryOn(db, tryOnId, from, to, changes),
   /** Claim the drawing of a try-on still drawing that nobody claimed; false when another delivery claimed it first,
    * or it was given up. */
   claim: (tryOnId: string, at: Date) =>
@@ -103,7 +95,7 @@ const workQueries = (db: Drizzle) => ({
       db
         .select({ id: tryOns.id })
         .from(tryOns)
-        .where(and(inArray(tryOns.status, [...running]), lt(tryOns.updatedAt, before)))
+        .where(and(inArray(tryOns.status, [...runningTryOn]), lt(tryOns.updatedAt, before)))
         .orderBy(asc(tryOns.updatedAt))
         .limit(limit),
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),

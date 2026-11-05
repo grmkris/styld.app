@@ -240,11 +240,10 @@ describe('the picture a piece shows', () => {
       rotation: 0,
     })
     expect(shownImage(cutout, pictureRow('ready', { shown: 'photo' })).key).toBe(cutout.imageKey)
-    // A drawing proposed before 4 November shows unless its owner chose the photo; one dropped before then has no
-    // drawing to show.
+    // A drawing proposed before 4 November shows unless its owner chose the photo; a failed one has no drawing to show.
     expect(shownImage(cutout, pictureRow('proposed')).contentType).toBe('image/png')
     expect(shownImage(cutout, pictureRow('proposed', { shown: 'photo' })).key).toBe(cutout.imageKey)
-    expect(shownImage(cutout, pictureRow('rejected', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)
+    expect(shownImage(cutout, pictureRow('failed', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)
     expect(shownImage(cutout, undefined)).toEqual({ key: cutout.imageKey, contentType: 'image/jpeg', rotation: 0 })
     expect(shownImage({ ...cutout, imageKey: null }, undefined).key).toBe('photo.jpg')
   })
@@ -272,7 +271,7 @@ describe('the picture a piece shows', () => {
       state: 'kept',
       shows: 'photo',
     })
-    expect(pictureView(pictureRow('rejected', { cleanKey: null }), at).state).toBe('failed')
+    expect(pictureView(pictureRow('failed', { cleanKey: null }), at).state).toBe('failed')
     expect(pictureView(pictureRow('retake', { cleanKey: null }), at).state).toBe('retake')
   })
 })

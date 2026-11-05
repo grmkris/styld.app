@@ -66,6 +66,13 @@ const textual: ReadonlyArray<{
     where: (p) => p.startsWith(server),
     pattern: /\b(?:status|state):\s*'[a-z][a-zA-Z_-]*'/gu,
   },
+  {
+    // A state column written by an update (`.set({ … status: … })`) or an upsert's `set: { … state: … }` anywhere but
+    // its module's `*Lifecycle.ts`, the one writer of a column with a table of moves (`server/src/kernel/Lifecycle.ts`).
+    name: 'lifecycle.writesOutside',
+    where: (p) => p.startsWith(server) && !p.endsWith('Lifecycle.ts'),
+    pattern: /\bset(?:\(\s*\{|:\s*\{)[^{}]*?\b(?:status|state):/gu,
+  },
   { name: 'json.parse', where: (p) => p.startsWith('packages/'), pattern: /\bJSON\.parse\(/gu },
   {
     name: 'mcp.inlineSchemas',

@@ -1,6 +1,6 @@
 import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import type { PaidAttempts } from '../usage/Attempts.ts'
-import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
+import { type Holds, holdId } from '../usage/Holds.ts'
 import type { Pacing } from '../kernel/Pacing.ts'
 import type { Garments } from './Garments.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -117,22 +117,6 @@ export const enqueueMatch = (captureId: string, delaySeconds?: number) =>
 
 /** Tell the queue a capture is ready to process. */
 export const enqueueCapture = (captureId: string) => enqueue({ _tag: 'ProcessCapture', captureId })
-
-/** How a capture's status ended its hold, once it ended: in the tray or done it succeeded. A capture still
- * processing has not ended. */
-export const endingOf = (status: CaptureRow['status']): Option.Option<Ending> => {
-  switch (status) {
-    case 'review':
-    case 'done':
-      return Option.some('succeeded')
-    case 'failed':
-      return Option.some('failed')
-    case 'unknown':
-      return Option.some('unknown')
-    case 'processing':
-      return Option.none()
-  }
-}
 
 /** The hold paying for a capture's latest attempt: each retry the person asks for holds its credits again. */
 export const captureHold = (capture: { readonly id: string; readonly attempt: number }) =>

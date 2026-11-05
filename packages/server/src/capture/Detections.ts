@@ -5,6 +5,7 @@ import { type Garment } from './Garments.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { captureKey, readObject, writeObject } from './Shared.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
+import { foundDetectionState } from './DetectionLifecycle.ts'
 import { Garments } from './Garments.ts'
 
 /** A detection the pipeline found, as its row is written. */
@@ -71,7 +72,7 @@ export const detectionsOf = (
           id,
           captureId: capture.id,
           accountId: capture.accountId,
-          status: 'review',
+          status: foundDetectionState,
           cutoutKey: key,
           sourceKey,
           backCutoutKey: null,

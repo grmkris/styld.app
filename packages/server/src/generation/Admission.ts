@@ -17,7 +17,7 @@ export const admitJob = Effect.fn('Styld.Generation.admission')(function* (job: 
   const at = yield* nowDate
   if (at.getTime() - job.createdAt.getTime() > generationLifetimeMillis) {
     const moved = yield* stored(
-      store.advanceJob(job.id, ['admitting'], { status: 'failed', reason: 'unavailable', updatedAt: at }),
+      store.advanceJob(job.id, ['admitting'], 'failed', { reason: 'unavailable', updatedAt: at }),
     )
     if (moved) yield* settleJob({ ...job, status: 'failed' })
     return
@@ -29,8 +29,7 @@ export const admitJob = Effect.fn('Styld.Generation.admission')(function* (job: 
       .pipe(Effect.mapError(() => Unavailable.make({})))
     if (verdict.state === 'failed') return yield* PromptRefused.make({ reason: verdict.reason ?? 'other' })
     yield* stored(
-      store.advanceJob(job.id, ['admitting'], {
-        status: job.kind === 'sticker' ? 'drawing' : 'planning',
+      store.advanceJob(job.id, ['admitting'], job.kind === 'sticker' ? 'drawing' : 'planning', {
         updatedAt: yield* nowDate,
       }),
     )
@@ -39,8 +38,7 @@ export const admitJob = Effect.fn('Styld.Generation.admission')(function* (job: 
       Effect.gen(function* () {
         const status = Predicate.isTagged(error, 'PromptRefused') ? 'refused' : 'failed'
         const moved = yield* stored(
-          store.advanceJob(job.id, ['admitting'], {
-            status,
+          store.advanceJob(job.id, ['admitting'], status, {
             reason: status === 'refused' ? 'refused' : 'unavailable',
             updatedAt: yield* nowDate,
           }),
