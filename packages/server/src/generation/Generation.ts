@@ -13,6 +13,7 @@ import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 import { type GenerationServices, send, view } from './Shared.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
 import { GenerationStore, type JobRow, type StickerRow } from './Store.ts'
+import { firstJobState } from './JobLifecycle.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { admitJob } from './Admission.ts'
@@ -36,7 +37,7 @@ const newJob = Effect.fnUntraced(function* (kind: GenerationKind, boardId: Board
     boardId,
     kind,
     prompt: input.prompt,
-    status: 'admitting',
+    status: firstJobState,
     reason: null,
     collageVersion: version,
     moods: [],

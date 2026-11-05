@@ -4,15 +4,13 @@ import { Context, Effect, Layer } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
 import { Database, fenced, first, query } from '../kernel/Db.ts'
 import { insertWhen } from '../kernel/Conditional.ts'
+import { advanceJob, arranging, givenUp, type JobChanges, type JobState, runningJob } from './JobLifecycle.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
 /** A sticker job's one picture. */
 export type StickerRow = typeof generationPictures.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferInsert
 type Drizzle = Database['Service']
-
-/** The statuses of a job not yet ended. */
-const running = ['admitting', 'planning', 'drawing', 'arranging'] as const
 
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
 const jobQueries = (db: Drizzle) => ({
@@ -63,7 +61,7 @@ const jobQueries = (db: Drizzle) => ({
           and(
             eq(generationJobs.accountId, accountId),
             eq(generationJobs.boardId, boardId),
-            inArray(generationJobs.status, [...running]),
+            inArray(generationJobs.status, [...runningJob]),
           ),
         )
         .orderBy(desc(generationJobs.createdAt))
@@ -75,22 +73,16 @@ const jobQueries = (db: Drizzle) => ({
       db
         .select({ id: generationJobs.id })
         .from(generationJobs)
-        .where(and(inArray(generationJobs.status, [...running]), lt(generationJobs.updatedAt, before)))
+        .where(and(inArray(generationJobs.status, [...runningJob]), lt(generationJobs.updatedAt, before)))
         .orderBy(asc(generationJobs.updatedAt))
         .limit(limit),
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the generation queue, which acts for the job's account. */
   jobForWork: (jobId: string) =>
     query(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(Effect.map(first)),
-  /** Move the job on only from a step it is still at, so a job given up stays given up. */
-  advanceJob: (jobId: string, from: ReadonlyArray<JobRow['status']>, job: Partial<JobRow>) =>
-    query(() =>
-      db
-        .update(generationJobs)
-        .set(job)
-        .where(and(eq(generationJobs.id, jobId), inArray(generationJobs.status, [...from])))
-        .returning({ id: generationJobs.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move the job from one of `from` to `to` (`JobLifecycle.ts`), so a job given up stays given up. */
+  advanceJob: (jobId: string, from: ReadonlyArray<JobState>, to: JobState, changes: JobChanges) =>
+    advanceJob(db, jobId, from, to, changes),
 })
 
 /** A mood board's plan: the pieces it picked, in order. */
@@ -116,10 +108,7 @@ const pickQueries = (db: Drizzle) => ({
             { table: generationJobs, claim: and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning')) },
           ),
         ),
-        db
-          .update(generationJobs)
-          .set({ status: 'arranging', moods: plan.moods, updatedAt: at })
-          .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning'))),
+        arranging(db, jobId, { moods: plan.moods, updatedAt: at }),
       ]),
     ).pipe(Effect.asVoid),
   /** The pieces a mood board's plan picked that are still there, in its order. */
@@ -179,10 +168,7 @@ const stickerQueries = (db: Drizzle) => ({
   giveUp: (jobId: string, at: Date) =>
     query(() =>
       db.batch([
-        db
-          .update(generationJobs)
-          .set({ status: 'failed', reason: 'unavailable', updatedAt: at })
-          .where(and(eq(generationJobs.id, jobId), inArray(generationJobs.status, [...running]))),
+        givenUp(db, jobId, { reason: 'unavailable', updatedAt: at }),
         db
           .update(generationPictures)
           .set({ status: 'refused' })

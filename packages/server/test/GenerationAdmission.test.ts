@@ -97,7 +97,7 @@ describe('generation admission', () => {
         judge: () =>
           Effect.gen(function* () {
             yield* admitJob(job).pipe(Effect.provide(passing))
-            yield* store.advanceJob(job.id, ['drawing'], { status: 'refused', reason: 'refused' })
+            yield* store.advanceJob(job.id, ['drawing'], 'refused', { reason: 'refused' })
           }).pipe(Effect.provide(context), Effect.orDie, Effect.andThen(busy('workers-ai'))),
       })
       expect(
@@ -133,7 +133,7 @@ describe('generation admission', () => {
     return Effect.gen(function* () {
       const job = yield* inserted
       const store = yield* GenerationStore
-      yield* store.advanceJob(job.id, ['admitting'], { status: 'planning' })
+      yield* store.advanceJob(job.id, ['admitting'], 'planning', {})
       yield* store.planned(job.id, { picks: ['pc_1'], moods: [] }, yield* nowDate)
       yield* store.planned(job.id, { picks: ['pc_2', 'pc_1'], moods: ['calm'] }, yield* nowDate)
       expect(yield* store.picksOf(job.id)).toEqual(['pc_1'])
@@ -157,7 +157,7 @@ describe('generation admission', () => {
     return Effect.gen(function* () {
       const job = yield* inserted
       const store = yield* GenerationStore
-      yield* store.advanceJob(job.id, ['admitting'], { status: 'planning' })
+      yield* store.advanceJob(job.id, ['admitting'], 'planning', {})
 
       const firstStarted = yield* Deferred.make<void>()
       const releaseFirst = yield* Deferred.make<void>()

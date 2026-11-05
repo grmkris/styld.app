@@ -2,9 +2,10 @@ import { describe, expect, test } from '@effect/vitest'
 import { firstTurnState, turnEnded, turnLifecycle } from '../src/capture/TurnLifecycle.ts'
 import { Option } from 'effect'
 import { firstTryOnState, runningTryOn, tryOnEnding, tryOnLifecycle } from '../src/generation/TryOnLifecycle.ts'
+import { batchedJobMoves, firstJobState, jobLifecycle, runningJob } from '../src/generation/JobLifecycle.ts'
 
-// The lifecycles of paid work on a piece or a photo: a piece's turn (`capture/TurnLifecycle.ts`) and a try-on
-// (`generation/TryOnLifecycle.ts`). Each writer moves a row only along its table.
+// The lifecycles of paid work: a piece's turn (`capture/TurnLifecycle.ts`), a try-on (`generation/TryOnLifecycle.ts`)
+// and a board's generation job (`generation/JobLifecycle.ts`). Each writer moves a row only along its table.
 
 describe('a piece turn’s lifecycle', () => {
   const { canMove, moves } = turnLifecycle
@@ -58,5 +59,28 @@ describe('a try-on’s lifecycle', () => {
     expect(tryOnEnding('refused')).toEqual(Option.some('failed'))
     expect(tryOnEnding('failed')).toEqual(Option.some('failed'))
     for (const state of runningTryOn) expect(tryOnEnding(state)).toEqual(Option.none())
+  })
+})
+
+describe('a generation job’s lifecycle', () => {
+  const { canMove, moves } = jobLifecycle
+
+  test('admits a job, then draws a sticker or plans and arranges a mood board, and ends it', () => {
+    expect(firstJobState).toBe('admitting')
+    for (const to of ['planning', 'drawing', 'refused', 'failed'] as const) expect(canMove('admitting', to)).toBe(true)
+    expect(canMove('planning', 'arranging')).toBe(true)
+    expect(canMove('drawing', 'done')).toBe(true)
+    expect(canMove('arranging', 'done')).toBe(true)
+    for (const { from, to } of Object.values(batchedJobMoves))
+      for (const state of from) expect(canMove(state, to)).toBe(true)
+  })
+
+  test('refuses a sticker arranged, a board drawn, a plan skipped, and any move after an end', () => {
+    expect(canMove('drawing', 'arranging')).toBe(false)
+    expect(canMove('planning', 'drawing')).toBe(false)
+    expect(canMove('admitting', 'arranging')).toBe(false)
+    expect(canMove('admitting', 'done')).toBe(false)
+    for (const state of ['done', 'refused', 'failed'] as const) expect(moves[state]).toEqual([])
+    expect(runningJob.every((state) => moves[state].length > 0)).toBe(true)
   })
 })
