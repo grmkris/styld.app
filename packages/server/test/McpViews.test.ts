@@ -6,6 +6,7 @@ import {
   PhotoId,
   type Piece,
   PieceId,
+  pieceMatches,
   PiecesView,
   PieceView,
   type TryOn,
@@ -13,6 +14,7 @@ import {
   TryOnView,
   ViewImages,
 } from '@styld/protocol'
+import { languages } from '@styld/i18n'
 import { it } from '@effect/vitest'
 import { type Duration, Effect, Fiber, Option, Redacted, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
@@ -329,11 +331,16 @@ describe('wardrobe_show', () => {
   const tools = viewTools(
     {
       ...unusedWardrobe,
-      listPieces: () =>
-        signing(
-          many,
-          many.map(({ id }) => thumb(id, `pieces/${id}/shown`)),
-        ),
+      // The wardrobe's own search (protocol `PieceSearch.ts`), signing the page it answers.
+      searchPieces: ({ filter, offset, limit }) => {
+        const found = many.filter((each) => pieceMatches(each, filter, languages))
+        const shown = found.slice(offset, offset + limit)
+        const next = offset + limit < found.length ? Option.some(offset + limit) : Option.none<number>()
+        return signing(
+          { pieces: shown, total: found.length, nextOffset: next },
+          shown.map(({ id }) => thumb(id, `pieces/${id}/shown`)),
+        )
+      },
     },
     Boards.of(unusedBoards),
     'https://styld.test',
