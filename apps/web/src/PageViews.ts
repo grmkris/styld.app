@@ -28,7 +28,7 @@ import * as WardrobeView from './page/WardrobeView.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
 import { AppRoute, homeRouter, parentReturn } from './route.ts'
 import { unfiltered } from './WardrobeBrowse.ts'
-import { piecesOf } from './ServerData.ts'
+import { readPieces } from './ServerData.ts'
 import { categoriesOf } from './page/PieceFields.ts'
 import { styled } from './Styled.ts'
 import { intro } from './View.styles.ts'
@@ -62,7 +62,7 @@ const onPage = <Child>(
 
 /** The person's pieces by id, named as the wardrobe names them, for the pieces Styld shows. */
 const pieceNames = (model: Model): ReadonlyMap<string, string> =>
-  new Map(piecesOf(model.data).map((piece) => [piece.id, pieceLabel(piece, model.context.locale)]))
+  new Map(readPieces(model.data.pieces).map((piece) => [piece.id, pieceLabel(piece, model.context.locale)]))
 
 /** Home: today's table for a signed-in person, the landing page for everyone else. While the session is read,
  * a request that came with a session cookie waits quietly instead of flashing the landing page. */
@@ -224,7 +224,7 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
 const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
   const { locale, timeZone } = model.context
   const signedIn = hasSession(model)
-  const pieces = piecesOf(model.data)
+  const pieces = readPieces(model.data.pieces)
   const categories = categoriesOf(pieces)
   return {
     Login: () => loginPage(model, false, h),
@@ -256,7 +256,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
             viewInputs: {
               locale,
               timeZone,
-              images: piecesById(piecesOf(model.data)),
+              images: piecesById(readPieces(model.data.pieces)),
               returnTo: parentReturn(from, 'Photo'),
               categories,
             },
@@ -319,7 +319,7 @@ const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
             viewInputs: {
               locale,
               names: pieceNames(model),
-              images: piecesById(piecesOf(model.data)),
+              images: piecesById(readPieces(model.data.pieces)),
               timeZone,
               referenceTime: model.context.referenceTime,
             },

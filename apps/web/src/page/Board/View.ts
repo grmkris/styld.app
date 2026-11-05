@@ -2,12 +2,11 @@ import { piecesById } from '../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type Arrow, type BoardItem, layoutArrows, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
-import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { lookRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
-import type { PiecesData } from '../../ServerData.ts'
+import { type PiecesData, readPieces } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
 import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
@@ -51,11 +50,9 @@ const pieceName = (pieces: ReadonlyArray<Piece>, pieceId: string, locale: Locale
     },
   )
 
-const piecesOf = (pieces: PiecesData): ReadonlyArray<Piece> => Option.getOrElse(AsyncData.getData(pieces), () => [])
-
 /** What an item is called for assistive technology. */
 const itemLabel = (pieces: PiecesData, item: BoardItem, locale: Locale) => {
-  if (Schema.is(PieceItem)(item)) return pieceName(piecesOf(pieces), item.pieceId, locale)
+  if (Schema.is(PieceItem)(item)) return pieceName(readPieces(pieces), item.pieceId, locale)
   if (Schema.is(TextItem)(item)) return format(locale, 'board.textItem', { text: item.text })
   return format(locale, 'board.picture', {})
 }
@@ -188,7 +185,7 @@ const arrowsView = (model: Model, h: HtmlBuilder<Message>): Html =>
   })
 
 const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const source = fromStyld(piecesById(piecesOf(pieces)))
+  const source = fromStyld(piecesById(readPieces(pieces)))
   return h.section(
     [
       h.AriaLabel(format(locale, 'board.paper', {})),

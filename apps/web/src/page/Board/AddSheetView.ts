@@ -101,8 +101,8 @@ const pane = <A>(
           }),
   })
 
-/** The pieces a photo or a try-on wears, of those still in the wardrobe. */
-const piecesOf = (ids: ReadonlyArray<string>, wardrobe: ReadonlyArray<Piece>) =>
+/** The pieces a photo or a try-on wears, of those still in the wardrobe, in the wardrobe's order. */
+const wornFrom = (ids: ReadonlyArray<string>, wardrobe: ReadonlyArray<Piece>) =>
   wardrobe.filter((piece) => ids.includes(piece.id))
 
 const looksPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>) =>
@@ -155,7 +155,7 @@ const galleryPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Local
       photos.filter((photo) =>
         wearsMatching(
           '',
-          piecesOf(
+          wornFrom(
             photo.garments.flatMap(({ pieceId }) => (pieceId === null ? [] : [pieceId])),
             wardrobe,
           ),
@@ -183,7 +183,7 @@ const tryOnsPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Locale
       tryOns.filter((tryOn) => tryOn.status === 'done' && tryOn.images !== undefined),
     ),
     (tryOns) =>
-      tryOns.filter((tryOn) => wearsMatching('', piecesOf(tryOn.pieceIds, wardrobe), model.picker.query, [locale])),
+      tryOns.filter((tryOn) => wearsMatching('', wornFrom(tryOn.pieceIds, wardrobe), model.picker.query, [locale])),
     {
       failed: format(locale, 'board.add.tryOnsFailed', {}),
       none: [

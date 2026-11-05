@@ -350,7 +350,7 @@ const currentProposal = (model: Model): Option.Option<OutfitProposal> =>
   Option.flatMap(AsyncData.getData(model.outfits), ({ proposals, at }) => Array.get(proposals, at))
 
 /** The pieces of a list that are still in the wardrobe, in the list's order. */
-const piecesOf = (ids: ReadonlyArray<PieceId>, pieces: ReadonlyArray<Piece>): ReadonlyArray<Piece> => {
+const piecesInOrder = (ids: ReadonlyArray<PieceId>, pieces: ReadonlyArray<Piece>): ReadonlyArray<Piece> => {
   const byId = new Map(pieces.map((piece) => [piece.id, piece]))
   return ids.flatMap((id) => Option.toArray(Option.fromNullishOr(byId.get(id))))
 }
@@ -367,7 +367,7 @@ const tableIds = (model: Model): ReadonlyArray<PieceId> => {
 
 /** The outfit on the table now: what was worn today, else the proposal Spin reached, with any piece swapped. */
 export const tableOutfit = (model: Model, pieces: ReadonlyArray<Piece>): ReadonlyArray<Piece> =>
-  piecesOf(tableIds(model), pieces)
+  piecesInOrder(tableIds(model), pieces)
 
 /** Whether today's worn outfit is the one on the table. */
 export const showsWornOutfit = (model: Model) => Worn.guards.Worn(model.worn) && model.onTable === 'worn'

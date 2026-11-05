@@ -31,8 +31,8 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({ pieces: AsyncData.Idle(), misses: 0, boards: AsyncData.Idle() })
 
 /** The pieces as last read, or none yet. */
-export const piecesOf = (model: Model): ReadonlyArray<Piece> =>
-  Option.getOrElse(AsyncData.getData(model.pieces), (): ReadonlyArray<Piece> => [])
+export const readPieces = (pieces: PiecesData): ReadonlyArray<Piece> =>
+  Option.getOrElse(AsyncData.getData(pieces), (): ReadonlyArray<Piece> => [])
 
 // MESSAGE
 
@@ -143,7 +143,7 @@ const isSettling = (piece: Piece) => piece.status === 'processing' || piece.pict
 export const subscriptions = Subscription.make<Model, Message>()(() => ({
   piecesWhileSettling: pollWhilePending<Model, Message>({
     pendingIds: (model) =>
-      piecesOf(model)
+      readPieces(model.pieces)
         .filter(isSettling)
         .map((piece) => piece.id),
     misses: (model) => model.misses,
