@@ -881,7 +881,7 @@
     "more": {
       "title": "Board options",
       "rename": "Rename",
-      "renameNamed": "Rename {name}"
+      "renameHint": "Tap to rename the board"
     },
     "wardrobeEmpty": "Add clothes to your wardrobe to lay them here.",
     "pieceFallback": "A piece",

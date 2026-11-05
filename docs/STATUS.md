@@ -37,6 +37,45 @@ went in before the demo.
   - The bad cut-out and the T-shirt typed as a bodysuit; automatic rotation (#7).
   - The crash after a mass upload (#8).
 
+## The board page: one Add sheet, edited in place (5 November, on main, not deployed)
+
+Kris, 5 November: a board offered only the wardrobe's pieces, and its settings sat behind Edit. Plan:
+`~/.claude/plans/okay-let-s-think-and-lively-engelbart.md`.
+
+- **Add** (`10730bc0`): "Add your piece" becomes one sheet. Pieces, Looks, Gallery and Try-ons sit above one search
+  box, and each kind is read the first time it is shown.
+  - **Looks:** a look lays its pieces on the table as one undo step and is pinned.
+  - **Gallery and try-ons:** a Gallery photo (or Just me, its cut-out) and a finished try-on go up pinned only, and
+    land on the table the page is editing.
+  - **Search:** looks, photos and try-ons are found by their name and by what their pieces answer to.
+  - **Removed:** the Edit sheet's tick-and-pin picker.
+- **Server** (`8adefbfc`): `photo.addToBoard` takes `placeOnTable` and answers the picture; `tryOn.addTryOnToBoard`
+  answers it too.
+  - `Boards.pictureSpot` answers a picture already on the board.
+  - A picture taken off a board goes back on under an id derived from the request, where it used to replay a picture
+    that was gone.
+  - The photo's table placement is keyed by the picture.
+- **Edited in place** (`96a2e252`): the Edit button and its sheet are gone.
+  - **Rename:** tapping the title turns it into the name field (Save, Cancel or Escape).
+  - **Visibility:** Public is a switch in the bar, and Share shows once the board is public.
+  - **⋯ (Board options):** rename, tidy up and paste, then moods, pins and deleting the board.
+- **Toolbar and Save as a look** (`08e44372`):
+  - The toolbar keeps undo, redo, text and picture.
+  - Save as a look's first tap ticks every piece; a tap leaves one out; then Save n or Cancel.
+  - The keyboard line shows only with a keyboard and a fine pointer.
+- **Budgets:** initial 425,100 and all browser assets 720,900. Measured at 424,622 and 720,790 on `08e44372`.
+- **Evidence:**
+  - Unit and scene tests: `boardPage.story/scene` (Add sheet look, Gallery cut-out, try-on, look search, rename,
+    ⋯ closing before tidy), `board.story` and `collage.scene` (Save as a look), `PhotosAcceptance` (pin only, the
+    same picture again, re-add after removal) and `TryOnAcceptance` (the same picture under another id).
+  - The browser acceptance was updated to the new controls.
+  - Full gate with native: see Gates.
+- **Open:**
+  - Deploy the preview and walk it on a phone and a desktop: each Add kind, rename, the switch, ⋯.
+  - Kris's choice of the declutter (proposed, not confirmed): the merged Save as a look and the trimmed toolbar.
+  - Placing a photo from its own page still uses a table key per picture: a retry with a fresh request id after a
+    removal is covered, but that path is not walked in a browser.
+
 ## The wardrobe opens on a shop's sections: Tops, Bottoms and the rest (5 November, live on styld.app at `c107a085`)
 
 Eva (5 November): "ko odpres main omaro bova nardila tops in pol k kliknes na tops mas kratke majce/majce brez

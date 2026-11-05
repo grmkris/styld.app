@@ -881,7 +881,7 @@
     "more": {
       "title": "Možnosti zbirke",
       "rename": "Preimenuj",
-      "renameNamed": "Preimenuj: {name}"
+      "renameHint": "Tapni, da preimenuješ zbirko"
     },
     "wardrobeEmpty": "Dodaj oblačila v garderobo, da jih položiš sem.",
     "pieceFallback": "Kos",

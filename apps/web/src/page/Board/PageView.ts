@@ -10,6 +10,7 @@ import { primaryAction, secondaryAction, smallAction } from '../../Actions.style
 import { backIcon, editIcon, loader, moreIcon, pasteIcon, tidyIcon } from '../../Icon.ts'
 import { boardRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
+import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import * as PeopleView from '../PeopleView.ts'
 import * as Share from '../Share.ts'
 import { publicToggle } from '../PublicToggle.ts'
@@ -337,20 +338,26 @@ const moreBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readon
 /** The board's name, which a tap turns into a field to rename it; Escape or Cancel leaves it as it was. */
 const titleView = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (Rename.guards.Idle(model.rename))
-    return h.h1(
-      [],
-      [
-        h.button(
-          [
-            h.Type('button'),
-            h.AriaLabel(format(locale, 'board.more.renameNamed', { name })),
-            h.OnClick(Message.ClickedRename()),
-            ...styled(h, styles.titleButton()),
-          ],
-          [h.span([], [name]), editIcon(h)],
-        ),
-      ],
-    )
+    return h.div(styled(h, styles.head()), [
+      h.h1(
+        [],
+        [
+          h.button(
+            [
+              h.Type('button'),
+              h.AriaDescribedBy('board-rename-hint'),
+              h.OnClick(Message.ClickedRename()),
+              ...styled(h, styles.titleButton()),
+            ],
+            [h.span([], [name]), editIcon(h)],
+          ),
+        ],
+      ),
+      h.span(
+        [h.Id('board-rename-hint'), ...styled(h, visuallyHidden())],
+        [format(locale, 'board.more.renameHint', {})],
+      ),
+    ])
   const saving = Rename.guards.Saving(model.rename)
   return h.form(
     [h.OnSubmit(Message.SubmittedRename()), h.Attribute('novalidate', ''), ...styled(h, styles.head())],

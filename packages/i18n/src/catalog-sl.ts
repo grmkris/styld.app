@@ -781,7 +781,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'board.add.noneFound': 'Nič se ne ujema.',
   'board.more.title': 'Možnosti zbirke',
   'board.more.rename': 'Preimenuj',
-  'board.more.renameNamed': 'Preimenuj: {name}',
+  'board.more.renameHint': 'Tapni, da preimenuješ zbirko',
   'board.wardrobeEmpty': 'Dodaj oblačila v garderobo, da jih položiš sem.',
   'board.pieceFallback': 'Kos',
   'board.picture': 'Slika',

@@ -173,7 +173,7 @@ const verifyTombolaBoards = async (page: Page, origin: string) => {
   await page.getByRole('heading', { name: `${drawn}: my board`, level: 1 }).waitFor({ state: 'visible' })
 }
 
-/** The round + opens a new board directly on its table; Edit still renames it. */
+/** The round + opens a new board directly on its table; its title renames it in place. */
 const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Laboratory', level: 1 }).waitFor({ state: 'visible' })
@@ -186,22 +186,20 @@ const openNewBoard = async (page: Page, origin: string) => {
   await page.getByRole('region', { name: 'The table' }).waitFor({ state: 'visible' })
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.getByRole('button', { name: 'My board', exact: true }).click()
   await page.getByLabel('Board name').fill('Weekend')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
+  await page.getByRole('heading', { name: 'Weekend', exact: true, level: 1 }).waitFor({ state: 'visible' })
 }
 
-/** Select mode: the knit and the shorts, ticked from the keyboard (Space on a focused piece ticks it, as a tap does),
- * become a look pinned on the board (T-16). */
+/** Save as a look ticks every piece on the table; the shoes, left out from the keyboard (Space on a focused piece
+ * unticks it, as a tap does), stay off the look the knit and the shorts become, pinned on the board (T-16). */
 const keepTwoAsLook = async (page: Page) => {
-  await page.getByRole('button', { name: 'Select pieces' }).click()
-  for (const name of ['Cable knit', 'Denim shorts']) {
-    await page.getByRole('button', { name, exact: true }).focus()
-    await page.keyboard.press('Space')
-    await page.getByRole('button', { name, exact: true, pressed: true }).waitFor({ state: 'attached' })
-  }
+  await page.getByRole('button', { name: 'Save as a look', exact: true }).click()
+  await page.getByRole('button', { name: 'Derby shoes', exact: true, pressed: true }).waitFor({ state: 'attached' })
+  await page.getByRole('button', { name: 'Derby shoes', exact: true }).focus()
+  await page.keyboard.press('Space')
+  await page.getByRole('button', { name: 'Derby shoes', exact: true, pressed: false }).waitFor({ state: 'attached' })
   await page.getByRole('button', { name: 'Save 2 pieces as a look' }).click()
   await page.getByText('Saved as a look and pinned on this board.').waitFor({ state: 'visible' })
 }
@@ -212,7 +210,7 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes']) {
-    await page.getByRole('button', { name: 'Add your piece', exact: true }).click()
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
     await page.getByRole('button', { name: `Put ${name} on the table` }).click()
     await page.getByRole('dialog').waitFor({ state: 'hidden' })
   }
@@ -292,28 +290,30 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   await verifyBoardPage(page, origin)
 }
 
-/** The board's page: what the collage placed is pinned, newest first, with the picture; a pin comes off the
- * board; the board is renamed from its settings. */
+/** The board's page: what the collage placed is pinned, newest first, with the picture, under ⋯; a pin comes off the
+ * board; the board is renamed on its title. */
 const verifyBoardPage = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   // A board's tile reads as its name and pin count.
   await page.getByRole('link', { name: /^Weekend/ }).click()
   await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('5 pins').waitFor({ state: 'visible' })
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.getByRole('button', { name: 'Board options', exact: true }).click()
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
     await page.getByRole('img', { name, exact: true }).first().waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Take Derby shoes off the board' }).click()
   await page.getByRole('button', { name: 'Take off', exact: true }).click()
   await page.getByText('4 pins').waitFor({ state: 'visible' })
   await shoot(page, 'phone-board-page')
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
 
-  const name = page.getByLabel('Board name')
-  await name.fill('Weekend away')
+  await page.getByRole('button', { name: 'Weekend', exact: true }).click()
+  await page.getByLabel('Board name').fill('Weekend away')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByRole('heading', { name: 'Weekend away', exact: true, level: 1 }).waitFor({ state: 'visible' })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByRole('heading', { name: 'Weekend away', exact: true, level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('4 pins').waitFor({ state: 'visible' })
 
   // The piece taken off goes back on from its own page.

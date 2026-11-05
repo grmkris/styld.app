@@ -767,7 +767,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'board.add.noneFound': 'Nothing matches that.',
   'board.more.title': 'Board options',
   'board.more.rename': 'Rename',
-  'board.more.renameNamed': 'Rename {name}',
+  'board.more.renameHint': 'Tap to rename the board',
   'board.wardrobeEmpty': 'Add clothes to your wardrobe to lay them here.',
   'board.pieceFallback': 'A piece',
   'board.picture': 'A picture',

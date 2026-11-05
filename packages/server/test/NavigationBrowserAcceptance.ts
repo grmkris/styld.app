@@ -89,7 +89,7 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     await page.goto(`${origin}/boards/${navigationBoard}/collage`, { waitUntil: 'networkidle' })
     await page.waitForURL(`**/boards/${navigationBoard}`)
     const boardHistory = await page.evaluate(() => history.length)
-    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await page.getByRole('button', { name: 'Board options', exact: true }).click()
     await page.getByRole('dialog').waitFor()
     await page.keyboard.press('Escape')
     await page.getByRole('dialog').waitFor({ state: 'hidden' })

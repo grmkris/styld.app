@@ -178,7 +178,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.make.wordsPlaceholder': Readonly<Record<string, never>>
   'board.missing': Readonly<Record<string, never>>
   'board.more.rename': Readonly<Record<string, never>>
-  'board.more.renameNamed': { readonly name: string | number }
+  'board.more.renameHint': Readonly<Record<string, never>>
   'board.more.title': Readonly<Record<string, never>>
   'board.newText': Readonly<Record<string, never>>
   'board.openLook': Readonly<Record<string, never>>
@@ -1185,4 +1185,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'ed3aedfbd51ba23c06fe1a23cde8306ebe997d6da3f05add4dc545403f1e0e3c'
+export const catalogVersion = '9b8c7c011ce940808cca6dfeade84220406e369eb9b023bb68a4cf46f0d55fcd'

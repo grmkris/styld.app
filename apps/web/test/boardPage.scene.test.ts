@@ -133,12 +133,12 @@ describe("a board's page", () => {
       { update, view },
       given(page),
       measured,
-      click(role('button', { name: 'Rename Weekend' })),
+      click(role('button', { name: 'Weekend' })),
       Command.resolve(FocusName, BoardMessage.CompletedFocusName()),
       expect(role('textbox', { name: 'Board name' })).toHaveValue('Weekend'),
       click(role('button', { name: 'Cancel' })),
       expect(role('textbox', { name: 'Board name' })).toBeAbsent(),
-      expect(role('button', { name: 'Rename Weekend' })).toExist(),
+      expect(role('heading', { level: 1, name: 'Weekend' })).toExist(),
     )
   })
 
