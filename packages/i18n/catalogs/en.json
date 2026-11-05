@@ -1284,7 +1284,7 @@
       "sharing": "Sharing is your choice, one thing at a time. Once you publish your profile, you can make a board public or share a look. Others then see that board or look and the pieces on it, never your whole wardrobe. You can make a board private again at any time.",
       "aiHeading": "How AI is used",
       "ai": "To find your clothes, Styld sends a smaller copy of your photo, or your video, to Meta's SAM model; we delete videos from Meta once they are read. Clean pictures are drawn from the cut-outs by Meta's Muse Image, in its Standard version, which Meta does not train on. AI models on Cloudflare (Workers AI) sort and check photos and pictures.",
-      "aiProviders": "Text, such as your chats with Styld and the descriptions of your pieces, goes to a DeepSeek model at Alibaba Cloud Model Studio through our own gateway. Turning a picture sends the drawn picture, not your photo, to Google Veo through the Vercel AI Gateway.",
+      "aiProviders": "Your chats with Styld go to Meta's Muse Spark model, in its Standard version, which Meta does not train on. Other text, such as the descriptions of your pieces, goes to a DeepSeek model at Alibaba Cloud Model Studio through our own gateway. Turning a picture sends the drawn picture, not your photo, to Google Veo through the Vercel AI Gateway.",
       "providersHeading": "Who helps us",
       "providers": "Cloudflare hosts Styld: the website and its servers, the database, photo storage (kept in the EU), image processing, the sign-in emails and our logs. Google runs Google sign-in when you choose it. Dodo Payments takes payments. The AI providers above process only what each task needs.",
       "noSale": "We do not sell your personal data.",
