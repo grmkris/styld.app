@@ -114,6 +114,18 @@ const pinch = async (context: BrowserContext, page: Page, item: Locator) => {
 
 const verifyHome = async (page: Page, origin: string) => {
   await page.goto(`${origin}/`, { waitUntil: 'networkidle' })
+  // The first run opens over Home once for every account (66f99166) as a modal, which hides the page behind it from
+  // assistive technology; Escape skips the rest of it, as a person would, and leaves today's table.
+  const firstRun = page.locator('dialog[open]')
+  if (
+    await firstRun.waitFor({ state: 'visible', timeout: 5000 }).then(
+      () => true,
+      () => false,
+    )
+  ) {
+    await page.keyboard.press('Escape')
+    await firstRun.waitFor({ state: 'hidden' })
+  }
   const table = page.getByRole('img', { name: /^Today’s outfit:/ })
   await table.waitFor({ state: 'visible' })
   expect(await page.locator('#today-headline').textContent()).toMatch(/^[A-Z]{3} \d{1,2}$/)
