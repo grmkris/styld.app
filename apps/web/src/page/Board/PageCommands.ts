@@ -10,8 +10,8 @@ import { Message } from './Message.ts'
 
 // COMMAND
 
-// The board page's Commands: its name, visibility, moods and pins, and what the Add sheet reads. The table's own are in
-// Commands.ts.
+// The board page's Commands: its name, visibility, moods and pins. The table's own are in Commands.ts, the Add sheet's
+// in AddSheet.ts.
 
 /** The id of the field the title turns into for a rename. */
 export const nameFieldId = 'board-name'
@@ -152,34 +152,4 @@ export const PinLook = Command.define('PinLook', {
       })
       return Message.CompletedPinLook({ maybeBoard: Option.some(board) })
     }).pipe(Effect.orElseSucceed(() => Message.CompletedPinLook({ maybeBoard: Option.none() }))),
-})
-
-/** The person's Gallery photos, for the Add sheet. */
-export const LoadPhotos = Command.define('LoadPhotos', {
-  messages: [Message.SucceededLoadPhotos, Message.FailedLoadPhotos],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { photos } = yield* api.photo.listPhotos()
-    return Message.SucceededLoadPhotos({ photos })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadPhotos())),
-})
-
-/** The person's try-ons, for the Add sheet. */
-export const LoadTryOns = Command.define('LoadTryOns', {
-  messages: [Message.SucceededLoadTryOns, Message.FailedLoadTryOns],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { tryOns } = yield* api.tryOn.listTryOns()
-    return Message.SucceededLoadTryOns({ tryOns })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTryOns())),
-})
-
-/** The person's looks, for the Add sheet. */
-export const LoadLooks = Command.define('LoadLooks', {
-  messages: [Message.SucceededLoadLooks, Message.FailedLoadLooks],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { looks } = yield* api.look.listLooks()
-    return Message.SucceededLoadLooks({ looks })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadLooks())),
 })

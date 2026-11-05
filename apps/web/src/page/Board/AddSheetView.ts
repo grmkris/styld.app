@@ -1,7 +1,17 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { ImageItem, PieceItem, PicturePin, type Look, type Photo, type Piece, type TryOn } from '@styld/protocol'
+import {
+  type BoardItem,
+  ImageItem,
+  PieceItem,
+  type Pin,
+  PicturePin,
+  type Look,
+  type Photo,
+  type Piece,
+  type TryOn,
+} from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
-import { AsyncData } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cdn } from '../../Cdn.ts'
 import type { PiecesData } from '../../ServerData.ts'
@@ -11,15 +21,17 @@ import { wearsMatching } from '../AskSearch.ts'
 import { piecesPane, searchField, type PickerConfig } from '../PiecePickerView.ts'
 import * as pickerStyles from '../PiecePickerView.styles.ts'
 import { bottomSheet, sheetShown } from '../Sheet.ts'
-import { Message } from './Message.ts'
-import type { AddKind, Model } from './Model.ts'
+import { actionButton } from '../../ActionButton.ts'
+import { secondaryAction } from '../../Actions.styles.ts'
+import { addIcon } from '../../Icon.ts'
+import { type AddKind, Message, type Model } from './AddSheet.ts'
 import * as styles from './AddSheetView.styles.ts'
 import * as boardStyles from './PageView.styles.ts'
 import { lookMosaic } from './PickerView.ts'
 import { boardImage } from './Table.ts'
 
 // The board's Add sheet: what kind of thing it offers, one search box across all of them, and a grid of what matches.
-// A tap lays the thing on the table; the sheet closes behind it.
+// A tap closes the sheet, and the board lays the thing on its table.
 
 const kindNames: Record<AddKind, MessageKey> = {
   pieces: 'board.add.pieces',
@@ -35,8 +47,8 @@ const kindsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
       h.button(
         [
           h.Type('button'),
-          h.AriaPressed(String(model.addKind === kind)),
-          h.OnClick(Message.SelectedAddKind({ kind })),
+          h.AriaPressed(String(model.kind === kind)),
+          h.OnClick(Message.SelectedKind({ kind })),
           ...styled(h, styles.kind()),
         ],
         [format(locale, kindNames[kind], {})],
@@ -96,7 +108,7 @@ const piecesOf = (ids: ReadonlyArray<string>, wardrobe: ReadonlyArray<Piece>) =>
 const looksPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>) =>
   pane<Look>(
     model.looks,
-    (looks) => looks.filter((look) => wearsMatching(look.name, look.pieces, model.piecePicker.query, [locale])),
+    (looks) => looks.filter((look) => wearsMatching(look.name, look.pieces, model.picker.query, [locale])),
     {
       failed: format(locale, 'board.looksFailed', {}),
       none: [note(format(locale, 'board.add.noLooks', {}), h)],
@@ -147,7 +159,7 @@ const galleryPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Local
             photo.garments.flatMap(({ pieceId }) => (pieceId === null ? [] : [pieceId])),
             wardrobe,
           ),
-          model.piecePicker.query,
+          model.picker.query,
           [locale],
         ),
       ),
@@ -171,9 +183,7 @@ const tryOnsPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Locale
       tryOns.filter((tryOn) => tryOn.status === 'done' && tryOn.images !== undefined),
     ),
     (tryOns) =>
-      tryOns.filter((tryOn) =>
-        wearsMatching('', piecesOf(tryOn.pieceIds, wardrobe), model.piecePicker.query, [locale]),
-      ),
+      tryOns.filter((tryOn) => wearsMatching('', piecesOf(tryOn.pieceIds, wardrobe), model.picker.query, [locale])),
     {
       failed: format(locale, 'board.add.tryOnsFailed', {}),
       none: [
@@ -196,10 +206,18 @@ const tryOnsPane = (model: Model, wardrobe: ReadonlyArray<Piece>, locale: Locale
     h,
   )
 
+/** What the board tells its Add sheet: the wardrobe, and what is on its table and pinned. */
+type Inputs = {
+  readonly pieces: PiecesData
+  readonly locale: Locale
+  readonly items: ReadonlyArray<BoardItem>
+  readonly pins: ReadonlyArray<Pin>
+}
+
 /** Pictures pinned on the board but off its table, put back with a tap. */
-const offTable = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const placed = new Set(model.items.flatMap((item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])))
-  const pictures = model.pins.filter(Schema.is(PicturePin)).filter((pin) => !placed.has(pin.imageId))
+const offTable = ({ items, pins, locale }: Inputs, h: HtmlBuilder<Message>): Html => {
+  const placed = new Set(items.flatMap((item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])))
+  const pictures = pins.filter(Schema.is(PicturePin)).filter((pin) => !placed.has(pin.imageId))
   return pictures.length === 0
     ? h.empty
     : h.div(styled(h, boardStyles.head()), [
@@ -225,29 +243,34 @@ const offTable = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
       ])
 }
 
-const piecesConfig = (model: Model, pieces: PiecesData, locale: Locale): PickerConfig<Message> => ({
-  picker: model.piecePicker,
-  pieces,
-  locale,
-  title: format(locale, 'board.add.title', {}),
-  emptyWardrobe: format(locale, 'board.wardrobeEmpty', {}),
-  messages: {
-    sheet: (message) => Message.GotPiecePickerMessage({ message }),
-    group: (group) => Message.SelectedPickerGroup({ group }),
-    type: (type) => Message.SelectedPickerType({ type }),
-    query: (query) => Message.UpdatedPickerQuery({ query }),
-    piece: ({ id }) => Message.ClickedWardrobePiece({ pieceId: id }),
-  },
-  isChosen: (piece) => model.items.some((item) => Schema.is(PieceItem)(item) && item.pieceId === piece.id),
-  pieceLabel: (name, onTable) => format(locale, onTable ? 'board.selectPiece' : 'board.addPiece', { name }),
-  after: [],
-})
+/** The wardrobe's pieces; one already on the table is selected there rather than added again. */
+const piecesView = (model: Model, { pieces, items, locale }: Inputs, h: HtmlBuilder<Message>) => {
+  const config: PickerConfig<Message> = {
+    picker: model.picker,
+    pieces,
+    locale,
+    title: format(locale, 'board.add.title', {}),
+    emptyWardrobe: format(locale, 'board.wardrobeEmpty', {}),
+    messages: {
+      sheet: (message) => Message.GotSheetMessage({ message }),
+      group: (group) => Message.SelectedGroup({ group }),
+      type: (type) => Message.SelectedType({ type }),
+      query: (query) => Message.UpdatedQuery({ query }),
+      piece: ({ id }) => Message.ClickedPiece({ pieceId: id }),
+    },
+    isChosen: (piece) => items.some((item) => Schema.is(PieceItem)(item) && item.pieceId === piece.id),
+    pieceLabel: (name, onTable) => format(locale, onTable ? 'board.selectPiece' : 'board.addPiece', { name }),
+    after: [],
+  }
+  return piecesPane(config, h)
+}
 
-const kindPane = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>) => {
+const kindPane = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>) => {
+  const { pieces, locale } = inputs
   const wardrobe = Option.getOrElse(AsyncData.getData(pieces), () => [])
-  switch (model.addKind) {
+  switch (model.kind) {
     case 'pieces':
-      return [...piecesPane(piecesConfig(model, pieces, locale), h), offTable(model, locale, h)]
+      return [...piecesView(model, inputs, h), offTable(inputs, h)]
     case 'looks':
       return looksPane(model, wardrobe, locale, h)
     case 'gallery':
@@ -257,32 +280,46 @@ const kindPane = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuild
   }
 }
 
-/** "Add": the sheet of everything the person can lay on the table, while it is shown. */
-export const addSheetView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  sheetShown(model.piecePicker.sheet)
+/** "Add", in the tray under the table: it opens the sheet. */
+export const buttonView = Submodel.defineView<Model, Message, { readonly locale: Locale }>((_model, { locale }, h) =>
+  actionButton(
+    {
+      label: format(locale, 'board.add.button', {}),
+      leading: addIcon(h),
+      style: secondaryAction(),
+      onClick: Message.ClickedAdd(),
+    },
+    h,
+  ),
+)
+
+/** The sheet of everything the person can lay on the table, while it is shown. */
+export const sheetView = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
+  sheetShown(model.picker.sheet)
     ? bottomSheet(
         {
-          dialog: model.piecePicker.sheet,
-          title: format(locale, 'board.add.title', {}),
-          locale,
-          toParentMessage: (message) => Message.GotPiecePickerMessage({ message }),
+          dialog: model.picker.sheet,
+          title: format(inputs.locale, 'board.add.title', {}),
+          locale: inputs.locale,
+          toParentMessage: (message) => Message.GotSheetMessage({ message }),
           body: () => [
             h.div(styled(h, boardStyles.sheetBody()), [
               h.div(styled(h, boardStyles.head()), [
-                kindsView(model, locale, h),
+                kindsView(model, inputs.locale, h),
                 searchField(
                   {
-                    query: model.piecePicker.query,
-                    label: format(locale, 'board.add.search', {}),
-                    onInput: (query) => Message.UpdatedPickerQuery({ query }),
+                    query: model.picker.query,
+                    label: format(inputs.locale, 'board.add.search', {}),
+                    onInput: (query) => Message.UpdatedQuery({ query }),
                   },
                   h,
                 ),
-                ...kindPane(model, pieces, locale, h),
+                ...kindPane(model, inputs, h),
               ]),
             ]),
           ],
         },
         h,
       )
-    : h.empty
+    : h.empty,
+)

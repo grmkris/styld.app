@@ -6,7 +6,8 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
-import { fromBoard, init as boardInit, LooksData } from '../src/page/Board/Model.ts'
+import { LooksData } from '../src/page/Board/AddSheet.ts'
+import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { FocusName, FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
@@ -40,7 +41,10 @@ const picking = (locale: 'en' | 'sl') =>
   withPieces(
     withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
       modifyFields(fromBoard(boardInit(boardId, true), board), {
-        piecePicker: (picker) => ({ ...picker, sheet: { ...picker.sheet, isOpen: true } }),
+        addSheet: (addSheet) => ({
+          ...addSheet,
+          picker: { ...addSheet.picker, sheet: { ...addSheet.picker.sheet, isOpen: true } },
+        }),
       }),
     ),
     [
@@ -212,7 +216,9 @@ describe("a board's page", () => {
       })
     const looks = [look('monday', 'Monday', [knit]), look('dinner', 'Dinner', [tee])]
     const state = withPage(picking('en'), lenses.board, (current) =>
-      modifyFields(current, { addKind: () => 'looks', looks: () => LooksData.Success({ data: looks }) }),
+      modifyFields(current, {
+        addSheet: (addSheet) => ({ ...addSheet, kind: 'looks', looks: LooksData.Success({ data: looks }) }),
+      }),
     )
     scene(
       { update, view },

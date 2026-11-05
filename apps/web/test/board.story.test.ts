@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { SaveItems, SaveLook, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
+import * as AddSheet from '../src/page/Board/AddSheet.ts'
 import { Message } from '../src/page/Board/Message.ts'
 import {
   fromBoard,
@@ -187,10 +188,16 @@ describe('the board editor', () => {
 
   test('a new wardrobe piece lands above the existing stack, and selecting it again does not remove it', () => {
     const fresh = pieceFixture('boots', { type: 'boots' })
-    const added = update(open, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model
+    const added = update(
+      open,
+      Message.GotAddSheetMessage({ message: AddSheet.Message.ClickedPiece({ pieceId: fresh.id }) }),
+    ).model
     expect(added.items).toHaveLength(3)
     expect(added.items.at(-1)).toMatchObject({ pieceId: fresh.id, z: 3 })
-    expect(update(added, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model.items).toEqual(added.items)
+    expect(
+      update(added, Message.GotAddSheetMessage({ message: AddSheet.Message.ClickedPiece({ pieceId: fresh.id }) })).model
+        .items,
+    ).toEqual(added.items)
   })
 
   test('a label added from the toolbar is selected, with a fresh id', () => {

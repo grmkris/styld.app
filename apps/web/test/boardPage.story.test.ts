@@ -5,6 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
+import * as AddSheet from '../src/page/Board/AddSheet.ts'
 import { Message } from '../src/page/Board/Message.ts'
 import {
   BoardData,
@@ -25,9 +26,6 @@ import {
   FocusName,
   FocusPin,
   LeaveBoard,
-  LoadLooks,
-  LoadPhotos,
-  LoadTryOns,
   PinLook,
   ReloadBoard,
   RenameBoard,
@@ -77,6 +75,8 @@ const board = Schema.decodeUnknownSync(Board)({
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 const open: Model = fromBoard(init(board.id, true), board)
+/** A Message of the board's Add sheet, as the board receives it. */
+const add = (sheetMessage: AddSheet.Message) => Message.GotAddSheetMessage({ message: sheetMessage })
 const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
   Schema.decodeUnknownSync(Board)({ ...board, pins, ...changes })
 
@@ -236,22 +236,22 @@ describe('a board page', () => {
     story(
       update,
       given(withIds),
-      message(Message.ClickedAdd()),
+      message(add(AddSheet.Message.ClickedAdd())),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...storySheetMoved(1),
-      message(Message.SelectedAddKind({ kind: 'looks' })),
-      Command.expectExact(LoadLooks),
-      Command.resolve(LoadLooks, Message.SucceededLoadLooks({ looks: [look] })),
-      message(Message.ClickedLook({ lookId: look.id })),
+      message(add(AddSheet.Message.SelectedKind({ kind: 'looks' }))),
+      Command.expectExact(AddSheet.LoadLooks),
+      Command.resolve(AddSheet.LoadLooks, AddSheet.Message.SucceededLoadLooks({ looks: [look] })),
+      message(add(AddSheet.Message.ClickedLook({ lookId: look.id }))),
       Command.expectHas(PinLook({ boardId: board.id, lookId: look.id })),
       ...tableSettled,
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
-      model(({ items, past, piecePicker }) => {
+      model(({ items, past, addSheet }) => {
         // The knit was on the table already and stays where it is; the shoes join it, and undo takes them off again.
         expect(items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId)).toEqual([knit.id, shoes.id])
         expect(past).toEqual([[knitOnTable]])
-        expect(piecePicker.sheet.isOpen).toBe(false)
+        expect(addSheet.picker.sheet.isOpen).toBe(false)
       }),
       Command.resolve(
         PinLook({ boardId: board.id, lookId: look.id }),
@@ -279,10 +279,10 @@ describe('a board page', () => {
     story(
       update,
       given(withIds),
-      message(Message.SelectedAddKind({ kind: 'gallery' })),
-      Command.expectExact(LoadPhotos),
-      Command.resolve(LoadPhotos, Message.SucceededLoadPhotos({ photos: [cutout] })),
-      message(Message.ClickedGalleryPhoto({ photoId: cutout.id, picture: 'cutout' })),
+      message(add(AddSheet.Message.SelectedKind({ kind: 'gallery' }))),
+      Command.expectExact(AddSheet.LoadPhotos),
+      Command.resolve(AddSheet.LoadPhotos, AddSheet.Message.SucceededLoadPhotos({ photos: [cutout] })),
+      message(add(AddSheet.Message.ClickedGalleryPhoto({ photoId: cutout.id, picture: 'cutout' }))),
       Command.expectHas(galleryAdd),
       model(({ upload }) => expect(upload).toEqual(Upload.Sending({ count: 1, problem: Option.none() }))),
       Command.resolve(galleryAdd, Message.SucceededAddImage({ imageId })),
@@ -291,10 +291,10 @@ describe('a board page', () => {
         expect(items.filter(Schema.is(ImageItem)).map((item) => item.imageId)).toEqual([imageId])
         expect(Upload.guards.Idle(upload)).toBe(true)
       }),
-      message(Message.SelectedAddKind({ kind: 'tryOns' })),
-      Command.expectExact(LoadTryOns),
-      Command.resolve(LoadTryOns, Message.SucceededLoadTryOns({ tryOns: [doneTryOn] })),
-      message(Message.ClickedTryOn({ tryOnId: doneTryOn.id })),
+      message(add(AddSheet.Message.SelectedKind({ kind: 'tryOns' }))),
+      Command.expectExact(AddSheet.LoadTryOns),
+      Command.resolve(AddSheet.LoadTryOns, AddSheet.Message.SucceededLoadTryOns({ tryOns: [doneTryOn] })),
+      message(add(AddSheet.Message.ClickedTryOn({ tryOnId: doneTryOn.id }))),
       Command.expectHas(tryOnAdd),
       Command.resolve(tryOnAdd, Message.FailedAddImage({ problem: 'failed' })),
       model(({ upload }) => expect(upload).toEqual(Upload.Failed({ problem: 'failed' }))),

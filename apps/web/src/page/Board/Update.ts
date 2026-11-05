@@ -1,11 +1,14 @@
 import { FileDrop } from '@foldkit/ui'
-import { type Board, PieceItem, tidied } from '@styld/protocol'
+import { type Board, type Look, LookPin, PieceItem, tidied } from '@styld/protocol'
 import { Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import {
   addedImage,
   addedPiece,
+  addedPieces,
+  picturesSent,
+  placedPicture,
   addedText,
   duplicated,
   exited,
@@ -24,7 +27,15 @@ import {
   toastElapsed,
   undoRemove,
 } from './Actions.ts'
-import { LoadBoard, MakeIds, ReadClipboard, unitsPerPixel, VisitBoard } from './Commands.ts'
+import {
+  AddGalleryPicture,
+  AddTryOnPicture,
+  LoadBoard,
+  MakeIds,
+  ReadClipboard,
+  unitsPerPixel,
+  VisitBoard,
+} from './Commands.ts'
 import { committed, redone, replaced, saved, saveNow, type Services, type UpdateReturn, undone } from './Edits.ts'
 import {
   keyed,
@@ -38,14 +49,14 @@ import {
 import { Message } from './Message.ts'
 import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving, Ticks } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
-import { addSteps, closeAddSheet } from './AddSheet.ts'
+import * as AddSheet from './AddSheet.ts'
 import { closeMore, pageSteps, renameStarted } from './Page.ts'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
-import { ReloadBoard } from './PageCommands.ts'
+import { PinLook, ReloadBoard } from './PageCommands.ts'
 
 /** The Commands that open the board: the board and a first batch of ids (the app reads the pieces for the tray).
  * Signed out it can only be someone's public board, read as visitors read it, with nothing to edit. */
@@ -114,6 +125,52 @@ const foldDrop = Update.foldChild({
   }),
 })
 
+/** A look's pieces go on the table as one step, and the look is pinned unless it is already. */
+const lookChosen = (model: Model, look: Look): UpdateReturn => {
+  const isPinned = model.pins.some((pin) => Schema.is(LookPin)(pin) && pin.look.id === look.id)
+  const placed = addedPieces(
+    model,
+    look.pieces.map((piece) => piece.id),
+  )
+  return isPinned
+    ? placed
+    : {
+        model: placed.model,
+        commands: [...(placed.commands ?? []), PinLook({ boardId: model.boardId, lookId: look.id })],
+      }
+}
+
+/** The Add sheet's choice goes on the table: a piece, a look's pieces, a picture pinned here, or a Gallery photo or a
+ * try-on sent up as a picture that lands when the board holds it. */
+const foldAddSheet = Update.foldChild({
+  update: AddSheet.update,
+  read: (model: Model) => Option.some(model.addSheet),
+  write: (model: Model, addSheet: AddSheet.Model) => modifyFields(model, { addSheet: () => addSheet }),
+  toParentMessage: (message: AddSheet.Message) => Message.GotAddSheetMessage({ message }),
+  foldOutMessage: AddSheet.OutMessage.match<Update.Step<Model, Message, Services>>({
+    ChosePiece:
+      ({ pieceId }) =>
+      (model) =>
+        addedPiece(model, pieceId),
+    ChosePinnedPicture:
+      ({ imageId }) =>
+      (model) =>
+        placedPicture(model, imageId),
+    ChoseLook:
+      ({ look }) =>
+      (model) =>
+        lookChosen(model, look),
+    ChosePhoto:
+      ({ photoId, picture }) =>
+      (model) =>
+        picturesSent(model, [AddGalleryPicture({ boardId: model.boardId, photoId, picture })]),
+    ChoseTryOn:
+      ({ tryOnId }) =>
+      (model) =>
+        picturesSent(model, [AddTryOnPicture({ boardId: model.boardId, tryOnId })]),
+  }),
+})
+
 const tidy = (model: Model): UpdateReturn => committed(model, model.items, tidied(model.items))
 
 /** Paste asks the browser for the clipboard's pictures; a phone's browser shares them only on a tap. */
@@ -176,8 +233,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedUndo: () => undone(model),
     ClickedRedo: () => redone(model),
     ClickedAddText: ({ text }) => addedText(model, text),
-    ClickedWardrobePiece: ({ pieceId }) =>
-      Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closeAddSheet]),
     ClickedFlip: ({ id }) => flipped(model, id),
     ClickedDuplicate: ({ id }) => duplicated(model, id),
     ClickedLayer: ({ id }) => layered(model, id),
@@ -204,7 +259,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
-    ...addSteps(model),
+    GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
+    CompletedPinLook: ({ maybeBoard }) =>
+      Option.match(maybeBoard, {
+        onNone: () => ({ model }),
+        onSome: (board) => ({
+          model: modifyFields(model, { pins: () => board.pins, publicPins: () => board.publicPins }),
+        }),
+      }),
     ClickedCancelSelecting: () => ({ model: modifyFields(model, { ticks: () => Ticks.Off() }) }),
     ToggledTick: ({ id }) => tickToggled(model, id),
     ClickedSaveLook: () => (Ticks.guards.On(model.ticks) ? lookRequested(model) : selectionStarted(model)),

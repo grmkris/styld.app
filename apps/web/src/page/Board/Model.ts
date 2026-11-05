@@ -4,19 +4,16 @@ import {
   BoardItem,
   BoardItemId,
   CheckStatus,
-  Look,
   LookId,
   Mood,
   Paper,
-  Photo,
   Pin,
   PublicBoard,
-  TryOn,
   Visibility,
 } from '@styld/protocol'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
-import { initPicker, PiecePicker } from '../PiecePicker.ts'
+import * as AddSheet from './AddSheet.ts'
 import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
@@ -141,23 +138,6 @@ export type Publishing = typeof Publishing.Type
 export const Removal = Deletion
 export type Removal = Deletion
 
-/** The person's looks, for the Add sheet. */
-export const LooksData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))
-export type LooksData = typeof LooksData.schema.Type
-
-/** What the Add sheet offers: the wardrobe's pieces, the person's looks, their Gallery's outfit photos or their
- * try-ons' pictures. */
-export const AddKind = Schema.Literals(['pieces', 'looks', 'gallery', 'tryOns'])
-export type AddKind = typeof AddKind.Type
-
-/** The person's Gallery photos, for the Add sheet. */
-export const PhotosData = AsyncData.Schema(Schema.Array(Photo), Schema.Literal('Unavailable'))
-export type PhotosData = typeof PhotosData.schema.Type
-
-/** The person's try-ons, for the Add sheet. */
-export const TryOnsData = AsyncData.Schema(Schema.Array(TryOn), Schema.Literal('Unavailable'))
-export type TryOnsData = typeof TryOnsData.schema.Type
-
 /** "Removed. Undo": the table as it was before the removal, offered back for a few seconds. */
 export const Toast = defineTaggedUnion({
   Hidden: {},
@@ -195,12 +175,8 @@ export const Model = Schema.Struct({
   tryIt: TryIt.Model,
   /** Share on the owner's public board: the link shared or copied. */
   sharing: Share.Model,
-  /** The Add sheet: its search and the pieces' chips, and which kind of thing it offers. */
-  piecePicker: PiecePicker,
-  addKind: AddKind,
-  looks: LooksData.schema,
-  photos: PhotosData.schema,
-  tryOns: TryOnsData.schema,
+  /** The Add sheet: what can go on the table, and the kind of thing it offers. */
+  addSheet: AddSheet.Model,
   /** Items on their way out, kept on the page until their exit animation ends. */
   leaving: Schema.Array(BoardItem),
   maybeSelectedId: Schema.Option(Schema.String),
@@ -251,11 +227,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   people: People.init(People.Subject.Board({ boardId })),
   tryIt: TryIt.init(),
   sharing: Share.init,
-  piecePicker: initPicker('board-add'),
-  addKind: 'pieces',
-  looks: AsyncData.Idle(),
-  photos: AsyncData.Idle(),
-  tryOns: AsyncData.Idle(),
+  addSheet: AddSheet.init(),
   leaving: [],
   maybeSelectedId: Option.none(),
   ticks: Ticks.Off(),

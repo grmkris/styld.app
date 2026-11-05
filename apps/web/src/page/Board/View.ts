@@ -5,7 +5,6 @@ import { Array, Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { addIcon } from '../../Icon.ts'
 import { lookRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import type { PiecesData } from '../../ServerData.ts'
@@ -14,8 +13,7 @@ import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from '
 import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload } from './Model.ts'
 import * as styles from './View.styles.ts'
-import { secondaryAction } from '../../Actions.styles.ts'
-import { addSheetView } from './AddSheetView.ts'
+import * as AddSheetView from './AddSheetView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { paperChoiceView, selectHintView, selectedView, toolbarView } from './ViewTools.ts'
 
@@ -293,18 +291,22 @@ export const editorView = (
       [h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
       [
         selectedView(model, locale, h),
-        actionButton(
-          {
-            label: format(locale, 'board.add.button', {}),
-            leading: addIcon(h),
-            style: secondaryAction(),
-            onClick: Message.ClickedAdd(),
-          },
-          h,
-        ),
+        h.submodel({
+          slotId: 'board-add-button',
+          model: model.addSheet,
+          view: AddSheetView.buttonView,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+        }),
       ],
     ),
     paperChoiceView(model, paper, locale, h),
     h.p([h.Id('board-keys'), ...styled(h, styles.keys())], [format(locale, 'board.keys', {})]),
-    addSheetView(model, pieces, locale, h),
+    h.submodel({
+      slotId: 'board-add-sheet',
+      model: model.addSheet,
+      view: AddSheetView.sheetView,
+      viewInputs: { pieces, locale, items: model.items, pins: model.pins },
+      toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+    }),
   ])
