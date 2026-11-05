@@ -302,5 +302,5 @@ Nothing below is done until its acceptance is recorded in `docs/DELIVERY.md`.
 
 ## Next
 
-The full gate with native on `a2742483`. Then Eva's phone walk of the preview and the acceptance walks above, each outstanding `docs/DELIVERY.md` row, and the
+The full gate with native passed on `a2742483` (unit 1,385, native 38/38, 5 November). Then Eva's phone walk of the preview and the acceptance walks above, each outstanding `docs/DELIVERY.md` row, and the
 production promotion on the owner's go once judging ends.
