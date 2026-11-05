@@ -16,13 +16,15 @@
 import { writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import type { PieceType } from '@styld/protocol'
+import { pieces as pieceTable } from '@styld/db'
 import { modelPicture, readPng } from '@styld/imaging'
+import { and, asc, eq, isNotNull, ne } from 'drizzle-orm'
 import { Effect, Option, Schema } from 'effect'
 import type { Picture } from '../packages/server/src/capture/Providers.ts'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
 import { askClef, imageOf } from '../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, readEach, stageOptions } from './CloudflareRest.ts'
+import { cloudflareStage, readEach, stageOptions, statements } from './CloudflareRest.ts'
 import { sportBar, type SportRead, sportQuestions, sportRead } from './Sport.ts'
 
 const { values } = parseArgs({ options: stageOptions })
@@ -93,11 +95,25 @@ const readOf = (piece: Stored) =>
 
 const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
   await query(
-    `SELECT id, account_id, image_key, original_key, content_type FROM pieces
-       WHERE type = ? AND status = 'ready' AND image_key IS NOT NULL AND image_key <> original_key
-         ${account === undefined ? '' : 'AND account_id = ?'}
-       ORDER BY created_at`,
-    account === undefined ? [from] : [from, account],
+    statements
+      .select({
+        id: pieceTable.id,
+        account_id: pieceTable.accountId,
+        image_key: pieceTable.imageKey,
+        original_key: pieceTable.originalKey,
+        content_type: pieceTable.contentType,
+      })
+      .from(pieceTable)
+      .where(
+        and(
+          eq(pieceTable.type, from),
+          eq(pieceTable.status, 'ready'),
+          isNotNull(pieceTable.imageKey),
+          ne(pieceTable.imageKey, pieceTable.originalKey),
+          account === undefined ? undefined : eq(pieceTable.accountId, account),
+        ),
+      )
+      .orderBy(asc(pieceTable.createdAt)),
   ),
 )
 
@@ -116,15 +132,18 @@ console.log(
 )
 
 if (values.apply) {
-  const at = Date.now()
+  const at = new Date()
   const written = await Promise.all(
     moves.flatMap(({ id, accountId, to }) =>
       to === undefined
         ? []
         : [
             query(
-              `UPDATE pieces SET type = ?, updated_at = ? WHERE id = ? AND account_id = ? AND type = ? RETURNING id`,
-              [to, at, id, accountId, from],
+              statements
+                .update(pieceTable)
+                .set({ type: to, updatedAt: at })
+                .where(and(eq(pieceTable.id, id), eq(pieceTable.accountId, accountId), eq(pieceTable.type, from)))
+                .returning({ id: pieceTable.id }),
             ),
           ],
     ),

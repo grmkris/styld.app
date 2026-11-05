@@ -18,13 +18,15 @@
 import { writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import { Colour, PieceType, slotOf } from '@styld/protocol'
+import { pieces as pieceTable } from '@styld/db'
 import { modelPicture, readPng } from '@styld/imaging'
+import { and, asc, eq, isNotNull, ne } from 'drizzle-orm'
 import { Effect, Option, Schema } from 'effect'
 import { judgedAt } from '../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
 import type { Picture } from '../packages/server/src/capture/Providers.ts'
 import { makeGarmentVision } from '../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, stageOptions } from './CloudflareRest.ts'
+import { cloudflareStage, stageOptions, statements } from './CloudflareRest.ts'
 
 const { values } = parseArgs({ options: { ...stageOptions } })
 const token = process.env['CLOUDFLARE_API_TOKEN']
@@ -130,10 +132,25 @@ const changeOf = (piece: Stored) =>
 
 const pieces = await Schema.decodeUnknownPromise(Schema.Array(Stored))(
   await query(
-    `SELECT id, type, colours, image_key, original_key, content_type FROM pieces
-       WHERE account_id = ? AND status = 'ready' AND image_key IS NOT NULL AND image_key <> original_key
-       ORDER BY created_at`,
-    [account],
+    statements
+      .select({
+        id: pieceTable.id,
+        type: pieceTable.type,
+        colours: pieceTable.colours,
+        image_key: pieceTable.imageKey,
+        original_key: pieceTable.originalKey,
+        content_type: pieceTable.contentType,
+      })
+      .from(pieceTable)
+      .where(
+        and(
+          eq(pieceTable.accountId, account),
+          eq(pieceTable.status, 'ready'),
+          isNotNull(pieceTable.imageKey),
+          ne(pieceTable.imageKey, pieceTable.originalKey),
+        ),
+      )
+      .orderBy(asc(pieceTable.createdAt)),
   ),
 )
 
@@ -162,13 +179,22 @@ console.log(
 )
 
 if (values.apply) {
-  const now = Date.now()
+  const now = new Date()
   let written = 0
   for (const { id, from, to } of changes) {
     const rows = await query(
-      `UPDATE pieces SET type = ?, colours = ?, updated_at = ?
-         WHERE id = ? AND account_id = ? AND type = ? AND colours = ? RETURNING id`,
-      [to.type, JSON.stringify(to.colours), now, id, account, from.type, JSON.stringify(from.colours)],
+      statements
+        .update(pieceTable)
+        .set({ type: to.type, colours: to.colours, updatedAt: now })
+        .where(
+          and(
+            eq(pieceTable.id, id),
+            eq(pieceTable.accountId, account),
+            eq(pieceTable.type, from.type),
+            eq(pieceTable.colours, from.colours),
+          ),
+        )
+        .returning({ id: pieceTable.id }),
     )
     written += rows.length
   }

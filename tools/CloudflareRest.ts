@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/sqlite-proxy'
 import { Effect, Option, Schema } from 'effect'
 import type { RunClef } from '../packages/server/src/providers/Clef.ts'
 
@@ -16,6 +17,18 @@ export interface Stage {
   readonly cloudflareAccount: string
   readonly database: string
   readonly bucket: string
+}
+
+/** Never runs a statement itself: the scripts send what it builds through `query`. */
+const refused = () => Promise.reject(new Error('Built here, sent by the stage: run it with query()'))
+
+/** The statements the scripts send to D1, built with Drizzle over Styld's own tables, so their columns, encoders and
+ * parameters are the Worker's. */
+export const statements = drizzle({ get: refused, all: refused, run: refused })
+
+/** A statement Drizzle built, as `toSQL()` gives it. */
+interface Statement {
+  readonly toSQL: () => { readonly sql: string; readonly params: ReadonlyArray<unknown> }
 }
 
 const posted = (body: unknown): RequestInit => ({
@@ -49,10 +62,10 @@ export const cloudflareStage = async ({ token, cloudflareAccount, database, buck
   if (found === undefined) throw new Error(`No D1 database named ${database}`)
 
   return {
-    /** One SQL statement's rows. */
-    query: async (sql: string, params: ReadonlyArray<string | number>) => {
+    /** One statement's rows, keyed by column name. */
+    query: async (statement: Statement) => {
       const { result } = await Schema.decodeUnknownPromise(Rows)(
-        await answer(`/d1/database/${found.uuid}/query`, posted({ sql, params })),
+        await answer(`/d1/database/${found.uuid}/query`, posted(statement.toSQL())),
       )
       return result[0]?.results ?? []
     },
