@@ -3,20 +3,16 @@ import type { KnipConfig } from 'knip'
 export default {
   workspaces: {
     '.': {
-      // The gates are entries through package.json's scripts. Scripts an operator runs by hand are listed one by one,
-      // so a script nothing runs is reported instead of hiding behind a glob.
+      // The gates are entries through package.json's scripts. The ongoing operator scripts are listed one by one, so a
+      // script nothing runs is reported instead of hiding behind a glob; finished one-off backfills live in tools/once/,
+      // each listed in its README, and are deleted once nobody needs them again.
       entry: [
         'alchemy.run.ts!',
         'tools/ai-usage-report.ts',
         'tools/preview-capture.ts',
         'tools/provider-live.ts',
-        'tools/retype-pieces.ts',
-        'tools/backfill-pictures.ts',
-        'tools/relayout-boards.ts',
         'tools/grant-membership.ts',
-        'tools/retype-tops.ts',
-        'tools/retype-sport.ts',
-        'tools/refind-photos.ts',
+        'tools/once/[a-z]*.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/seed/Run.ts',
         'tools/**/*.test.ts',

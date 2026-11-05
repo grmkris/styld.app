@@ -1,7 +1,7 @@
 import { Effect, Option, Schema } from 'effect'
 import type { RunClef } from '../packages/server/src/providers/Clef.ts'
 
-// What the operator scripts that re-sort stored pieces (`retype-pieces.ts`, `retype-tops.ts`, `retype-sport.ts`) reach through the
+// What the operator scripts that re-sort stored pieces (`once/retype-pieces.ts`, `once/retype.ts`) and the house seed reach through the
 // Cloudflare REST API: a stage's D1 database by name, its R2 media bucket (in the EU jurisdiction) and Workers AI's
 // Clef-flash, so their answers are the ones the Worker gets. The token is sent only as the Authorization header and
 // never printed; a refusal names Cloudflare's own reasons.

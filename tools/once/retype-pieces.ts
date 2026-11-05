@@ -2,7 +2,7 @@
  * Re-types one account's pieces on a deployed stage with the Worker's own decision model (T-02, owner 3 November:
  * Eva's pieces on the preview, after the T-12 types are deployed), run by hand:
  *
- *   bun tools/retype-pieces.ts --database <D1 name> --bucket <R2 bucket> --account <id> [--out <report.json>] [--apply]
+ *   bun tools/once/retype-pieces.ts --database <D1 name> --bucket <R2 bucket> --account <id> [--out <report.json>] [--apply]
  *
  * Each ready piece's cut-out is read from R2 (the media bucket is in the EU jurisdiction) and asked the Worker's
  * `suggest` questions through the Cloudflare REST API and `makeGarmentVision`, so the answers are the ones a new piece
@@ -20,11 +20,11 @@ import { parseArgs } from 'node:util'
 import { Colour, PieceType, slotOf } from '@styld/protocol'
 import { modelPicture, readPng } from '@styld/imaging'
 import { Effect, Option, Schema } from 'effect'
-import { judgedAt } from '../packages/server/src/capture/Garments.ts'
-import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
-import type { Picture } from '../packages/server/src/capture/Providers.ts'
-import { makeGarmentVision } from '../packages/server/src/providers/Clef.ts'
-import { cloudflareStage, stageOptions } from './CloudflareRest.ts'
+import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
+import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
+import type { Picture } from '../../packages/server/src/capture/Providers.ts'
+import { makeGarmentVision } from '../../packages/server/src/providers/Clef.ts'
+import { cloudflareStage, stageOptions } from '../CloudflareRest.ts'
 
 const { values } = parseArgs({ options: { ...stageOptions } })
 const token = process.env['CLOUDFLARE_API_TOKEN']
@@ -38,7 +38,7 @@ if (
   account === undefined
 )
   throw new Error(
-    'Usage: bun tools/retype-pieces.ts --database <D1 name> --bucket <R2 bucket> --account <id> [--out <file>] ' +
+    'Usage: bun tools/once/retype-pieces.ts --database <D1 name> --bucket <R2 bucket> --account <id> [--out <file>] ' +
       '[--apply], with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID set',
   )
 

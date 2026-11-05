@@ -3,7 +3,7 @@
  * centred in their places (Eva's report of 4 November 2026: holes in the table; owner: lay out the boards already
  * made), run by hand:
  *
- *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/relayout-boards.ts <email> [<email> …]
+ *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/once/relayout-boards.ts <email> [<email> …]
  *
  * Each email goes to `POST /api/operator/boards/relayout` as the operator, with the stage's `STYLD_OPERATOR_TOKEN`
  * from its private env file. Outfits, kept looks and pins stay; pieces a person added by hand stay where they are, and
@@ -14,7 +14,7 @@ import { BoardsRelaid } from '@styld/protocol'
 import { Schema } from 'effect'
 
 const usage =
-  'Usage: STYLD_URL=https://… bun --env-file=.env.preview.local tools/relayout-boards.ts <email> [<email> …]'
+  'Usage: STYLD_URL=https://… bun --env-file=.env.preview.local tools/once/relayout-boards.ts <email> [<email> …]'
 const emails = process.argv.slice(2)
 if (emails.length === 0 || emails.some((email) => !email.includes('@'))) throw new Error(usage)
 const url = process.env['STYLD_URL']

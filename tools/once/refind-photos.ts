@@ -3,7 +3,7 @@
  * were found before the detector looked for the person nearest the camera). What the person confirmed, sent to the
  * review tray or added by hand stays; only Styld's own guesses are replaced. docs/archive/PLAN-gallery-delete-2026-11-04.md › G4.
  *
- *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/refind-photos.ts <email> [--counts] [--minutes N]
+ *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/once/refind-photos.ts <email> [--counts] [--minutes N]
  *
  * Prints the account's photo counts, starts one re-find round as the operator (the stage's `STYLD_OPERATOR_TOKEN`
  * from its private env file), then the counts every 15 seconds for N minutes (5 by default) while the piece queue
@@ -12,11 +12,11 @@
  */
 import { PhotoCounts } from '@styld/protocol'
 import { Schema } from 'effect'
-import { operatorStage } from './OperatorStage.ts'
+import { operatorStage } from '../OperatorStage.ts'
 
 const [email, ...flags] = process.argv.slice(2)
 if (email === undefined || email.startsWith('--'))
-  throw new Error('Usage: bun tools/refind-photos.ts <email> [--counts] [--minutes N]')
+  throw new Error('Usage: bun tools/once/refind-photos.ts <email> [--counts] [--minutes N]')
 
 const { origin, operatorToken } = operatorStage()
 const minutesFlag = flags.indexOf('--minutes')
