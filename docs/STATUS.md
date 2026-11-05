@@ -863,8 +863,8 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
   own pieces from one sentence, pinned and laid out (1 credit).
 - **My Gallery:** the person's own outfit photos (1 credit to find the clothes), matched to pieces, favourites, Wear
   it again, Add to board (held back from visitors), Cut out the outfit, a missing garment offered to the tray.
-- **Styld, the stylist:** a chat at `/ask/stylist` over the person's own pieces and looks (DeepSeek V4.1 Flash through
-  the paid LiteLLM gateway), 1 credit a message, back when no reply comes.
+- **Styld, the stylist:** a chat at `/ask/stylist` over the person's own pieces and looks (Meta Muse Spark 1.3, Standard,
+  on Meta's API), 1 credit a message, back when no reply comes.
 - **Public profile and social:** `/@handle` with Boards and Looks; public boards, looks and pieces with share links
   and link previews; Save, one-way private Follow, Block, Report; readable signed out.
 - **Home, What's new and search:** the day, What to wear today (the tombola), What's new from everyone (followed

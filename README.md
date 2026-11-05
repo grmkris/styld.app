@@ -63,9 +63,14 @@ This repository is Styld v2, written during the Meta Global AI Developer Hackath
 - Muse draws each garment on flat green, or magenta for a green garment. Styld keys the background out, unmixes the
   edge colour so no fringe remains, and rejects a key that failed ([`Chroma.ts`](packages/imaging/src/Chroma.ts)).
 
+**Muse Spark 1.3** answers in the Styld chat ([`providers/StylistModel.ts`](packages/server/src/providers/StylistModel.ts),
+[`stylist/Policy.ts`](packages/server/src/stylist/Policy.ts)): the Standard model on Meta's own API, streamed, with minimal
+thinking, over the person's own pieces and looks.
+
 Choices worth knowing:
 
-- Styld calls the Standard model `muse-image-1.0`. Contributor variants would let Meta train on people's garments.
+- Styld calls the Standard models `muse-image-1.0` and `muse-spark-1.3`. Contributor variants would let Meta train on
+  people's garments and chats.
 - Every Muse request switches off Muse's own image search, web search and shell tools, so only the pictures Styld
   sends reach it.
 - Muse takes at most ten pictures in one request, so a try-on sends the person's photo and at most nine pieces.
@@ -76,8 +81,9 @@ Choices worth knowing:
 - List prices Styld counts ([`providers/Costs.ts`](packages/server/src/providers/Costs.ts), read 29 to 31 October
   2026): Muse Image $0.01 a picture, SAM $0.0025 a photo and $0.0002 a video frame.
 
-Not everything is Meta. Text tasks and the Styld chat use DeepSeek V4.1 Flash through a LiteLLM route
-([`ai/LanguageModel.ts`](packages/server/src/ai/LanguageModel.ts)). Reading a garment's type, colours and sleeves, and
+Not everything is Meta. Three text tasks use DeepSeek V4.1 Flash through a LiteLLM route
+([`ai/LanguageModel.ts`](packages/server/src/ai/LanguageModel.ts)): planning a mood board from a sentence, Thinking's
+outfit proposals, and the safety check on the words of anything made public. Reading a garment's type, colours and sleeves, and
 judging outfits, uses Cloudflare's Clef-flash on Workers AI ([`providers/Clef.ts`](packages/server/src/providers/Clef.ts)).
 The turn video uses Veo 3.1 Lite through the Vercel AI Gateway ([`providers/Veo.ts`](packages/server/src/providers/Veo.ts)).
 
