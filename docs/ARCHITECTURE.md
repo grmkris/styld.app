@@ -162,7 +162,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   counts and prices carry. The paid LiteLLM gateway's isolated Alibaba Model Studio DeepSeek V4.1 Flash alias serves
   Thinking, mood-board planning and text moderation (`litellm`); Styld's replies stream from its Threads on Meta's
   own API, Muse Spark 1.3 Standard (`meta-spark`, `providers/StylistModel.ts`, Server-Sent Events, usage in the last
-  chunk). Clef (`providers/Clef.ts` › `clefOver`) remains the Workers AI visual judge and garment/attribute model.
+  chunk). Clef (`providers/ClefCall.ts` › `clefOver`, `askClef`; the garment questions in `providers/Clef.ts`) remains the Workers AI visual judge and garment/attribute model.
   A `ProviderError` from a thrown transport or binding error keeps it as its `cause`, never a request or body.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and
