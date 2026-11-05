@@ -378,4 +378,13 @@ describe('the views resource', () => {
     const meta: Record<string, unknown> = readResource(viewsUri)?.contents[0]?.['_meta'] ?? {}
     expect(meta['openai/widgetDescription']).toBe(resources[0]?.description)
   })
+
+  test('is named by its bundle, and an older name still gets the current view', () => {
+    // A host caches a view by URI: a rebuilt view under an old name stays old there, and decodes nothing it is sent.
+    expect(viewsUri).toMatch(/^ui:\/\/styld\/views-[0-9a-f]{12}\.html$/)
+    // A conversation that listed the tools before a deploy asks for the name it was given.
+    const older = readResource('ui://styld/views-v3.html')?.contents[0]
+    expect(older).toMatchObject({ uri: 'ui://styld/views-v3.html', text: readResource(viewsUri)?.contents[0]?.text })
+    expect(readResource('ui://styld/other.html')).toBeUndefined()
+  })
 })

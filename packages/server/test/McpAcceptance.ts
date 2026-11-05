@@ -7,6 +7,7 @@ import { toolNames } from './ToolNames.ts'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { csrf } from '@styld/auth/config'
 import { ViewImages } from '@styld/protocol'
+import { viewsUri } from '../src/mcp/Resources.ts'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -175,8 +176,8 @@ const useTools = async (origin: string, access: string) => {
   for (const client of [modern, legacy]) {
     expect((await client.listTools()).tools.map(({ name }) => name)).toEqual([...toolNames])
     // Hosts read the view from the resource the tool names, through either protocol era.
-    const view = (await client.readResource({ uri: 'ui://styld/views-v3.html' })).contents[0]
-    expect(view).toMatchObject({ uri: 'ui://styld/views-v3.html', mimeType: 'text/html;profile=mcp-app' })
+    const view = (await client.readResource({ uri: viewsUri })).contents[0]
+    expect(view).toMatchObject({ uri: viewsUri, mimeType: 'text/html;profile=mcp-app' })
     expect(view !== undefined && 'text' in view ? view.text : '').toContain('<div id="styld-view"></div>')
     const result = await client.callTool({ name: 'account_get', arguments: {} })
     expect(result.structuredContent).toEqual({
