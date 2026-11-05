@@ -1,11 +1,10 @@
-import { Dialog, FileDrop } from '@foldkit/ui'
+import { FileDrop } from '@foldkit/ui'
 import {
   Board,
   BoardItem,
   BoardItemId,
   CheckStatus,
   LookId,
-  Mood,
   Paper,
   Pin,
   PublicBoard,
@@ -14,11 +13,11 @@ import {
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
 import * as AddSheet from './AddSheet.ts'
+import * as Chrome from './Chrome.ts'
 import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
-import { Deletion } from '../../Confirm.ts'
 import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../../ServerData.ts'
 import * as Make from './Make.ts'
@@ -44,13 +43,6 @@ export const ownBoard = (board: BoardData): Option.Option<{ readonly name: strin
   Option.flatMap(AsyncData.getData(board), (shown) =>
     BoardShown.guards.Own(shown) ? Option.some(shown) : Option.none(),
   )
-
-/** The board's name, whoever's it is; empty until it is read. */
-export const boardName = (board: BoardData): string =>
-  Option.match(AsyncData.getData(board), {
-    onNone: () => '',
-    onSome: BoardShown.match({ Own: ({ name }) => name, Visiting: ({ board: shown }) => shown.name }),
-  })
 
 /** The person's hands on the table: nothing, one pointer moving an item, two fingers pinching it, or the
  * corner handle resizing and turning it. Each gesture keeps the table as it was, for Escape and undo. */
@@ -126,18 +118,6 @@ export type Ticks = typeof Ticks.Type
 export const PinWork = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type PinWork = typeof PinWork.Type
 
-/** Renaming the board in place, on its title: not asked, the name being typed, sent, or refused (the field stays). */
-export const Rename = defineTaggedUnion({ Idle: {}, Editing: {}, Saving: {}, Failed: {} })
-export type Rename = typeof Rename.Type
-
-/** Making the board public or private with the switch beside Share; a board goes public only from a published profile. */
-export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
-export type Publishing = typeof Publishing.Type
-
-/** Deleting the board: asked once more, then sent. */
-export const Removal = Deletion
-export type Removal = Deletion
-
 /** "Removed. Undo": the table as it was before the removal, offered back for a few seconds. */
 export const Toast = defineTaggedUnion({
   Hidden: {},
@@ -156,19 +136,11 @@ export const Model = Schema.Struct({
   /** The pins visitors see while the board is public, as the server says: a piece shows others only with a picture of
    * its own and once Styld's check lets it, so it can be fewer than are pinned. */
   publicPins: Schema.Array(Schema.String),
-  /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
-  unpinning: Schema.Option(Schema.String),
-  /** The board's ⋯ sheet: tidying, pasting, its moods, its pins and deleting it. */
-  more: Dialog.Model,
-  nameDraft: Schema.String,
-  rename: Rename,
-  removal: Removal,
   /** Who sees the board, and Styld's check of it once it has been public. */
   visibility: Visibility,
   check: Schema.Option(CheckStatus),
-  publishing: Publishing,
-  /** The board's moods for Explore, as last saved. */
-  moods: Schema.Array(Mood),
+  /** Its title, its public switch and its ⋯ sheet. */
+  chrome: Chrome.Model,
   /** Saving and reporting it, when it is someone else's. */
   people: People.Model,
   /** Trying it with the visitor's own wardrobe, when it shows generated pieces. */
@@ -214,16 +186,10 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   items: [],
   pins: [],
   pinWork: PinWork.Idle(),
-  unpinning: Option.none(),
   publicPins: [],
-  more: Dialog.init({ id: 'board-more', isAnimated: true }),
-  nameDraft: '',
-  rename: Rename.Idle(),
-  removal: Removal.Idle(),
   visibility: 'private',
   check: Option.none(),
-  publishing: Publishing.Idle(),
-  moods: [],
+  chrome: Chrome.init(boardId),
   people: People.init(People.Subject.Board({ boardId })),
   tryIt: TryIt.init(),
   sharing: Share.init,
@@ -260,7 +226,7 @@ export const withChecked = (model: Model, board: Board): Model =>
 export const withSharing = (model: Model, board: Board): Model =>
   modifyFields(withChecked(model, board), {
     board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
-    moods: () => board.moods,
+    chrome: (chrome) => Chrome.withMoods(chrome, board.moods),
   })
 
 /** The board as the server last confirmed it. */

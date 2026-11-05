@@ -8,7 +8,8 @@ import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { LooksData } from '../src/page/Board/AddSheet.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
-import { FocusName, FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
+import { FocusName, FocusPin, Message as ChromeMessage } from '../src/page/Board/Chrome.ts'
+import { UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
@@ -57,7 +58,7 @@ const picking = (locale: 'en' | 'sl') =>
 const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
 const withSettings = (state: typeof page) =>
   withPage(state, lenses.board, (currentBoard) =>
-    modifyFields(currentBoard, { more: (more) => ({ ...more, isOpen: true }) }),
+    modifyFields(currentBoard, { chrome: (chrome) => ({ ...chrome, more: { ...chrome.more, isOpen: true } }) }),
   )
 
 describe("a board's page", () => {
@@ -138,7 +139,7 @@ describe("a board's page", () => {
       given(page),
       measured,
       click(role('button', { name: 'Weekend' })),
-      Command.resolve(FocusName, BoardMessage.CompletedFocusName()),
+      Command.resolve(FocusName, ChromeMessage.CompletedFocusName()),
       expect(role('textbox', { name: 'Board name' })).toHaveValue('Weekend'),
       click(role('button', { name: 'Cancel' })),
       expect(role('textbox', { name: 'Board name' })).toBeAbsent(),
@@ -166,15 +167,15 @@ describe("a board's page", () => {
       measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       click(role('button', { name: 'Take Cable knit off the board' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       expect(role('group', { name: 'Take Cable knit off the board' })).toHaveText(
         /Take it off the board\? It comes off the collage too\./,
       ),
       click(role('button', { name: 'Keep' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       expect(role('button', { name: 'Keep' })).not.toExist(),
       click(role('button', { name: 'Take Cable knit off the board' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       click(role('button', { name: 'Take off' })),
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, BoardMessage.SucceededPins({ board: { ...board, pins: [], version: 2 } })),

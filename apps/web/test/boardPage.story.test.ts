@@ -7,32 +7,22 @@ import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
 import * as AddSheet from '../src/page/Board/AddSheet.ts'
 import { Message } from '../src/page/Board/Message.ts'
-import {
-  BoardData,
-  BoardShown,
-  fromBoard,
-  init,
-  type Model,
-  PinWork,
-  Publishing,
-  Removal,
-  Rename,
-  Saving,
-  Upload,
-} from '../src/page/Board/Model.ts'
+import { BoardData, BoardShown, fromBoard, init, type Model, PinWork, Saving, Upload } from '../src/page/Board/Model.ts'
 import { AddGalleryPicture, AddTryOnPicture, MakeIds, WaitToSave } from '../src/page/Board/Commands.ts'
 import {
   DeleteBoard,
   FocusName,
   FocusPin,
   LeaveBoard,
-  PinLook,
-  ReloadBoard,
+  Publishing,
+  Removal,
+  Rename,
   RenameBoard,
   SetBoardMoods,
   SetBoardVisibility,
-  UnpinThings,
-} from '../src/page/Board/PageCommands.ts'
+} from '../src/page/Board/Chrome.ts'
+import * as Chrome from '../src/page/Board/Chrome.ts'
+import { PinLook, ReloadBoard, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { update } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 import { done as doneTryOn, photo } from './TryOnFixtures.ts'
@@ -77,6 +67,8 @@ const board = Schema.decodeUnknownSync(Board)({
 const open: Model = fromBoard(init(board.id, true), board)
 /** A Message of the board's Add sheet, as the board receives it. */
 const add = (sheetMessage: AddSheet.Message) => Message.GotAddSheetMessage({ message: sheetMessage })
+/** A Message of the board's chrome (its title, public switch and ⋯ sheet), as the board receives it. */
+const chrome = (chromeMessage: Chrome.Message) => Message.GotChromeMessage({ message: chromeMessage })
 const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
   Schema.decodeUnknownSync(Board)({ ...board, pins, ...changes })
 
@@ -93,13 +85,15 @@ describe('a board page', () => {
       past: () => [board.items],
       maybeSelectedId: () => Option.some(knitOnTable.id),
     })
-    const waiting = update(edited, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
+    const waiting = update(edited, chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id })))
     expect(waiting.model).toEqual(edited)
     expect(waiting.commands ?? []).toEqual([])
     const settled = modifyFields(edited, { saving: () => Saving.Saved() })
-    const sending = update(settled, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
+    const sending = update(settled, chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id })))
     expect(PinWork.guards.Sending(sending.model.pinWork)).toBe(true)
-    expect(update(sending.model, Message.ClickedConfirmUnpin({ pinId: knitPin.id })).commands ?? []).toEqual([])
+    expect(
+      update(sending.model, chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id }))).commands ?? [],
+    ).toEqual([])
     const removed = update(
       sending.model,
       Message.SucceededPins({
@@ -117,18 +111,21 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedRename()),
+      message(chrome(Chrome.Message.ClickedRename({ name: 'Autumn', fromSheet: false }))),
       Command.expectExact(FocusName),
-      Command.resolve(FocusName, Message.CompletedFocusName()),
-      model(({ rename, nameDraft }) => {
+      Command.resolve(FocusName, Chrome.Message.CompletedFocusName()),
+      model(({ chrome: { rename, nameDraft } }) => {
         expect(Rename.guards.Editing(rename)).toBe(true)
         expect(nameDraft).toBe('Autumn')
       }),
-      message(Message.UpdatedNameDraft({ value: '  Late autumn ' })),
-      message(Message.SubmittedRename()),
+      message(chrome(Chrome.Message.UpdatedNameDraft({ value: '  Late autumn ' }))),
+      message(chrome(Chrome.Message.SubmittedRename())),
       Command.expectExact(RenameBoard),
-      Command.resolve(RenameBoard, Message.SucceededRename({ board: withPins([knitPin], { name: 'Late autumn' }) })),
-      model(({ board: state, rename }) => {
+      Command.resolve(
+        RenameBoard,
+        Chrome.Message.SucceededRename({ board: withPins([knitPin], { name: 'Late autumn' }) }),
+      ),
+      model(({ board: state, chrome: { rename } }) => {
         expect(state).toEqual(BoardData.Success({ data: BoardShown.Own({ name: 'Late autumn', paper: 'paper' }) }))
         expect(Rename.guards.Idle(rename)).toBe(true)
       }),
@@ -139,11 +136,11 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedMore()),
+      message(chrome(Chrome.Message.ClickedMore())),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...storySheetMoved(1),
-      message(Message.ClickedMoreAction({ action: 'tidy' })),
-      model(({ more }) => expect(more.isOpen).toBe(false)),
+      message(chrome(Chrome.Message.ClickedMoreAction({ action: 'tidy' }))),
+      model(({ chrome: { more } }) => expect(more.isOpen).toBe(false)),
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: -1 })),
@@ -155,26 +152,26 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ToggledPublic({ isPublic: true })),
+      message(chrome(Chrome.Message.ToggledPublic({ isPublic: true }))),
       Command.expectExact(SetBoardVisibility({ boardId: board.id, isPublic: true })),
       Command.resolve(
         SetBoardVisibility({ boardId: board.id, isPublic: true }),
-        Message.FailedSetVisibility({ needsProfile: true }),
+        Chrome.Message.FailedSetVisibility({ needsProfile: true }),
       ),
-      model(({ visibility, publishing }) => {
+      model(({ visibility, chrome: { publishing } }) => {
         expect(visibility).toBe('private')
         expect(publishing).toEqual(Publishing.Failed({ needsProfile: true }))
       }),
-      message(Message.ToggledPublic({ isPublic: true })),
+      message(chrome(Chrome.Message.ToggledPublic({ isPublic: true }))),
       Command.resolve(
         SetBoardVisibility({ boardId: board.id, isPublic: true }),
-        Message.SucceededSetVisibility({
+        Chrome.Message.SucceededSetVisibility({
           board: withPins([knitPin, shoesPin], { visibility: 'public', check: pending, publicPins: [knitPin.id] }),
         }),
       ),
       // The board the server answers says which pins others see: a piece shows them only with a picture of its own.
       Command.expectNone(),
-      model(({ visibility, check, publishing, version, publicPins }) => {
+      model(({ visibility, check, chrome: { publishing }, version, publicPins }) => {
         expect(visibility).toBe('public')
         expect(check).toEqual(Option.some(pending))
         expect(Publishing.guards.Idle(publishing)).toBe(true)
@@ -187,45 +184,51 @@ describe('a board page', () => {
   test('moods are saved as they are picked, at most three', () => {
     story(
       update,
-      given(modifyFields(open, { moods: () => ['rain', 'office', 'weekend'] })),
-      message(Message.ToggledMood({ mood: 'sport' })),
-      model(({ moods }) => expect(moods).toEqual(['rain', 'office', 'weekend'])),
-      message(Message.ToggledMood({ mood: 'office' })),
+      given(modifyFields(open, { chrome: (current) => Chrome.withMoods(current, ['rain', 'office', 'weekend']) })),
+      message(chrome(Chrome.Message.ToggledMood({ mood: 'sport' }))),
+      model(({ chrome: { moods } }) => expect(moods).toEqual(['rain', 'office', 'weekend'])),
+      message(chrome(Chrome.Message.ToggledMood({ mood: 'office' }))),
       Command.expectExact(
         SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'], previous: ['rain', 'office', 'weekend'] }),
       ),
       Command.resolve(
         SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'], previous: ['rain', 'office', 'weekend'] }),
-        Message.SucceededSetBoardMoods({ board: withPins([knitPin], { moods: ['rain', 'weekend'] }) }),
+        Chrome.Message.SucceededSetBoardMoods({ board: withPins([knitPin], { moods: ['rain', 'weekend'] }) }),
       ),
-      model(({ moods }) => expect(moods).toEqual(['rain', 'weekend'])),
+      model(({ chrome: { moods } }) => expect(moods).toEqual(['rain', 'weekend'])),
     )
   })
 
   test('moods that do not save go back to the ones before, unless they were changed again since', () => {
-    const picked = update(open, Message.ToggledMood({ mood: 'rain' })).model
-    expect(picked.moods).toEqual(['rain'])
-    const failed = update(picked, Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] })).model
-    expect(failed.moods).toEqual([])
-    const changedAgain = update(picked, Message.ToggledMood({ mood: 'office' })).model
-    const olderFailed = update(changedAgain, Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] }))
-    expect(olderFailed.model.moods).toEqual(['rain', 'office'])
+    const picked = update(open, chrome(Chrome.Message.ToggledMood({ mood: 'rain' }))).model
+    expect(picked.chrome.moods).toEqual(['rain'])
+    const failed = update(
+      picked,
+      chrome(Chrome.Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] })),
+    ).model
+    expect(failed.chrome.moods).toEqual([])
+    const changedAgain = update(picked, chrome(Chrome.Message.ToggledMood({ mood: 'office' }))).model
+    const olderFailed = update(
+      changedAgain,
+      chrome(Chrome.Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] })),
+    )
+    expect(olderFailed.model.chrome.moods).toEqual(['rain', 'office'])
   })
 
   test('deleting asks once more, then leaves for the boards', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedDeleteBoard()),
-      model(({ removal }) => expect(Removal.guards.Confirming(removal)).toBe(true)),
-      message(Message.ClickedKeepBoard()),
-      model(({ removal }) => expect(Removal.guards.Idle(removal)).toBe(true)),
-      message(Message.ClickedDeleteBoard()),
-      message(Message.ClickedConfirmDelete()),
+      message(chrome(Chrome.Message.ClickedDeleteBoard())),
+      model(({ chrome: { removal } }) => expect(Removal.guards.Confirming(removal)).toBe(true)),
+      message(chrome(Chrome.Message.ClickedKeepBoard())),
+      model(({ chrome: { removal } }) => expect(Removal.guards.Idle(removal)).toBe(true)),
+      message(chrome(Chrome.Message.ClickedDeleteBoard())),
+      message(chrome(Chrome.Message.ClickedConfirmDelete())),
       Command.expectExact(DeleteBoard),
-      Command.resolve(DeleteBoard, Message.SucceededDeleteBoard()),
+      Command.resolve(DeleteBoard, Chrome.Message.SucceededDeleteBoard()),
       Command.expectExact(LeaveBoard),
-      Command.resolve(LeaveBoard, Message.CompletedLeaveBoard()),
+      Command.resolve(LeaveBoard, Chrome.Message.CompletedLeaveBoard()),
     )
   })
 
@@ -305,14 +308,14 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedUnpin({ pinId: knitPin.id })),
+      message(chrome(Chrome.Message.ClickedUnpin({ pinId: knitPin.id }))),
       Command.expectExact(FocusPin),
-      model(({ unpinning }) => expect(unpinning).toEqual(Option.some(knitPin.id))),
-      Command.resolve(FocusPin, Message.CompletedFocusPin()),
-      message(Message.ClickedKeepPin({ pinId: knitPin.id })),
+      model(({ chrome: { unpinning } }) => expect(unpinning).toEqual(Option.some(knitPin.id))),
+      Command.resolve(FocusPin, Chrome.Message.CompletedFocusPin()),
+      message(chrome(Chrome.Message.ClickedKeepPin({ pinId: knitPin.id }))),
       Command.expectExact(FocusPin),
-      Command.resolve(FocusPin, Message.CompletedFocusPin()),
-      model(({ unpinning, pins }) => {
+      Command.resolve(FocusPin, Chrome.Message.CompletedFocusPin()),
+      model(({ chrome: { unpinning }, pins }) => {
         expect(unpinning).toEqual(Option.none())
         expect(pins).toHaveLength(1)
       }),
@@ -323,9 +326,9 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedUnpin({ pinId: knitPin.id })),
-      Command.resolve(FocusPin, Message.CompletedFocusPin()),
-      message(Message.ClickedConfirmUnpin({ pinId: knitPin.id })),
+      message(chrome(Chrome.Message.ClickedUnpin({ pinId: knitPin.id }))),
+      Command.resolve(FocusPin, Chrome.Message.CompletedFocusPin()),
+      message(chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id }))),
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, Message.SucceededPins({ board: withPins([], { version: 3, items: [] }) })),
       model(({ pins, items, version }) => {
@@ -340,9 +343,9 @@ describe('a board page', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedUnpin({ pinId: knitPin.id })),
-      Command.resolve(FocusPin, Message.CompletedFocusPin()),
-      message(Message.ClickedConfirmUnpin({ pinId: knitPin.id })),
+      message(chrome(Chrome.Message.ClickedUnpin({ pinId: knitPin.id }))),
+      Command.resolve(FocusPin, Chrome.Message.CompletedFocusPin()),
+      message(chrome(Chrome.Message.ClickedConfirmUnpin({ pinId: knitPin.id }))),
       Command.resolve(UnpinThings, Message.FailedPins()),
       model(({ pins, pinWork }) => {
         expect(pins).toHaveLength(1)

@@ -6,8 +6,7 @@ import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { closeIcon } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
-import { Message } from './Message.ts'
-import { keepPinId, unpinId } from './PageCommands.ts'
+import { keepPinId, Message, unpinId } from './Chrome.ts'
 import * as styles from './PageView.styles.ts'
 
 // Taking a pin off a board: its ×, and the question that asks first, since the pin leaves the table too and a

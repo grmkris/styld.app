@@ -1,6 +1,7 @@
-import { Dialog, FileDrop } from '@foldkit/ui'
-import { Board, BoardImage, BoardItemId, LookId, Mood, Paper, PinId, PublicBoard, TextStyle } from '@styld/protocol'
+import { FileDrop } from '@foldkit/ui'
+import { Board, BoardImage, BoardItemId, LookId, Paper, PublicBoard, TextStyle } from '@styld/protocol'
 import * as AddSheet from './AddSheet.ts'
+import * as Chrome from './Chrome.ts'
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
 import * as People from '../People.ts'
@@ -82,40 +83,14 @@ export const Message = defineMessageUnion({
   BecameVisible: {},
   CompletedReloadBoard: { maybeBoard: Schema.Option(Board) },
 
-  ClickedMore: {},
-  GotMoreMessage: { message: Dialog.Message },
-  /** A row of the ⋯ sheet: the sheet closes, then the board does it. */
-  ClickedMoreAction: { action: Schema.Literals(['rename', 'tidy', 'paste']) },
-  ClickedRename: {},
-  ClickedCancelRename: {},
-  CompletedFocusName: {},
-  UpdatedNameDraft: { value: Schema.String },
-  SubmittedRename: {},
-  SucceededRename: { board: Board },
-  FailedRename: {},
-  ToggledPublic: { isPublic: Schema.Boolean },
   GotPeopleMessage: { message: People.Message },
   GotTryItMessage: { message: TryIt.Message },
   GotShareMessage: { message: Share.Message },
   GotMakeMessage: { message: Make.Message },
   GotOutfitsMessage: { message: Outfits.Message },
   GotAddSheetMessage: { message: AddSheet.Message },
-  ToggledMood: { mood: Mood },
-  SucceededSetBoardMoods: { board: Board },
-  FailedSetBoardMoods: { attempted: Schema.Array(Mood), previous: Schema.Array(Mood) },
-  SucceededSetVisibility: { board: Board },
-  FailedSetVisibility: { needsProfile: Schema.Boolean },
-  ClickedDeleteBoard: {},
-  ClickedKeepBoard: {},
-  ClickedConfirmDelete: {},
-  SucceededDeleteBoard: {},
-  FailedDeleteBoard: {},
-  CompletedLeaveBoard: {},
+  GotChromeMessage: { message: Chrome.Message },
 
-  ClickedUnpin: { pinId: PinId },
-  ClickedConfirmUnpin: { pinId: PinId },
-  ClickedKeepPin: { pinId: PinId },
-  CompletedFocusPin: {},
   /** A look put on the table is pinned too; the table is the page's, so only the pins come back. */
   CompletedPinLook: { maybeBoard: Schema.Option(Board) },
   SucceededPins: { board: Board },

@@ -47,10 +47,23 @@ import {
   releasedPointer,
 } from './Gestures.ts'
 import { Message } from './Message.ts'
-import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving, Ticks } from './Model.ts'
+import {
+  BoardData,
+  BoardShown,
+  fromBoard,
+  Gesture,
+  LookSave,
+  type Model,
+  PinWork,
+  Saving,
+  Ticks,
+  withChecked,
+  withSharing,
+} from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
 import * as AddSheet from './AddSheet.ts'
-import { closeMore, pageSteps, renameStarted } from './Page.ts'
+import * as Chrome from './Chrome.ts'
+import { becameVisible, pinsChanged, reloaded, unpinConfirmed } from './Page.ts'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
@@ -140,6 +153,13 @@ const lookChosen = (model: Model, look: Look): UpdateReturn => {
       }
 }
 
+/** The look's pin, once the board holds it; one that did not go through leaves the table as it is. */
+const lookPinned = (model: Model, maybeBoard: Option.Option<Board>): UpdateReturn =>
+  Option.match(maybeBoard, {
+    onNone: () => ({ model }),
+    onSome: (board) => ({ model: modifyFields(model, { pins: () => board.pins, publicPins: () => board.publicPins }) }),
+  })
+
 /** The Add sheet's choice goes on the table: a piece, a look's pieces, a picture pinned here, or a Gallery photo or a
  * try-on sent up as a picture that lands when the board holds it. */
 const foldAddSheet = Update.foldChild({
@@ -187,13 +207,37 @@ const selectionStarted = (model: Model): UpdateReturn => ({
   }),
 })
 
-/** A row of the ⋯ sheet: the sheet closes, then the board renames, tidies or pastes. */
-const moreAction = (model: Model, action: 'rename' | 'tidy' | 'paste'): UpdateReturn =>
-  Update.combine(model, [
-    closeMore,
-    (stepModel) =>
-      action === 'rename' ? renameStarted(stepModel) : action === 'tidy' ? tidy(stepModel) : pasted(stepModel),
-  ])
+/** The chrome's word: the ⋯ sheet's tidy or paste, the board as a rename, the public switch or the moods left it, and
+ * a pin to take off. */
+const foldChrome = Update.foldChild({
+  update: Chrome.update,
+  read: (model: Model) => Option.some(model.chrome),
+  write: (model: Model, chrome: Chrome.Model) => modifyFields(model, { chrome: () => chrome }),
+  toParentMessage: (message: Chrome.Message) => Message.GotChromeMessage({ message }),
+  foldOutMessage: Chrome.OutMessage.match<Update.Step<Model, Message, Services>>({
+    ChoseTableAction:
+      ({ action }) =>
+      (model) =>
+        action === 'tidy' ? tidy(model) : pasted(model),
+    Renamed:
+      ({ board }) =>
+      (model) => ({
+        model: modifyFields(model, {
+          board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
+        }),
+      }),
+    ChangedSharing:
+      ({ board }) =>
+      (model) => ({ model: withSharing(model, board) }),
+    SavedMoods:
+      ({ board }) =>
+      (model) => ({ model: withChecked(model, board) }),
+    ConfirmedUnpin:
+      ({ pinId }) =>
+      (model) =>
+        unpinConfirmed(model, pinId),
+  }),
+})
 
 const loadFailed = (model: Model, error: LoadError): UpdateReturn => ({
   model: modifyFields(model, { board: (board) => AsyncData.settle(board, Result.fail(error)) }),
@@ -254,19 +298,17 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     DroppedFiles: ({ files }) => picturesChosen(modifyFields(model, { isDropping: () => false }), files),
     DraggedFilesOver: () => (model.isDropping ? { model } : { model: modifyFields(model, { isDropping: () => true }) }),
     EndedFileDrag: () => ({ model: modifyFields(model, { isDropping: () => false }) }),
-    ClickedMoreAction: ({ action }) => moreAction(model, action),
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
-    ...pageSteps(model),
+    GotChromeMessage: (got) => foldChrome(model, got.message),
+    BecameVisible: () => becameVisible(model),
+    CompletedReloadBoard: ({ maybeBoard }) =>
+      Option.match(maybeBoard, { onNone: () => ({ model }), onSome: (board) => reloaded(model, board) }),
+    SucceededPins: ({ board }) => pinsChanged(model, board),
+    FailedPins: () => ({ model: modifyFields(model, { pinWork: () => PinWork.Failed() }) }),
     GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
-    CompletedPinLook: ({ maybeBoard }) =>
-      Option.match(maybeBoard, {
-        onNone: () => ({ model }),
-        onSome: (board) => ({
-          model: modifyFields(model, { pins: () => board.pins, publicPins: () => board.publicPins }),
-        }),
-      }),
+    CompletedPinLook: ({ maybeBoard }) => lookPinned(model, maybeBoard),
     ClickedCancelSelecting: () => ({ model: modifyFields(model, { ticks: () => Ticks.Off() }) }),
     ToggledTick: ({ id }) => tickToggled(model, id),
     ClickedSaveLook: () => (Ticks.guards.On(model.ticks) ? lookRequested(model) : selectionStarted(model)),
