@@ -1,5 +1,5 @@
-import { authTables } from '@styld/auth/storage'
-import { sql } from 'drizzle-orm'
+import { authMirror } from '@styld/db'
+import { lt } from 'drizzle-orm'
 import { DateTime, Effect, Layer } from 'effect'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
@@ -20,9 +20,8 @@ const forgetBatch = 500
 const forgetGoogleFlows = Effect.gen(function* () {
   const db = yield* Database
   const now = DateTime.toEpochMillis(yield* DateTime.now)
-  const gone = yield* query(() =>
-    db.run(sql`delete from ${authTables.oauthSignInFlows} where ${sql.identifier('expires_at')} < ${now}`),
-  )
+  const { oauthSignInFlows } = authMirror
+  const gone = yield* query(() => db.delete(oauthSignInFlows).where(lt(oauthSignInFlows.expiresAt, now)))
   return gone.meta.changes
 })
 
