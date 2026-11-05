@@ -1,5 +1,5 @@
 import { LinkRefused } from '@styld/protocol'
-import { Effect, Option, Stream } from 'effect'
+import { Effect, Option, Schema, Stream } from 'effect'
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
 import { fetchPublic } from '../providers/PublicWeb.ts'
 
@@ -39,34 +39,43 @@ const metaContent = (html: string, names: ReadonlyArray<string>) => {
   )
 }
 
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+/** A JSON-LD document's text, decoded; one that is not JSON is no document. */
+const decodeJson = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Unknown))
+const decodeList = Schema.decodeUnknownOption(Schema.Array(Schema.Unknown))
+const decodeGraph = Schema.decodeUnknownOption(Schema.Struct({ '@graph': Schema.Array(Schema.Unknown) }))
 
-/** Every object in a JSON-LD document, through arrays and `@graph`. */
-const nodesOf = (value: unknown): ReadonlyArray<Readonly<Record<string, unknown>>> => {
-  if (Array.isArray(value)) return value.flatMap(nodesOf)
-  if (!isRecord(value)) return []
-  return [value, ...nodesOf(value['@graph'])]
-}
+/** Every node of a JSON-LD document, through arrays and `@graph`. */
+const nodesOf = (value: unknown): ReadonlyArray<unknown> =>
+  Option.match(decodeList(value), {
+    onSome: (items) => items.flatMap(nodesOf),
+    onNone: () => [
+      value,
+      ...Option.match(decodeGraph(value), { onNone: () => [], onSome: (graph) => graph['@graph'].flatMap(nodesOf) }),
+    ],
+  })
 
-const isProduct = (node: Readonly<Record<string, unknown>>) => {
-  const type = node['@type']
-  return type === 'Product' || (Array.isArray(type) && type.includes('Product'))
-}
+/** A JSON-LD image: an address, or an object with its `url`. */
+const ImageRef = Schema.Union([Schema.String, Schema.Struct({ url: Schema.String })])
+const addressOf = (image: typeof ImageRef.Type) => (typeof image === 'string' ? image : image.url)
 
-/** A JSON-LD image: a string, the first of a list, or an object's `url`. */
-const imageOf = (value: unknown): Option.Option<string> => {
-  if (typeof value === 'string') return Option.some(value)
-  if (Array.isArray(value)) return value.length === 0 ? Option.none() : imageOf(value[0])
-  return isRecord(value) ? imageOf(value['url']) : Option.none()
-}
+/** A JSON-LD `Product` as Styld reads it: its type names Product, its image is one picture or a list (the first
+ * counts), and its name, when a text. */
+const Product = Schema.Struct({
+  '@type': Schema.Union([
+    Schema.Literal('Product'),
+    Schema.Array(Schema.String).check(Schema.makeFilter((types) => types.includes('Product'))),
+  ]),
+  image: Schema.optionalKey(Schema.Union([ImageRef, Schema.Array(ImageRef)])),
+  name: Schema.optionalKey(Schema.Unknown),
+})
+const decodeProduct = Schema.decodeUnknownOption(Product)
 
-const parsed = (text: string): unknown => {
-  try {
-    return JSON.parse(text)
-  } catch {
-    return null
-  }
+const isImageList = Schema.is(Schema.Array(ImageRef))
+
+/** The product's first picture's address, if it names one. */
+const productImage = ({ image }: typeof Product.Type): Option.Option<string> => {
+  if (image === undefined) return Option.none()
+  return Option.map(Option.fromNullishOr(isImageList(image) ? image[0] : image), addressOf)
 }
 
 /** The bodies of the page's JSON-LD scripts, found in one pass: a page of unclosed tags costs no more than its
@@ -89,24 +98,24 @@ const jsonLdBlocks = (html: string): ReadonlyArray<string> => {
 
 /** The page's JSON-LD `Product`, if it has one. */
 const productOf = (html: string) =>
-  Option.fromNullishOr(
+  Option.firstSomeOf(
     jsonLdBlocks(html)
-      .flatMap((block) => nodesOf(parsed(block)))
-      .find(isProduct),
+      .flatMap((block) => Option.match(decodeJson(block), { onNone: () => [], onSome: nodesOf }))
+      .map((node) => decodeProduct(node)),
   )
 
 /** What a product page says about itself, read from its HTML; its picture's address is made absolute on the page.
  * @internal Exported for its tests. */
 export const productFrom = (html: string, page: URL): Option.Option<ProductPage> => {
   const product = productOf(html)
-  const image = Option.flatMap(product, (node) => imageOf(node['image'])).pipe(
+  const image = Option.flatMap(product, productImage).pipe(
     Option.orElse(() => metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image'])),
     Option.flatMap((address) => Option.fromNullishOr(URL.parse(address.trim(), page))),
     // Shops still name pictures over plain http that their CDN serves over https too; only https is fetched.
     Option.map((url) => (url.protocol === 'http:' ? `https:${url.href.slice('http:'.length)}` : url.href)),
   )
-  const title = Option.flatMap(product, (node) =>
-    typeof node['name'] === 'string' ? Option.some(node['name']) : Option.none(),
+  const title = Option.flatMap(product, ({ name }) =>
+    typeof name === 'string' ? Option.some(name) : Option.none(),
   ).pipe(
     Option.orElse(() => metaContent(html, ['og:title', 'twitter:title'])),
     Option.map((text) => unescaped(text).trim().slice(0, 80).trim()),
