@@ -37,7 +37,7 @@ export type ObservabilityBase = Pick<ObservabilityMetadata, 'environment' | 'rel
 const DeploymentIdentity = Schema.Struct({
   environment: Environment,
   release: SafeText,
-  component: Schema.Literals(['server', 'web', 'edge']),
+  component: Schema.Literals(['server', 'threads', 'web', 'edge']),
 })
 
 class InvalidDeploymentIdentity extends Schema.TaggedError<InvalidDeploymentIdentity>()(

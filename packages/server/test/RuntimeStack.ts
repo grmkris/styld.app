@@ -21,7 +21,14 @@ export const makeStack = (generation: string) =>
       const threads = yield* Cloudflare.Worker('NativeStylistThreads', {
         ...stylistThreadWorker,
         main: 'packages/server/test/StylistThreadWorker.ts',
-        env: { STYLD_API: styld, STYLIST_THREADS: stylistThreadObjects },
+        // Its stage, release and Meta key, as the deployed one is bound them (`Config.ts` › `threadDeploymentOf`).
+        env: {
+          STYLD_API: styld,
+          STYLIST_THREADS: stylistThreadObjects,
+          STYLD_ENV: 'local',
+          STYLD_RELEASE: `native-${generation}`,
+          META_API_KEY: Redacted.make('native-test-meta-key'),
+        },
       })
       yield* styld.bind('StylistThreads', stylistThreadsOf(threads))
       // Execute the production SSR artifact in workerd. Website.Foldkit's dev
