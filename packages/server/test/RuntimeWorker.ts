@@ -205,7 +205,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/scan/') ||
           url.pathname.startsWith('/test/social/') ||
           url.pathname.startsWith('/test/imports/') ||
-          url.pathname.startsWith('/test/seed/')
+          url.pathname.startsWith('/test/seed/') ||
+          url.pathname.startsWith('/test/billing/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.
           return yield* (yield* authHandle(undefined)).pipe(
