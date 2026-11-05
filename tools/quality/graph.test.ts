@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, test } from 'vitest'
-import { assertBrowserSafe, checkDirection, checkGraph } from './graph.ts'
-import { importsOf, sourceFiles } from './source.ts'
+import { allowedCycles, areaOf, assertBrowserSafe, checkDirection, checkGraph, serverLayerBreaches } from './graph.ts'
+import { importsOf, sourceFiles, valueImportsOf } from './source.ts'
 
 const withSources = async <A>(sources: Record<string, string>, run: (root: string) => Promise<A>) => {
   const root = await mkdtemp(join(tmpdir(), 'styld-graph-'))
@@ -130,4 +130,58 @@ test('requires explicit imports when source resolution would be ambiguous', asyn
       await expect(checkGraph(root)).rejects.toThrow('Ambiguous source import')
     },
   )
+})
+
+const layered = (imports: Record<string, ReadonlyArray<string>>, allowed: typeof allowedCycles = []) =>
+  serverLayerBreaches(new Map(Object.entries(imports)), allowed)
+
+test('server areas are folders, the provider seam, or files at the top', () => {
+  expect(areaOf('wardrobe/Store.ts')).toBe('wardrobe/')
+  expect(areaOf('Config.ts')).toBe('Config.ts')
+  expect(areaOf('providers/Errors.ts')).toBe('providers/ (seam)')
+  expect(areaOf('ai/LanguageModel.ts')).toBe('providers/ (seam)')
+  expect(areaOf('providers/Meta.ts')).toBe('providers/')
+})
+
+test('the server layers: the bottom and the provider seam look down only, domain modules never reach a surface', () => {
+  expect(layered({ 'kernel/Db.ts': ['wardrobe/Store.ts'] })).toEqual([
+    'kernel/Db.ts -> wardrobe/Store.ts: the bottom imports nothing above it',
+  ])
+  expect(layered({ 'providers/Call.ts': ['capture/Providers.ts'] })).toEqual([
+    'providers/Call.ts -> capture/Providers.ts: the provider seam imports only the bottom and itself',
+  ])
+  expect(layered({ 'links/Links.ts': ['mcp/Route.ts'], 'photos/Photos.ts': ['tools/Tools.ts'] })).toEqual([
+    'links/Links.ts -> mcp/Route.ts: a domain module never imports a surface',
+    'photos/Photos.ts -> tools/Tools.ts: a domain module never imports a surface',
+  ])
+  expect(layered({ 'stylist/Catalogue.ts': ['mcp/Route.ts'] })).toEqual([
+    'stylist/Catalogue.ts -> mcp/Route.ts: only the MCP transport is in mcp/',
+  ])
+  // Adapters implement the ports domain modules declare; modules use the seam.
+  expect(
+    layered({
+      'providers/Meta.ts': ['capture/Providers.ts', 'providers/Http.ts'],
+      'capture/Drawing.ts': ['providers/Errors.ts', 'kernel/Db.ts'],
+      'tools/WardrobeTools.ts': ['wardrobe/Wardrobe.ts'],
+    }),
+  ).toEqual([])
+})
+
+test('two areas that import each other fail unless allowed, and an allowed pair that is no cycle any more fails', () => {
+  const cycle = { 'boards/Boards.ts': ['social/Public.ts'], 'social/Public.ts': ['boards/Shared.ts'] }
+  expect(layered(cycle)).toEqual(['boards/ <-> social/: two areas import each other; break the cycle'])
+  expect(layered(cycle, [['social/', 'boards/', 'kept']])).toEqual([])
+  expect(layered({ 'boards/Boards.ts': ['social/Public.ts'] }, [['boards/', 'social/', 'kept']])).toEqual([
+    'boards/ <-> social/: no longer a cycle; take it off allowedCycles',
+  ])
+})
+
+test('only what runs is an import between layers: type-only imports and re-exports leave nothing', () => {
+  const source = `import type { A } from './a.ts'; import { type B } from './b.ts'; import { C, type D } from './c.ts'
+    export type { E } from './e.ts'; export { F } from './f.ts'; const g = import('./g.ts')`
+  expect(valueImportsOf('fixture.ts', source)).toEqual(['./c.ts', './f.ts', './g.ts'])
+})
+
+test('every allowed cycle says why it is still there', () => {
+  for (const [, , why] of allowedCycles) expect(why.length).toBeGreaterThan(20)
 })

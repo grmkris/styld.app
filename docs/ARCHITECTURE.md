@@ -276,7 +276,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 
 Each pattern above has a gate in `bun run check` (`docs/STATUS.md` › Gates): `patterns:check` (drizzle only in the
 kernel, `fetch` only in providers, `env` only in Config/Resources, no `'x' in y`, no stand-ins, table ownership),
-`graph:check` (package boundaries), type-aware lint with anti-slop and complexity limits, the suppression census,
+`graph:check` (package boundaries, and the API Worker's layers and allowed cycles in `tools/quality/graph.ts`), type-aware lint with anti-slop and complexity limits, the suppression census,
 Knip, jscpd, the schema snapshot, unit and native tests and the bundle budget. Each concern has one owning gate:
 vendored hashes `vendor:check` (skills: repoagents), `any` and `!` lint, catalog keys x18n, ICU contracts
 `i18n:check`, TypeScript and Effect diagnostics `typecheck`.
