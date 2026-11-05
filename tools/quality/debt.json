@@ -1,0 +1,22 @@
+{
+  "dup.htmlEscapes": 4,
+  "dup.patienceMillis": 3,
+  "dup.unavailableHelpers": 48,
+  "effect.catchCause": 3,
+  "effect.ignore": 44,
+  "effect.orDie": 40,
+  "effect.orElseSucceed": 27,
+  "errors.causeDropped": 54,
+  "json.parse": 1,
+  "lifecycle.statusLiterals": 108,
+  "mcp.inlineSchemas": 55,
+  "modules.cyclePairs": 22,
+  "modules.foreignTableImports": 76,
+  "promise.runPromise": 3,
+  "sql.fragments": 55,
+  "sql.textSubqueries": 27,
+  "sql.wholeStatements": 47,
+  "web.colourLiterals": 21,
+  "web.messageVariantsMax": 101,
+  "web.stringIds": 122
+}
