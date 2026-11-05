@@ -9,6 +9,7 @@ import {
   offeredCaptureState,
   uploadedCaptureState,
 } from '../src/capture/CaptureLifecycle.ts'
+import { detectionLifecycle, foundDetectionState } from '../src/capture/DetectionLifecycle.ts'
 import { localD1 } from './LocalD1.ts'
 
 // A capture's lifecycle (`capture/CaptureLifecycle.ts`): the table of moves every writer of `captures.status` goes
@@ -75,4 +76,15 @@ describe('a capture’s lifecycle', () => {
       })
     }),
   )
+})
+
+describe('a detection’s lifecycle', () => {
+  test('waits in the tray until it is kept or discarded, and is decided once', () => {
+    expect(foundDetectionState).toBe('review')
+    expect(detectionLifecycle.canMove('review', 'kept')).toBe(true)
+    expect(detectionLifecycle.canMove('review', 'discarded')).toBe(true)
+    expect(detectionLifecycle.canMove('kept', 'discarded')).toBe(false)
+    expect(detectionLifecycle.moves.kept).toEqual([])
+    expect(detectionLifecycle.moves.discarded).toEqual([])
+  })
 })

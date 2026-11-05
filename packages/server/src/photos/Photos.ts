@@ -23,6 +23,7 @@ import { Context, Effect, Layer, Option, Predicate, Schema } from 'effect'
 import { captureKey, enqueueMatch, readObject, writeObject } from '../capture/Shared.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { offeredCaptureState } from '../capture/CaptureLifecycle.ts'
+import { foundDetectionState } from '../capture/DetectionLifecycle.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
 import { receivedUpload } from '../wardrobe/Received.ts'
@@ -279,7 +280,7 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
       id: detectionId,
       captureId,
       accountId: photo.accountId,
-      status: 'review',
+      status: foundDetectionState,
       cutoutKey: key,
       sourceKey: key,
       backCutoutKey: null,

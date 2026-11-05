@@ -13,6 +13,7 @@ import { Array, Context, Effect, Layer, Option } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
+import { decideDetections } from './DetectionLifecycle.ts'
 import { advanceCapture, type CaptureChanges, type CaptureState, intoTray, outOfTray } from './CaptureLifecycle.ts'
 import { matchRows } from './MatchStore.ts'
 import { advanceTurn, claimTurn, firstTurnState, type TurnChanges, type TurnState } from './TurnLifecycle.ts'
@@ -304,10 +305,7 @@ const pairRows = (db: Database) => {
     foldBack: (captureId: string, updatedAt: Date) =>
       query(() =>
         db.batch([
-          db
-            .update(detections)
-            .set({ status: 'discarded' })
-            .where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
+          decideDetections(db, eq(detections.captureId, captureId), 'discarded'),
           outOfTray(db, eq(captures.id, captureId), updatedAt),
         ]),
       ).pipe(Effect.asVoid),
@@ -388,18 +386,8 @@ const reviewRows = (db: Database) => ({
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => PieceRows.insert(db, piece)),
         ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
-        ...chunked(input.kept).map((chunk) =>
-          db
-            .update(detections)
-            .set({ status: 'kept' })
-            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
-        ),
-        ...chunked(input.discarded).map((chunk) =>
-          db
-            .update(detections)
-            .set({ status: 'discarded' })
-            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
-        ),
+        ...chunked(input.kept).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'kept')),
+        ...chunked(input.discarded).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'discarded')),
         ...input.linked.map(({ captureId, pieceId }) => GarmentRows.confirm(db, captureId, pieceId)),
         ...chunked(input.finished).map((chunk) => outOfTray(db, inArray(captures.id, chunk), input.now)),
       ]),
