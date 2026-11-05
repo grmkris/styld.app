@@ -86,10 +86,12 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     h.Maxlength(textLength.url),
     h.Value(draft.shopUrl),
     h.OnInput((value) => Message.UpdatedShopUrl({ value })),
-    ...(draft.shopUrlInvalid ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')] : []),
+    ...(DraftSave.guards.ShopUrlRefused(draft.save)
+      ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')]
+      : []),
     ...styled(h, textField()),
   ]),
-  draft.shopUrlInvalid
+  DraftSave.guards.ShopUrlRefused(draft.save)
     ? h.p(
         [h.Id('piece-shop-problem'), h.Role('alert'), ...styled(h, formError())],
         [format(locale, 'wardrobe.shopUrlInvalid', {})],

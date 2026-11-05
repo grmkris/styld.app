@@ -5,8 +5,10 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { SaveItems, SaveLook, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
 import * as AddSheet from '../src/page/Board/AddSheet.ts'
+import * as Chrome from '../src/page/Board/Chrome.ts'
 import { Message } from '../src/page/Board/Message.ts'
 import {
+  canChangePins,
   fromBoard,
   Gesture,
   init,
@@ -234,6 +236,20 @@ describe('pictures sent to the board', () => {
   test('all of them reaching the board leaves nothing to say', () => {
     const sending = update(open, Message.DroppedFiles({ files: [picture('a.png')] })).model
     expect(update(sending, Message.SucceededAddImage({ imageId })).model.upload).toEqual(Upload.Idle())
+  })
+
+  test('paste reads the clipboard first: an empty one leaves what the board said, pictures on it go up', () => {
+    const failed = modifyFields(open, { upload: () => Upload.Failed({ problem: 'failed' }) })
+    const paste = Message.GotChromeMessage({ message: Chrome.Message.ClickedMoreAction({ action: 'paste' }) })
+    const pasting = update(failed, paste).model
+    expect(pasting.upload).toEqual(Upload.Pasting({ problem: Option.some('failed') }))
+    expect(canChangePins(pasting)).toBe(false)
+    expect(update(pasting, Message.CompletedReadClipboard({ files: [] })).model.upload).toEqual(
+      Upload.Failed({ problem: 'failed' }),
+    )
+    expect(update(pasting, Message.CompletedReadClipboard({ files: [picture('a.png')] })).model.upload).toEqual(
+      Upload.Sending({ count: 1, problem: Option.none() }),
+    )
   })
 })
 

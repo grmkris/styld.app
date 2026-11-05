@@ -16,7 +16,7 @@ import {
   ProposalRef,
   Slot,
 } from '@styld/protocol'
-import { Array, Clock, Effect, Option, Order, Result, Schema } from 'effect'
+import { Array, Clock, Effect, Option, Order, Result, Schema, Struct } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -55,14 +55,14 @@ export type Swap = typeof Swap.Type
 export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 
 /** Today's outfits from the engine (Fast): every proposal of the run so far, best first within each batch, which one
- * is on the table, what the wardrobe lacks, and whether the rules have more and more are on their way. */
+ * is on the table, what the wardrobe lacks, and whether the run can grow. */
 export const Outfits = Schema.Struct({
   session: OutfitSession,
   proposals: Schema.Array(OutfitProposal),
   at: Schema.Int,
   missing: Schema.Array(Slot),
-  exhausted: Schema.Boolean,
-  refilling: Schema.Boolean,
+  /** Whether the run can grow: more to ask for, more on their way, or no more (Spin goes round what it has). */
+  supply: Schema.Literals(['more', 'refilling', 'exhausted']),
 })
 export type Outfits = typeof Outfits.Type
 export const OutfitsData = AsyncData.Schema(Outfits, Schema.Literal('Unavailable'))
@@ -74,8 +74,8 @@ export const Model = Schema.Struct({
   /** Today in the person's own time zone, read in the browser. */
   maybeDay: Schema.Option(Day),
   outfits: OutfitsData.schema,
-  /** Whether the table shows what was worn today, until Spin brings a proposal in. */
-  showsWorn: Schema.Boolean,
+  /** What the table shows: what was worn today, once there is that, until Spin or the tombola brings a proposal in. */
+  onTable: Schema.Literals(['worn', 'proposal']),
   motion: TableMotion,
   /** The outfit on the table after the person swapped one of its pieces, in place of the proposal Spin reached. */
   maybeSwapped: Schema.Option(Schema.Array(PieceId)),
@@ -98,7 +98,7 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
   maybeDay: Option.none(),
   outfits: AsyncData.Idle(),
-  showsWorn: true,
+  onTable: 'worn',
   motion: TableMotion.Still(),
   maybeSwapped: Option.none(),
   swap: Swap.Idle(),
@@ -294,7 +294,7 @@ const foldTombola = Update.foldChild({
         startRun(
           modifyFields(stepModel, {
             maybeAnchor: () => Option.some(pieceId),
-            showsWorn: () => false,
+            onTable: () => 'proposal',
             motion: () => TableMotion.Spun(),
           }),
         ),
@@ -358,7 +358,7 @@ const piecesOf = (ids: ReadonlyArray<PieceId>, pieces: ReadonlyArray<Piece>): Re
 /** The pieces of the outfit on the table now: what was worn today, else the proposal Spin reached as the person
  * swapped it. */
 const tableIds = (model: Model): ReadonlyArray<PieceId> => {
-  if (Worn.guards.Worn(model.worn) && model.showsWorn) return model.worn.pieceIds
+  if (Worn.guards.Worn(model.worn) && model.onTable === 'worn') return model.worn.pieceIds
   return Option.match(model.maybeSwapped, {
     onSome: (pieceIds) => pieceIds,
     onNone: () => Option.match(currentProposal(model), { onNone: () => [], onSome: (proposal) => proposal.pieceIds }),
@@ -370,7 +370,7 @@ export const tableOutfit = (model: Model, pieces: ReadonlyArray<Piece>): Readonl
   piecesOf(tableIds(model), pieces)
 
 /** Whether today's worn outfit is the one on the table. */
-export const showsWornOutfit = (model: Model) => Worn.guards.Worn(model.worn) && model.showsWorn
+export const showsWornOutfit = (model: Model) => Worn.guards.Worn(model.worn) && model.onTable === 'worn'
 
 /** Whether the outfit on the table offers to swap one of its pieces: it is a proposal, not what was worn, and every
  * other piece fits the engine's locks. */
@@ -380,16 +380,17 @@ export const canSwap = (model: Model, outfit: ReadonlyArray<Piece>) =>
   outfit.length >= 2 &&
   outfit.filter((piece) => !Option.contains(model.maybeAnchor, piece.id)).length - 1 <= mostLocked
 
+const supplyOf = (exhausted: boolean): Outfits['supply'] => (exhausted ? 'exhausted' : 'more')
+
 /** The run as it is after a batch came: the first batch starts it, a later one adds to it. */
 const withBatch = (outfits: OutfitsData, batch: OutfitProposals): Outfits =>
   Option.match(AsyncData.getData(outfits), {
-    onNone: () => ({ ...batch, at: 0, refilling: false }),
+    onNone: () => ({ ...Struct.omit(batch, ['mode', 'exhausted']), at: 0, supply: supplyOf(batch.exhausted) }),
     onSome: (run) => ({
       ...run,
       proposals: [...run.proposals, ...batch.proposals],
       missing: batch.missing,
-      exhausted: batch.exhausted || batch.proposals.length === 0,
-      refilling: false,
+      supply: supplyOf(batch.exhausted || batch.proposals.length === 0),
     }),
   })
 
@@ -413,14 +414,14 @@ const startRun = (model: Model): UpdateReturn =>
 const spin = (model: Model): UpdateReturn => {
   const run = AsyncData.getData(model.outfits)
   if (Option.isNone(run) || Option.isNone(model.maybeDay)) return { model }
-  const { proposals, at, exhausted, refilling, session } = run.value
+  const { proposals, at, supply, session } = run.value
   const next = at + 1 < proposals.length ? at + 1 : 0
-  const refill = !exhausted && !refilling && proposals.length - next - 1 < refillAt
-  const outfits = OutfitsData.Success({ data: { ...run.value, at: next, refilling: refilling || refill } })
+  const refill = supply === 'more' && proposals.length - next - 1 < refillAt
+  const outfits = OutfitsData.Success({ data: { ...run.value, at: next, supply: refill ? 'refilling' : supply } })
   return {
     model: modifyFields(model, {
       outfits: () => outfits,
-      showsWorn: () => false,
+      onTable: () => 'proposal',
       maybeSwapped: () => Option.none(),
       swap: () => Swap.Idle(),
       worn: () => Worn.NotYet(),
@@ -571,7 +572,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         outfits: (outfits) =>
           Option.match(AsyncData.getData(outfits), {
             onNone: () => AsyncData.settle(outfits, unavailable),
-            onSome: (run) => OutfitsData.Success({ data: { ...run, exhausted: true, refilling: false } }),
+            onSome: (run) => OutfitsData.Success({ data: { ...run, supply: 'exhausted' } }),
           }),
       }),
     }),
@@ -587,7 +588,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededWear: ({ pieceIds }) => ({
       model: modifyFields(model, {
         worn: () => Worn.Worn({ pieceIds }),
-        showsWorn: () => true,
+        onTable: () => 'worn',
         swap: () => Swap.Idle(),
       }),
     }),

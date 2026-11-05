@@ -15,7 +15,7 @@ import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import * as TryItView from './TryItView.ts'
-import { type Model, canChangePins, PinWork, Upload } from './Model.ts'
+import { type Model, canChangePins, isUploading, PinWork } from './Model.ts'
 import * as MakeView from './MakeView.ts'
 import * as OutfitsView from './OutfitsView.ts'
 import * as styles from './PageView.styles.ts'
@@ -140,7 +140,7 @@ const readyView = (
         pinsFailed: PinWork.guards.Failed(model.pinWork),
         canChangePins: canChangePins(model),
         canTidy: Array.isReadonlyArrayNonEmpty(model.items),
-        canPaste: !model.isPasting && !Upload.guards.Sending(model.upload),
+        canPaste: !isUploading(model.upload),
       },
       toParentMessage: toChrome,
     }),

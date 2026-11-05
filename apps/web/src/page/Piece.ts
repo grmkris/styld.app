@@ -371,7 +371,7 @@ const submittedEdit = (model: Model): UpdateReturn =>
         : !shopUrlSendable(draft.shopUrl)
           ? {
               model: modifyFields(model, {
-                draft: () => Option.some(modifyFields(draft, { shopUrlInvalid: () => true })),
+                draft: () => Option.some(modifyFields(draft, { save: () => DraftSave.ShopUrlRefused() })),
               }),
             }
           : {
@@ -539,8 +539,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ChosePattern: ({ pattern }) => editDetails(model, changeDetails.pattern(pattern)),
     UpdatedCategory: ({ value }) => editDetails(model, changeDetails.category(value)),
     ChoseCategory: (category) => editDetails(model, changeDetails.chosenCategory(category)),
-    UpdatedShopUrl: ({ value }) =>
-      editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
+    UpdatedShopUrl: ({ value }) => editDraft(model, typedInto('shopUrl', value)),
     ClickedRotate: () => editDraft(model, (draft) => modifyFields(draft, { rotation: nextTurn })),
     SubmittedEdit: () => submittedEdit(model),
     SucceededUpdatePiece: ({ piece }) => ({

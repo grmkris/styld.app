@@ -151,12 +151,10 @@ describe('a piece you own', () => {
       message(Message.SubmittedEdit()),
       Command.expectNone(),
       model(({ draft }) =>
-        expect(Option.map(draft, ({ shopUrlInvalid }) => shopUrlInvalid)).toEqual(Option.some(true)),
+        expect(Option.map(draft, ({ save }) => save)).toEqual(Option.some(DraftSave.ShopUrlRefused())),
       ),
       message(Message.UpdatedShopUrl({ value: 'https://shop.example/coat' })),
-      model(({ draft }) =>
-        expect(Option.map(draft, ({ shopUrlInvalid }) => shopUrlInvalid)).toEqual(Option.some(false)),
-      ),
+      model(({ draft }) => expect(Option.map(draft, ({ save }) => save)).toEqual(Option.some(DraftSave.Editing()))),
     )
   })
 

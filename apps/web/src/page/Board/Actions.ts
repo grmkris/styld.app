@@ -219,12 +219,21 @@ export const paperSaved = (model: Model, board: Board): UpdateReturn =>
     ? { model: withChecked(model, board) }
     : { model }
 
+/** A paste that brought no picture leaves the board saying what it said before. */
+const pasteEnded = (upload: Upload): Upload =>
+  Upload.guards.Pasting(upload)
+    ? Option.match(upload.problem, {
+        onNone: () => Upload.Idle(),
+        onSome: (problem) => Upload.Failed({ problem }),
+      })
+    : upload
+
 /** Pictures pasted, dropped, chosen or read from the clipboard go up one by one. */
 export const picturesChosen = (model: Model, files: ReadonlyArray<File>): UpdateReturn => {
   const taken = Array.take(files, picturesAtOnce)
-  if (Array.isReadonlyArrayEmpty(taken)) return { model: modifyFields(model, { isPasting: () => false }) }
+  if (Array.isReadonlyArrayEmpty(taken)) return { model: modifyFields(model, { upload: pasteEnded }) }
   return picturesSent(
-    modifyFields(model, { isPasting: () => false }),
+    model,
     taken.map((file) => AddImage({ boardId: model.boardId, file })),
   )
 }

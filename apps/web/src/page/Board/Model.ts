@@ -93,12 +93,26 @@ export const UploadProblem = Schema.Literals(['refused', 'failed'])
 export type UploadProblem = typeof UploadProblem.Type
 
 /** Pictures on their way to the board, with the last that did not reach it; once none is on its way, a failure among
- * them is what the board says. */
+ * them is what the board says. Paste reads the clipboard first (a phone's browser shares it only on a tap), keeping
+ * the failure it found, which stays if the clipboard holds no picture. */
 export const Upload = defineTaggedUnion({
   Idle: {},
+  Pasting: { problem: Schema.Option(UploadProblem) },
   Sending: { count: Schema.Int, problem: Schema.Option(UploadProblem) },
   Failed: { problem: UploadProblem },
 })
+
+/** The failure the board says, when it says one. */
+export const uploadProblem = (upload: Upload): Option.Option<UploadProblem> =>
+  Upload.match(upload, {
+    Idle: () => Option.none(),
+    Pasting: ({ problem }) => problem,
+    Sending: () => Option.none(),
+    Failed: ({ problem }) => Option.some(problem),
+  })
+
+/** Whether pictures are being read or sent, so another paste or a pin change waits. */
+export const isUploading = (upload: Upload): boolean => Upload.guards.Pasting(upload) || Upload.guards.Sending(upload)
 export type Upload = typeof Upload.Type
 
 export const LookSave = defineTaggedUnion({
@@ -165,7 +179,6 @@ export const Model = Schema.Struct({
   upload: Upload,
   look: LookSave,
   toast: Toast,
-  isPasting: Schema.Boolean,
   /** Files are being dragged over the page: the table shows it takes them. */
   isDropping: Schema.Boolean,
   drop: FileDrop.Model,
@@ -204,7 +217,6 @@ export const init = (boardId: string): Model => ({
   upload: Upload.Idle(),
   look: LookSave.Idle(),
   toast: Toast.Hidden(),
-  isPasting: false,
   isDropping: false,
   drop: FileDrop.init({ id: 'board-pictures' }),
   make: Make.init(boardId),
@@ -240,5 +252,4 @@ export const canChangePins = (model: Model): boolean =>
   (Saving.guards.Saved(model.saving) || Saving.guards.Replaced(model.saving)) &&
   Gesture.guards.Idle(model.gesture) &&
   !PinWork.guards.Sending(model.pinWork) &&
-  !Upload.guards.Sending(model.upload) &&
-  !model.isPasting
+  !isUploading(model.upload)

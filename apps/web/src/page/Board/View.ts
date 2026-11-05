@@ -11,7 +11,7 @@ import type { PiecesData } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
 import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
-import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload } from './Model.ts'
+import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload, uploadProblem } from './Model.ts'
 import * as styles from './View.styles.ts'
 import * as AddSheetView from './AddSheetView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
@@ -222,13 +222,13 @@ const savingStatus = (model: Model, locale: Locale) =>
   })
 
 const statusView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const upload = Upload.match(model.upload, {
-    Idle: () => Option.none<string>(),
-    Sending: ({ count }) => Option.some(format(locale, 'board.sending', { count })),
-    Failed: ({ problem }) =>
-      Option.some(format(locale, problem === 'refused' ? 'board.pictureRefused' : 'board.pictureFailed', {})),
-  })
-  const failed = Saving.guards.Failed(model.saving) || Upload.guards.Failed(model.upload)
+  const problem = uploadProblem(model.upload)
+  const upload = Upload.guards.Sending(model.upload)
+    ? Option.some(format(locale, 'board.sending', { count: model.upload.count }))
+    : Option.map(problem, (failed) =>
+        format(locale, failed === 'refused' ? 'board.pictureRefused' : 'board.pictureFailed', {}),
+      )
+  const failed = Saving.guards.Failed(model.saving) || Option.isSome(problem)
   return h.p(
     [h.Role('status'), ...(failed ? [h.DataAttribute('tone', 'error')] : []), ...styled(h, styles.status())],
     [Option.getOrElse(upload, () => savingStatus(model, locale))],

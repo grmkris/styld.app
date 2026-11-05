@@ -57,6 +57,8 @@ import {
   PinWork,
   Saving,
   Ticks,
+  Upload,
+  uploadProblem,
   withChecked,
   withSharing,
 } from './Model.ts'
@@ -199,7 +201,7 @@ const tidy = (model: Model): UpdateReturn => committed(model, model.items, tidie
 
 /** Paste asks the browser for the clipboard's pictures; a phone's browser shares them only on a tap. */
 const pasted = (model: Model): UpdateReturn => ({
-  model: modifyFields(model, { isPasting: () => true }),
+  model: modifyFields(model, { upload: (upload) => Upload.Pasting({ problem: uploadProblem(upload) }) }),
   commands: [ReadClipboard()],
 })
 
