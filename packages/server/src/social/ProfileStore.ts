@@ -1,8 +1,8 @@
 import { accounts, profiles, profileTranslations } from '@styld/db'
 import { ProfileNotPublished, Unavailable } from '@styld/protocol'
-import { and, eq, exists } from 'drizzle-orm'
+import { and, eq, exists, inArray } from 'drizzle-orm'
 import { Effect, Option } from 'effect'
-import { type Database, first, query } from '../kernel/Db.ts'
+import { type Database, first, inChunks, query } from '../kernel/Db.ts'
 
 // Profiles in D1, one per account: the only queries that read a profile by its account or a handle's owner, for every
 // module that needs them. Only `Profiles` and `Curation` write the table.
@@ -31,6 +31,15 @@ export const profileOf = (db: Database['Service'], accountId: string) =>
       .where(and(eq(profiles.accountId, accountId), accountOpen(db)))
       .limit(1),
   ).pipe(Effect.map(first))
+
+/** The profiles of these accounts that have one and are open. */
+export const profilesOf = (db: Database['Service'], accountIds: ReadonlyArray<string>) =>
+  inChunks(accountIds, (chunk) =>
+    db
+      .select()
+      .from(profiles)
+      .where(and(inArray(profiles.accountId, chunk), accountOpen(db))),
+  )
 
 /** The account behind a handle, if anyone's; `published` asks only for a profile others may be shown. */
 export const handleOwner = (db: Database['Service'], handle: string, published: 'any' | 'published' = 'any') =>

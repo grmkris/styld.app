@@ -76,6 +76,9 @@ const publicStore = (db: Drizzle) => ({
     ).pipe(Effect.map(first)),
   board: (boardId: string) =>
     query(() => db.select().from(boards).where(eq(boards.id, boardId)).limit(1)).pipe(Effect.map(first)),
+  /** The boards with these ids, whoever's and however visible: `Public.ts` decides what others see. */
+  boards: (boardIds: ReadonlyArray<string>) =>
+    inChunks(boardIds, (chunk) => db.select().from(boards).where(inArray(boards.id, chunk))),
   /** The account's public boards, the most recently published first. */
   publicBoards: (accountId: string) =>
     query(() =>
