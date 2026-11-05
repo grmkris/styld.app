@@ -5,7 +5,7 @@ import { Clock, Effect } from 'effect'
 import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/CloudflareTracer'
 import * as Server from 'foldkit/experimental/server'
 import { SessionHttp } from '@styld/auth/config'
-import { catalogVersion } from '@styld/i18n'
+import { catalogVersion, format } from '@styld/i18n'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
@@ -89,9 +89,40 @@ const documentHead =
   '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17120f">' +
   '<link rel="icon" href="/favicon.svg">'
 
+/** Link previews in chats and on social sites (Open Graph, X): the page's own title, the landing's line as the
+ * description, and one picture of the landing. Crawlers need the picture's address absolute, so every stage names
+ * production's. */
+const shareImage = 'https://styld.app/og.jpg'
+
+const attribute = (value: string) =>
+  value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+
+const shareHead = (title: string, lang: string | undefined) => {
+  const description = attribute(format(lang === 'sl' ? 'sl' : 'en', 'landing.hero.lede', {}))
+  const name = attribute(title)
+  return [
+    `<meta name="description" content="${description}">`,
+    '<meta property="og:site_name" content="Styld">',
+    '<meta property="og:type" content="website">',
+    `<meta property="og:title" content="${name}">`,
+    `<meta property="og:description" content="${description}">`,
+    `<meta property="og:image" content="${shareImage}">`,
+    '<meta property="og:image:width" content="1200">',
+    '<meta property="og:image:height" content="630">',
+    '<meta name="twitter:card" content="summary_large_image">',
+    `<meta name="twitter:title" content="${name}">`,
+    `<meta name="twitter:description" content="${description}">`,
+    `<meta name="twitter:image" content="${shareImage}">`,
+  ].join('')
+}
+
 export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
   Server.renderDocument(renderedApplication, assets, {
-    head: [documentHead, facePreloads(renderedApplication.lang)].join(''),
+    head: [
+      documentHead,
+      shareHead(renderedApplication.title, renderedApplication.lang),
+      facePreloads(renderedApplication.lang),
+    ].join(''),
   }).replace(
     'content="width=device-width, initial-scale=1.0"',
     'content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"',
