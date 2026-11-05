@@ -1,9 +1,8 @@
 import { mediaDeletions } from '@styld/db'
 import { asc, inArray, lt } from 'drizzle-orm'
 import { Array, DateTime, Duration, Effect } from 'effect'
-import type { Sweep } from '../jobs/Sweeps.ts'
-import { chunked, Database, query } from './Db.ts'
-import { deletePrefix, type Listing, Media } from './Media.ts'
+import { chunked, type Database, query } from './Db.ts'
+import { deletePrefix, type Listing } from './Media.ts'
 
 // A deleted row's own objects go durably: the batch that deletes the row (a piece, a photo) also records its prefix as
 // owed a delete, the request then empties the prefix and forgets the record, and the sweep retries every record R2
@@ -90,11 +89,3 @@ export const sweepOwed = Effect.fn('Styld.Media.sweepOwed')(function* (owed: Owe
   const until = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, owedPatience))
   return yield* clearOwed(owed, bucket, yield* owed.due(until, sweepBatch))
 })
-
-/** The sweep of prefixes still owed a delete, oldest first. */
-export const owedMediaSweep: Sweep<Database | Media> = {
-  name: 'mediaDeletions',
-  run: Effect.gen(function* () {
-    return yield* sweepOwed(owedMedia(yield* Database), (yield* Media).bucket)
-  }),
-}

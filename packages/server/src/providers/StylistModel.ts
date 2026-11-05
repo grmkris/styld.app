@@ -1,9 +1,8 @@
 import { Effect, Layer } from 'effect'
 import { WorkerEnvironment } from 'effect-cf'
-import { textModel } from '../ai/LanguageModel.ts'
+import { type TextTask, textModel } from '../ai/LanguageModel.ts'
 import { threadDeploymentOf } from '../Config.ts'
 import { analyticsEngine, type AnalyticsDataset, CaptureMetrics } from '../kernel/Metrics.ts'
-import { styldModel } from '../stylist/Policy.ts'
 import type { Fetch } from './Http.ts'
 import { metaBase } from './Meta.ts'
 import { makeTextCompletions, TextCompletions } from './Text.ts'
@@ -22,25 +21,27 @@ declare global {
   }
 }
 
-/** Styld's chat model over the Thread Worker's bindings, asking Meta at `base` through `fetch`, as `Live.ts` gives
- * the API Worker's providers theirs. A Worker without its bindings is a broken deployment. */
-const stylistModelOver = (http: { readonly fetch: Fetch; readonly base: string }) =>
+/** The chat's text task (`stylist/Policy.ts` › `styldModel`) over the Thread Worker's bindings, asking Meta at `base`
+ * through `fetch`, as `Live.ts` gives the API Worker's providers theirs. A Worker without its bindings is a broken
+ * deployment. */
+const stylistModelOver = (task: TextTask, http: { readonly fetch: Fetch; readonly base: string }) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const env = yield* WorkerEnvironment
       const deployment = yield* threadDeploymentOf(env)
       const completions = makeTextCompletions({
-        provider: styldModel.model.provider,
+        provider: task.model.provider,
         base: `${http.base}/v1`,
         key: deployment.metaApiKey,
         fetch: http.fetch,
       })
-      return textModel(styldModel).pipe(
+      return textModel(task).pipe(
         Layer.provide(TextCompletions.layer(completions)),
         Layer.provide(Layer.succeed(CaptureMetrics, analyticsEngine(env.AI_CALLS, deployment))),
       )
     }),
   )
 
-/** Styld's chat model on Meta's API. */
-export const stylistModel = stylistModelOver({ fetch: (input, init) => globalThis.fetch(input, init), base: metaBase })
+/** The chat's model on Meta's API. */
+export const stylistModel = (task: TextTask) =>
+  stylistModelOver(task, { fetch: (input, init) => globalThis.fetch(input, init), base: metaBase })

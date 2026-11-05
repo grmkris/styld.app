@@ -9,7 +9,7 @@ import { landingMediaRoute } from './LandingMedia.ts'
 import { Database, query } from './kernel/Db.ts'
 import { module } from './kernel/Module.ts'
 import { Media } from './kernel/Media.ts'
-import { owedMediaSweep } from './kernel/MediaDeletions.ts'
+import { owedMedia, sweepOwed } from './kernel/MediaDeletions.ts'
 import { Pacing } from './kernel/Pacing.ts'
 import { forgetOldReceipts } from './kernel/Receipts.ts'
 import { Holds } from './usage/Holds.ts'
@@ -32,7 +32,11 @@ const sweeps: ReadonlyArray<Sweep<Database | Holds | Media>> = [
   { name: 'receipts', run: Effect.flatMap(Database, (db) => forgetOldReceipts(db, forgetBatch)) },
   { name: 'googleSignIns', run: forgetGoogleFlows },
   { name: 'settlements', run: Effect.flatMap(Holds, (holds) => holds.sweep) },
-  owedMediaSweep,
+  // Deleted pieces' and photos' prefixes R2 could not empty at once (`kernel/MediaDeletions.ts`).
+  {
+    name: 'mediaDeletions',
+    run: Effect.flatMap(Database, (db) => Effect.flatMap(Media, ({ bucket }) => sweepOwed(owedMedia(db), bucket))),
+  },
 ]
 
 /** What every deployment serves besides its modules: health, the browser telemetry relay, the landing's films, forgetting receipts past
