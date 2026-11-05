@@ -1,4 +1,5 @@
 import { format, type Locale, type MessageKey, type MessageValues } from '@styld/i18n'
+import { escapeHtml } from '@styld/protocol'
 import type { OAuthServer } from '@yielded/auth'
 
 // The page that asks the person to let an assistant (ChatGPT, Claude) into their Styld, in the website's Gallery look
@@ -14,14 +15,6 @@ export interface ConsentPerson {
   readonly name: string
   readonly email: string | undefined
 }
-
-const escapeHtml = (value: string) =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
 
 /** The consent page: who asks, as whom, what it may do and where it returns, then Allow, Deny and another account.
  * It keeps Yielded's form: the POST action, the csrf field and the approve and deny decisions. */
