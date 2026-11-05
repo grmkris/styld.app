@@ -69,6 +69,8 @@ export default defineConfig({
       // The contract's errors declare how they read to an assistant (their MCP `guide`), in the same English; the
       // website never shows them and words its refusals from the catalogs.
       'packages/protocol/src/**/*.ts': ['/[\\s\\S]*/'],
+      // Lifecycles name their table and say which move broke their table of moves: a defect, read only in the logs.
+      'packages/server/src/**/*Lifecycle.ts': ['/[\\s\\S]*/'],
       // A broken invariant of the server's own hold ids, read only in its logs.
       'packages/server/src/usage/Holds.ts': ['/reserved with another amount$/'],
       // A broken invariant of the API's composition, read only in its logs.
