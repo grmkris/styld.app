@@ -12,11 +12,9 @@ import {
   flipIcon,
   forwardIcon,
   backwardIcon,
-  pasteIcon,
   photoIcon,
   redoIcon,
   textIcon,
-  tidyIcon,
   undoIcon,
 } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
@@ -25,7 +23,7 @@ import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import { findItem } from './Edits.ts'
 import { Message } from './Message.ts'
-import { LookSave, type Model, Ticks, Upload } from './Model.ts'
+import { LookSave, type Model, Ticks } from './Model.ts'
 import * as styles from './View.styles.ts'
 
 /** An icon and its name; on a phone the name is read, not shown, so the tools keep to one row above the table. */
@@ -84,13 +82,6 @@ export const toolbarView = (model: Model, locale: Locale, h: HtmlBuilder<Message
         h,
       ),
       tool(
-        format(locale, 'board.tidy', {}),
-        tidyIcon(h),
-        Message.ClickedTidy(),
-        Array.isReadonlyArrayEmpty(model.items),
-        h,
-      ),
-      tool(
         format(locale, 'board.addText', {}),
         textIcon(h),
         Message.ClickedAddText({ text: format(locale, 'board.newText', {}) }),
@@ -98,13 +89,6 @@ export const toolbarView = (model: Model, locale: Locale, h: HtmlBuilder<Message
         h,
       ),
       pictureTool(model, locale, h),
-      tool(
-        format(locale, 'board.paste', {}),
-        pasteIcon(h),
-        Message.ClickedPaste(),
-        model.isPasting || Upload.guards.Sending(model.upload),
-        h,
-      ),
     ],
   )
 
@@ -116,8 +100,9 @@ const tickedPieces = (model: Model): Option.Option<number> =>
       Option.some(Array.filter(model.items, (item) => Schema.is(PieceItem)(item) && itemIds.includes(item.id)).length),
   })
 
-/** Select pieces for a look (T-16), and Save as a look: the ticked pieces in select mode, else every piece on the
- * table. It waits for a piece, and says why to a screen reader. */
+/** Save as a look (T-16): the first tap ticks every piece on the table, a tap on a piece leaves it out or puts it back,
+ * and Save keeps the ticked ones; Cancel leaves the table as it was. It waits for a piece, and says why to a screen
+ * reader. */
 export const saveLookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const hasPieces = Array.some(model.items, Schema.is(PieceItem))
   const ticked = tickedPieces(model)
@@ -126,20 +111,9 @@ export const saveLookView = (model: Model, locale: Locale, h: HtmlBuilder<Messag
   return h.div(styled(h, styles.saveLook()), [
     actionButton(
       {
-        label: format(locale, Option.isSome(ticked) ? 'board.selectDone' : 'board.select', {}),
-        style: cx(secondaryAction(), smallAction()),
-        onClick: Option.isSome(ticked) ? Message.ClickedDoneSelecting() : Message.ClickedSelect(),
-        isDisabled: !hasPieces,
-        pressed: Option.isSome(ticked),
-      },
-      h,
-    ),
-    actionButton(
-      {
         label: Option.match(ticked, {
           onNone: () => format(locale, 'board.saveLook', {}),
-          onSome: (count) =>
-            count > 0 ? format(locale, 'board.saveSelectedLook', { count }) : format(locale, 'board.saveLook', {}),
+          onSome: (count) => format(locale, 'board.saveSelectedLook', { count }),
         }),
         leading: addIcon(h),
         style: cx(primaryAction(), smallAction()),
@@ -149,6 +123,16 @@ export const saveLookView = (model: Model, locale: Locale, h: HtmlBuilder<Messag
       },
       h,
     ),
+    Option.isSome(ticked)
+      ? actionButton(
+          {
+            label: format(locale, 'common.cancel', {}),
+            style: cx(secondaryAction(), smallAction()),
+            onClick: Message.ClickedCancelSelecting(),
+          },
+          h,
+        )
+      : h.empty,
     canSave ? h.empty : h.span([h.Id('board-look-hint'), ...styled(h, visuallyHidden())], [format(locale, hint, {})]),
   ])
 }

@@ -263,13 +263,13 @@ describe('saving a look from the board (T-16)', () => {
     addedAt: '2026-11-04T08:00:00.000Z',
   })
 
-  test('select mode ticks and unticks pieces, and saves only the ticked ones, then pins the look', () => {
+  test('Save as a look ticks every piece first, a tap leaves one out, and Save keeps the rest, then pins the look', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSelect()),
-      message(Message.ToggledTick({ id: knit.id })),
-      message(Message.ToggledTick({ id: shorts.id })),
+      message(Message.ClickedSaveLook()),
+      Command.expectNone(),
+      model((current) => expect(current.ticks).toEqual(Ticks.On({ itemIds: [knit.id, shorts.id] }))),
       message(Message.ToggledTick({ id: knit.id })),
       model((current) => expect(current.ticks).toEqual(Ticks.On({ itemIds: [shorts.id] }))),
       message(Message.ClickedSaveLook()),
@@ -287,10 +287,11 @@ describe('saving a look from the board (T-16)', () => {
     )
   })
 
-  test('with nothing ticked outside select mode, every piece on the table is saved, top of the stack first', () => {
+  test('with every piece left ticked, the whole table is saved, top of the stack first', () => {
     story(
       update,
       given(open),
+      message(Message.ClickedSaveLook()),
       message(Message.ClickedSaveLook()),
       Command.expectExact(SaveLook({ boardId: board.id, name: 'Weekend', pieceIds: [shorts.pieceId, knit.pieceId] })),
       Command.resolve(SaveLook, Message.FailedSaveLook()),
@@ -298,18 +299,20 @@ describe('saving a look from the board (T-16)', () => {
     )
   })
 
-  test('select mode with nothing ticked saves nothing, a tap moves nothing, and Done leaves it', () => {
+  test('with every piece left out nothing is saved, a tap moves nothing, and Cancel leaves it', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSelect()),
+      message(Message.ClickedSaveLook()),
+      message(Message.ToggledTick({ id: knit.id })),
+      message(Message.ToggledTick({ id: shorts.id })),
       message(Message.ClickedSaveLook()),
       Command.expectNone(),
       model((current) => {
         expect(LookSave.guards.NoPieces(current.look)).toBe(true)
         expect(current.items).toEqual(open.items)
       }),
-      message(Message.ClickedDoneSelecting()),
+      message(Message.ClickedCancelSelecting()),
       model((current) => expect(Ticks.guards.Off(current.ticks)).toBe(true)),
     )
   })

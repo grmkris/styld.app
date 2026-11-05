@@ -347,6 +347,13 @@ export const toastAction = style({
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'inkHover' } },
 })
 export const fine = style({ fontSize: 'small', color: 'ink3' })
+/** The keyboard's shortcuts, said only where there is a keyboard and a pointer to go with it. */
+export const keys = style({
+  display: 'none',
+  fontSize: 'small',
+  color: 'ink3',
+  '@media (hover: hover) and (pointer: fine)': { display: 'block' },
+})
 
 export const tray = style({
   display: 'grid',

@@ -207,8 +207,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.saveSelectedLook': { readonly count: number }
   'board.saved': Readonly<Record<string, never>>
   'board.saving': Readonly<Record<string, never>>
-  'board.select': Readonly<Record<string, never>>
-  'board.selectDone': Readonly<Record<string, never>>
   'board.selectHint': Readonly<Record<string, never>>
   'board.selectPiece': { readonly name: string | number }
   'board.selected': Readonly<Record<string, never>>
@@ -1187,4 +1185,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '19da635b7e1a398cd59047d0bfe9e8026e1af3cff709add55b48f297c3223052'
+export const catalogVersion = 'ed3aedfbd51ba23c06fe1a23cde8306ebe997d6da3f05add4dc545403f1e0e3c'

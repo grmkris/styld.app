@@ -1,6 +1,6 @@
 import { FileDrop } from '@foldkit/ui'
-import { type Board, tidied } from '@styld/protocol'
-import { Option, Result } from 'effect'
+import { type Board, PieceItem, tidied } from '@styld/protocol'
+import { Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import {
@@ -122,6 +122,14 @@ const pasted = (model: Model): UpdateReturn => ({
   commands: [ReadClipboard()],
 })
 
+/** Save as a look's first tap: every piece on the table ticked, for the person to leave some out. */
+const selectionStarted = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, {
+    ticks: () => Ticks.On({ itemIds: model.items.filter(Schema.is(PieceItem)).map((item) => item.id) }),
+    maybeSelectedId: () => Option.none(),
+  }),
+})
+
 /** A row of the ⋯ sheet: the sheet closes, then the board renames, tidies or pastes. */
 const moreAction = (model: Model, action: 'rename' | 'tidy' | 'paste'): UpdateReturn =>
   Update.combine(model, [
@@ -167,7 +175,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     PressedEscape: () => pressedEscape(model),
     ClickedUndo: () => undone(model),
     ClickedRedo: () => redone(model),
-    ClickedTidy: () => tidy(model),
     ClickedAddText: ({ text }) => addedText(model, text),
     ClickedWardrobePiece: ({ pieceId }) =>
       Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closeAddSheet]),
@@ -192,19 +199,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     DroppedFiles: ({ files }) => picturesChosen(modifyFields(model, { isDropping: () => false }), files),
     DraggedFilesOver: () => (model.isDropping ? { model } : { model: modifyFields(model, { isDropping: () => true }) }),
     EndedFileDrag: () => ({ model: modifyFields(model, { isDropping: () => false }) }),
-    ClickedPaste: () => pasted(model),
     ClickedMoreAction: ({ action }) => moreAction(model, action),
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
     ...addSteps(model),
-    ClickedSelect: () => ({
-      model: modifyFields(model, { ticks: () => Ticks.On({ itemIds: [] }), maybeSelectedId: () => Option.none() }),
-    }),
-    ClickedDoneSelecting: () => ({ model: modifyFields(model, { ticks: () => Ticks.Off() }) }),
+    ClickedCancelSelecting: () => ({ model: modifyFields(model, { ticks: () => Ticks.Off() }) }),
     ToggledTick: ({ id }) => tickToggled(model, id),
-    ClickedSaveLook: () => lookRequested(model),
+    ClickedSaveLook: () => (Ticks.guards.On(model.ticks) ? lookRequested(model) : selectionStarted(model)),
     SucceededSaveLook: ({ lookId, board }) => ({
       model: modifyFields(model, { look: () => LookSave.Saved({ lookId }), pins: () => board.pins }),
     }),

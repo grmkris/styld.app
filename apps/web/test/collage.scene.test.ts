@@ -79,7 +79,8 @@ describe('the collage editor', () => {
       expect(role('toolbar', { name: 'Board tools' })).toExist(),
       expect(role('button', { name: 'Undo' })).toExist(),
       expect(role('button', { name: 'Add text' })).toExist(),
-      expect(role('button', { name: 'Paste' })).toExist(),
+      expect(role('button', { name: 'Paste' })).toBeAbsent(),
+      expect(role('button', { name: 'Tidy up' })).toBeAbsent(),
       expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-disabled', 'true'),
       expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-describedby', 'board-look-hint'),
       expect(text('Put some of your pieces on the table first.')).toExist(),
@@ -94,19 +95,17 @@ describe('the collage editor', () => {
     )
   })
 
-  test('Select pieces turns taps into ticks for a look, holds Save until one is ticked, and Done leaves it', () => {
+  test('Save as a look ticks every piece, a tap leaves one out, and Cancel leaves the table as it was', () => {
     scene(
       { update, view },
       given(editing([knit])),
       measured,
-      expect(role('button', { name: 'Select pieces' })).toHaveAttr('aria-pressed', 'false'),
-      click(role('button', { name: 'Select pieces' })),
-      expect(role('button', { name: 'Done' })).toHaveAttr('aria-pressed', 'true'),
-      expect(text('Tap the pieces that make the look.')).toExist(),
-      expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-disabled', 'true'),
-      click(role('button', { name: 'Done' })),
-      expect(role('button', { name: 'Select pieces' })).toExist(),
-      expect(role('button', { name: 'Save as a look' })).not.toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: 'Save as a look' })),
+      expect(text('Every piece is ticked. Tap one to leave it out, or to put it back.')).toExist(),
+      expect(role('button', { name: 'Save 1 piece as a look' })).not.toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: 'Cancel' })),
+      expect(role('button', { name: 'Save as a look' })).toExist(),
+      expect(role('button', { name: 'Cancel' })).toBeAbsent(),
     )
   })
 

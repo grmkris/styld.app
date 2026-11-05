@@ -721,9 +721,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'board.newText': 'Tvoje besede',
   'board.addPicture': 'Dodaj sliko',
   'board.paste': 'Prilepi',
-  'board.select': 'Izberi kose',
-  'board.selectDone': 'Končano',
-  'board.selectHint': 'Tapni kose, ki sestavljajo videz.',
+  'board.selectHint': 'Vsi kosi so označeni. Tapni kos, da ga izpustiš ali vrneš.',
   'board.saveLook': 'Shrani kot videz',
   'board.saveSelectedLook':
     '{count, plural, one {Shrani # kos kot videz} two {Shrani # kosa kot videz} few {Shrani # kose kot videz} other {Shrani # kosov kot videz}}',

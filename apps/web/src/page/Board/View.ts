@@ -305,6 +305,6 @@ export const editorView = (
       ],
     ),
     paperChoiceView(model, paper, locale, h),
-    h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
+    h.p([h.Id('board-keys'), ...styled(h, styles.keys())], [format(locale, 'board.keys', {})]),
     addSheetView(model, pieces, locale, h),
   ])

@@ -68,7 +68,6 @@ export const Message = defineMessageUnion({
 
   ClickedUndo: {},
   ClickedRedo: {},
-  ClickedTidy: {},
   ClickedAddText: { text: Schema.String },
   ClickedWardrobePiece: { pieceId: Schema.String },
   ClickedPinnedPicture: { imageId: BoardImageId },
@@ -95,7 +94,6 @@ export const Message = defineMessageUnion({
   DroppedFiles: { files: Schema.Array(File.File) },
   DraggedFilesOver: {},
   EndedFileDrag: {},
-  ClickedPaste: {},
   CompletedReadClipboard: { files: Schema.Array(File.File) },
   SucceededAddImage: BoardImage.fields,
   FailedAddImage: { problem: UploadProblem },
@@ -157,8 +155,7 @@ export const Message = defineMessageUnion({
   SucceededPins: { board: Board },
   FailedPins: {},
 
-  ClickedSelect: {},
-  ClickedDoneSelecting: {},
+  ClickedCancelSelecting: {},
   ToggledTick: { id: Schema.String },
   ClickedSaveLook: {},
   SucceededSaveLook: { lookId: LookId, board: Board },
