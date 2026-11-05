@@ -69,8 +69,6 @@ export default defineConfig({
       // The contract's errors declare how they read to an assistant (their MCP `guide`), in the same English; the
       // website never shows them and words its refusals from the catalogs.
       'packages/protocol/src/**/*.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/OAuth.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/OAuthAssertions.ts': ['/[\\s\\S]*/'],
       // A broken invariant of the server's own hold ids, read only in its logs.
       'packages/server/src/usage/Holds.ts': ['/reserved with another amount$/'],
       // A broken invariant of the API's composition, read only in its logs.

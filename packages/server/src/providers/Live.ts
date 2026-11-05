@@ -1,6 +1,7 @@
 import { Layer } from 'effect'
 import { makeTextCompletions, TextCompletions } from './Text.ts'
-import { makeGarmentVision, type RunClef } from './Clef.ts'
+import { makeGarmentVision } from './Clef.ts'
+import type { RunClef } from './ClefCall.ts'
 import { makePictureWork } from './CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './Meta.ts'
 import type { Bucket, ImagesBinding } from '../kernel/Media.ts'

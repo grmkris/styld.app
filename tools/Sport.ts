@@ -1,6 +1,6 @@
 import type { PieceType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import type { ClefAnswer } from '../packages/server/src/providers/Clef.ts'
+import type { ClefAnswer } from '../packages/server/src/providers/ClefCall.ts'
 
 // The question `retype-sport.ts` asks Clef about a stored sport piece, and the type its answer sorts it into. Pure, so
 // the rule that moves a person's piece is tested apart from the Cloudflare calls.

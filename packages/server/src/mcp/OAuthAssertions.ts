@@ -1,5 +1,5 @@
 import { Clock, Effect } from 'effect'
-import { query } from './kernel/Db.ts'
+import { query } from '../kernel/Db.ts'
 import type { D1 } from './OAuth.ts'
 
 // The OAuth server records each assertion it consumed until it expires (`OAuth.ts` `consumeAssertion`).

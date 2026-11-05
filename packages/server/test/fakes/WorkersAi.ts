@@ -1,5 +1,5 @@
 import { Option, Schema } from 'effect'
-import type { ClefRequest, RunClef } from '../../src/providers/Clef.ts'
+import type { ClefRequest, RunClef } from '../../src/providers/ClefCall.ts'
 
 // Workers AI as the native suite answers it: the local stack cannot reach Workers AI. Clef's questions go to the
 // fixture Worker, which answers from what each test stored there and records the prompts; the text model Styld

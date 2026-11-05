@@ -5,7 +5,7 @@ import { CheckReason } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { providerErrorOf, type TextTask, textModel } from '../ai/LanguageModel.ts'
-import { askClef, imageOf, noulOf, type RunClef } from '../providers/Clef.ts'
+import { askClef, imageOf, noulOf, type RunClef } from '../providers/ClefCall.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { type Picture } from '../capture/Providers.ts'
 

@@ -1,6 +1,6 @@
 import type { Occasion, OutfitBrief, Season } from '@styld/protocol'
 import { Context, Effect, Layer, Option } from 'effect'
-import { askClef, clefCost, imageOf, noulOf, type RunClef } from '../providers/Clef.ts'
+import { askClef, clefCost, imageOf, noulOf, type RunClef } from '../providers/ClefCall.ts'
 import type { Media } from '../kernel/Media.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'

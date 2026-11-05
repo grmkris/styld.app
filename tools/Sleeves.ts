@@ -1,6 +1,6 @@
 import type { PieceType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import type { ClefAnswer } from '../packages/server/src/providers/Clef.ts'
+import type { ClefAnswer } from '../packages/server/src/providers/ClefCall.ts'
 
 // The sleeve question `retype-tops.ts` asks Clef about a stored top, and the type its answer sorts the top into. Pure,
 // so the rule that moves a person's piece is tested apart from the Cloudflare calls.

@@ -1,7 +1,7 @@
 import { busy } from './Errors.ts'
 import { costs } from './Costs.ts'
 import { deadlines, providerCall } from './Call.ts'
-import { Effect, Option } from 'effect'
+import { Effect } from 'effect'
 import type { PieceRotation } from '@styld/protocol'
 import type { ImagesBinding } from '../kernel/Media.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -23,22 +23,6 @@ const streamOf = (bytes: Uint8Array) =>
 export const pngSize = (png: Uint8Array) => {
   const view = new DataView(png.buffer, png.byteOffset, png.byteLength)
   return png.byteLength >= 24 ? { width: view.getUint32(16), height: view.getUint32(20) } : { width: 0, height: 0 }
-}
-
-/** The start-of-frame markers that carry a JPEG's size (every SOFn but DHT, JPG and DAC). */
-const startOfFrame = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf])
-
-/** The width and height a JPEG declares in its start-of-frame segment, or none when the bytes hold no readable frame. */
-export const jpegSize = (jpeg: Uint8Array): Option.Option<{ readonly width: number; readonly height: number }> => {
-  const view = new DataView(jpeg.buffer, jpeg.byteOffset, jpeg.byteLength)
-  let at = 2
-  while (at + 9 <= jpeg.byteLength && jpeg[at] === 0xff) {
-    const marker = jpeg[at + 1] ?? 0
-    if (startOfFrame.has(marker)) return Option.some({ height: view.getUint16(at + 5), width: view.getUint16(at + 7) })
-    // A fill byte, or a segment and its length.
-    at += marker === 0xff ? 1 : 2 + view.getUint16(at + 2)
-  }
-  return Option.none()
 }
 
 /** Styld's working copies of a photo are at most this wide or tall. */

@@ -1,5 +1,5 @@
 import { Effect, Option, Schema } from 'effect'
-import type { RunClef } from '../packages/server/src/providers/Clef.ts'
+import type { RunClef } from '../packages/server/src/providers/ClefCall.ts'
 
 // What the operator scripts that re-sort stored pieces (`retype-pieces.ts`, `retype-tops.ts`, `retype-sport.ts`) reach through the
 // Cloudflare REST API: a stage's D1 database by name, its R2 media bucket (in the EU jurisdiction) and Workers AI's

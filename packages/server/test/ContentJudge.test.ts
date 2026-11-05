@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Stream } from 'effect'
-import type { RunClef } from '../src/providers/Clef.ts'
+import type { RunClef } from '../src/providers/ClefCall.ts'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { ContentJudge, contentJudge } from '../src/safety/Judge.ts'
 import { TextCompletions } from '../src/providers/Text.ts'
