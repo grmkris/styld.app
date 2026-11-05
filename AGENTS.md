@@ -63,11 +63,11 @@ Read installed library source before using unfamiliar APIs. Domain models follow
 - `packages/protocol`: the contract shared by the website, the API and MCP: `StyldApi` groups, errors with their assistant guides, ids and operation ids, text, limits, prices, garments.
 - `packages/server`: the public edge Worker and the API Worker: `kernel/` (database, ids, receipts, media, visibility, pacing, metrics), `Modules.ts` (the module list) and one folder per module (`wardrobe`, `capture`, `photos`, `looks`, `outfits`, `boards`, `generation`, `stylist`, `social`, `safety`, `links`, `worn`, `imports`, `mcp`), `usage/` (credit holds), `jobs/` (queues and sweeps), `providers/` and `ai/` (every provider call), `Config.ts` and `Resources.ts` (deployment facts and stages); native tests and fakes in `test/`.
 - `packages/imaging`: PNG and raster helpers shared by the browser and the Worker (model pictures, chroma, sheets, turns).
-- `packages/db`: Drizzle schema, one file per owning module, and the one baseline D1 migration.
+- `packages/db`: Drizzle schema, one file per owning module, and the D1 migrations Drizzle Kit generates in `migrations/` (the 2 November baseline and the migrations after it, applied in order at deploy; a table rebuild follows the Parallel work rule above).
 - `packages/domain`: the Alchemy Domain Wallet (the daily credit pool's holds), with story tests.
 - `packages/auth`: Yielded Auth contract, email-code sign-in, D1 persistence, browser client and password attempt limiter.
 - `packages/i18n`: en/sl ICU catalogs and the runtime formatter; `packages/observability`: the bounded telemetry seam.
-- `tools/`: the gates (`bun run check`), operator scripts listed in `knip.config.ts` (`import-v1/`, `provider-live.ts`, `preview-capture.ts`, `ai-usage-report.ts`) and the preview readback (`preview.native.test.ts`); `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: status, delivery map, architecture, roadmap, handoff, deployment, the testers' guide, `archive/` for history.
+- `tools/`: the gates (`bun run check`), operator scripts listed in `knip.config.ts` (`import-v1/`, `seed/`, `grant-membership.ts`, `provider-live.ts`, `preview-capture.ts`, `ai-usage-report.ts`), finished one-off backfills in `once/` (its README lists them), the size budgets (`budgets.json`) and the preview readback (`preview.native.test.ts`); `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: status, delivery map, architecture, roadmap, handoff, deployment, the testers' guide, `archive/` for history.
 
 ## Skills
 

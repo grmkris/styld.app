@@ -17,7 +17,7 @@ practical outfit. The private styling workflow comes before public features.
 1. **Cleanup C8:** review rounds, fixes, the full gate, deploy and read back every `docs/DELIVERY.md` row.
 2. **Testing:** the owner and a second tester use the rebuilt preview (`docs/TESTING-GUIDE.md`); their findings
    decide the order of the frozen milestones below.
-3. **House inspiration boards** (`docs/PLAN-house-boards-2026-11-04.md`): <a id="house-boards"></a>4 Nov 2026: The house
+3. **House inspiration boards** (`docs/archive/PLAN-house-boards-2026-11-04.md`): <a id="house-boards"></a>4 Nov 2026: The house
    inspiration boards (`@styld.women`, `@styld.men`) use garments generated with Meta Muse Image, one image per piece.
    They exist only on those boards, are always labelled Generated, and never touch a person's own wardrobe, captures
    or pictures. Real photos can replace them by manifest id.
