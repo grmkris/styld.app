@@ -1,12 +1,12 @@
 import { Predicate } from 'effect'
 import type { JsonSchema } from 'effect/JsonSchema'
-import { lookCreate, lookGet, lookList } from '../mcp/LookTools.ts'
-import { outfitMake } from '../mcp/OutfitTools.ts'
-import { savedList } from '../mcp/SocialTools.ts'
-import { noteAdd, noteList } from '../mcp/TasteTools.ts'
-import { photoList, tryOnGet, tryOnList, tryOnStart } from '../mcp/TryOnTools.ts'
-import { listed, type ToolAnnotations } from '../mcp/Tools.ts'
-import { pieceGet, pieceSearch } from '../mcp/WardrobeTools.ts'
+import { lookCreate, lookGet, lookList } from '../tools/LookTools.ts'
+import { outfitMake } from '../tools/OutfitTools.ts'
+import { savedList } from '../tools/SocialTools.ts'
+import { noteAdd, noteList } from '../tools/TasteTools.ts'
+import { photoList, tryOnGet, tryOnList, tryOnStart } from '../tools/TryOnTools.ts'
+import { listed, type ToolAnnotations } from '../tools/Tools.ts'
+import { pieceGet, pieceSearch } from '../tools/WardrobeTools.ts'
 
 // The tools Styld's chat offers its model, as data: the Thread that writes replies lists them (`Thread.ts`), and the
 // API Worker runs them (`Tools.ts`). Thirteen are the assistants' own, listed from the same specs MCP lists them from;

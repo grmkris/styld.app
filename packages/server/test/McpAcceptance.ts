@@ -7,7 +7,7 @@ import { toolNames } from './ToolNames.ts'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { csrf } from '@styld/auth/config'
 import { ViewImages } from '@styld/protocol'
-import { viewsUri } from '../src/mcp/Resources.ts'
+import { viewsUri } from '../src/tools/Resources.ts'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -231,10 +231,18 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   expect(added['url']).toBe(`${origin}/wardrobe/${pieceId}`)
   // The same operation id returns the same piece instead of adding a second one.
   expect(await structured(client, 'piece_add', add)).toMatchObject({ id: pieceId })
-  expect(await structured(client, 'piece_search', { q: 'trainers' })).toMatchObject({
-    pieces: [{ id: pieceId }],
-    nextCursor: null,
-  })
+  // The search finds only ready pieces, as the website's does, by its type's words in either language.
+  let status = added['status']
+  for (let attempt = 0; attempt < 100 && status === 'processing'; attempt += 1) {
+    await Bun.sleep(100)
+    status = (await structured(client, 'piece_get', { pieceId }))['status']
+  }
+  expect(status).toBe('ready')
+  for (const q of ['trainers', 'superge'])
+    expect(await structured(client, 'piece_search', { q })).toMatchObject({
+      pieces: [{ id: pieceId }],
+      nextCursor: null,
+    })
   expect(
     await structured(client, 'piece_update', { pieceId, operationId: 'mcp-native-update-1', colours: ['white'] }),
   ).toMatchObject({

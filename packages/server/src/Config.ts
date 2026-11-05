@@ -109,6 +109,20 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
   }
 })
 
+const threadWorkerConfig = Config.all({
+  environment: Config.schema(Environment, 'STYLD_ENV'),
+  release: Config.String('STYLD_RELEASE'),
+  /** Meta's key, the one SAM and Muse Image use, for the chat's Muse Spark calls. */
+  metaApiKey: Config.Redacted('META_API_KEY'),
+})
+
+/** What the Thread Worker (`stylist/ThreadWorker.ts`) is told about its deployment: its stage and release, for its
+ * logs, spans and call counts, and Meta's key for Styld's model. The one decoder of its bindings; a missing or
+ * malformed value is a broken deployment. */
+export const threadDeploymentOf = Effect.fn('Styld.Config.threadDeployment')(function* (env: unknown) {
+  return yield* threadWorkerConfig.parse(ConfigProvider.fromUnknown(env)).pipe(Effect.orDie)
+})
+
 /** The deployment, decoded once per runtime, for the modules that need its origin, release, admins or keys. */
 export class Deployment extends Context.Service<Deployment, Effect.Success<ReturnType<typeof deploymentOf>>>()(
   '@styld/server/Deployment',

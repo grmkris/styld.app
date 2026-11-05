@@ -158,7 +158,7 @@ export const keptProposals = (
 }
 
 /** @internal Exported for its tests. */
-export const nothingKept = () => refused('litellm')
+export const nothingKept = () => refused(thinking.model.provider)
 
 /** Thinking: proposals from a language model, kept to the rules; none kept is a refusal. */
 export class Thinking extends Context.Service<
@@ -175,7 +175,7 @@ export class Thinking extends Context.Service<
           const { messages, pieceOf } = proposalMessages(request, count)
           const answer = yield* model
             .generateObject({ objectName: 'outfits', prompt: messages, schema: Answer })
-            .pipe(Effect.mapError(providerErrorOf))
+            .pipe(Effect.mapError(providerErrorOf(thinking.model.provider)))
           const outfits = keptProposals(request, answer.value, pieceOf)
           if (outfits.length === 0) return yield* nothingKept()
           const { inputTokens, outputTokens } = answer.usage

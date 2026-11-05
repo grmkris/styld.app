@@ -18,8 +18,9 @@ import {
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
-import { isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
+import { isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
+import { searching } from './Search.ts'
 import { PieceQueue } from './Processing.ts'
 import { processing } from './Work.ts'
 import {
@@ -35,13 +36,14 @@ import {
 } from './Shared.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
 import { admitUpload } from './Admission.ts'
-import { type PieceRow, type ReceiptRow, type UploadRow, WardrobeStore } from './Store.ts'
+import { owedPieceOf, type PieceRow, type ReceiptRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { deleting, once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { keysUnder, Media } from '../kernel/Media.ts'
+import { Media } from '../kernel/Media.ts'
 import { called } from '../kernel/Bindings.ts'
+import { clearOwed } from '../kernel/MediaDeletions.ts'
 
 /** An upload path stays valid this long after it is handed out. */
 const uploadLifetime = { minutes: 15 }
@@ -414,18 +416,19 @@ const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
 }))
 
 /** Delete the account's pieces' rows with the delete's receipt, then the objects only they showed (`forgetObjects`):
- * each piece's own prefix and its photo, image and back. */
+ * their photo, image and back, and everything under each piece's own prefix, which the delete recorded as owed
+ * (`kernel/MediaDeletions.ts`), so what R2 cannot remove now the sweep removes later. */
 const removePieces = (accountId: string, rows: ReadonlyArray<PieceRow>, receipt: ReceiptRow) =>
   Effect.gen(function* () {
-    yield* stored((yield* WardrobeStore).deletePieces(accountId, rows, receipt))
-    const bucket = (yield* Media).bucket
-    const own = yield* Effect.forEach(
-      rows,
-      ({ id }) => keysUnder(bucket, piecePrefix(accountId, id)).pipe(Effect.orElseSucceed(() => [])),
-      { concurrency: 6 },
-    )
+    const store = yield* WardrobeStore
+    yield* stored(store.deletePieces(accountId, rows, receipt))
     const shown = rows.flatMap((piece) => [piece.originalKey, piece.imageKey, piece.backImageKey])
-    yield* forgetObjects(accountId, [...shown.filter(Predicate.isNotNull), ...own.flat()], 'piece')
+    yield* forgetObjects(accountId, shown.filter(Predicate.isNotNull), 'piece')
+    yield* clearOwed(
+      store.owedMedia,
+      (yield* Media).bucket,
+      rows.map(({ id }) => owedPieceOf(accountId, id)),
+    )
   })
 
 /** Every wardrobe operation, each group built over the services it yields (`Shared.ts` `WardrobeServices`). */
@@ -433,6 +436,7 @@ const make = Effect.gen(function* () {
   const store = yield* WardrobeStore
   return {
     ...(yield* reads),
+    ...(yield* searching),
     ...(yield* uploads),
     ...(yield* videoUploads),
     ...(yield* adding),

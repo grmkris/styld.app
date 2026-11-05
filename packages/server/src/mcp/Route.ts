@@ -3,16 +3,16 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '@styld/protocol'
-import { McpOAuth } from '../OAuth.ts'
+import { McpOAuth } from './OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
-import { readResource, resources } from './Resources.ts'
+import { readResource, resources } from '../tools/Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
 import { ReaderLocale, readerLocaleOf } from '../social/Translated.ts'
-import { curationTools } from './CurationTools.ts'
-import type { Feedback } from './Feedback.ts'
-import { feedbackAdminTools } from './FeedbackTools.ts'
-import { type AssistantTools, instructions, type ToolServices } from './StyldTools.ts'
-import { callTool, renderTools } from './Tools.ts'
+import { curationTools } from '../tools/CurationTools.ts'
+import type { Feedback } from '../feedback/Feedback.ts'
+import { feedbackAdminTools } from '../tools/FeedbackTools.ts'
+import { type AssistantTools, instructions, type ToolServices } from '../tools/StyldTools.ts'
+import { callTool, renderTools } from '../tools/Tools.ts'
 
 type McpOAuthServer = typeof McpOAuth.Service.Service
 
@@ -66,7 +66,9 @@ const answerFor = Effect.fnUntraced(function* (
   const services = yield* Effect.context()
   const sdk = yield* Effect.promise(() => import('./Sdk.ts'))
   const web = yield* HttpServerRequest.toWeb(request).pipe(Effect.orDie)
-  const response = yield* Effect.promise(() =>
+  // The SDK answers over promises. A tool call runs as a fiber of this request's services that is interrupted when
+  // the client cancels the call or this request is interrupted (the client went away), so its work stops with it.
+  const response = yield* Effect.promise((requestGone) =>
     sdk.answer(
       web,
       {
@@ -75,12 +77,13 @@ const answerFor = Effect.fnUntraced(function* (
         tools: toolList,
         resources,
         read: readResource,
-        call: (name, args) =>
+        call: (name, args, cancelled) =>
           Effect.runPromiseWith(services)(
             callTool(tools, name, args).pipe(
               Effect.provideService(CurrentAccount, account),
               Effect.provideService(ReaderLocale, readerLocaleOf(request.headers)),
             ),
+            { signal: AbortSignal.any([cancelled, requestGone]) },
           ),
       },
       body,

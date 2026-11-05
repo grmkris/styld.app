@@ -27,7 +27,7 @@ import { Effect, Option, Schema } from 'effect'
 import type { Picture } from '../../packages/server/src/capture/Providers.ts'
 import { judgedAt } from '../../packages/server/src/capture/Garments.ts'
 import { CaptureMetrics } from '../../packages/server/src/kernel/Metrics.ts'
-import { askClef, imageOf } from '../../packages/server/src/providers/Clef.ts'
+import { askClef, imageOf } from '../../packages/server/src/providers/ClefCall.ts'
 import { cloudflareStage, readEach, stageOptions, statements } from '../CloudflareRest.ts'
 import {
   isQuestionSetName,

@@ -2,7 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, FeedbackId, maximumFeedbackPerDay, SendFeedback } from '@styld/protocol'
 import { Effect, Layer, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
-import { Feedback } from '../src/mcp/Feedback.ts'
+import { Feedback } from '../src/feedback/Feedback.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { localD1 } from './LocalD1.ts'
 

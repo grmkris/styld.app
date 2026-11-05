@@ -9,7 +9,7 @@ import {
   WardrobeView,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { groupOf } from '@styld/protocol'
+import { groupOf, PieceFilter } from '@styld/protocol'
 import { Array, Effect, Match, Schema } from 'effect'
 import { withViewThumbnails } from '../kernel/SignedMedia.ts'
 import type { Boards } from '../boards/Boards.ts'
@@ -19,7 +19,7 @@ import { groupsIn, mediaViewTools, type MediaServices } from './MediaViewTools.t
 import { showsView } from './Resources.ts'
 import { thumbnails } from './Thumbnails.ts'
 import { tool, ViewResult } from './Tools.ts'
-import { matches, SearchFilter } from './WardrobeTools.ts'
+import { SearchCursor, searchPage } from './WardrobeTools.ts'
 
 /** A page of the wardrobe in the host: small enough that every piece shows its picture (owner, 4 November 2026). */
 const wardrobePage = 12
@@ -105,19 +105,16 @@ export const viewTools = (
     description:
       'Shows a page of the person’s pieces as pictures, newest first: 12 unless `limit` says (at most 24), filtered like piece_search (words, garment type, group, colour, season, occasion, pattern, brand). `total` counts the matches; pass `nextCursor` as `cursor` to show the next page when the person asks for more.',
     parameters: Schema.Struct({
-      ...SearchFilter.fields,
+      ...PieceFilter.fields,
       limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: wardrobePageMost }))),
-      cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
+      cursor: Schema.optionalKey(SearchCursor),
     }),
     annotations: { readOnlyHint: true, openWorldHint: false },
     meta: showsView,
-    handler: ({ limit, cursor, ...filter }) =>
+    handler: (input) =>
       Effect.gen(function* () {
-        const { value: all, images } = yield* withViewThumbnails(wardrobe.listPieces())
-        const found = all.filter((piece) => matches(piece, filter))
-        const start = Number(cursor ?? '0')
-        const end = start + (limit ?? wardrobePage)
-        const pieces = found.slice(start, end)
+        const { value: found, images } = yield* withViewThumbnails(searchPage(wardrobe, input, wardrobePage))
+        const { pieces, total, nextCursor } = found
         const view = WardrobeView.make({
           pieces: pieces.map((piece) => ({
             id: piece.id,
@@ -129,7 +126,7 @@ export const viewTools = (
           labels: { en: labelsIn('en'), sl: labelsIn('sl') },
         })
         return new ViewResult(
-          { ...view, total: found.length, nextCursor: end < found.length ? String(end) : null },
+          { ...view, total, nextCursor },
           {
             'styld/images': yield* thumbnails(
               media,

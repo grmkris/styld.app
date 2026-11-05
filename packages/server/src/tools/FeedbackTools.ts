@@ -1,6 +1,6 @@
 import { FeedbackId, FeedbackStatus, maximumFeedbackPerDay, SendFeedback } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
-import type { Feedback } from './Feedback.ts'
+import type { Feedback } from '../feedback/Feedback.ts'
 import { tool } from './Tools.ts'
 
 /** The assistant's note goes to Styld's team, never to anyone else; it never carries the person's private data. */

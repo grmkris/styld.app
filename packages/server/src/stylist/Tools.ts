@@ -1,7 +1,7 @@
 import { PieceId, type WardrobeAnalysis } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { digestOf } from '../kernel/Ids.ts'
-import type { Tool as AssistantTool } from '../mcp/Tools.ts'
+import type { Tool as AssistantTool } from '../tools/Tools.ts'
 import { catalogue, showLimit } from './Catalogue.ts'
 
 // The chat's tools as the API Worker runs them, one call at a time, when a reply's Thread asks (`Thread.ts`): the

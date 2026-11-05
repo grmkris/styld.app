@@ -24,21 +24,22 @@ import { captureKey, enqueueMatch, readObject, writeObject } from '../capture/Sh
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
-import { receivedUpload } from '../mcp/ImageImport.ts'
+import { receivedUpload } from '../wardrobe/Received.ts'
 import { imageAddresses, SignedMedia } from '../kernel/SignedMedia.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
 import { cutOutPerson } from './Cutout.ts'
 import { refinding } from './Refind.ts'
-import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.ts'
+import { finding, type PhotoServices, photoHold } from './Finding.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleting, identify, madeBefore, once, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
+import { clearOwed } from '../kernel/MediaDeletions.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { PhotoStore } from './Store.ts'
+import { owedPhotoOf, PhotoStore } from './Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import { called } from '../kernel/Bindings.ts'
 
@@ -223,12 +224,13 @@ const added = (operation: Identified, input: AddPhoto) =>
     return row
   })
 
-/** The photo's objects, once its row is gone: its original upload, and everything under its own prefix. */
+/** The photo's objects, once its row is gone: its original upload, and everything under its own prefix, which its
+ * delete recorded as owed (`kernel/MediaDeletions.ts`), so what R2 cannot remove now the sweep removes later. */
 const deleteObjects = (row: PhotoRow) =>
   Effect.gen(function* () {
     const bucket = (yield* Media).bucket
-    const listed = yield* keysUnder(bucket, photoPrefix(row.accountId, row.id)).pipe(Effect.orElseSucceed(() => []))
-    yield* deleteAfterRows(bucket, [row.originalKey, ...listed], 'photo')
+    yield* deleteAfterRows(bucket, [row.originalKey], 'photo')
+    yield* clearOwed((yield* PhotoStore).owedMedia, bucket, [owedPhotoOf(row.accountId, row.id)])
   })
 
 /** A garment offered to the review tray, as a capture of its own (source `photos`, no credit). Its picture is copied

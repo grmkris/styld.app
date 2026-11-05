@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dir, '..')
-const modulePath = path.join(root, 'packages/server/src/mcp/apps/AssistantViews.generated.ts')
+const modulePath = path.join(root, 'packages/server/src/tools/apps/AssistantViews.generated.ts')
 /** Hosts fetch the file once per connection. Effect and the Foldkit runtime are most of it (about
  * 100 KB gzipped); growth past this needs a reason. */
 const budgetBytes = 384 * 1024

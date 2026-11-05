@@ -1,6 +1,7 @@
 import { Layer } from 'effect'
 import { makeTextCompletions, TextCompletions } from './Text.ts'
-import { makeGarmentVision, type RunClef } from './Clef.ts'
+import { makeGarmentVision } from './Clef.ts'
+import type { RunClef } from './ClefCall.ts'
 import { makePictureWork } from './CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './Meta.ts'
 import type { Bucket, ImagesBinding } from '../kernel/Media.ts'
@@ -93,7 +94,12 @@ export const providersOver = (
     Layer.succeed(PictureWork, makePictureWork(bindings.images, metrics)),
     Layer.succeed(GarmentSegmenter, makeGarmentSegmenter({ ...meta, readVideo })),
   )
-  const text = makeTextCompletions({ base: http.textBase, key: deployment.secrets.textKey, fetch: http.fetch })
+  const text = makeTextCompletions({
+    provider: 'litellm',
+    base: http.textBase,
+    key: deployment.secrets.textKey,
+    fetch: http.fetch,
+  })
   // Text uses the paid gateway; Clef continues over Workers AI.
   const models = Layer.mergeAll(
     MoodPlanner.layer,

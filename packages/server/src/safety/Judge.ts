@@ -5,7 +5,7 @@ import { CheckReason } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { providerErrorOf, type TextTask, textModel } from '../ai/LanguageModel.ts'
-import { askClef, imageOf, noulOf, type RunClef } from '../providers/Clef.ts'
+import { askClef, imageOf, noulOf, type RunClef } from '../providers/ClefCall.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { type Picture } from '../capture/Providers.ts'
 
@@ -102,7 +102,7 @@ const guarded = (model: LanguageModel.LanguageModel, texts: ReadonlyArray<string
       schema: TextVerdict,
     })
     .pipe(
-      Effect.mapError(providerErrorOf),
+      Effect.mapError(providerErrorOf(guard.model.provider)),
       Effect.map(({ value }): Verdict => ({ ...value, model: guard.model.id })),
       // A paid response that was lost or unreadable must stay out of discovery without being sent again. A definite
       // throttle/refusal still fails so the queue can apply its normal retry policy.
@@ -140,7 +140,7 @@ export const contentJudge = (runClef: RunClef) =>
                 pictured(runClef, metrics, picture).pipe(
                   // A picture outage must not discard a completed paid text verdict and cause it to be billed again.
                   // Keep the item out of discovery; a later content change or report can judge it again.
-                  Effect.catchCause(() =>
+                  Effect.catchTag('ProviderError', () =>
                     Effect.succeed({ state: 'unsure', reason: 'other', model: 'clef-flash' } satisfies Verdict),
                   ),
                 ),

@@ -1,6 +1,7 @@
 import { account } from './Account.ts'
 import { billing } from './billing/Module.ts'
 import { capture } from './capture/Module.ts'
+import { feedback } from './feedback/Module.ts'
 import { generation } from './generation/Module.ts'
 import { imports } from './imports/Module.ts'
 import { seed } from './seed/Module.ts'
@@ -8,6 +9,7 @@ import { links } from './links/Module.ts'
 import { mcp } from './mcp/Module.ts'
 import { outfits } from './outfits/Module.ts'
 import { photos } from './photos/Module.ts'
+import { pieceQueue } from './PieceJobs.ts'
 import { platform } from './Platform.ts'
 import { social } from './social/Module.ts'
 import { stylist } from './stylist/Module.ts'
@@ -20,12 +22,14 @@ export const modules = [
   account,
   social,
   wardrobe,
+  pieceQueue,
   capture,
   photos,
   generation,
   outfits,
   links,
   stylist,
+  feedback,
   mcp,
   imports,
   seed,

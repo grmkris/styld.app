@@ -3,7 +3,7 @@ import { maximumTryOnPieces, StartTryOn } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { tryOnPrompt, tryOnSize, tryOnWords } from '../src/generation/TryOnPrompt.ts'
 import { sendable } from '../src/generation/TryOnShared.ts'
-import { jpegSize } from '../src/providers/CloudflareImages.ts'
+import { jpegSize } from '@styld/imaging'
 import { tryOnBody } from '../src/providers/Muse.ts'
 
 const picture = (byte: number, contentType: 'image/jpeg' | 'image/webp') => ({

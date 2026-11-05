@@ -1,6 +1,7 @@
 import { LinkRefused } from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import { importedUpload, type Uploads } from '../mcp/ImageImport.ts'
+import type { Uploads } from '../wardrobe/Received.ts'
+import { importedUpload } from './ImageImport.ts'
 import { readProductPage } from './LinkImport.ts'
 
 /** A product page's picture as a received upload of the person's, with the page's name for the product: what the

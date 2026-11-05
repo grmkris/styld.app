@@ -16,10 +16,6 @@
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter is the Worker persistence boundary."
   },
   {
-    "file": "packages/server/src/Application.ts",
-    "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
-  },
-  {
     "file": "packages/server/src/kernel/Conditional.ts",
     "comment": "SAFETY: the selection is the row's own columns, keyed as the table keys them -- Drizzle cannot check a selection built from a generic table's columns"
   },

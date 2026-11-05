@@ -33,7 +33,8 @@ export const dataUrl = (picture: { readonly bytes: Uint8Array; readonly contentT
 /** The client for one provider. */
 export const httpProvider = (settings: HttpProviderSettings) => {
   const { provider } = settings
-  const lostAs = (lost: Lost) => (lost === 'unknown' ? outcomeUnknown(provider) : busy(provider))
+  const lostAs = (lost: Lost, cause?: unknown) =>
+    lost === 'unknown' ? outcomeUnknown(provider, cause) : busy(provider, cause)
   const send = (
     path: string,
     init: {
@@ -55,7 +56,8 @@ export const httpProvider = (settings: HttpProviderSettings) => {
           ...(init.body === undefined ? {} : { body: init.body }),
           signal,
         }),
-      catch: () => lostAs(init.lost),
+      // A request that got no answer: the fetch's own error (a lost connection, an abort), never the request.
+      catch: (cause) => lostAs(init.lost, cause),
     })
   return {
     provider,
@@ -76,7 +78,7 @@ export const httpProvider = (settings: HttpProviderSettings) => {
           if (!response.ok) throw new Error(String(response.status))
           return new Uint8Array(await response.arrayBuffer())
         },
-        catch: () => busy(provider),
+        catch: (cause) => busy(provider, cause),
       }),
     /** An answer's JSON; a body that cannot be read fails as `lost`. */
     json: (response: Response, lost: Lost) =>

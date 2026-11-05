@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import type { AccountLifecycle } from '../src/AccountLifecycle.ts'
-import { importImage } from '../src/mcp/ImageImport.ts'
+import { importImage } from '../src/links/ImageImport.ts'
 import { sniffImageType } from '../src/wardrobe/Media.ts'
 import { consume } from '../src/jobs/Jobs.ts'
 import { pieceJobs, pieceJobQueue } from '../src/wardrobe/Queue.ts'
@@ -59,6 +59,7 @@ const services = (
     services: {
       wardrobe: Wardrobe.of({
         listPieces: notUsed,
+        searchPieces: notUsed,
         getPiece: notUsed,
         newUpload: notUsed,
         createUpload: notUsed,

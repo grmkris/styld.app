@@ -6,6 +6,7 @@ import {
   PhotoId,
   type Piece,
   PieceId,
+  pieceMatches,
   PiecesView,
   PieceView,
   type TryOn,
@@ -13,17 +14,18 @@ import {
   TryOnView,
   ViewImages,
 } from '@styld/protocol'
+import { languages } from '@styld/i18n'
 import { it } from '@effect/vitest'
 import { type Duration, Effect, Fiber, Option, Redacted, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
 import { describe, expect, test } from 'vitest'
-import { mediaViewTools, type MediaServices } from '../src/mcp/MediaViewTools.ts'
-import { viewTools } from '../src/mcp/ViewTools.ts'
+import { mediaViewTools, type MediaServices } from '../src/tools/MediaViewTools.ts'
+import { viewTools } from '../src/tools/ViewTools.ts'
 import { Boards } from '../src/boards/Boards.ts'
 import { unusedBoards } from './fakes/Boards.ts'
 import { unusedWardrobe } from './fakes/Wardrobe.ts'
-import { callTool } from '../src/mcp/Tools.ts'
-import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
+import { callTool } from '../src/tools/Tools.ts'
+import { readResource, resources, viewsUri } from '../src/tools/Resources.ts'
 import { type MediaGrant, SignedMedia } from '../src/kernel/SignedMedia.ts'
 import type { ImageBindings } from '../src/wardrobe/Delivery.ts'
 
@@ -329,11 +331,16 @@ describe('wardrobe_show', () => {
   const tools = viewTools(
     {
       ...unusedWardrobe,
-      listPieces: () =>
-        signing(
-          many,
-          many.map(({ id }) => thumb(id, `pieces/${id}/shown`)),
-        ),
+      // The wardrobe's own search (protocol `PieceSearch.ts`), signing the page it answers.
+      searchPieces: ({ filter, offset, limit }) => {
+        const found = many.filter((each) => pieceMatches(each, filter, languages))
+        const shown = found.slice(offset, offset + limit)
+        const next = offset + limit < found.length ? Option.some(offset + limit) : Option.none<number>()
+        return signing(
+          { pieces: shown, total: found.length, nextOffset: next },
+          shown.map(({ id }) => thumb(id, `pieces/${id}/shown`)),
+        )
+      },
     },
     Boards.of(unusedBoards),
     'https://styld.test',

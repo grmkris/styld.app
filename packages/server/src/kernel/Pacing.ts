@@ -1,5 +1,5 @@
 import { CurrentAccount, SlowDown } from '@styld/protocol'
-import { Context, Effect, Layer } from 'effect'
+import { Context, Effect, Layer, Predicate } from 'effect'
 import type * as Headers from 'effect/http/Headers'
 import type { PaceName } from './Paces.ts'
 
@@ -26,10 +26,22 @@ export class Pacing extends Context.Service<
 >()('@styld/server/kernel/Pacing') {
   /** The paces over their bindings' runtime objects. */
   static readonly layer = (limiters: { readonly [Name in PaceName]: Limiter }) => {
+    // A limiter that did not answer still refuses, but says so in the logs: an outage of the binding reads apart from
+    // a person who went too fast. Never the key, which names an account or a network.
     const allows = (pace: PaceName, key: string) =>
       Effect.tryPromise(() => limiters[pace].limit({ key })).pipe(
         Effect.map(({ success }) => success),
-        Effect.orElseSucceed(() => false),
+        Effect.catch((error) =>
+          Effect.as(
+            Effect.logWarning('Styld.Pacing.limiter unavailable').pipe(
+              Effect.annotateLogs({
+                'styld.pace': pace,
+                'styld.pace.cause': Predicate.isError(error.cause) ? error.cause.message : 'unknown',
+              }),
+            ),
+            false,
+          ),
+        ),
       )
     return Layer.succeed(
       Pacing,

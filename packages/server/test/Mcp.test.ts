@@ -1,5 +1,5 @@
 import { SignedMedia } from '../src/kernel/SignedMedia.ts'
-import { media, withThumbnail } from './McpMediaFixture.ts'
+import { media, searchedWithThumbnail, withThumbnail } from './McpMediaFixture.ts'
 import {
   type ArrangeBoard,
   Board,
@@ -16,9 +16,9 @@ import {
 } from '@styld/protocol'
 import { Effect, Exit, Layer, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
-import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
-import { callTool, renderTools } from '../src/mcp/Tools.ts'
+import { readResource, resources, viewsUri } from '../src/tools/Resources.ts'
+import { instructions, styldTools } from '../src/tools/StyldTools.ts'
+import { callTool, renderTools } from '../src/tools/Tools.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { noLooks } from './fakes/Looks.ts'
@@ -27,11 +27,12 @@ import { Profiles } from '../src/social/Profiles.ts'
 import { everyCall, toolNames } from './ToolNames.ts'
 import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
-import { curationTools } from '../src/mcp/CurationTools.ts'
+import { curationTools } from '../src/tools/CurationTools.ts'
 import { Curation, emailListOf, isAdmin } from '../src/social/Curation.ts'
 import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { unusedBoards } from './fakes/Boards.ts'
+import { unusedWardrobe } from './fakes/Wardrobe.ts'
 import { unusedTastes } from './fakes/Tastes.ts'
 import { unusedServices } from './fakes/Services.ts'
 
@@ -75,27 +76,14 @@ const notUsed = () => Effect.die('not used by these tests')
 const replayedUpload = UploadId.make(`up_${'replay'.padEnd(22, 'x')}`)
 const replayedFetch = await Effect.runPromise(fetchOperation(OperationId.make('picture-replay-1'), 'picture_pin'))
 const wardrobe = Wardrobe.of({
+  ...unusedWardrobe,
   listPieces: () => withThumbnail(pieces, pieces[0]?.id ?? ''),
-  getPiece: notUsed,
-  newUpload: notUsed,
-  createUpload: notUsed,
+  searchPieces: searchedWithThumbnail(pieces),
   // Operations with a receipt answer from it; the rest run.
   once: (operation, answer) =>
     operation.operationId === replayedFetch
       ? answer.replay(replayedUpload)
       : Effect.map(answer.run, ([value]) => value),
-  receiveUpload: notUsed,
-  receiveVideoUpload: notUsed,
-  addPiece: notUsed,
-  updatePiece: notUsed,
-  deletePiece: notUsed,
-  deletePieces: notUsed,
-  setBack: notUsed,
-  removeBack: notUsed,
-  choosePicture: notUsed,
-  processPiece: notUsed,
-  failPiece: notUsed,
-  sweepUploads: notUsed,
 })
 /** Redraws: the first piece is drawn again; the second shows its original photo, which is never sent on. */
 const redraws: Array<{ readonly pieceId: string; readonly input: RedrawPicture }> = []
@@ -194,10 +182,14 @@ const discovery = Discovery.of({
   search: () => Effect.succeed({ people: [], boards: [] }),
   challenges: () => Effect.succeed({ challenges: [] }),
 })
-/** What Styld fetches from the web, over the wardrobe above, at no pace. */
+/** What Styld fetches from the web, over the wardrobe and boards above, at no pace. */
 const links = Effect.runSync(
   Links.pipe(
-    Effect.provide(Links.layer.pipe(Layer.provide(Layer.merge(Layer.succeed(Wardrobe, wardrobe), unlimited)))),
+    Effect.provide(
+      Links.layer.pipe(
+        Layer.provide(Layer.mergeAll(Layer.succeed(Wardrobe, wardrobe), Layer.succeed(Boards, boards), unlimited)),
+      ),
+    ),
   ),
 )
 const tools = styldTools('https://styld.test', {

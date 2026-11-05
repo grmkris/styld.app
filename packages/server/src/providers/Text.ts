@@ -2,8 +2,9 @@ import { Context, Effect, Layer, Schema, Stream } from 'effect'
 import * as Sse from 'effect/encoding/Sse'
 import { httpProvider, type HttpProviderSettings } from './Http.ts'
 import { busy, outcomeUnknown, refused, type ProviderError } from './Errors.ts'
+import type { TextProvider } from './Costs.ts'
 
-/** Text completions through Styld's own budgeted LiteLLM key. HTTP failures stay typed all the way to the attempt
+/** Text completions over an OpenAI-compatible API: Styld's own budgeted LiteLLM key, or Meta's API for Styld's chat. HTTP failures stay typed all the way to the attempt
  * owner; losing a paid response is unknown, never a reason to send it again. */
 export class TextCompletions extends Context.Service<
   TextCompletions,
@@ -19,20 +20,22 @@ export class TextCompletions extends Context.Service<
 
 const decodeChunk = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))
 
-const unknown = () => outcomeUnknown('litellm')
-
-/** An answer that is not ok. A gateway timeout/server failure can follow an upstream completion that was already billed.
- * Only an explicit throttle is safe to retry. Budget/auth/request refusals are final; no body enters the error. */
-const notOk = (status: number) => {
-  if (status === 429) return busy('litellm')
-  if (status === 408 || status >= 500) return unknown()
-  return refused('litellm')
-}
-
-/** The live transport; tests supply their fixture Worker's fetch and base. The provider's response body never enters
- * an error or log. */
-export const makeTextCompletions = (settings: Omit<HttpProviderSettings, 'provider'>): TextCompletions['Service'] => {
-  const http = httpProvider({ ...settings, provider: 'litellm' })
+/** The live transport for one text provider; tests supply their fixture Worker's fetch and base. The provider's
+ * response body never enters an error or log. */
+export const makeTextCompletions = (
+  settings: Omit<HttpProviderSettings, 'provider'> & { readonly provider: TextProvider },
+): TextCompletions['Service'] => {
+  const { provider } = settings
+  const unknown = () => outcomeUnknown(provider)
+  /** An answer that is not ok. A gateway timeout/server failure can follow an upstream completion that was already
+   * billed. Only an explicit throttle is safe to retry. Budget/auth/request refusals are final; no body enters the
+   * error. */
+  const notOk = (status: number) => {
+    if (status === 429) return busy(provider)
+    if (status === 408 || status >= 500) return unknown()
+    return refused(provider)
+  }
+  const http = httpProvider(settings)
   return TextCompletions.of({
     run: Effect.fn('Styld.Text.complete')(function* (model, input) {
       const response = yield* http.postJson('/chat/completions', { ...input, model, stream: false }, 'unknown')

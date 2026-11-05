@@ -1,74 +1,46 @@
 import {
   AddPiece,
-  Colour,
-  GarmentGroup,
-  groupOf,
-  Occasion,
-  Pattern,
+  AddPieceFromLink,
   CreateUpload,
   ImageType,
   Operation,
   OperationId,
+  PieceFilter,
   type Piece,
   PieceId,
-  PieceType,
-  Season,
   UpdatePiece,
   DeletePieces,
   UploadId,
   maximumImageBytes,
-  textLength,
   Url,
-  normalise,
-  wordMatches,
-  wordsIn,
 } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { tool, ToolError, toolSpec } from './Tools.ts'
-import { fetchOperation, type Links } from '../links/Links.ts'
+import type { Links } from '../links/Links.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
 
-/** What piece_search filters by: words, and any of the piece's type, group and attributes. */
-/** What the person's pieces are filtered by, in piece_search and wardrobe_show. */
-export const SearchFilter = Schema.Struct({
-  q: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.search))),
-  type: Schema.optionalKey(PieceType),
-  group: Schema.optionalKey(GarmentGroup),
-  colour: Schema.optionalKey(Colour),
-  season: Schema.optionalKey(Season),
-  occasion: Schema.optionalKey(Occasion),
-  pattern: Schema.optionalKey(Pattern),
-  brand: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.brand))),
-})
+/** A page cursor of piece_search and wardrobe_show: where the next page starts among the matches. */
+export const SearchCursor = Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))
 
-/** Words match as they do on the device (protocol `Search.ts`): any case or accent, any ending, a word's start. */
-/** Whether a piece passes the filter. */
-export const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
-  const words = wordsIn([piece.name, piece.notes, piece.type, piece.brand].filter((part) => part !== null).join(' '))
-  const typed = wordsIn(input.q ?? '')
-  return (
-    (input.type === undefined || piece.type === input.type) &&
-    (input.group === undefined || groupOf(piece.type) === input.group) &&
-    (input.colour === undefined || piece.colours.includes(input.colour)) &&
-    (input.season === undefined || piece.seasons.length === 0 || piece.seasons.includes(input.season)) &&
-    (input.occasion === undefined || piece.occasions.includes(input.occasion)) &&
-    (input.pattern === undefined || piece.pattern === input.pattern) &&
-    (input.brand === undefined || normalise(piece.brand ?? '') === normalise(input.brand)) &&
-    typed.every((word) => words.some((each) => wordMatches(word, each)))
+/** The wardrobe's search (`Wardrobe.searchPieces`, the website's own rules) as a page from a tool's cursor and limit. */
+export const searchPage = (
+  wardrobe: Pick<Wardrobe['Service'], 'searchPieces'>,
+  { cursor, limit, ...filter }: PieceFilter & { readonly cursor?: string; readonly limit?: number },
+  defaultLimit: number,
+) =>
+  wardrobe.searchPieces({ filter, offset: Number(cursor ?? '0'), limit: limit ?? defaultLimit }).pipe(
+    Effect.map(({ pieces, total, nextOffset }) => ({
+      pieces,
+      total,
+      nextCursor: Option.match(nextOffset, { onNone: () => null, onSome: String }),
+    })),
   )
-}
 
 /** The piece's fields as the protocol defines them, so the website and assistants accept the same. */
 const { operationId: _operationId, uploadId: _uploadId, ...PieceFields } = AddPiece.fields
-
-const LinkImport = Schema.Struct({
-  operationId: OperationId,
-  url: Url,
-  ...PieceFields,
-})
 
 const PieceAdd = Schema.Struct({
   operationId: OperationId,
@@ -81,11 +53,11 @@ export const pieceSearch = toolSpec({
   name: 'piece_search',
   title: 'Search the wardrobe',
   description:
-    'Pieces in the wardrobe, newest first, filtered by words (`q`) in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
+    'Ready pieces in the wardrobe, newest first, as the website finds them: every word of `q` must match the start of a word in their name, notes or brand, or their garment type, group or colours named in English or Slovenian; and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
   parameters: Schema.Struct({
-    ...SearchFilter.fields,
+    ...PieceFilter.fields,
     limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
-    cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
+    cursor: Schema.optionalKey(SearchCursor),
   }),
   annotations: { readOnlyHint: true, openWorldHint: false },
 })
@@ -102,13 +74,8 @@ const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
   tool({
     ...pieceSearch,
     handler: (input) =>
-      wardrobe.listPieces().pipe(
-        Effect.map((pieces) => {
-          const found = pieces.filter((piece) => matches(piece, input))
-          const start = Number(input.cursor ?? '0')
-          const end = start + (input.limit ?? 20)
-          return { pieces: found.slice(start, end).map(show), nextCursor: end < found.length ? String(end) : null }
-        }),
+      searchPage(wardrobe, input, 20).pipe(
+        Effect.map(({ pieces, nextCursor }) => ({ pieces: pieces.map(show), nextCursor })),
       ),
   }),
   tool({ ...pieceGet, handler: ({ pieceId }) => wardrobe.getPiece(pieceId).pipe(Effect.map(show)) }),
@@ -141,20 +108,16 @@ const writeTools = (
     handler: (input) =>
       Effect.gen(function* () {
         const { imageUrl, uploadId, ...fields } = input
-        if ((imageUrl === undefined) === (uploadId === undefined))
-          return yield* new ToolError({
-            code: 'invalid_arguments',
-            message: 'Give exactly one of imageUrl or uploadId.',
-            recovery: 'Pass imageUrl for a photo on the web, or uploadId after upload_create.',
-            retryable: false,
-          })
-        const target =
-          uploadId ??
-          (yield* links.photoFrom({
-            operationId: yield* fetchOperation(input.operationId, 'piece_add'),
-            url: imageUrl ?? '',
-          }))
-        return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }))
+        if (uploadId !== undefined && imageUrl === undefined)
+          return show(yield* wardrobe.addPiece({ ...fields, uploadId }))
+        if (imageUrl !== undefined && uploadId === undefined)
+          return show(yield* links.addPieceFromPhoto({ ...fields, imageUrl }))
+        return yield* new ToolError({
+          code: 'invalid_arguments',
+          message: 'Give exactly one of imageUrl or uploadId.',
+          recovery: 'Pass imageUrl for a photo on the web, or uploadId after upload_create.',
+          retryable: false,
+        })
       }),
   }),
   tool({
@@ -194,25 +157,9 @@ const linkTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], show:
     title: 'Add a piece from a link',
     description:
       'Add a piece from a shop’s product page: Styld reads the page’s picture and name and adds it straight to the wardrobe. Give the garment type; the name defaults to the page’s. Choose a new `operationId` for each piece. A shop that blocks reading answers `blocked`: then ask for a photo instead.',
-    parameters: LinkImport,
+    parameters: AddPieceFromLink,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    handler: ({ url, name: chosen, ...fields }) =>
-      Effect.gen(function* () {
-        // The same links operation the website calls, under its own id derived from the piece's: a repeat answers
-        // from its receipt, then from the piece's.
-        const picture = yield* links.readLink({
-          operationId: yield* fetchOperation(fields.operationId, 'link_import'),
-          url,
-        })
-        const named = chosen ?? picture.name
-        return show(
-          yield* wardrobe.addPiece({
-            ...fields,
-            uploadId: picture.uploadId,
-            ...(named === null ? {} : { name: named }),
-          }),
-        )
-      }),
+    handler: (input) => links.addPieceFromLink(input).pipe(Effect.map(show)),
   }),
 ]
 

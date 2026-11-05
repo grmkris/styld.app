@@ -19,7 +19,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 ## The API Worker: a list of modules over one kernel
 
 - **Modules** (`server/src/Modules.ts`): platform, account, social, wardrobe, capture, photos, generation, outfits,
-  links, stylist, mcp, imports, seed. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
+  links, stylist, feedback, mcp, imports, seed, billing. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
   `Application.ts` builds the kernel once per runtime from the Worker's bindings and every module over it, and checks
   at the type level that no module needs a service nobody provides. Adding a module is one entry in that list. A
   module provides the layers of the modules it uses by reference; Effect builds each layer once. The entry,
@@ -122,7 +122,8 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   their patience; generation jobs are re-sent; unused uploads, old receipts, expired OAuth assertions and checks of
   gone targets are forgotten.
 - **Media goes with its owner:** rows first, then every object nothing else shows (one in-use check, paginated
-  deletes).
+  deletes). A deleted piece's or photo's own prefix is recorded as owed (`media_deletions`, `kernel/MediaDeletions.ts`)
+  in the batch that deletes its row; the request empties it, and the `mediaDeletions` sweep empties what R2 could not.
 
 ## Styld's chat
 
@@ -156,17 +157,21 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Providers** (`server/src/providers/`): Clef (Workers AI) routes, describes, judges and ranks; Cloudflare Images
   re-encodes every upload (EXIF and location stripped) and cuts out single garments; Meta SAM 3.1 splits several
   garments and tracks video; Meta Muse draws clean pictures and stickers; Veo (through the AI Gateway) makes turns.
-  Text models go through Effect's `LanguageModel` over the paid LiteLLM gateway (`ai/LanguageModel.ts`): one isolated
-  Alibaba Model Studio DeepSeek V4.1 Flash alias serves Styld, Thinking, mood-board planning and text moderation.
-  Styld's replies stream over the same transport (Server-Sent Events, usage in the last chunk) from its Threads.
-  Clef remains the Workers AI visual judge and garment/attribute model.
+  Text models go through Effect's `LanguageModel` over one Chat Completions transport (`ai/LanguageModel.ts`,
+  `providers/Text.ts`); each text model names its provider (`providers/Costs.ts` › `textModels`), which its errors,
+  counts and prices carry. The paid LiteLLM gateway's isolated Alibaba Model Studio DeepSeek V4.1 Flash alias serves
+  Thinking, mood-board planning and text moderation (`litellm`); Styld's replies stream from its Threads on Meta's
+  own API, Muse Spark 1.3 Standard (`meta-spark`, `providers/StylistModel.ts`, Server-Sent Events, usage in the last
+  chunk). Clef (`providers/ClefCall.ts` › `clefOver`, `askClef`; the garment questions in `providers/Clef.ts`) remains the Workers AI visual judge and garment/attribute model.
+  A `ProviderError` from a thrown transport or binding error keeps it as its `cause`, never a request or body.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and
   priced from one cost table (`providers/Costs.ts`). Paid HTTP text calls treat gateway timeouts, server failures,
   lost responses and unreadable completions as `OutcomeUnknown` and never resubmit them. `fetch` appears only in
   `providers/` (gated).
 - **Configuration is deployment facts only** (`server/src/Config.ts`): stage, release, origin, auth secrets, admin
-  emails, Meta's and the gateway's keys, decoded once. Model ids, thresholds, prices, the allowance, paces and which
+  emails, Meta's and the gateway's keys, decoded once; the Thread Worker's stage, release and Meta key are decoded by
+  `threadDeploymentOf`. Model ids, thresholds, prices, the allowance, paces and which
   provider does which task are constants in their owning module; changing one is a commit. **No feature flags, no
   switches, no stand-ins in `src`:** tests swap layers (`test/NativeWorker.ts` passes `test/fakes/*`), never env.
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The
@@ -203,13 +208,15 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   up, Google is not offered and email sign-in is untouched.
 - **MCP** at `/mcp`: Styld is its own OAuth issuer (one scope, `styld`), bearer-only, CIMD first with compatible DCR,
   HTTPS or loopback redirects, consent re-read and immediate revoke. Tools are `noun_verb` projections of the same
-  operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. Admin
+  operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. The
+  tools, their views and the toolset live in `server/src/tools/`, which both surfaces serve: `mcp/` is only the
+  transport (route, SDK, OAuth policy) and `stylist/` lists the chat's from the same specs. Admin
   tools appear only in the admin list, chosen per request by the account's verified sign-in email
   (`STYLD_ADMIN_EMAILS`). Anything other people wrote is data for the assistant, never instructions.
 - **Pictures in assistants:** an assistant never gets a picture's address (`SignedMedia` answers none for `via:
   'assistant'`). Only the `*_show` tools send pictures, to the host's view and never to the model: Images-transformed
   thumbnails (WebP, 480 px, at most 200 KiB each, never an original file) of the account's own objects, collected by
-  `withViewThumbnails` (`mcp/Thumbnails.ts`). Owner, 4 November 2026: these may include the person's own My Gallery
+  `withViewThumbnails` (`tools/Thumbnails.ts`). Owner, 4 November 2026: these may include the person's own My Gallery
   photos, a try-on's before photo and its result. Other people's media never enter a view.
 
 ## Visibility, checks and social
@@ -269,7 +276,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 
 Each pattern above has a gate in `bun run check` (`docs/STATUS.md` › Gates): `patterns:check` (drizzle only in the
 kernel, `fetch` only in providers, `env` only in Config/Resources, no `'x' in y`, no stand-ins, table ownership),
-`graph:check` (package boundaries), type-aware lint with anti-slop and complexity limits, the suppression census,
+`graph:check` (package boundaries, and the API Worker's layers and allowed cycles in `tools/quality/graph.ts`), type-aware lint with anti-slop and complexity limits, the suppression census,
 Knip, jscpd, the schema snapshot, unit and native tests and the bundle budget. Each concern has one owning gate:
 vendored hashes `vendor:check` (skills: repoagents), `any` and `!` lint, catalog keys x18n, ICU contracts
 `i18n:check`, TypeScript and Effect diagnostics `typecheck`.

@@ -1,7 +1,7 @@
 import { oauthAssertions } from '@styld/db'
 import { asc, inArray, lt, sql } from 'drizzle-orm'
 import { Clock, Effect } from 'effect'
-import { type Database, query } from './kernel/Db.ts'
+import { type Database, query } from '../kernel/Db.ts'
 
 // The OAuth server records each assertion it consumed until it expires (`OAuth.ts` `consumeAssertion`).
 

@@ -2,8 +2,8 @@ import { accounts, authMirror, oauthAssertions, oauthClients, oauthGrants } from
 import { OAuthServer } from '@yielded/auth'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { Effect, Schema } from 'effect'
-import type { ConsentPerson } from './ConsentPage.ts'
-import { type Database, logUnavailable, query } from './kernel/Db.ts'
+import type { ConsentPerson } from '../ConsentPage.ts'
+import { type Database, logUnavailable, query } from '../kernel/Db.ts'
 
 // The MCP OAuth server's rows in D1 (`OAuth.ts` serves them): its grants, the assertions it consumed, the clients that
 // registered, and the signed-in person its consent page names.

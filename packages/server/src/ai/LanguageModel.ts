@@ -3,13 +3,15 @@ import { AiError, LanguageModel, Prompt, type Response, Tool } from 'effect/ai'
 import { toCodecOpenAI } from 'effect/ai/OpenAiStructuredOutput'
 import { CaptureMetrics, type ProviderCall } from '../kernel/Metrics.ts'
 import { providerCall } from '../providers/Call.ts'
-import { type TextModel, textCost } from '../providers/Costs.ts'
+import { type TextModel, type TextProvider, textCost } from '../providers/Costs.ts'
 import { busy, isOutcomeUnknown, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
 import { TextCompletions } from '../providers/Text.ts'
 
-// Every text task uses Effect's LanguageModel over Styld's paid LiteLLM route. Clef keeps the Workers AI binding.
-// Objects are requested as JSON with an explicit schema in the prompt and decoded by Effect: DeepSeek supports
-// JSON Object mode, rather than provider-enforced JSON Schema. Replies are buffered as before; neither prompts,
+// Every text task uses Effect's LanguageModel over an OpenAI-compatible Chat Completions API: Styld's paid LiteLLM
+// route (DeepSeek) or, for Styld's chat, Meta's own API (Muse Spark). The task's model names its provider, which every
+// error, count and price of its calls carries. Clef keeps the Workers AI binding. Objects are requested as JSON with
+// an explicit schema in the prompt and decoded by Effect: DeepSeek supports JSON Object mode, rather than
+// provider-enforced JSON Schema. Replies are buffered as before; neither prompts,
 // answers nor reasoning are logged.
 
 /** One text task: the model it asks, what its calls are counted as, and how long one call may take. */
@@ -22,8 +24,6 @@ export interface TextTask {
    * 'minimal' answers its tool calls in about 3.5 s instead of 10 (probed 5 November 2026). 'none' when unset. */
   readonly reasoningEffort?: 'none' | 'minimal' | 'low'
 }
-
-const provider = 'litellm'
 
 const TokenCount = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const Usage = Schema.Struct({
@@ -91,14 +91,16 @@ const refusals = ['InvalidRequestError', 'ContentPolicyError', 'InvalidUserInput
 
 /** A language model's failure as the provider failure it is: an answer Styld cannot read is Broken (the same request
  * reads the same way), a refusal Refused, a lost answer OutcomeUnknown, anything else Busy. */
-export const providerErrorOf = (error: AiError.AiError): ProviderError => {
-  const is = (tags: ReadonlyArray<string>) => tags.some((tag) => Predicate.isTagged(error.reason, tag))
-  // A paid gateway can have billed a completion before returning malformed JSON or a schema mismatch. Keep that
-  // outcome claimed so a caller cannot pay for the same request again while trying to read it.
-  if (is(readingFailures)) return outcomeUnknown(provider)
-  if (is(refusals)) return refused(provider)
-  return is(['UnknownError']) ? outcomeUnknown(provider) : busy(provider)
-}
+export const providerErrorOf =
+  (provider: TextProvider) =>
+  (error: AiError.AiError): ProviderError => {
+    const is = (tags: ReadonlyArray<string>) => tags.some((tag) => Predicate.isTagged(error.reason, tag))
+    // A paid gateway can have billed a completion before returning malformed JSON or a schema mismatch. Keep that
+    // outcome claimed so a caller cannot pay for the same request again while trying to read it.
+    if (is(readingFailures)) return outcomeUnknown(provider)
+    if (is(refusals)) return refused(provider)
+    return is(['UnknownError']) ? outcomeUnknown(provider) : busy(provider)
+  }
 
 /** The JSON text of an answer, without the code fence some models put around it. */
 const unfenced = (text: string) =>
@@ -200,7 +202,7 @@ const requestOf = (task: TextTask, options: LanguageModel.ProviderOptions) =>
         ...(options.responseFormat.type === 'json' ? { response_format: { type: 'json_object' } } : {}),
       }
     },
-    catch: () => refused(provider),
+    catch: () => refused(task.model.provider),
   })
 
 const finishOf = (reason: string | null | undefined, called: boolean): Response.FinishPartEncoded['reason'] => {
@@ -225,19 +227,19 @@ const textOf = (output: Output, json: boolean) => {
   return json ? unfenced(text) : text
 }
 
-const paramsOf = (call: typeof ToolCall.Type) =>
+const paramsOf = (provider: TextProvider, call: typeof ToolCall.Type) =>
   Effect.try({
     try: () => Tool.unsafeSecureJsonParse(call.function.arguments),
     catch: () => outcomeUnknown(provider),
   })
 
 /** The answer as response parts: its words, its tool calls and its finish with the tokens billed. */
-const partsOf = Effect.fnUntraced(function* (output: Output, json: boolean) {
+const partsOf = Effect.fnUntraced(function* (provider: TextProvider, output: Output, json: boolean) {
   const choice = output.choices?.[0]
   const calls = choice?.message.tool_calls ?? []
   const text = textOf(output, json)
   const toolCalls = yield* Effect.forEach(calls, (call) =>
-    Effect.map(paramsOf(call), (params): Response.PartEncoded => ({
+    Effect.map(paramsOf(provider, call), (params): Response.PartEncoded => ({
       type: 'tool-call',
       id: call.id,
       name: call.function.name,
@@ -269,6 +271,7 @@ const partsOf = Effect.fnUntraced(function* (output: Output, json: boolean) {
 /** One counted call of the task's model. */
 const ask = (task: TextTask, run: TextCompletions['Service']['run'], metrics: CaptureMetrics['Service']) =>
   Effect.fnUntraced(function* (options: LanguageModel.ProviderOptions) {
+    const { provider } = task.model
     const request = yield* requestOf(task, options)
     return yield* providerCall(
       metrics,
@@ -283,7 +286,7 @@ const ask = (task: TextTask, run: TextCompletions['Service']['run'], metrics: Ca
             : Effect.succeed(output),
         ),
         Effect.flatMap((output) =>
-          Effect.map(partsOf(output, options.responseFormat.type === 'json'), (parts) => ({ output, parts })),
+          Effect.map(partsOf(provider, output, options.responseFormat.type === 'json'), (parts) => ({ output, parts })),
         ),
       ),
       ({ output }) => {
@@ -359,14 +362,14 @@ const chunkParts = (state: Streaming, chunk: typeof Chunk.Type): ReadonlyArray<R
 
 /** The answer's end: its words closed, its tool calls whole, and its finish with the tokens billed. An answer that
  * billed nothing it says is unreadable, and paid: unknown, never free. */
-const endParts = (state: Streaming) =>
+const endParts = (provider: TextProvider, state: Streaming) =>
   Effect.gen(function* () {
     const usage = state.usage
     if (usage === undefined || (!state.started && state.calls.size === 0))
       return yield* Effect.fail(outcomeUnknown(provider))
     const calls = yield* Effect.forEach([...state.calls.values()], (call) =>
       Effect.map(
-        paramsOf({ id: call.id, function: { name: call.name, arguments: call.arguments } }),
+        paramsOf(provider, { id: call.id, function: { name: call.name, arguments: call.arguments } }),
         (params): Response.StreamPartEncoded => ({ type: 'tool-call', id: call.id, name: call.name, params }),
       ),
     )
@@ -389,6 +392,7 @@ const askStreaming =
   (options: LanguageModel.ProviderOptions): Stream.Stream<Response.StreamPartEncoded, ProviderError> =>
     Stream.unwrap(
       Effect.gen(function* () {
+        const { provider } = task.model
         const request = yield* requestOf(task, options)
         const started = yield* Clock.currentTimeMillis
         const state: Streaming = { started: false, calls: new Map(), finish: null, usage: undefined }
@@ -409,7 +413,7 @@ const askStreaming =
         return stream(task.model.id, request).pipe(
           Stream.mapEffect((raw) => Effect.mapError(decodeChunk(raw), () => outcomeUnknown(provider))),
           Stream.flatMap((chunk) => Stream.fromIterable(chunkParts(state, chunk))),
-          Stream.concat(Stream.fromIterableEffect(Effect.suspend(() => endParts(state)))),
+          Stream.concat(Stream.fromIterableEffect(Effect.suspend(() => endParts(provider, state)))),
           Stream.interruptWhen(Effect.andThen(Effect.sleep(task.deadline), Effect.fail(outcomeUnknown(provider)))),
           Stream.onExit((exit) =>
             Exit.isSuccess(exit)

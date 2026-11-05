@@ -4,7 +4,7 @@ import { OAuthServer } from '@yielded/auth'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
 import { McpScope } from '../src/mcp/Policy.ts'
-import { persistence, registeredClients } from '../src/OAuthStore.ts'
+import { persistence, registeredClients } from '../src/mcp/OAuthStore.ts'
 import { localD1 } from './LocalD1.ts'
 
 // The MCP OAuth server's grants, assertion receipts and registered clients over D1: a lost race or a replay answers

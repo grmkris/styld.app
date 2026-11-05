@@ -14,7 +14,8 @@ import { WorkerEnvironment } from 'effect-cf'
 import { digestDefinitions } from '@yielded/agent/digest'
 import type { CanonicalRecordEnvelope } from '@yielded/agent/records'
 import { IdempotencyKey, Principal } from '@yielded/agent/submission-ledger'
-import { Duration, Effect, Layer, Match, Predicate, Schedule, Schema, Stream } from 'effect'
+import { makeObservabilityBase, withObservability } from '@styld/observability'
+import { Duration, Effect, Layer, Logger, Match, Predicate, Schedule, Schema, Stream } from 'effect'
 import * as Digest from 'effect/crypto/Digest'
 import { type LanguageModel, Model, Tool, Toolkit } from 'effect/ai'
 import {
@@ -31,6 +32,7 @@ import {
   type StylistThreadsApi,
   threadIdOf,
 } from './Agent.ts'
+import { threadDeploymentOf } from '../Config.ts'
 import { chatOf } from './History.ts'
 import { catalogue } from './Catalogue.ts'
 import { maxSteps } from './Policy.ts'
@@ -169,11 +171,12 @@ export const makeStylistThread = (model: Layer.Layer<LanguageModel.LanguageModel
   ) {
     /** Forget the chat for good, its account being deleted: Yielded Agent (0.1.0-beta.191) has no way to delete a
      * Thread, so its Object's own storage goes (every record, the ledger and the outbox) with its alarm, and the
-     * incarnation ends so nothing it held in memory writes again. */
+     * incarnation ends so nothing it held in memory writes again. It ends once this call has answered: aborting
+     * within the call would fail it, and a failure of the deletes themselves must reach the caller, who retries. */
     async erase() {
       await this.ctx.storage.deleteAlarm()
       await this.ctx.storage.deleteAll()
-      this.ctx.abort('erased')
+      setTimeout(() => this.ctx.abort('erased'), 0)
     }
   }
 
@@ -256,24 +259,72 @@ const live = (env: Cloudflare.Env, accountId: string, chatId: string) =>
     ).pipe(Stream.provide(threadsOf(env)), Stream.orDie),
   )
 
-/** The Thread Worker's entrypoint, which the API Worker binds: admitting, reading and watching chats. Only the API
- * Worker is bound to it; it names the account from the session. */
+/** A chat's Thread that could not be erased, or still has records after it was: the account's deletion fails, and
+ * its sweep erases it again. */
+class ThreadNotErased extends Schema.TaggedError<ThreadNotErased>()('ThreadNotErased', {
+  cause: Schema.optionalKey(Schema.Defect()),
+}) {}
+
+/** How long an erased Thread may still answer from the incarnation that erased it, which ends once the erase has
+ * answered: ten more reads, 100 ms apart. */
+const endedWithin = { schedule: Schedule.spaced('100 millis'), times: 10 } as const
+
+/** Erase one chat's Thread, then confirm it is gone: a Thread with no records is not materialized. */
+const erased = (env: Cloudflare.Env, accountId: string, chatId: string) => {
+  const threadId = threadIdOf(accountId, chatId)
+  const gone = withThreads(env, (client) => client.readAll(threadId)).pipe(
+    Effect.flatMap(() => Effect.fail(ThreadNotErased.make({}))),
+    Effect.catchTag('ThreadNotMaterialized', () => Effect.void),
+  )
+  return Effect.tryPromise({
+    try: () => env.STYLIST_THREADS.getByName(threadId).erase(),
+    catch: (cause) => ThreadNotErased.make({ cause }),
+  }).pipe(
+    Effect.andThen(
+      gone.pipe(Effect.retry({ ...endedWithin, while: (error) => Predicate.isTagged(error, 'ThreadNotErased') })),
+    ),
+  )
+}
+
+// Alchemy's bridge is not here: the entrypoint logs structured objects itself, as the API Worker's requests do
+// (`Application.ts`), so Workers Logs indexes every field.
+const structuredLogs: ReadonlySet<Logger.Logger<unknown, unknown>> = new Set([Logger.consoleStructured])
+
+/** One call to the entrypoint, as one named span with the deployment's bounded fields on its logs. */
+const observed =
+  (env: Cloudflare.Env, kind: string) =>
+  <A, E>(effect: Effect.Effect<A, E>) =>
+    Effect.gen(function* () {
+      const deployment = yield* threadDeploymentOf(env)
+      const base = yield* makeObservabilityBase({
+        environment: deployment.environment,
+        release: deployment.release,
+        component: 'threads',
+      }).pipe(Effect.orDie)
+      return yield* effect.pipe(withObservability('styld.threads', { ...base, kind }))
+    }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
+
+/** The Thread Worker's entrypoint, which the API Worker binds: admitting, reading, watching and erasing chats. Only the
+ * API Worker is bound to it; it names the account from the session. */
 export class StylistThreads extends WorkerEntrypoint implements StylistThreadsApi {
   admit(request: Admit) {
-    return Effect.runPromise(admit(this.env, request))
+    return Effect.runPromise(admit(this.env, request).pipe(observed(this.env, 'rpc.threads.admit')))
   }
   chat(accountId: string, chatId: string) {
-    return Effect.runPromise(read(this.env, accountId, chatId).pipe(Effect.orDie))
+    return Effect.runPromise(
+      read(this.env, accountId, chatId).pipe(Effect.orDie, observed(this.env, 'rpc.threads.chat')),
+    )
   }
   live(accountId: string, chatId: string) {
     return Promise.resolve(live(this.env, accountId, chatId))
   }
-  async erase(accountId: string, chatIds: ReadonlyArray<string>) {
-    for (const chatId of chatIds) {
-      // An Object that aborts as it ends its incarnation fails the call that asked it to; its storage is gone.
-      await this.env.STYLIST_THREADS.getByName(threadIdOf(accountId, chatId))
-        .erase()
-        .catch(() => undefined)
-    }
+  /** Erase each chat's Thread and confirm it is gone; one that is not fails the call, and the account's deletion with
+   * it, so its sweep tries again. */
+  erase(accountId: string, chatIds: ReadonlyArray<string>) {
+    return Effect.runPromise(
+      Effect.forEach(chatIds, (chatId) => erased(this.env, accountId, chatId), { discard: true }).pipe(
+        observed(this.env, 'rpc.threads.erase'),
+      ),
+    )
   }
 }

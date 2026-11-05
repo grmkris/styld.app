@@ -1,10 +1,7 @@
-import { busy, refused, broken } from './Errors.ts'
-import { costs } from './Costs.ts'
-import { deadlines, providerCall } from './Call.ts'
 import { Colour, familyOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import * as Base64 from 'effect/encoding/Base64'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import { askClef, choiceOf, type ClefAnswer, type ClefRequest, imageOf, noulOf, type RunClef } from './ClefCall.ts'
 import { alternativeOf } from '../capture/GarmentRules.ts'
 import {
   type HeldCheck,
@@ -16,42 +13,6 @@ import {
   type TurnComparison,
   type Verdict,
 } from '../capture/Providers.ts'
-
-/** A Clef-flash request (Workers AI `@cf/cloudflare/clef-flash`, the System One API). */
-export interface ClefRequest {
-  readonly model: 'clef-flash'
-  readonly state: string
-  readonly images: ReadonlyArray<{ readonly content_type: string; readonly base64: string }>
-  readonly questions: Readonly<Record<string, object>>
-}
-
-/** The Workers AI binding narrowed to Clef-flash. */
-export type RunClef = (request: ClefRequest) => Promise<unknown>
-
-const Choice = Schema.Struct({ choice: Schema.String, probabilities: Schema.Record(Schema.String, Schema.Number) })
-const Noul = Schema.Struct({ noul: Schema.Number })
-const Answer = Schema.Struct({
-  answers: Schema.Record(Schema.String, Schema.Unknown),
-  usage: Schema.optionalKey(Schema.Struct({ input_tokens: Schema.optionalKey(Schema.Number) })),
-})
-export type ClefAnswer = typeof Answer.Type
-
-const failed = (retryable: boolean) => (retryable ? busy('clef') : refused('clef'))
-
-/** A picture as Clef reads it. */
-export const imageOf = (picture: Picture) => ({
-  content_type: picture.contentType,
-  base64: Base64.encode(picture.bytes),
-})
-
-const choiceOf = (answer: ClefAnswer, id: string) =>
-  Option.flatMap(Option.fromNullishOr(answer.answers[id]), Schema.decodeUnknownOption(Choice))
-/** A yes-or-no answer's likelihood of yes, 0 when it is missing. */
-export const noulOf = (answer: ClefAnswer, id: string) =>
-  Option.match(Option.flatMap(Option.fromNullishOr(answer.answers[id]), Schema.decodeUnknownOption(Noul)), {
-    onNone: () => 0,
-    onSome: ({ noul }) => noul,
-  })
 
 /** Each garment type as a shop names it, so the model sorts a piece the way a person browsing would look for it. */
 const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: string } = {
@@ -110,28 +71,6 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
 }
 
 const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colour, `Mostly ${colour}`]))
-
-/** What one answer cost: its input tokens, at Clef-flash's list price. */
-export const clefCost = (answer: ClefAnswer) => {
-  const tokens = answer.usage?.input_tokens ?? 0
-  return { units: tokens, costMicroUsd: Math.round(tokens * costs.clefFlashPerToken) }
-}
-
-/** Ask Clef, counted as one provider call of `kind` with its tokens' cost. */
-export const askClef = (
-  run: RunClef,
-  metrics: CaptureMetrics['Service'],
-  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare' | 'match' | 'outfit',
-  request: ClefRequest,
-) =>
-  providerCall(
-    metrics,
-    { provider: 'clef', model: 'clef-flash', kind, deadline: deadlines.clef, replaySafe: true },
-    Effect.tryPromise({ try: () => run(request), catch: () => failed(true) }).pipe(
-      Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => broken('clef')))),
-    ),
-    clefCost,
-  )
 
 /** What the decision model is asked about each cut-out piece: what a shop would call it, and when and for what it is
  * worn (owner, 2026-10-31). */

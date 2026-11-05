@@ -51,9 +51,9 @@ const drizzleModules = new Set([
 const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   accounts: ['AccountLifecycle.ts'],
   accountDeletions: ['AccountLifecycle.ts'],
-  oauthGrants: ['AccountLifecycle.ts', 'OAuthStore.ts'],
-  oauthAssertions: ['OAuthStore.ts', 'OAuthAssertions.ts'],
-  oauthClients: ['OAuth.ts', 'OAuthStore.ts'],
+  oauthGrants: ['AccountLifecycle.ts', 'mcp/OAuthStore.ts'],
+  oauthAssertions: ['mcp/OAuthStore.ts', 'mcp/OAuthAssertions.ts'],
+  oauthClients: ['mcp/OAuth.ts', 'mcp/OAuthStore.ts'],
   providerFiles: ['capture/'],
   pieces: ['wardrobe/'],
   pieceProvenance: ['wardrobe/'],
@@ -90,7 +90,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   generationPicks: ['generation/'],
   tryOns: ['generation/'],
   tryOnPieces: ['generation/'],
-  assistantFeedback: ['mcp/'],
+  assistantFeedback: ['feedback/'],
   thinkingDays: ['outfits/'],
   wornPieces: ['worn/'],
   stylistChats: ['stylist/'],
@@ -104,6 +104,8 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   // Only the payment webhook writes them, in one batch per delivery (`billing/Store.ts`).
   purchases: ['billing/'],
   memberships: ['billing/'],
+  // Deleted rows' prefixes still owed a delete, written in their row's batch (`kernel/MediaDeletions.ts`).
+  mediaDeletions: ['kernel/MediaDeletions.ts'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

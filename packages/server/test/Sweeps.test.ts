@@ -1,9 +1,9 @@
 import { describe, expect, it } from '@effect/vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect } from 'effect'
+import { Cause, Effect, Exit } from 'effect'
 import { runSweeps, stuckRows, sweepBatch } from '../src/jobs/Sweeps.ts'
 import { forgetOldReceipts } from '../src/kernel/Receipts.ts'
-import { forgetExpiredAssertions } from '../src/OAuthAssertions.ts'
+import { forgetExpiredAssertions } from '../src/mcp/OAuthAssertions.ts'
 import { checkRows } from '../src/safety/Checks.ts'
 import { makeStore } from '../src/wardrobe/Store.ts'
 import { localD1 } from './LocalD1.ts'
@@ -217,15 +217,26 @@ describe('the sweeps', () => {
     }),
   )
 
-  it.effect('run every sweep on its own: one that fails skips none of the others', () =>
-    Effect.gen(function* () {
-      const ran: Array<string> = []
-      yield* runSweeps([
-        { name: 'broken', run: Effect.die('down') },
-        { name: 'failing', run: Effect.fail('down') },
-        { name: 'fine', run: Effect.sync(() => ran.push('fine')) },
-      ])
-      expect(ran).toEqual(['fine'])
-    }),
+  it.effect(
+    'run every sweep on its own: one that fails or dies skips none of the others, and a defect is not swallowed',
+    () =>
+      Effect.gen(function* () {
+        const ran: Array<string> = []
+        const failing = yield* Effect.exit(
+          runSweeps([
+            { name: 'failing', run: Effect.fail('down') },
+            { name: 'fine', run: Effect.sync(() => ran.push('fine')) },
+          ]),
+        )
+        expect(Exit.isSuccess(failing)).toBe(true)
+        const broken = yield* Effect.exit(
+          runSweeps([
+            { name: 'broken', run: Effect.die('bug') },
+            { name: 'fine', run: Effect.sync(() => ran.push('fine again')) },
+          ]),
+        )
+        expect(ran).toEqual(['fine', 'fine again'])
+        expect(Exit.isFailure(broken) && Cause.hasDies(broken.cause)).toBe(true)
+      }),
   )
 })

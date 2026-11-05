@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, SlowDown } from '@styld/protocol'
-import { Effect, Record } from 'effect'
+import { Effect, Layer, Logger, Record, References } from 'effect'
 import * as Headers from 'effect/http/Headers'
 import { type Limiter, networkOf, Pacing } from '../src/kernel/Pacing.ts'
 import { paces } from '../src/kernel/Paces.ts'
@@ -33,13 +33,24 @@ describe('pacing', () => {
     }).pipe(asAna, Effect.provide(layer))
   })
 
-  it.effect('refuses when a limiter fails: a limit is never an open door', () => {
+  it.effect('refuses when a limiter fails, a limit never being an open door, and logs the outage apart', () => {
     const { layer } = limiters(100)
+    const logged: Array<{ readonly message: unknown; readonly annotations: Readonly<Record<string, unknown>> }> = []
+    const capture = Logger.make((options) => {
+      logged.push({ message: options.message, annotations: options.fiber.getRef(References.CurrentLogAnnotations) })
+    })
     return Effect.gen(function* () {
       const pacing = yield* Pacing
       expect(yield* pacing.allows('thinking', 'ac_ana')).toBe(false)
       expect(yield* pacing.account('thinking').pipe(Effect.flip)).toBeInstanceOf(SlowDown)
-    }).pipe(asAna, Effect.provide(layer))
+      yield* pacing.account('link')
+      expect(logged).toHaveLength(2)
+      expect(logged[0]).toMatchObject({
+        message: ['Styld.Pacing.limiter unavailable'],
+        annotations: { 'styld.pace': 'thinking', 'styld.pace.cause': 'the binding is down' },
+      })
+      expect(JSON.stringify(logged)).not.toContain('ac_ana')
+    }).pipe(asAna, Effect.provide(Layer.merge(layer, Logger.layer([capture]))))
   })
 
   it('keys a network by the address Cloudflare sets, one shared key without it', () => {

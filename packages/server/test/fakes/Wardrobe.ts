@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Effect, Option } from 'effect'
 import type { Wardrobe } from '../../src/wardrobe/Wardrobe.ts'
 
 const notUsed = () => Effect.die('not used by these tests')
@@ -7,6 +7,7 @@ const notUsed = () => Effect.die('not used by these tests')
  * they are about. */
 export const unusedWardrobe: Wardrobe['Service'] = {
   listPieces: () => Effect.succeed([]),
+  searchPieces: () => Effect.succeed({ pieces: [], total: 0, nextOffset: Option.none() }),
   getPiece: notUsed,
   newUpload: notUsed,
   createUpload: notUsed,

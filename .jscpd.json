@@ -10,7 +10,7 @@
     "tools/oxlint/anti-slop/**",
     "packages/i18n/src/catalogs.ts",
     "packages/i18n/src/generated.ts",
-    "packages/server/src/mcp/apps/AssistantViews.generated.ts"
+    "packages/server/src/tools/apps/AssistantViews.generated.ts"
   ],
   "reporters": ["console"]
 }
