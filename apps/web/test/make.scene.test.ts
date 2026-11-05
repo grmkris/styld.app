@@ -63,7 +63,7 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
   })
 
 const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-  fromBoard(boardInit(boardId, true), board),
+  fromBoard(boardInit(boardId), board),
 )
 
 const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())

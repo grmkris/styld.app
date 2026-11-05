@@ -18,8 +18,11 @@ import {
   Toast,
   Upload,
 } from '../src/page/Board/Model.ts'
-import { update } from '../src/page/Board/Update.ts'
+import { update as boardUpdate } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+
+/** The board's page with a session, as its owner opens it. */
+const update = (current: Model, sent: Message) => boardUpdate(current, sent, { signedIn: true })
 
 const itemId = (seed: string) => Schema.decodeUnknownSync(BoardItemId)(`bi_${seed.padEnd(22, 'x')}`)
 const knit = PieceItem.make({
@@ -57,7 +60,7 @@ const board = Schema.decodeUnknownSync(Board)({
 })
 
 /** A board open in the editor, its paper 500px wide: one page pixel is two table units. */
-const open: Model = modifyFields(fromBoard(init(board.id, true), board), {
+const open: Model = modifyFields(fromBoard(init(board.id), board), {
   pxPerUnit: () => 0.5,
   ids: () => [itemId('fresh-1'), itemId('fresh-2'), itemId('fresh-3'), itemId('fresh-4'), itemId('fresh-5')],
 })

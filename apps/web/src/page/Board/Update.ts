@@ -71,10 +71,14 @@ import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
 import { PinLook, ReloadBoard } from './PageCommands.ts'
 
+/** What the board's page is told by the app: whether there is a session, as the app knows it now (the cookie's hint
+ * until the session is read). */
+export type Context = { readonly signedIn: boolean }
+
 /** The Commands that open the board: the board and a first batch of ids (the app reads the pieces for the tray).
  * Signed out it can only be someone's public board, read as visitors read it, with nothing to edit. */
-export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> =>
-  model.signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
+export const load = (model: Model, { signedIn }: Context): ReadonlyArray<Command.Command<Message, never, Services>> =>
+  signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 const foldTryIt = Update.foldChild({
@@ -243,7 +247,7 @@ const loadFailed = (model: Model, error: LoadError): UpdateReturn => ({
   model: modifyFields(model, { board: (board) => AsyncData.settle(board, Result.fail(error)) }),
 })
 
-export const update = (model: Model, message: Message): UpdateReturn =>
+export const update = (model: Model, message: Message, context: Context): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadBoard: ({ board }) => ({
       model: fromBoard(model, board),
@@ -316,5 +320,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { look: () => LookSave.Saved({ lookId }), pins: () => board.pins }),
     }),
     FailedSaveLook: () => ({ model: modifyFields(model, { look: () => LookSave.Failed() }) }),
-    ClickedRetry: () => ({ model: modifyFields(model, { board: () => AsyncData.Loading() }), commands: load(model) }),
+    ClickedRetry: () => ({
+      model: modifyFields(model, { board: () => AsyncData.Loading() }),
+      commands: load(model, context),
+    }),
   })

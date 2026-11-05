@@ -41,7 +41,7 @@ const boardWith = (items: ReadonlyArray<PieceItem>) =>
   })
 const editing = (items: ReadonlyArray<PieceItem>, locale: 'en' | 'sl' = 'en') =>
   withPage(at(`/boards/${boardId}/collage`, { signedIn: true, locale }), lenses.board, () =>
-    fromBoard(boardInit(boardId, true), boardWith(items)),
+    fromBoard(boardInit(boardId), boardWith(items)),
   )
 
 /** The table reports its width once it is on the page. */

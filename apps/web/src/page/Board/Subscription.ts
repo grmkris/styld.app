@@ -3,8 +3,11 @@ import { Subscription } from 'foldkit'
 import * as Dom from 'foldkit/dom'
 import type { Pointer } from './Geometry.ts'
 import { Message } from './Message.ts'
+import * as AddSheet from './AddSheet.ts'
+import * as Chrome from './Chrome.ts'
 import * as Make from './Make.ts'
-import { Gesture, type Model } from './Model.ts'
+import { Gesture, type Model, ownBoard, PinWork } from './Model.ts'
+import { sheetShown } from '../Sheet.ts'
 
 const pointerOf = (event: PointerEvent): Pointer => ({ pointerId: event.pointerId, x: event.clientX, y: event.clientY })
 
@@ -80,6 +83,15 @@ const pasteStream = () =>
       return files.length === 0 || isTyping(event.target) ? Option.none() : Option.some(Message.PastedFiles({ files }))
     },
   })
+
+/** Whether the editor's own listeners run: on the person's own board, while no sheet covers the table and no pin is
+ * on its way (a pin change replaces the saved table). */
+export const editorListens = (model: Model): boolean =>
+  Option.isSome(ownBoard(model.board)) &&
+  !Chrome.isSheetShown(model.chrome) &&
+  !AddSheet.isSheetShown(model.addSheet) &&
+  !sheetShown(model.make.sheet) &&
+  !PinWork.guards.Sending(model.pinWork)
 
 /** While a hand is on the table the whole page reports the pointer, so a finger that leaves an item (or a
  * second finger anywhere) still moves it. Keys, pasted pictures and dropped files work from anywhere on the

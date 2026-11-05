@@ -11,7 +11,7 @@ import { Deletion } from '../../Confirm.ts'
 import { drawOperationId } from '../../OperationIds.ts'
 import { boardsRouter } from '../../route.ts'
 import { StyldClient } from '../../StyldClient.ts'
-import { sheetFolds } from '../Sheet.ts'
+import { sheetFolds, sheetShown } from '../Sheet.ts'
 
 // The board page's chrome around its table: the title that renames it, the switch that makes it public, and the ⋯
 // sheet with tidy and paste (the table's, so the board does them), its moods, its pins and deleting it. What the
@@ -70,6 +70,9 @@ export const withMoods = (model: Model, moods: ReadonlyArray<Mood>): Model =>
 
 /** The pin asked about has gone to be taken off. */
 export const unpinSent = (model: Model): Model => modifyFields(model, { unpinning: () => Option.none() })
+
+/** Whether the ⋯ sheet covers the table, so its keys and hands are the sheet's. */
+export const isSheetShown = (model: Model): boolean => sheetShown(model.more)
 
 // MESSAGE
 

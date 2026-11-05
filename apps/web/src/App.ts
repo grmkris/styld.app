@@ -1,4 +1,4 @@
-import { Effect, Match, Option, Predicate, Schema } from 'effect'
+import { Effect, Match, Option, Schema } from 'effect'
 import type { Tone } from '@styld/protocol'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
@@ -26,8 +26,8 @@ import * as Ask from './page/Ask.ts'
 import * as Today from './page/Today.ts'
 import * as BoardSubscription from './page/Board/Subscription.ts'
 import * as Board from './page/Board/Update.ts'
-import { ownBoard, PinWork } from './page/Board/Model.ts'
-import { sheetShown } from './page/Sheet.ts'
+import type { Model as BoardModel } from './page/Board/Model.ts'
+import type { Message as BoardMessage } from './page/Board/Message.ts'
 import * as Boards from './page/Boards.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
@@ -421,16 +421,34 @@ const foldPhoto = Update.foldChild({
   }),
 })
 
+/** The board's page, told whether there is a session as the app knows it now. */
+const foldBoard = (context: Board.Context) =>
+  Update.foldChild({
+    update: (child: BoardModel, message: BoardMessage) => Board.update(child, message, context),
+    ...at(lenses.board),
+  })
+
+/** Someone's public page, told whether there is a session as the app knows it now. */
+const foldVisit = (context: Visit.Context) =>
+  Update.foldChild({
+    update: (child: Visit.Model, message: Visit.Message) => Visit.update(child, message, context),
+    ...at(lenses.visit),
+  })
+
 const foldPages = {
   boards: Update.foldChild({ update: Boards.update, ...foldBoards }),
-  board: Update.foldChild({ update: Board.update, ...at(lenses.board) }),
   looks: Update.foldChild({ update: Looks.update, ...at(lenses.looks) }),
   photos: Update.foldChild({ update: Photos.update, ...at(lenses.photos) }),
   ...foldTryOn,
   stylist: Update.foldChild({ update: Stylist.update, ...at(lenses.stylist) }),
-  visit: Update.foldChild({ update: Visit.update, ...at(lenses.visit) }),
   landing: Update.foldChild({ update: Landing.update, ...at(lenses.landing) }),
-  data: Update.foldChild({ update: ServerData.update, ...data }),
+  data: Update.foldChild({
+    update: ServerData.update,
+    ...data,
+    foldOutMessage: ServerData.OutMessage.match<Step>({
+      ReadPieces: () => (model) => NavigationState.restoreWardrobePosition(askOnceDressed(model)),
+    }),
+  }),
 }
 
 // SUBSCRIPTION
@@ -458,16 +476,7 @@ export const subscriptions = Subscription.aggregate(
   Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>(at(lenses.board)),
   Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
     ...at(lenses.board),
-    when: (model) =>
-      Option.exists(
-        lenses.board.read(model.page),
-        (board) =>
-          Option.isSome(ownBoard(board.board)) &&
-          !sheetShown(board.chrome.more) &&
-          !sheetShown(board.addSheet.picker.sheet) &&
-          !sheetShown(board.make.sheet) &&
-          !PinWork.guards.Sending(board.pinWork),
-      ),
+    when: (model) => Option.exists(lenses.board.read(model.page), BoardSubscription.editorListens),
   }),
 )
 
@@ -570,15 +579,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotTodayMessage: (got) => foldToday(model, got.message),
     GotAskMessage: (got) => foldAsk(NavigationState.askContext(model.route))(model, got.message),
     GotBoardsMessage: (got) => foldPages.boards(model, got.message),
-    GotBoardMessage: (got) => foldPages.board(model, got.message),
-    GotVisitMessage: (got) => foldPages.visit(model, got.message),
+    GotBoardMessage: (got) => foldBoard({ signedIn: hasSession(model) })(model, got.message),
+    GotVisitMessage: (got) => foldVisit({ signedIn: hasSession(model) })(model, got.message),
     GotLandingMessage: (got) => foldPages.landing(model, got.message),
-    GotServerDataMessage: (got) =>
-      Update.combine<Model, Message, Services>(model, [
-        (stepModel) => foldPages.data(stepModel, got.message),
-        (stepModel) =>
-          Predicate.isTagged(got.message, 'SucceededListPieces')
-            ? NavigationState.restoreWardrobePosition(askOnceDressed(stepModel))
-            : { model: stepModel },
-      ]),
+    GotServerDataMessage: (got) => foldPages.data(model, got.message),
   })

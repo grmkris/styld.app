@@ -34,14 +34,14 @@ const board = Schema.decodeUnknownSync(Board)({
   updatedAt: '2026-10-31T09:00:00.000Z',
 })
 const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-  fromBoard(boardInit(boardId, true), board),
+  fromBoard(boardInit(boardId), board),
 )
 
 /** The board's page with its Add sheet open over the person's pieces, in `locale`. */
 const picking = (locale: 'en' | 'sl') =>
   withPieces(
     withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
-      modifyFields(fromBoard(boardInit(boardId, true), board), {
+      modifyFields(fromBoard(boardInit(boardId), board), {
         addSheet: (addSheet) => ({
           ...addSheet,
           picker: { ...addSheet.picker, sheet: { ...addSheet.picker.sheet, isOpen: true } },
@@ -65,7 +65,7 @@ describe("a board's page", () => {
   test('keeps the way back and says what it is doing while the board loads', () => {
     scene(
       { update, view },
-      given(withPage(page, lenses.board, () => boardInit(boardId, true))),
+      given(withPage(page, lenses.board, () => boardInit(boardId))),
       expect(role('status')).toHaveText('Opening your board…'),
       expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('heading', { level: 1 })).not.toExist(),
@@ -74,7 +74,7 @@ describe("a board's page", () => {
 
   test('says when visitors see fewer pins than are pinned, as the board it read says', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public', publicPins: [] }),
+      fromBoard(boardInit(boardId), { ...board, visibility: 'public', publicPins: [] }),
     )
     scene(
       { update, view },
@@ -88,7 +88,7 @@ describe("a board's page", () => {
 
   test('marks no pin when visitors see every one of them', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), {
+      fromBoard(boardInit(boardId), {
         ...board,
         visibility: 'public',
         publicPins: board.pins.map(({ id }) => id),
@@ -106,7 +106,7 @@ describe("a board's page", () => {
 
   test('Share on a public board shares its link, and says so where it was copied (T-20)', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public' }),
+      fromBoard(boardInit(boardId), { ...board, visibility: 'public' }),
     )
     scene(
       { update, view },
@@ -269,7 +269,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
   })
   const outfitBoard = (anchor: typeof jeans | null) =>
     withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), {
+      fromBoard(boardInit(boardId), {
         ...board,
         name: 'Jeans: outfits',
         outfitsAround: Schema.decodeUnknownSync(Board.fields.outfitsAround)({
@@ -323,7 +323,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), flanking),
+          fromBoard(boardInit(boardId), flanking),
         ),
       ),
       measured,
@@ -335,7 +335,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), around),
+          fromBoard(boardInit(boardId), around),
         ),
       ),
       measured,
@@ -351,7 +351,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), before),
+          fromBoard(boardInit(boardId), before),
         ),
       ),
       measured,

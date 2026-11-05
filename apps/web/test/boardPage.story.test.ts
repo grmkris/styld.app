@@ -23,9 +23,14 @@ import {
 } from '../src/page/Board/Chrome.ts'
 import * as Chrome from '../src/page/Board/Chrome.ts'
 import { PinLook, ReloadBoard, UnpinThings } from '../src/page/Board/PageCommands.ts'
-import { update } from '../src/page/Board/Update.ts'
+import { update as boardUpdate } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { init as appInit, Message as AppMessage, update as appUpdate } from '../src/App.ts'
+import { flags, urlOf } from './AppFixtures.ts'
 import { done as doneTryOn, photo } from './TryOnFixtures.ts'
+
+/** The board's page with a session, as its owner opens it. */
+const update = (current: Model, sent: Message) => boardUpdate(current, sent, { signedIn: true })
 
 const knit = pieceFixture('knit')
 const shoes = pieceFixture('shoes', { type: 'trainers' })
@@ -64,7 +69,7 @@ const board = Schema.decodeUnknownSync(Board)({
   check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
-const open: Model = fromBoard(init(board.id, true), board)
+const open: Model = fromBoard(init(board.id), board)
 /** A Message of the board's Add sheet, as the board receives it. */
 const add = (sheetMessage: AddSheet.Message) => Message.GotAddSheetMessage({ message: sheetMessage })
 /** A Message of the board's chrome (its title, public switch and ⋯ sheet), as the board receives it. */
@@ -403,5 +408,26 @@ describe('the board editor', () => {
         expect(version).toBe(3)
       }),
     )
+  })
+})
+
+/** The names of the Commands an update sent. */
+const names = (result: { readonly commands?: ReadonlyArray<{ readonly name: string }> }) =>
+  (result.commands ?? []).map(({ name }) => name)
+
+describe('a board opened with a session cookie that turns out stale', () => {
+  test('is read as the person’s own at first, and as visitors read it once the session is read signed out', () => {
+    const opened = appInit(flags(true), urlOf(`/boards/${board.id}`))
+    // The cookie's hint is all the page has at first: the board is read as the person's own.
+    expect(names(opened)).toContain('LoadBoard')
+    const signedOut = appUpdate(opened.model, AppMessage.ReceivedSession({ claims: null })).model
+    const failed = appUpdate(
+      signedOut,
+      AppMessage.GotBoardMessage({ message: Message.FailedLoadBoard({ error: 'Unavailable' }) }),
+    ).model
+    // Try again goes by the session as the app now knows it, not the cookie the page opened with.
+    expect(names(appUpdate(failed, AppMessage.GotBoardMessage({ message: Message.ClickedRetry() })))).toEqual([
+      'VisitBoard',
+    ])
   })
 })

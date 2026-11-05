@@ -18,6 +18,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { initPicker, PiecePicker, pickerFolds } from '../PiecePicker.ts'
 import { StyldClient } from '../../StyldClient.ts'
+import { sheetShown } from '../Sheet.ts'
 
 // The board's Add sheet: one sheet for everything the person can put on the table (their pieces, looks, Gallery photos
 // and try-ons), one search across them, each kind read the first time it is shown. A tap closes the sheet and tells
@@ -59,6 +60,9 @@ export const init = (): Model => ({
   photos: AsyncData.Idle(),
   tryOns: AsyncData.Idle(),
 })
+
+/** Whether the sheet covers the table, so its keys and hands are the sheet's. */
+export const isSheetShown = (model: Model): boolean => sheetShown(model.picker.sheet)
 
 // MESSAGE
 

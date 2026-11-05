@@ -43,8 +43,6 @@ export const Model = Schema.Struct({
   shown: ShownData.schema,
   tab: PersonTab,
   people: People.Model,
-  /** A session came with the page: only then is there a relation to read. */
-  signedIn: Schema.Boolean,
   sharing: Share.Model,
   /** On a piece's page, the board or look it was opened from, where Back returns: a piece is public only through
    * one (owner, 2026-10-31), and its owner's profile does not list pieces. */
@@ -53,11 +51,10 @@ export const Model = Schema.Struct({
 export type Model = typeof Model.Type
 
 /** A page for a visitor; `atFollow` when it opened at `#follow`, where sign-in returns a Follow pressed signed out. */
-export const init = (target: Target, signedIn: boolean, atFollow = false): Model => ({
+export const init = (target: Target, atFollow = false): Model => ({
   target,
   shown: AsyncData.Loading(),
   tab: 'boards',
-  signedIn,
   sharing: Share.init,
   cameFrom: Option.none(),
   people: People.init(
@@ -152,10 +149,14 @@ export const load = (
   ...(Target.guards.Piece(model.target) ? [ReadCameFrom()] : []),
 ]
 
+/** What the page is told by the app: whether there is a session as the app knows it now (the cookie's hint until the
+ * session is read); only then is there a relation to read. */
+export type Context = { readonly signedIn: boolean }
+
 /** Signed in, on someone else's profile: where the visitor stands with them is read. Signed out there is nothing to
  * read, and on one's own profile nobody to follow. */
-const withRelation = (model: Model, profile: PublicProfile): UpdateReturn => {
-  if (!model.signedIn || profile.yours) return { model }
+const withRelation = (model: Model, profile: PublicProfile, { signedIn }: Context): UpdateReturn => {
+  if (!signedIn || profile.yours) return { model }
   const read = People.readRelation(model.people)
   return {
     model: modifyFields(model, { people: () => read.model }),
@@ -188,7 +189,7 @@ const failed = (model: Model, error: LoadError): UpdateReturn => ({
   model: modifyFields(model, { shown: (shown) => AsyncData.settle(shown, Result.fail(error)) }),
 })
 
-export const update = (model: Model, message: Message): UpdateReturn =>
+export const update = (model: Model, message: Message, context: Context): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadPerson: ({ profile }) =>
       withRelation(
@@ -197,6 +198,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           tab: () => openingTab(profile),
         }),
         profile,
+        context,
       ),
     SucceededLoadPublicPiece: ({ page }) => ({
       model: modifyFields(model, { shown: () => ShownData.Success({ data: VisitShown.Piece({ page }) }) }),

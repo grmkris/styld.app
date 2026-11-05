@@ -173,14 +173,11 @@ export const Model = Schema.Struct({
   make: Make.Model,
   /** A "One piece, many outfits" board's outfits as cards (T-10), none on a blank board. */
   outfits: Outfits.Model,
-  /** A session came with the page; signed out the board can only be someone's public one. */
-  signedIn: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
-export const init = (boardId: string, signedIn: boolean): Model => ({
+export const init = (boardId: string): Model => ({
   boardId,
-  signedIn,
   board: AsyncData.Loading(),
   version: 0,
   items: [],

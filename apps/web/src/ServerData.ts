@@ -45,6 +45,10 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
+/** The pieces have been read: the app can now put the wardrobe back where it was and hand Ask the person's pieces. */
+export const OutMessage = defineMessageUnion({ ReadPieces: {} })
+export type OutMessage = typeof OutMessage.Type
+
 // COMMAND
 
 export const ListPieces = Command.define('ListPieces', {
@@ -104,10 +108,14 @@ export const revisitBoards = Update.refresh<Model, Message, ReadonlyArray<BoardS
   load: ListBoards(),
 })
 
-export const update = (model: Model, message: Message): UpdateReturn =>
-  Message.match<UpdateReturn>(message, {
+export const update = (
+  model: Model,
+  message: Message,
+): Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient> =>
+  Message.match<Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>>(message, {
     SucceededListPieces: ({ pieces }) => ({
       model: modifyFields(model, { pieces: () => PiecesData.Success({ data: pieces }), misses: () => 0 }),
+      outMessage: OutMessage.ReadPieces(),
     }),
     // A failed read keeps the pieces already shown.
     FailedListPieces: () => ({
