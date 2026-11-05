@@ -5,11 +5,11 @@
       "repository": "alchemy-run/alchemy",
       "commit": "d0b4a3326718309793459160e94b35abee517b23",
       "path": "packages/domain/skills/alchemy-domain",
+      "license": "Apache-2.0",
       "licenses": [
         "LICENSE",
         "NOTICE"
       ],
-      "license": "Apache-2.0",
       "treeSha256": "9dcc7dd983a311602d6d1d6c4e668e2d59857d20dc0c08317a016039fe9fdee0",
       "localTreeSha256": "9dcc7dd983a311602d6d1d6c4e668e2d59857d20dc0c08317a016039fe9fdee0",
       "unchanged": true
@@ -195,6 +195,20 @@
       "treeSha256": "d31a58b43c7c30e35773e35c2636fd84ab2fa475be2a7eaed6fc35afb1a3eb0a",
       "localTreeSha256": "d31a58b43c7c30e35773e35c2636fd84ab2fa475be2a7eaed6fc35afb1a3eb0a",
       "unchanged": true
+    },
+    "humanizer": {
+      "repository": "blader/humanizer",
+      "commit": "0ef9fe5bc3572734fd3ae6c448fe00a30cd5dcf0",
+      "path": ".",
+      "license": "MIT",
+      "licenses": [
+        "LICENSE"
+      ],
+      "treeSha256": "577bca59541fb99c57a75af3f4e28d531efe763d374074cb7a8a4180bcda26da",
+      "localTreeSha256": "f80a0bb5c3d66ae195e6403356bb350c0309fe933c93d03620b884d60188ba47",
+      "unchanged": false,
+      "adaptation": "Only the skill is kept: the upstream repo's maintainer AGENTS.md, CI workflows, plugin manifests and packaging script are dropped",
+      "baseCommit": "0ef9fe5bc3572734fd3ae6c448fe00a30cd5dcf0"
     },
     "investigate-a-failure": {
       "repository": "joelhooks/rat-stack",

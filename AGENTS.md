@@ -69,7 +69,7 @@ Load the matching skill before the work; vendored skills are pinned in `.agents/
 
 - Code: `effect` (any Effect code), `foldkit` (UI programs; `generate-program`, `audit-program`), `alchemy-domain` (Domain models), `learn-alchemy`, `durable-objects`, `workers-best-practices`, `wrangler`.
 - UI: `zyzz` and `DESIGN.md` (styling), `hallmark` (new pages, only when asked), `frontend-design`, `good-css`, `make-interfaces-feel-better`, `mobile-native`, `apple-web-app`, `apple-design`, `break-ui`; motion: `animate`, `review-animations`, `find-animation-opportunities`, `animation-vocabulary`.
-- Copy and catalogs: `x18n`, `x18n-check`, `x18n-setup`, `unslop`.
+- Copy and catalogs: `x18n`, `x18n-check`, `x18n-setup`, `unslop`, `humanizer`.
 - Telemetry and performance: `styld-telemetry`, `web-perf`.
 - Planning, tests and review: `grilling`, `domain-modeling`, `test-behaviour`, `investigate-a-failure`, `thermo-nuclear-review`, `thermo-nuclear-code-quality-review`.
 
