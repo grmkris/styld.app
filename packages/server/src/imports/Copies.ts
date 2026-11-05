@@ -1,14 +1,14 @@
 import { accounts, importCopies } from '@styld/db'
 import { asc, eq, lt, sql } from 'drizzle-orm'
 import { DateTime, Duration, Effect } from 'effect'
-import { Database, query } from '../kernel/Db.ts'
+import { Database, fenced, query } from '../kernel/Db.ts'
 import { Media, deleteKeys } from '../kernel/Media.ts'
 import type { Sweep } from '../jobs/Sweeps.ts'
 
 /** Copy intent precedes R2. A closed account fails the NOT NULL constraint before any bytes leave the bundle. */
 export const copyRows = (db: Database['Service']) => ({
   beginCopy: (objectKey: string, accountId: string, createdAt: Date) =>
-    query(() =>
+    fenced(() =>
       db.insert(importCopies).values({
         objectKey,
         createdAt,

@@ -1,18 +1,17 @@
 import { contentChecks, profiles, reports } from '@styld/db'
-import { type CheckState, Unavailable } from '@styld/protocol'
+import { type CheckState } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Predicate } from 'effect'
 import { BoardRows } from '../boards/Rows.ts'
 import { type CheckTarget, Checks } from '../safety/Checks.ts'
-import { Database, nowDate, query } from '../kernel/Db.ts'
+import { Database, nowDate, query, stored } from '../kernel/Db.ts'
 import { handleOwner } from './ProfileStore.ts'
 
 // What Styld's admins do through their assistants: feature boards and people for Explore, mark the house account
 // whose public boards are Edits from Styld, hide or restore anything whatever its check said, and read reports and
 // checks. Only accounts on the admin list ever see these tools.
 
-const unavailable = () => Unavailable.make({})
-const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+const read = <A>(run: () => Promise<A>) => query(run).pipe(stored)
 
 /** How many reports and checks a list shows. */
 const listLimit = 50
@@ -94,11 +93,9 @@ const featuring = (db: Drizzle) => ({
     house: boolean,
     newHandle: Option.Option<string>,
   ) {
-    const accountId = yield* handleOwner(db, handle).pipe(Effect.mapError(unavailable))
+    const accountId = yield* handleOwner(db, handle).pipe(stored)
     if (Option.isNone(accountId)) return false
-    const taken = Option.isSome(newHandle)
-      ? yield* handleOwner(db, newHandle.value).pipe(Effect.mapError(unavailable))
-      : Option.none()
+    const taken = Option.isSome(newHandle) ? yield* handleOwner(db, newHandle.value).pipe(stored) : Option.none()
     if (Option.isSome(taken) && taken.value !== accountId.value) return false
     yield* read(() =>
       db
@@ -119,7 +116,7 @@ const make = Effect.gen(function* () {
     /** What a curation tool names: a profile by its handle, anything else by its id. */
     targetOf: Effect.fn('Styld.Curation.targetOf')(function* (kind: CheckTarget['kind'], id: string) {
       if (kind !== 'profile') return Option.some<CheckTarget>({ kind, id })
-      const accountId = yield* handleOwner(db, id).pipe(Effect.mapError(unavailable))
+      const accountId = yield* handleOwner(db, id).pipe(stored)
       return Option.map(accountId, (account): CheckTarget => ({ kind, id: account }))
     }),
     /** Hide something from others whatever its check said, or restore it to what the check says; the check's rows are

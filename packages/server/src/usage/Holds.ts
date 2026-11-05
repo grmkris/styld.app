@@ -10,7 +10,7 @@ import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { and, asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { Cause, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schedule, Schema } from 'effect'
-import { Database, first, nowDate, query } from '../kernel/Db.ts'
+import { Database, first, nowDate, query, stored } from '../kernel/Db.ts'
 import { allowanceAt, membershipOf, type MembershipRecord } from '../billing/Membership.ts'
 
 // Every paid action holds its credits in the account's Wallet before the work runs and settles them once after it
@@ -46,8 +46,6 @@ export interface Charge {
 /** The UTC day an instant falls on, and the start of the next one. */
 const dayOf = (now: DateTime.Utc) => DateTime.formatIso(now).slice(0, 10)
 const nextDay = (now: DateTime.Utc) => DateTime.formatIso(DateTime.add(DateTime.startOf(now, 'day'), { days: 1 }))
-
-const unavailable = () => Unavailable.make({})
 
 /** Why a hold was refused: a member's credits come back tomorrow; without a plan none do (owner, 4 November 2026). */
 const refusal = (daily: number, now: DateTime.Utc) =>
@@ -147,7 +145,7 @@ const balances = (
   const allowanceOf = (accountId: string, now: DateTime.Utc) =>
     membershipOf(db, accountId).pipe(
       Effect.map((membership) => ({ membership, daily: allowanceAt(membership, DateTime.toDateUtc(now)) })),
-      Effect.mapError(unavailable),
+      stored,
     )
   const balance = Effect.fn('Styld.Holds.balance')(function* (accountId: string) {
     const now = yield* DateTime.now
@@ -183,10 +181,7 @@ export class Holds extends Context.Service<
       const wallets = yield* Wallet
       const db = yield* Database
       const ledger = settlementRows(db)
-      const { allowanceOf, balance } = balances(
-        (accountId) => wallets.state(UserId.make(accountId)).pipe(Effect.mapError(unavailable)),
-        db,
-      )
+      const { allowanceOf, balance } = balances((accountId) => wallets.state(UserId.make(accountId)).pipe(stored), db)
       /** The Wallet's settlement, then the row forgotten (one that cannot be forgotten now is settled again later). A
        * hold the Wallet does not hold (never reserved, or settled before) is settled. */
       const settled = (accountId: string, hold: HoldId, ending: Ending) => {
@@ -195,7 +190,7 @@ export class Holds extends Context.Service<
           Effect.asVoid,
           Effect.catchTag('ReservationNotFound', () => Effect.void),
           Effect.retry(walletPatience),
-          Effect.mapError(unavailable),
+          stored,
           Effect.andThen(Effect.ignore(ledger.forget(hold))),
         )
       }
@@ -204,9 +199,9 @@ export class Holds extends Context.Service<
           yield* Effect.annotateCurrentSpan('styld.hold', charge.hold)
           if (charge.credits === 0) return
           const now = yield* DateTime.now
-          if (!(yield* ledger.enabled(charge.accountId).pipe(Effect.mapError(unavailable)))) return yield* unavailable()
+          if (!(yield* ledger.enabled(charge.accountId).pipe(stored))) return yield* Unavailable.make({})
           // No hold without its row: the row is what settles it if everything after this is lost.
-          yield* ledger.open(charge.accountId, charge.hold, DateTime.toDateUtc(now)).pipe(Effect.mapError(unavailable))
+          yield* ledger.open(charge.accountId, charge.hold, DateTime.toDateUtc(now)).pipe(stored)
           const { daily } = yield* allowanceOf(charge.accountId, now)
           const command = new ReserveCredits({
             operationId: OperationId.make(charge.hold),
@@ -223,7 +218,7 @@ export class Holds extends Context.Service<
               ReservationConflict: () => Effect.die(new Error(`Hold ${charge.hold} reserved with another amount`)),
             }),
             Effect.asVoid,
-            Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : unavailable())),
+            Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : Unavailable.make({}))),
             // Refused outright, nothing is held and the row goes; a Wallet that did not answer leaves it to the sweep.
             Effect.tapError((error) =>
               Predicate.isTagged(error, 'LimitReached') ? Effect.ignore(ledger.forget(charge.hold)) : Effect.void,
@@ -231,8 +226,8 @@ export class Holds extends Context.Service<
           )
           // Domain replays accepted commands even after their reservation was settled. That receipt alone is not
           // permission to start more work: this exact hold must still be present in the Wallet.
-          const state = yield* wallets.state(UserId.make(charge.accountId)).pipe(Effect.mapError(unavailable))
-          if (state.reservations[OperationId.make(charge.hold)] === undefined) return yield* unavailable()
+          const state = yield* wallets.state(UserId.make(charge.accountId)).pipe(stored)
+          if (state.reservations[OperationId.make(charge.hold)] === undefined) return yield* Unavailable.make({})
         }),
         settle: Effect.fn('Styld.Holds.settle')(function* (accountId: string, hold: HoldId, ending: Ending) {
           yield* Effect.annotateCurrentSpan({ 'styld.hold': hold, 'styld.hold.ending': ending })
@@ -251,7 +246,7 @@ export class Holds extends Context.Service<
         balance,
         sweep: Effect.gen(function* () {
           const abandoned = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, abandonedAfter))
-          const open = yield* ledger.unsettled(abandoned, settleBatch).pipe(Effect.mapError(unavailable))
+          const open = yield* ledger.unsettled(abandoned, settleBatch).pipe(stored)
           yield* Effect.forEach(
             open,
             ({ accountId, hold, ending }) =>

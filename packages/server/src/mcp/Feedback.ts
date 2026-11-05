@@ -7,11 +7,10 @@ import {
   maximumFeedbackPerDay,
   NotFound,
   type SendFeedback,
-  Unavailable,
 } from '@styld/protocol'
 import { and, desc, eq, lt, sql, sum } from 'drizzle-orm'
 import { Context, DateTime, Duration, Effect, Layer } from 'effect'
-import { Database, nowDate, query } from '../kernel/Db.ts'
+import { Database, nowDate, query, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 
 // What assistants tell Styld about Styld (owner, 4 November 2026, after v1's send_feedback): a note a day is one row
@@ -24,11 +23,9 @@ const kept = Duration.days(180)
 /** The most notes an admin reads at once, newest first. */
 const listed = 100
 
-const unavailable = () => Unavailable.make({})
-
 type Db = Database['Service']
 
-const run = <A>(effect: () => Promise<A>) => query(effect).pipe(Effect.mapError(unavailable))
+const run = <A>(effect: () => Promise<A>) => query(effect).pipe(stored)
 
 /** Keep a note for the admins: the same note again today counts once more; past today's thirty, refused. */
 const send = Effect.fn('Styld.Feedback.send')(function* (db: Db, input: SendFeedback) {

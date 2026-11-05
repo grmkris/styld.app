@@ -2,7 +2,7 @@ import { importCopies, importedPieces, pieces } from '@styld/db'
 import { and, eq, inArray, exists } from 'drizzle-orm'
 import type { GeneratedGarment } from '@styld/protocol'
 import { Effect } from 'effect'
-import { type Database, inChunks, query } from '../kernel/Db.ts'
+import { type Database, fenced, inChunks, query } from '../kernel/Db.ts'
 import { copyRows } from './Copies.ts'
 import { type PieceRow, PieceRows, type UploadRow, UploadRows } from '../wardrobe/Store.ts'
 
@@ -16,7 +16,7 @@ export const importedRows = (db: Database['Service']) => ({
    * has fails it. A house garment the seed generated is recorded as generated in the same batch, so nothing ever sees
    * it unmarked. */
   createPiece: (upload: UploadRow, piece: PieceRow, v1Id: string, generated: GeneratedGarment | undefined) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         UploadRows.insertUsed(
           db,

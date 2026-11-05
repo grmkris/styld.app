@@ -1,11 +1,11 @@
 import { CurrentAccount, NotFound, PictureRefused, prices, type RedrawPicture } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
-import { enqueuePicture, storedAs } from './Shared.ts'
+import { enqueuePicture } from './Shared.ts'
 import { redrawHold, settleHold } from './Pictures.ts'
 import type { PictureRow } from './Store.ts'
 import { once } from '../kernel/Receipts.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Holds } from '../usage/Holds.ts'
@@ -20,16 +20,16 @@ const isCutout = (piece: { readonly imageKey: string | null; readonly originalKe
  * ended redraw's credit is settled. */
 const settledPicture = (pieceId: string, at: Date) =>
   Effect.gen(function* () {
-    const found = yield* storedAs((yield* CaptureStore).findPicture(pieceId))
+    const found = yield* stored((yield* CaptureStore).findPicture(pieceId))
     if (Option.isSome(found) && isStale(found.value, at))
-      yield* storedAs(
+      yield* stored(
         (yield* CaptureStore).movePicture(pieceId, ['generating'], {
           state: 'failed',
           updatedAt: at,
         }),
       )
     yield* settleHold(pieceId)
-    return yield* storedAs((yield* CaptureStore).findPicture(pieceId))
+    return yield* stored((yield* CaptureStore).findPicture(pieceId))
   })
 
 /** Why the piece's picture cannot be redrawn nowDate, if it cannot. */
@@ -39,7 +39,7 @@ const refusal = (picture: PictureRow): Option.Option<PictureRefused['reason']> =
 /** The owner's piece, if it can be drawn: clean pictures are on and it shows a cut-out. */
 const drawablePiece = (accountId: string, pieceId: string) =>
   Effect.gen(function* () {
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(accountId, pieceId))
+    const piece = yield* stored((yield* WardrobeStore).findPiece(accountId, pieceId))
     if (Option.isNone(piece)) return yield* NotFound.make({})
     if (!isCutout(piece.value)) return yield* PictureRefused.make({ reason: 'photo' })
   })
@@ -80,7 +80,7 @@ const queueRedraw = (
       updatedAt: at,
     }
     const store = yield* CaptureStore
-    const claimed = yield* storedAs(
+    const claimed = yield* stored(
       Option.isSome(current)
         ? store.claimRedraw(pieceId, current.value, queued)
         : store.addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }),
@@ -98,7 +98,7 @@ const queueRedraw = (
 const replayedRedraw = (pieceId: string) =>
   Effect.gen(function* () {
     const at = yield* nowDate
-    const current = yield* storedAs((yield* CaptureStore).findPicture(pieceId))
+    const current = yield* stored((yield* CaptureStore).findPicture(pieceId))
     if (Option.isNone(current)) return yield* NotFound.make({})
     if (current.value.state === 'queued') yield* enqueuePicture(pieceId)
     return pictureView(current.value, at)

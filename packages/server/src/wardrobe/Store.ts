@@ -16,7 +16,7 @@ import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
 import { forgetChecks } from '../safety/Checks.ts'
-import { chunked, Database, first, inChunks, query, StoreUnavailable } from '../kernel/Db.ts'
+import { chunked, Database, fenced, first, inChunks, query } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
@@ -304,19 +304,17 @@ const backQueries = (db: Database['Service']) => ({
     back: { readonly key: string; readonly uploadId: string; readonly at: Date },
     receipt: ReceiptRow,
   ) =>
-    Effect.tryPromise({
-      try: () =>
-        db.batch([
-          db
-            .update(pieces)
-            .set({ backImageKey: back.key, updatedAt: back.at })
-            .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-            .returning(),
-          spendUpload(db, back.uploadId),
-          db.insert(operationReceipts).values(receipt),
-        ]),
-      catch: () => StoreUnavailable.make({}),
-    }).pipe(Effect.map(([updated]) => first(updated))),
+    fenced(() =>
+      db.batch([
+        db
+          .update(pieces)
+          .set({ backImageKey: back.key, updatedAt: back.at })
+          .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
+          .returning(),
+        spendUpload(db, back.uploadId),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.map(([updated]) => first(updated))),
 })
 
 /** Which of these pieces are house garments the seed generated (owner, 4 November 2026), for every module that reads
@@ -372,15 +370,13 @@ export const makeStore = (db: Database['Service']) => ({
   /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
    * upload id fails the whole batch when the upload already made a piece. */
   addPiece: (piece: PieceRow, receipt: ReceiptRow) =>
-    Effect.tryPromise({
-      try: () =>
-        db.batch([
-          db.insert(pieces).values(piece),
-          spendUpload(db, piece.uploadId ?? ''),
-          db.insert(operationReceipts).values(receipt),
-        ]),
-      catch: () => StoreUnavailable.make({}),
-    }).pipe(Effect.asVoid),
+    fenced(() =>
+      db.batch([
+        db.insert(pieces).values(piece),
+        spendUpload(db, piece.uploadId ?? ''),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.asVoid),
   /** How the account already spells one of its categories under a type, whatever the case it is asked in, so "ski
    * pants" joins "Ski pants" rather than making a second card (T-12). */
   categorySpelling: (accountId: string, type: PieceType, name: string) =>
@@ -415,7 +411,7 @@ export const makeStore = (db: Database['Service']) => ({
    * batch; the ids go in chunks under D1's parameter limit. What the pieces were in goes with them (looks, pins, worn
    * days, pictures), and a photo's garment matched to one keeps its place, matched to nothing. */
   deletePieces: (accountId: string, rows: ReadonlyArray<PieceRow>, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(receipt),
         ...chunked(rows.map(({ id }) => id)).flatMap((chunk) => [

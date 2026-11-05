@@ -16,11 +16,10 @@ import {
   type SetBlocked,
   type SetFollowing,
   type SetSaved,
-  Unavailable,
 } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect, Layer, Match, Option, Schema } from 'effect'
 import { type CheckTarget, Checks } from '../safety/Checks.ts'
-import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { feedFor } from './Feed.ts'
 import { handleOwner, profileOf } from './ProfileStore.ts'
 import { authorOf, PublicPages, summaryOf } from './Public.ts'
@@ -31,8 +30,6 @@ import { newId } from '../kernel/Ids.ts'
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
 // acts for `CurrentAccount`, sees others through the public pages' rules, and refuses one's own things.
 
-const unavailable = () => Unavailable.make({})
-const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
 

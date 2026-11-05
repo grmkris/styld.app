@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
-import { Database, first, inChunks, query } from '../kernel/Db.ts'
+import { Database, fenced, first, inChunks, query } from '../kernel/Db.ts'
 
 export type LookRow = typeof looks.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
@@ -37,7 +37,7 @@ export const lookStore = (db: Drizzle) => ({
   ...recordedWrites(db),
   /** The look, its pieces in order and the operation's receipt, as one atomic batch. */
   createLook: (look: LookRow, pieceIds: ReadonlyArray<string>, receipt: ReceiptRow) =>
-    query(() => db.batch([db.insert(operationReceipts).values(receipt), ...lookRows(db, look, pieceIds)])).pipe(
+    fenced(() => db.batch([db.insert(operationReceipts).values(receipt), ...lookRows(db, look, pieceIds)])).pipe(
       Effect.asVoid,
     ),
   listLooks: (accountId: string) =>
@@ -86,7 +86,7 @@ export const lookStore = (db: Drizzle) => ({
       .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
   /** The look and its check, with the delete's receipt, as one atomic batch; its pieces and pins go with it. */
   deleteLook: (accountId: string, lookId: string, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db
           .delete(looks)

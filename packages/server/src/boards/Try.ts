@@ -19,7 +19,7 @@ import {
   widestLabel,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Match, Option, Predicate, Schema } from 'effect'
-import { Database } from '../kernel/Db.ts'
+import { Database, stored } from '../kernel/Db.ts'
 import { once, receiptRows } from '../kernel/Receipts.ts'
 import { wearablesOf } from '../outfits/Wearables.ts'
 import { PublicPages } from '../social/Public.ts'
@@ -136,8 +136,6 @@ const triedTable = (
       ),
     )
 
-const unavailable = () => Unavailable.make({})
-
 /** A step of a try, under an operation of its own drawn from the try's. */
 const stepOf = (operationId: OperationId, step: string) => OperationId.make(`${operationId.slice(0, 56)}-${step}`)
 
@@ -147,7 +145,7 @@ const lastWornOf = (db: Database['Service'], accountId: string) =>
     .wornBetween(accountId, '0000-01-01', '9999-12-31')
     .pipe(
       Effect.map((days) => new Map(days.map(({ day, pieceId }) => [pieceId, day]))),
-      Effect.mapError(unavailable),
+      stored,
     )
 
 /** The board's pieces others may see, by id, and those on its table, each once. */
@@ -176,7 +174,7 @@ const make = Effect.gen(function* () {
   /** The person's ready pieces, newest added first, with the last day each was worn. */
   const ownOf = Effect.fnUntraced(function* (accountId: string) {
     const worn = yield* lastWornOf(database, accountId)
-    return (yield* wearablesOf(wardrobe, accountId).pipe(Effect.mapError(unavailable))).map(({ wearable }): Own => ({
+    return (yield* wearablesOf(wardrobe, accountId).pipe(stored)).map(({ wearable }): Own => ({
       ...wearable,
       lastWorn: worn.get(wearable.id) ?? null,
     }))
@@ -196,7 +194,12 @@ const make = Effect.gen(function* () {
         version: styled.version,
         items: triedTable(board.items, pieces, chosen, (piece) => missingLabel(piece, locale)),
       })
-      .pipe(Effect.catchTags({ BoardItemRefused: unavailable, BoardVersionConflict: unavailable }))
+      .pipe(
+        Effect.catchTags({
+          BoardItemRefused: () => Unavailable.make({}),
+          BoardVersionConflict: () => Unavailable.make({}),
+        }),
+      )
     const missing = wanted.filter(({ id }) => !chosen.has(id)).map(({ type, colours }) => ({ type, colours }))
     const answer: TriedBoard = { boardId: made.id, fromWardrobe: chosen.size, of: wanted.length, missing }
     return answer
@@ -212,10 +215,11 @@ const make = Effect.gen(function* () {
         receipts,
         { accountId, operationId: input.operationId, command: 'tryBoard', input: boardId },
         {
-          replay: (result) => Schema.decodeUnknownEffect(TriedJson)(result).pipe(Effect.mapError(unavailable)),
+          replay: (result) =>
+            Schema.decodeUnknownEffect(TriedJson)(result).pipe(Effect.mapError(() => Unavailable.make({}))),
           run: Effect.flatMap(tried(board, input.operationId, accountId), (answer) =>
             Effect.map(
-              Schema.encodeEffect(TriedJson)(answer).pipe(Effect.mapError(unavailable)),
+              Schema.encodeEffect(TriedJson)(answer).pipe(Effect.mapError(() => Unavailable.make({}))),
               (result) => [answer, result] as const,
             ),
           ),

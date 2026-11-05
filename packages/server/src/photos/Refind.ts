@@ -1,11 +1,12 @@
 import { CurrentOperator, NotFound, type OperationId, PhotoCounts } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import { storedAs, unavailable } from '../capture/Shared.ts'
 import { once } from '../kernel/Receipts.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import type { PhotoServices } from './Finding.ts'
 import { type GarmentRow, type PhotoRow, PhotoStore } from './Store.ts'
+import { stored } from '../kernel/Db.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // The operator's side of My Gallery (Eva, 4 November): an account's photos in counts, and finding them again with the
 // detector as it is now, paid by Styld (`Finding.ts` › refindGarments). The operator names the account by its email and
@@ -18,7 +19,7 @@ const sendAtOnce = 10
 /** The account an email signs in to, or `NotFound`. */
 const accountOf = (email: string) =>
   Effect.flatMap(
-    storedAs(Effect.flatMap(PhotoStore, (store) => store.accountOf(email))),
+    stored(Effect.flatMap(PhotoStore, (store) => store.accountOf(email))),
     Option.match({
       onNone: () => Effect.fail(NotFound.make({})),
       onSome: ({ accountId }) => Effect.succeed(accountId),
@@ -45,8 +46,8 @@ const countsOf = (photos: ReadonlyArray<PhotoRow>, garments: ReadonlyArray<Garme
 
 const photosOfAccount = Effect.fnUntraced(function* (accountId: string) {
   const store = yield* PhotoStore
-  const photos = yield* storedAs(store.listPhotos(accountId))
-  const garments = yield* storedAs(store.garmentsOf(photos.map(({ id }) => id)))
+  const photos = yield* stored(store.listPhotos(accountId))
+  const garments = yield* stored(store.garmentsOf(photos.map(({ id }) => id)))
   return { photos, garments }
 })
 
@@ -69,11 +70,7 @@ export const refinding = Effect.map(Effect.context<PhotoServices | PieceQueue>()
       const queue = yield* PieceQueue
       yield* Effect.forEach(
         ready,
-        ({ id }) =>
-          Effect.tryPromise({
-            try: () => queue.send({ _tag: 'RefindGarments', photoId: id, round: operationId }),
-            catch: unavailable,
-          }),
+        ({ id }) => called(() => queue.send({ _tag: 'RefindGarments', photoId: id, round: operationId })),
         { concurrency: sendAtOnce, discard: true },
       )
       yield* Effect.annotateCurrentSpan({ 'styld.photo.refind': ready.length })

@@ -11,7 +11,7 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
-import { Database, first, nowDate } from '../kernel/Db.ts'
+import { Database, first, nowDate, stored } from '../kernel/Db.ts'
 import { once } from '../kernel/Receipts.ts'
 import { digestOf, newId, randomToken } from '../kernel/Ids.ts'
 import { Media } from '../kernel/Media.ts'
@@ -21,6 +21,7 @@ import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { discardCopy } from './Copies.ts'
 import { type ImportMessage, ImportQueue } from './Queue.ts'
 import { ImportStore } from './Store.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // A wardrobe brought over from v1 at the switch (owner, 2026-11-01): the operator's importer (`tools/import-v1`) puts
 // a bundle under `imports/<importId>/` and starts it as the operator (the stage's operator token, `Operator.ts`). The account is the one the bundle's email signs in to,
@@ -29,21 +30,15 @@ import { ImportStore } from './Store.ts'
 // the pace Cloudflare Images keeps; it is cut out and described by the decision model as it is imported, paid by Styld,
 // never the account's credits.
 
-const unavailable = () => Unavailable.make({})
-const stored = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
-
 /** Queues take at most this many messages a call. */
 const sendBatch = 100
 
 /** The bundle's manifest; none when there is no such import. */
 const manifestOf = Effect.fnUntraced(function* (importId: string) {
   const { bucket } = yield* Media
-  const object = yield* Effect.tryPromise({
-    try: () => bucket.get(`imports/${importId}/manifest.json`),
-    catch: unavailable,
-  })
+  const object = yield* called(() => bucket.get(`imports/${importId}/manifest.json`))
   if (object === null) return yield* NotFound.make({})
-  const text = yield* Effect.tryPromise({ try: () => object.text(), catch: unavailable })
+  const text = yield* called(() => object.text())
   // A bundle the importer wrote is always a manifest; anything else is an operator's mistake to see in the logs.
   return yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ImportManifest))(text).pipe(Effect.orDie)
 })
@@ -68,7 +63,7 @@ const accountFor = Effect.fnUntraced(function* (manifest: ImportManifest) {
   // Another start made it first: the address is taken by that account now.
   const again = yield* stored(store.accountOf(manifest.email))
   if (Option.isSome(again)) return { accountId: again.value.accountId, created: false }
-  return yield* unavailable()
+  return yield* Unavailable.make({})
 })
 
 /** Each piece of the manifest as it stands in the account. */
@@ -93,7 +88,9 @@ const piecesIn = Effect.fnUntraced(function* (accountId: string, manifest: Impor
 })
 
 const replayImport = (result: string) =>
-  Schema.decodeUnknownEffect(Schema.fromJsonString(ImportStarted))(result).pipe(Effect.mapError(unavailable))
+  Schema.decodeUnknownEffect(Schema.fromJsonString(ImportStarted))(result).pipe(
+    Effect.mapError(() => Unavailable.make({})),
+  )
 
 /** The rows an imported piece is made of: its photo's upload, stored by Styld and taken at once, and the piece. */
 const rowsOf = Effect.fnUntraced(function* (accountId: string, piece: ImportPiece, bytes: number) {
@@ -158,24 +155,18 @@ const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
     return prior.value
   }
   const { bucket } = yield* Media
-  const object = yield* Effect.tryPromise({
-    try: () => bucket.get(`imports/${importId}/${piece.picture}`),
-    catch: unavailable,
-  })
+  const object = yield* called(() => bucket.get(`imports/${importId}/${piece.picture}`))
   if (object === null) return yield* NotFound.make({})
-  const bytes = new Uint8Array(yield* Effect.tryPromise({ try: () => object.arrayBuffer(), catch: unavailable }))
+  const bytes = new Uint8Array(yield* called(() => object.arrayBuffer()))
   if (!Option.contains(sniffImageType(bytes), piece.contentType)) return yield* NotFound.make({})
   const { upload, row } = yield* rowsOf(accountId, piece, bytes.byteLength)
   yield* stored(store.beginCopy(upload.objectKey, accountId, yield* nowDate))
-  yield* Effect.tryPromise({
-    try: () => bucket.put(upload.objectKey, bytes, { httpMetadata: { contentType: piece.contentType } }),
-    catch: unavailable,
-  })
+  yield* called(() => bucket.put(upload.objectKey, bytes, { httpMetadata: { contentType: piece.contentType } }))
   const made = yield* store.createPiece(upload, row, piece.v1Id, piece.generated).pipe(Effect.option)
   if (Option.isSome(made)) return row.id
   yield* discardCopy(upload.objectKey).pipe(Effect.ignore)
   // A racing delivery may have committed the same v1 identity.
-  return yield* Effect.flatMap(earlier(), Option.match({ onNone: unavailable, onSome: Effect.succeed }))
+  return yield* Effect.flatMap(earlier(), Option.match({ onNone: () => Unavailable.make({}), onSome: Effect.succeed }))
 })
 
 const make = Effect.gen(function* () {
@@ -202,11 +193,9 @@ const make = Effect.gen(function* () {
         yield* Effect.forEach(
           Array.chunksOf(waiting, sendBatch),
           (chunk) =>
-            Effect.tryPromise({
-              try: () =>
-                queue.sendBatch(chunk.map((piece) => ({ body: { _tag: 'ImportPiece', importId, accountId, piece } }))),
-              catch: unavailable,
-            }),
+            called(() =>
+              queue.sendBatch(chunk.map((piece) => ({ body: { _tag: 'ImportPiece', importId, accountId, piece } }))),
+            ),
           { discard: true },
         )
         yield* Effect.annotateCurrentSpan({

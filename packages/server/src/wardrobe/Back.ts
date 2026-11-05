@@ -1,27 +1,19 @@
-import { CurrentAccount, NotFound, type OperationId, type PieceId, type SetBack } from '@styld/protocol'
+import { CurrentAccount, NotFound, type OperationId, type PieceId, type SetBack, Unavailable } from '@styld/protocol'
 import { Effect, Option, Predicate } from 'effect'
-import {
-  forgetObjects,
-  ownerPiece,
-  ownPiece,
-  stored,
-  typeOf,
-  unavailable,
-  usableUpload,
-  type WardrobeServices,
-} from './Shared.ts'
+import { forgetObjects, ownerPiece, ownPiece, typeOf, usableUpload, type WardrobeServices } from './Shared.ts'
 import { GarmentCutout, PieceQueue } from './Processing.ts'
 import { WardrobeStore } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
+import { called } from '../kernel/Bindings.ts'
 
 /** Ask the back picture job to bring the piece's back picture in line with its back (owner, 4 November: a pressed back
  * drawn from the real one): drawn, drawn again or forgotten. The back stands whether or not the queue takes it now; a
  * repeat of the operation asks again, and the operator's backfill finds any left behind. */
 const backPicture = (accountId: string, pieceId: string) =>
-  Effect.flatMap(PieceQueue, (queue) =>
-    Effect.tryPromise({ try: () => queue.send({ _tag: 'DrawBackPicture', accountId, pieceId }), catch: unavailable }),
-  ).pipe(Effect.ignore({ log: true, message: 'Styld.Wardrobe.backPicture could not reach the queue' }))
+  Effect.flatMap(PieceQueue, (queue) => called(() => queue.send({ _tag: 'DrawBackPicture', accountId, pieceId }))).pipe(
+    Effect.ignore({ log: true, message: 'Styld.Wardrobe.backPicture could not reach the queue' }),
+  )
 
 /** A back of the piece: the person's photo of it, cut out like the front (owner, 2026-10-31), free since 4 November.
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
@@ -46,7 +38,7 @@ export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) 
     const type = yield* typeOf(piece)
     const { imageKey } = yield* (yield* GarmentCutout)
       .cut({ accountId, pieceId, originalKey: upload.objectKey, contentType: upload.contentType, type, of })
-      .pipe(Effect.mapError(unavailable))
+      .pipe(Effect.mapError(() => Unavailable.make({})))
     const at = yield* nowDate
     const updated = yield* stored(
       store.setBack(

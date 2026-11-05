@@ -10,9 +10,9 @@ import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import type { WardrobeStore } from '../wardrobe/Store.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { GenerationQueue } from './Queue.ts'
-import { unavailable } from './Shared.ts'
 import type { TryOnPainter } from './TryOnPainter.ts'
 import type { TryOnRow, TryOnStore } from './TryOnStore.ts'
+import { called } from '../kernel/Bindings.ts'
 
 // What the try-on operations share: the services they act through, a try-on's hold, where its result is kept, its
 // queue message, how its status settles its credits, and the one privacy rule that lets a photo leave Styld.
@@ -54,9 +54,9 @@ export const sendable = (photo: { readonly accountId: string }, tryOn: Pick<TryO
 
 /** Hand a try-on to the generation queue. */
 export const sendTryOn = (tryOnId: string) =>
-  Effect.flatMap(GenerationQueue, (queue) =>
-    Effect.tryPromise({ try: () => queue.send({ _tag: 'TakeTryOn', tryOnId }), catch: unavailable }),
-  ).pipe(Effect.asVoid)
+  Effect.flatMap(GenerationQueue, (queue) => called(() => queue.send({ _tag: 'TakeTryOn', tryOnId }))).pipe(
+    Effect.asVoid,
+  )
 
 /** How a try-on that ended settles its credits: spent once its result is stored, given back otherwise. */
 const endingOf = (status: TryOnRow['status']): Option.Option<Ending> =>

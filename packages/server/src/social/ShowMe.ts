@@ -1,8 +1,8 @@
 import { viewerPreferences } from '@styld/db'
-import { type Audience, CurrentAccount, type Preferences, type SetShowMe, Unavailable } from '@styld/protocol'
+import { type Audience, CurrentAccount, type Preferences, type SetShowMe } from '@styld/protocol'
 import { eq } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
-import { Database, first, nowDate, query } from '../kernel/Db.ts'
+import { Database, first, nowDate, query, stored } from '../kernel/Db.ts'
 import { recorded } from '../kernel/Receipts.ts'
 
 // What the person asked to see first (owner, 4 November 2026: Women's, Men's or Everything, asked on Home after they
@@ -22,8 +22,6 @@ export const showMeRank = (choice: Audience | null, audience: Audience | null): 
 /** The audience a choice ranks last: the other one. */
 export const otherAudience = (choice: 'women' | 'men'): 'women' | 'men' => (choice === 'women' ? 'men' : 'women')
 
-const unavailable = () => Unavailable.make({})
-
 /** The person's preferences as stored; none stored is nothing chosen, never asked. */
 export const preferencesOf = (db: Database['Service'], accountId: string) =>
   query(() => db.select().from(viewerPreferences).where(eq(viewerPreferences.accountId, accountId)).limit(1)).pipe(
@@ -33,7 +31,7 @@ export const preferencesOf = (db: Database['Service'], accountId: string) =>
         onSome: (row): Preferences => ({ showMe: row.showMe, showMeAsked: row.showMeAskedAt !== null }),
       }),
     ),
-    Effect.mapError(unavailable),
+    stored,
   )
 
 const make = Effect.gen(function* () {

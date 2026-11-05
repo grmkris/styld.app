@@ -14,7 +14,7 @@ import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
-import { Database as Db, first, inChunks, query } from '../kernel/Db.ts'
+import { Database as Db, fenced, first, inChunks, query } from '../kernel/Db.ts'
 
 export type BoardRow = typeof boards.$inferSelect
 export type BoardItemRow = typeof boardItems.$inferSelect
@@ -142,7 +142,7 @@ const outfitWrites = (db: Database) => ({
       .where(and(eq(boardOutfits.id, outfitId), eq(boardOutfits.boardId, boardId))),
   /** The board, its outfits, table, pins and receipt, as one atomic batch. */
   createOutfitBoard: (made: OutfitBoard) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(boards).values(made.board),
         ...made.outfits.flatMap(({ row, pieceIds }) => [
@@ -170,7 +170,7 @@ const outfitWrites = (db: Database) => ({
       .select({ id: boardOutfits.id })
       .from(boardOutfits)
       .where(and(notKept, eq(boardOutfits.boardId, boardAtVersion)))}`
-    return query(() =>
+    return fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(change.receipt),
         db.delete(boardOutfitPieces).where(eq(boardOutfitPieces.outfitId, change.outfit.id)),
@@ -205,7 +205,7 @@ const relayoutWrites = (db: Database) => ({
       eq(boards.version, change.version),
     )
     const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
-    return query(() =>
+    return fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(change.receipt),
         db
@@ -248,7 +248,7 @@ const boardRows = (db: Database) => ({
   ...recordedWrites(db),
   /** The board and the operation's receipt, as one atomic batch. */
   createBoard: (board: BoardRow, receipt: ReceiptRow) =>
-    query(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(
+    fenced(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(
       Effect.asVoid,
     ),
   listBoards: (accountId: string) =>
@@ -277,7 +277,7 @@ const boardRows = (db: Database) => ({
       .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId))),
   /** Removes the board and its check, with the delete's receipt; its items, pins and pictures' rows go with it. */
   deleteBoard: (accountId: string, boardId: string, receipt: ReceiptRow) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db
           .delete(boards)
@@ -297,7 +297,7 @@ const writeItems = (db: Database, save: TableSave, outfitOf: ReadonlyMap<string,
     eq(boards.version, save.version),
   )
   const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
-  return query(() =>
+  return fenced(() =>
     db.batch([
       db.delete(boardItems).where(eq(boardItems.boardId, boardAtVersion)),
       ...save.items.map((item) =>
@@ -429,7 +429,7 @@ const pinWrites = (db: Database) => ({
     ),
   /** The pins and the operation's receipt, as one atomic batch. What is pinned already stays as it was. */
   addPins: (accountId: string, boardId: string, pins: ReadonlyArray<BoardPinRow>, receipt: ReceiptRow, at: Date) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db
           .update(boards)
@@ -442,7 +442,7 @@ const pinWrites = (db: Database) => ({
   /** Take the pins off and their pieces and pictures off the table, delete the pictures' rows and count the
    * change as a save, so an editor holding the old table reloads, as one atomic batch. */
   removePins: (removal: PinRemoval) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db
           .delete(boardItems)
@@ -515,7 +515,7 @@ const imageRows = (db: Database) => ({
     uploadId: string,
     receipt: ReceiptRow,
   ) =>
-    query(() =>
+    fenced(() =>
       db.batch([
         db.insert(boardImages).values({ ...image, objectKey: receivedUploadKey(db, image.accountId, uploadId) }),
         db.insert(boardPins).values({

@@ -13,19 +13,27 @@ import {
   readPng,
   shrink,
 } from '@styld/imaging'
-import { CurrentAccount, NotFound, prices, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
+import {
+  CurrentAccount,
+  NotFound,
+  prices,
+  SheetRefused,
+  type TurnLayout,
+  TurnRefused,
+  Unavailable,
+} from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import { shownTurn } from '../wardrobe/Images.ts'
 import { turnKept } from './CleanPicture.ts'
 import { judgedAt } from './Garments.ts'
 import { hanger } from './Hanger.ts'
-import { enqueueTurn, readPixels, storedAs, turnKey, unavailable, writeObject } from './Shared.ts'
+import { enqueueTurn, readPixels, turnKey, writeObject } from './Shared.ts'
 import { capturePolicy } from './Policy.ts'
 import { type Picture, type TurnStatus } from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
 import { holdId } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
@@ -56,7 +64,7 @@ const hasEnded = (state: TurnState): state is (typeof ends)[number] => ends.some
 /** Move a turn on from one of `from`; whether it moved. */
 const move = (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
   Effect.gen(function* () {
-    const moved = yield* storedAs(
+    const moved = yield* stored(
       (yield* CaptureStore).moveTurn(pieceId, from, { ...changes, updatedAt: yield* nowDate }),
     )
     if (moved && changes.state !== undefined) yield* Effect.annotateCurrentSpan('styld.turn.state', changes.state)
@@ -75,7 +83,7 @@ const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', 
  * stands, so settling an ended turn again is safe. */
 const settleTurn = (pieceId: string) =>
   Effect.gen(function* () {
-    const found = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
+    const found = yield* stored((yield* CaptureStore).findTurn(pieceId))
     if (Option.isNone(found) || !hasEnded(found.value.state)) return
     yield* (yield* Holds).settle(
       found.value.accountId,
@@ -95,8 +103,8 @@ const cleanPicture = (picture: Option.Option<PictureRow>) =>
 /** A turn's side view, drawn once: Muse turns the front anchor to a strict profile, keyed and fitted to the front. */
 const sideView = (turn: TurnRow, front: Rgba, key: 'green' | 'magenta') =>
   Effect.gen(function* () {
-    const stored = yield* readPixels(turnKey(turn.accountId, turn.pieceId, 'side.png'))
-    if (Option.isSome(stored)) return stored
+    const existing = yield* readPixels(turnKey(turn.accountId, turn.pieceId, 'side.png'))
+    if (Option.isSome(existing)) return existing
     const drawn = yield* (yield* ImageGenerator).profile(pngPicture(onKey(front, key)), key)
     const fitted = Option.flatMap(readPng(drawn.bytes), (side) =>
       Option.flatMap(chromaKey(shrink(side, 1280), key), (keyed) => Option.fromNullishOr(fitSide(keyed, front))),
@@ -118,7 +126,7 @@ const providerEnded = (pieceId: string) => (error: ProviderError) =>
 const start = (turn: TurnRow) =>
   Effect.gen(function* () {
     const { pieceId, accountId } = turn
-    const picture = cleanPicture(yield* storedAs((yield* CaptureStore).findPicture(pieceId)))
+    const picture = cleanPicture(yield* stored((yield* CaptureStore).findPicture(pieceId)))
     if (Option.isNone(picture)) return yield* end(pieceId, 'requested', 'picture')
     const clean = yield* readPixels(picture.value.cleanKey)
     if (Option.isNone(clean)) return yield* end(pieceId, 'requested', 'picture')
@@ -220,10 +228,10 @@ export const turning = Effect.map(Effect.context<CaptureServices>(), (context) =
   /** Carry a piece's turn a step further: start it, poll it, or settle its credits once it ended. A turn waiting for
    * the owner's browser to build its frames is left as it is. */
   processTurn: Effect.fn('Styld.Turn.process')(function* (pieceId: string) {
-    const found = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
+    const found = yield* stored((yield* CaptureStore).findTurn(pieceId))
     if (Option.isNone(found)) return
     const turn = found.value
-    if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(turn.accountId)))) return
+    if (!(yield* stored((yield* WardrobeStore).accountEnabled(turn.accountId)))) return
     if (turn.state === 'requested') yield* start(turn)
     else if (turn.state === 'generating') yield* poll(turn)
     else if (turn.state === 'anchoring' && (yield* nowDate).getTime() - turn.updatedAt.getTime() > claimMillis)
@@ -233,7 +241,7 @@ export const turning = Effect.map(Effect.context<CaptureServices>(), (context) =
   /** The last attempt failed, or the sweep found the turn stuck (a video no browser cut into frames too): the turn
    * ends and its credits come back. */
   failTurn: Effect.fn('Styld.Turn.fail')(function* (pieceId: string) {
-    const found = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
+    const found = yield* stored((yield* CaptureStore).findTurn(pieceId))
     if (Option.isNone(found)) return
     const { state } = found.value
     if (!hasEnded(state)) yield* end(pieceId, state, 'gave-up')
@@ -245,7 +253,7 @@ export const turning = Effect.map(Effect.context<CaptureServices>(), (context) =
 const sheetAndFront = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
   Effect.gen(function* () {
     const sheet = Option.filter(readPng(bytes), (pixels) => laidOut(pixels, layout))
-    const picture = cleanPicture(yield* storedAs((yield* CaptureStore).findPicture(pieceId)))
+    const picture = cleanPicture(yield* stored((yield* CaptureStore).findPicture(pieceId)))
     const clean = Option.isNone(picture) ? Option.none<Rgba>() : yield* readPixels(picture.value.cleanKey)
     if (Option.isNone(sheet) || Option.isNone(clean)) return yield* SheetRefused.make({})
     return { sheet: sheet.value, clean: clean.value }
@@ -256,12 +264,12 @@ const sheetAndFront = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =
 const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
   Effect.gen(function* () {
     const { accountId } = yield* CurrentAccount
-    const turn = yield* storedAs((yield* WardrobeStore).turnOf(accountId, pieceId))
+    const turn = yield* stored((yield* WardrobeStore).turnOf(accountId, pieceId))
     if (Option.isNone(turn)) return yield* NotFound.make({})
     if (turn.value.state !== 'video-ready') return yield* shownTurn(turn.value, yield* nowDate)
     const { sheet, clean } = yield* sheetAndFront(pieceId, layout, bytes)
     // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
-    const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
+    const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(() => Unavailable.make({})))
     yield* Effect.annotateCurrentSpan({
       'styld.turn.colour': scores.colour,
       'styld.turn.print': scores.print,
@@ -270,7 +278,7 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
     if (kept) yield* writeObject(turnKey(accountId, pieceId, 'sheet.png'), bytes, 'image/png')
     yield* move(pieceId, ['video-ready'], { state: kept ? 'ready' : 'rejected', ...(kept ? { layout } : {}) })
     yield* settleTurn(pieceId)
-    const settled = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
+    const settled = yield* stored((yield* CaptureStore).findTurn(pieceId))
     return yield* shownTurn(
       Option.getOrElse(settled, () => turn.value),
       yield* nowDate,
@@ -280,9 +288,9 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
 /** The owner's piece, if it can turn: turns are on and it has a clean picture shown or offered. */
 const turnablePiece = (accountId: string, pieceId: string) =>
   Effect.gen(function* () {
-    if (Option.isNone(yield* storedAs((yield* WardrobeStore).findPiece(accountId, pieceId))))
+    if (Option.isNone(yield* stored((yield* WardrobeStore).findPiece(accountId, pieceId))))
       return yield* NotFound.make({})
-    if (Option.isNone(cleanPicture(yield* storedAs((yield* CaptureStore).findPicture(pieceId)))))
+    if (Option.isNone(cleanPicture(yield* stored((yield* CaptureStore).findPicture(pieceId)))))
       return yield* TurnRefused.make({ reason: 'picture' })
   })
 
@@ -324,7 +332,7 @@ const queueTurn = (
       updatedAt: at,
     }
     const store = yield* CaptureStore
-    const claimed = yield* storedAs(
+    const claimed = yield* stored(
       Option.isSome(current)
         ? store.claimTurn(pieceId, current.value, requested)
         : store.addTurn({ ...requested, pieceId, accountId, createdAt: at }),
@@ -340,7 +348,7 @@ const queueTurn = (
 /** The turn a repeated request asked for, as it stands now; one still requested goes to the queue again. */
 const replayedTurn = (accountId: string, pieceId: string) =>
   Effect.gen(function* () {
-    const turn = yield* storedAs((yield* WardrobeStore).turnOf(accountId, pieceId))
+    const turn = yield* stored((yield* WardrobeStore).turnOf(accountId, pieceId))
     if (Option.isNone(turn)) return yield* NotFound.make({})
     if (turn.value.state === 'requested') yield* enqueueTurn(pieceId)
     return yield* shownTurn(turn.value, yield* nowDate)
@@ -373,7 +381,7 @@ export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (contex
     const ask = Effect.gen(function* () {
       yield* turnablePiece(accountId, pieceId)
       yield* settleTurn(pieceId)
-      const current = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
+      const current = yield* stored((yield* CaptureStore).findTurn(pieceId))
       if (Option.isSome(current) && !hasEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
       const at = yield* nowDate
       return [yield* shownTurn(yield* queueTurn({ accountId, pieceId }, current, at), at), pieceId] as const

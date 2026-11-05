@@ -1,11 +1,11 @@
 import { admitJob, generationLifetimeMillis } from './Admission.ts'
 import { isOutcomeUnknown } from '../providers/Errors.ts'
-import { BoardId, CurrentAccount, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
+import { BoardId, CurrentAccount, ImageType, Mood, OperationId, PieceId, Unavailable } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import type { Picture } from '../capture/Providers.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
-import { nowDate } from '../kernel/Db.ts'
-import { settleJob, stored, unavailable } from './Shared.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
+import { settleJob } from './Shared.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { PicturePainter } from './Painter.ts'
@@ -15,13 +15,11 @@ import type { Wearable } from './Planner.ts'
 import { stickerOf } from './Sticker.ts'
 import { GenerationStore, type JobRow, type StickerRow } from './Store.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
+import { drawingPatienceMillis } from '../kernel/Patience.ts'
 
 // Taking a job further, one delivery of the generation queue at a time: draw a sticker once, or plan a mood board from
 // the person's pieces and lay the board out. Every step reads where the job stands, so a redelivery picks up where the
 // last one stopped.
-
-/** A claimed drawing older than the painter's 90 s patience, plus storing it, belongs to a delivery that died. */
-const patienceMillis = 3 * 60 * 1000
 
 /** The most of the person's pieces a plan reads. */
 const planReads = 40
@@ -65,7 +63,7 @@ const plan = (job: JobRow) =>
           result: Schema.Option(Schema.Struct({ picks: Schema.Array(Schema.String), moods: Schema.Array(Mood) })),
         },
         Effect.gen(function* () {
-          const wardrobe = yield* wardrobeOf.pipe(Effect.mapError(unavailable))
+          const wardrobe = yield* wardrobeOf.pipe(Effect.mapError(() => Unavailable.make({})))
           const answer = yield* (yield* MoodPlanner).plan({
             sentence: job.prompt,
             wardrobe: wardrobe.map(({ wearable }) => wearable),
@@ -80,7 +78,7 @@ const plan = (job: JobRow) =>
       .pipe(
         Effect.map(Option.some),
         Effect.catchTag('AttemptElsewhere', () => Effect.succeed(Option.none())),
-        Effect.mapError(unavailable),
+        Effect.mapError(() => Unavailable.make({})),
       )
     // Another delivery owns the planner claim. Leave the job in planning so its winner can finish it.
     if (Option.isNone(attempt)) return
@@ -108,14 +106,14 @@ const ended = (job: JobRow, status: 'refused' | 'unknown') =>
 const placeOnBoard = (job: JobRow, painted: Picture) =>
   Effect.gen(function* () {
     const contentType = yield* Schema.decodeUnknownEffect(ImageType)(painted.contentType).pipe(
-      Effect.mapError(unavailable),
+      Effect.mapError(() => Unavailable.make({})),
     )
     const uploadId = yield* receivedUpload(yield* Wardrobe, { contentType, bytes: painted.bytes }).pipe(
-      Effect.mapError(unavailable),
+      Effect.mapError(() => Unavailable.make({})),
     )
     const { imageId } = yield* (yield* Boards)
       .addGeneratedImage(BoardId.make(job.boardId), { operationId: boardOperation(job, 'sticker'), uploadId })
-      .pipe(Effect.mapError(unavailable))
+      .pipe(Effect.mapError(() => Unavailable.make({})))
     return imageId
   })
 
@@ -137,7 +135,8 @@ const drawOne = (job: JobRow, sticker: StickerRow) =>
   })
 
 /** Whether a claim has outlived any delivery that could still finish it. */
-const isStale = (sticker: StickerRow, at: Date) => at.getTime() - (sticker.startedAt?.getTime() ?? 0) > patienceMillis
+const isStale = (sticker: StickerRow, at: Date) =>
+  at.getTime() - (sticker.startedAt?.getTime() ?? 0) > drawingPatienceMillis
 
 /** The sticker's turn: drawn when it waits and this delivery claims it. One claimed by a delivery that died is lost;
  * one claimed by a delivery still drawing is left to it. */
@@ -155,7 +154,7 @@ const draw = (job: JobRow) =>
   Effect.gen(function* () {
     const store = yield* GenerationStore
     const found = yield* stored(store.stickerOf(job.id))
-    if (Option.isNone(found)) return yield* unavailable()
+    if (Option.isNone(found)) return yield* Unavailable.make({})
     yield* drawStep(job, found.value)
     const sticker = yield* stored(store.stickerOf(job.id))
     const status = Option.match(sticker, { onNone: () => 'waiting' as const, onSome: (row) => row.status })
@@ -177,15 +176,15 @@ const arrange = (job: JobRow) =>
     const picks = (yield* stored((yield* GenerationStore).picksOf(job.id))).map((id) => PieceId.make(id))
     const moods = job.moods.filter(isMood)
     const boards = yield* Boards
-    const board = yield* boards.getBoard(boardId).pipe(Effect.mapError(unavailable))
+    const board = yield* boards.getBoard(boardId).pipe(Effect.mapError(() => Unavailable.make({})))
     if (picks.length > 0)
       yield* boards
         .addPins(boardId, { operationId: boardOperation(job, 'pins'), pieceIds: picks })
-        .pipe(Effect.mapError(unavailable))
+        .pipe(Effect.mapError(() => Unavailable.make({})))
     if (board.moods.length === 0 && moods.length > 0)
       yield* boards
         .updateBoard(boardId, { operationId: boardOperation(job, 'moods'), moods })
-        .pipe(Effect.mapError(unavailable))
+        .pipe(Effect.mapError(() => Unavailable.make({})))
     if (board.version === job.collageVersion)
       yield* boards
         .arrangeBoard(boardId, {
@@ -193,7 +192,7 @@ const arrange = (job: JobRow) =>
           layout: 'tidy',
           add: picks.map((pieceId) => ({ _tag: 'TablePiece' as const, pieceId })),
         })
-        .pipe(Effect.mapError(unavailable))
+        .pipe(Effect.mapError(() => Unavailable.make({})))
     yield* stored(
       (yield* GenerationStore).advanceJob(job.id, ['arranging'], { status: 'done', updatedAt: yield* nowDate }),
     )

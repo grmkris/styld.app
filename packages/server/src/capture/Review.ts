@@ -1,10 +1,10 @@
 import { CurrentAccount, type Keep, NotFound, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { type ReviewDecision } from '../kernel/Metrics.ts'
-import { enqueueBackPicture, enqueuePicture, forgetCaptureObjects, storedAs } from './Shared.ts'
+import { enqueueBackPicture, enqueuePicture, forgetCaptureObjects } from './Shared.ts'
 
 import type { DetectionRow } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 import { CaptureStore } from './Store.ts'
@@ -89,10 +89,10 @@ const sendBacks = (accountId: string, pieceIds: ReadonlyArray<string>) =>
  * routed and cut, for keep rates. */
 const sourcesOf = (accountId: string, found: ReadonlyArray<DetectionRow>) =>
   Effect.gen(function* () {
-    const rows = yield* storedAs(
+    const rows = yield* stored(
       (yield* CaptureStore).capturesOf(accountId, [...new Set(found.map(({ captureId }) => captureId))]),
     )
-    const received = yield* storedAs(
+    const received = yield* stored(
       (yield* CaptureStore).uploadTypes(accountId, [...new Set(found.map(({ sourceKey }) => sourceKey))]),
     )
     const types = new Map([
@@ -117,7 +117,7 @@ const sourcesOf = (accountId: string, found: ReadonlyArray<DetectionRow>) =>
 const finishedCaptures = (found: ReadonlyArray<DetectionRow>, decided: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     const touched = [...new Set(found.map(({ captureId }) => captureId))]
-    const stillOpen = yield* storedAs((yield* CaptureStore).openDetections(touched))
+    const stillOpen = yield* stored((yield* CaptureStore).openDetections(touched))
     return touched.filter((captureId) =>
       stillOpen.every((row) => row.captureId !== captureId || decided.includes(row.id)),
     )
@@ -148,11 +148,11 @@ const countDecisions = (
  * video go. */
 const forgetFinished = (accountId: string, finished: ReadonlyArray<string>) =>
   Effect.gen(function* () {
-    const done = yield* storedAs((yield* CaptureStore).capturesOf(accountId, finished))
+    const done = yield* stored((yield* CaptureStore).capturesOf(accountId, finished))
     yield* Effect.forEach(
       done,
       (capture) =>
-        Effect.flatMap(storedAs(Effect.flatMap(CaptureStore, (store) => store.frames(capture.id))), (frames) =>
+        Effect.flatMap(stored(Effect.flatMap(CaptureStore, (store) => store.frames(capture.id))), (frames) =>
           forgetCaptureObjects(capture, frames),
         ),
       { discard: true },
@@ -172,20 +172,20 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     })
     const prior = yield* priorResult(
       operation,
-      yield* storedAs((yield* WardrobeStore).findReceipt(accountId, input.operationId)),
+      yield* stored((yield* WardrobeStore).findReceipt(accountId, input.operationId)),
     )
     if (Option.isSome(prior)) {
       const reviewed = yield* decodeReviewed(prior.value).pipe(Effect.orDie)
-      yield* sendPictures(yield* storedAs((yield* CaptureStore).waitingPictures(reviewed.pieceIds)))
+      yield* sendPictures(yield* stored((yield* CaptureStore).waitingPictures(reviewed.pieceIds)))
       yield* sendBacks(accountId, reviewed.pieceIds)
       return reviewed
     }
     const ids: ReadonlyArray<string> = [...input.keep.map(({ detectionId }) => detectionId), ...input.discard]
-    const found = yield* storedAs((yield* CaptureStore).detections(accountId, ids))
+    const found = yield* stored((yield* CaptureStore).detections(accountId, ids))
     const open = new Map(found.filter(({ status }) => status === 'review').map((row) => [row.id, row]))
     if (ids.some((id) => !open.has(id))) return yield* NotFound.make({})
     // A garment's other sightings in its import are kept or discarded with it.
-    const others = yield* storedAs((yield* CaptureStore).sightingsOf(accountId, ids))
+    const others = yield* stored((yield* CaptureStore).sightingsOf(accountId, ids))
     const at = yield* nowDate
     const { typeOf, isPhoto, originOf, fromPhotos } = yield* sourcesOf(accountId, [...found, ...others])
     const backOf = (detection: DetectionRow) =>
@@ -212,7 +212,7 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     const pieceIds = pieces.map(({ id }) => id)
     const pictures = picturesFor(pieces, at)
     const finished = yield* finishedCaptures([...found, ...others], [...ids, ...others.map(({ id }) => id)])
-    yield* storedAs(
+    yield* stored(
       (yield* CaptureStore).review({
         pieces,
         kept: [...kept.map(({ keep }) => keep.detectionId), ...keptSightings],

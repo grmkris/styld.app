@@ -19,7 +19,7 @@ import {
   searchText,
   type SetVisibility,
   type UpdateBoard,
-  type Unavailable,
+  Unavailable,
   UploadRefused,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option } from 'effect'
@@ -45,11 +45,9 @@ import {
   priorOf,
   rechecked,
   shown,
-  stored,
   summaries,
-  unavailable,
 } from './Shared.ts'
-import { Database, nowDate } from '../kernel/Db.ts'
+import { Database, nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleting, identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
@@ -119,10 +117,10 @@ const changes = Effect.map(Effect.context<BoardServices>(), (context) => ({
     if (Option.isNone(committed)) {
       // A concurrent repeat of the operation may have committed first; its board answers.
       const repeat = yield* createdBefore(operation)
-      return Option.isSome(repeat) ? repeat.value : yield* unavailable()
+      return Option.isSome(repeat) ? repeat.value : yield* Unavailable.make({})
     }
     const [created] = yield* shown([board])
-    return created ?? (yield* unavailable())
+    return created ?? (yield* Unavailable.make({}))
   }, Effect.provide(context)),
   /** Rename the board, change its paper or moods, once per operation id: a repeat answers the board as it is now and
    * writes nothing, so it never undoes a later change. */
@@ -204,7 +202,7 @@ const pinning = Effect.map(Effect.context<BoardServices>(), (context) => ({
     const pins = yield* newPins(boardId, [...pieceIds.map(pieceTarget), ...lookIds.map(lookTarget)], at)
     const receipt = yield* receiptRow(operation, boardId)
     const committed = yield* Effect.option((yield* BoardStore).addPins(accountId, boardId, pins, receipt, at))
-    if (Option.isNone(committed) && Option.isNone(yield* priorOf(operation))) return yield* unavailable()
+    if (Option.isNone(committed) && Option.isNone(yield* priorOf(operation))) return yield* Unavailable.make({})
     return yield* one(accountId, boardId)
   }, Effect.provide(context)),
   /** Take pins off the board and their pieces and pictures off its table; a picture taken off is deleted.
@@ -234,7 +232,7 @@ const pinning = Effect.map(Effect.context<BoardServices>(), (context) => ({
     }
     const committed = yield* Effect.option((yield* BoardStore).removePins(removal))
     if (Option.isNone(committed)) {
-      if (Option.isNone(yield* priorOf(operation))) return yield* unavailable()
+      if (Option.isNone(yield* priorOf(operation))) return yield* Unavailable.make({})
       return yield* one(accountId, boardId)
     }
     yield* deleteAfterRows((yield* Media).bucket, keys, 'pin')
@@ -302,7 +300,7 @@ const addImageFailure = (operation: Identified, boardId: string, uploadId: strin
     if (Option.isSome(prior)) return yield* replayImage(operation.accountId, prior.value)
     yield* ownBoard(operation.accountId, boardId)
     yield* usableUpload(operation.accountId, uploadId)
-    return yield* unavailable()
+    return yield* Unavailable.make({})
   })
 
 const pictures = Effect.map(Effect.context<BoardServices>(), (context) => ({

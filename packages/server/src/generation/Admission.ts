@@ -1,9 +1,9 @@
-import { prices, PromptRefused } from '@styld/protocol'
+import { prices, PromptRefused, Unavailable } from '@styld/protocol'
 import { Effect, Predicate } from 'effect'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { ContentJudge } from '../safety/Judge.ts'
 import { Holds } from '../usage/Holds.ts'
-import { jobHold, settleJob, stored, unavailable } from './Shared.ts'
+import { jobHold, settleJob } from './Shared.ts'
 import { GenerationStore, type JobRow } from './Store.ts'
 
 /** Admission and provider work must finish before the settlement sweep can refund a lost hold. */
@@ -26,7 +26,7 @@ export const admitJob = Effect.fn('Styld.Generation.admission')(function* (job: 
     yield* (yield* Holds).reserve({ accountId: job.accountId, hold: jobHold(job.id), credits: prices[job.kind] })
     const verdict = yield* (yield* ContentJudge)
       .judge({ texts: [job.prompt], pictures: [] })
-      .pipe(Effect.mapError(unavailable))
+      .pipe(Effect.mapError(() => Unavailable.make({})))
     if (verdict.state === 'failed') return yield* PromptRefused.make({ reason: verdict.reason ?? 'other' })
     yield* stored(
       store.advanceJob(job.id, ['admitting'], {
@@ -52,7 +52,9 @@ export const admitJob = Effect.fn('Styld.Generation.admission')(function* (job: 
       }),
     ),
     Effect.mapError((error) =>
-      Predicate.isTagged(error, 'PromptRefused') || Predicate.isTagged(error, 'LimitReached') ? error : unavailable(),
+      Predicate.isTagged(error, 'PromptRefused') || Predicate.isTagged(error, 'LimitReached')
+        ? error
+        : Unavailable.make({}),
     ),
   )
 })

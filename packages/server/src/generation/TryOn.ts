@@ -6,11 +6,12 @@ import {
   type StartTryOn,
   TryOn,
   type TryOnId,
+  Unavailable,
 } from '@styld/protocol'
 import { Array as Arr, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schema } from 'effect'
 import { Boards } from '../boards/Boards.ts'
 import { readObject } from '../capture/Shared.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import { Pacing } from '../kernel/Pacing.ts'
@@ -20,7 +21,6 @@ import { receivedUpload } from '../mcp/ImageImport.ts'
 import { PhotoStore } from '../photos/Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { stored, unavailable } from './Shared.ts'
 import { drawingPatienceMillis, sendTryOn, tryOnHold, type TryOnServices } from './TryOnShared.ts'
 import { TryOnStore, type TryOnRow } from './TryOnStore.ts'
 import { admitTryOn, giveUpTryOn, workTryOn } from './TryOnWork.ts'
@@ -55,7 +55,7 @@ const view = Effect.fnUntraced(function* (row: TryOnRow, pieceIds: ReadonlyArray
     status: row.status,
     ...Option.match(images, { onNone: () => ({}), onSome: (addresses) => ({ images: addresses }) }),
     createdAt: row.createdAt.toISOString(),
-  }).pipe(Effect.mapError(unavailable))
+  }).pipe(Effect.mapError(() => Unavailable.make({})))
 })
 
 /** The rows' views, each with the pieces it still wears. */
@@ -86,7 +86,7 @@ const get = Effect.fn('Styld.TryOn.get')(function* (tryOnId: string) {
   if (Option.isNone(row)) return yield* NotFound.make({})
   yield* nudge([row.value])
   const [shown] = yield* views([row.value])
-  return shown ?? (yield* unavailable())
+  return shown ?? (yield* Unavailable.make({}))
 })
 
 /** The ready pieces of the account's among `pieceIds`, in the order asked, each once; NotFound when one is not there. */
@@ -106,7 +106,7 @@ const resume = Effect.fnUntraced(function* (row: TryOnRow, operationId: string) 
     yield* admitTryOn(row, operationId)
     yield* sendTryOn(row.id).pipe(Effect.ignore)
   }
-  return yield* get(row.id).pipe(Effect.catchTag('NotFound', () => Effect.fail(unavailable())))
+  return yield* get(row.id).pipe(Effect.catchTag('NotFound', () => Effect.fail(Unavailable.make({}))))
 })
 
 /** Start a try-on: the account's own photo and ready pieces, its credits held before anything runs. A repeat of the
@@ -123,7 +123,7 @@ const start = Effect.fn('Styld.TryOn.start')(function* (input: StartTryOn) {
   const earlier = yield* priorResult(operation, yield* stored(store.findReceipt(accountId, input.operationId)))
   if (Option.isSome(earlier)) {
     const row = yield* stored(store.findTryOn(accountId, earlier.value))
-    if (Option.isNone(row)) return yield* unavailable()
+    if (Option.isNone(row)) return yield* Unavailable.make({})
     return yield* resume(row.value, input.operationId)
   }
   yield* (yield* Pacing).account('generate')
@@ -168,7 +168,9 @@ const remove = Effect.fn('Styld.TryOn.delete')(function* (tryOnId: string, opera
 const onBoard = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.mapError((error) =>
-      Predicate.isTagged(error, 'NotFound') || Predicate.isTagged(error, 'OperationConflict') ? error : unavailable(),
+      Predicate.isTagged(error, 'NotFound') || Predicate.isTagged(error, 'OperationConflict')
+        ? error
+        : Unavailable.make({}),
     ),
   )
 
@@ -190,9 +192,9 @@ const toBoard = Effect.fn('Styld.TryOn.toBoard')(function* (tryOnId: string, inp
   )
   if (Predicate.isTagged(spot, 'Held')) return spot.image
   const bytes = yield* readObject(resultKey)
-  if (Option.isNone(bytes)) return yield* unavailable()
+  if (Option.isNone(bytes)) return yield* Unavailable.make({})
   const uploadId = yield* receivedUpload(yield* Wardrobe, { contentType: 'image/png', bytes: bytes.value }).pipe(
-    Effect.mapError(unavailable),
+    Effect.mapError(() => Unavailable.make({})),
   )
   return yield* onBoard(boards.addGeneratedImage(input.boardId, { operationId: spot.operationId, uploadId }))
 })

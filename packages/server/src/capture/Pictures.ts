@@ -1,7 +1,7 @@
 import { Effect, Option } from 'effect'
 import { planFor } from './CleanPicture.ts'
 import { drawingOf, frontOf, hasEnded, photoOf } from './Drawing.ts'
-import { pictureKey, storedAs } from './Shared.ts'
+import { pictureKey } from './Shared.ts'
 import { judgedAt } from './Garments.ts'
 import { GarmentVision } from './Providers.ts'
 import { modelPicture, type Rgba } from '@styld/imaging'
@@ -11,6 +11,7 @@ import { CaptureStore } from './Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import type { CaptureServices } from './Shared.ts'
 import type { Unavailable } from '@styld/protocol'
+import { stored } from '../kernel/Db.ts'
 
 /** The hold paying for a piece's latest redraw. */
 export const redrawHold = (picture: Pick<PictureRow, 'pieceId' | 'redraws'>) =>
@@ -20,7 +21,7 @@ export const redrawHold = (picture: Pick<PictureRow, 'pieceId' | 'redraws'>) =>
  * settlement stands, so whoever comes next settles a hold a delivery left, and settling again is safe. */
 export const settleHold = (pieceId: string) =>
   Effect.gen(function* () {
-    const found = yield* storedAs((yield* CaptureStore).findPicture(pieceId))
+    const found = yield* stored((yield* CaptureStore).findPicture(pieceId))
     if (Option.isNone(found) || !found.value.paid || !hasEnded(found.value.state)) return
     const { accountId, state } = found.value
     yield* (yield* Holds).settle(
@@ -46,9 +47,9 @@ const planFront = (picture: PictureRow, subject: Rgba) =>
 const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
   side: 'front',
   kind: (picture: PictureRow) => (picture.paid ? 'redraw' : 'first'),
-  find: (pieceId) => Effect.flatMap(CaptureStore, (store) => storedAs(store.findPicture(pieceId))),
+  find: (pieceId) => Effect.flatMap(CaptureStore, (store) => stored(store.findPicture(pieceId))),
   write: (pieceId, from, changes) =>
-    Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
+    Effect.flatMap(CaptureStore, (store) => stored(store.movePicture(pieceId, from, changes))),
   keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
   // The front alone: the back added nothing to it and could carry a back print onto the front (owner, 4 November).
   cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: Effect.succeed(Option.none<Rgba>()) }),

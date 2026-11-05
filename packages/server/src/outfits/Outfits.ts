@@ -27,6 +27,7 @@ import { occasionOfDay, Tastes } from '../taste/Taste.ts'
 import { OutfitStore } from './Store.ts'
 import { type Owned, WearableRow, wearablesOf } from './Wearables.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
+import { stored } from '../kernel/Db.ts'
 
 // The outfit engine (owner, 2026-10-31), shared by the website, the assistants and Styld: free at the account's pace,
 // Thinking at most `thinkingPerDay` times a day. Fast draws candidates by the rules; Thinking asks the model; Clef
@@ -47,8 +48,6 @@ const concurrency = mostCandidates
  * wardrobe (pictures still being made, Clef's first call slow) answers in seconds with the rules' best.
  * @internal Exported for its tests. */
 export const judgingBudget = Duration.seconds(4)
-
-const unavailable = () => Unavailable.make({})
 
 /** Thinking's model gave no usable outfit: Fast may still answer. */
 const unanswered = () => ThinkingUnanswered.make({})
@@ -220,9 +219,7 @@ const admitted = (accountId: string, mode: OutfitMode) =>
     if (mode === 'fast') return
     yield* pacing.account('thinking')
     const today = dayOf(yield* DateTime.now)
-    const counted = yield* (yield* OutfitStore)
-      .countThinking(accountId, today, thinkingPerDay)
-      .pipe(Effect.mapError(unavailable))
+    const counted = yield* (yield* OutfitStore).countThinking(accountId, today, thinkingPerDay).pipe(stored)
     if (!counted) return yield* LimitReached.make({ limit: 'thinking' })
   })
 
@@ -231,7 +228,7 @@ const batchFor = Effect.fnUntraced(function* (accountId: string, input: MakeOutf
   yield* admitted(accountId, input.mode)
   const started = yield* Clock.currentTimeMillis
   const session = input.session ?? OutfitSession.make(yield* newId('os'))
-  const read = yield* wearablesOf(yield* WardrobeStore, accountId).pipe(Effect.mapError(unavailable))
+  const read = yield* wearablesOf(yield* WardrobeStore, accountId).pipe(stored)
   const owned = new Map<string, Owned>(read.map((piece) => [piece.wearable.id, piece]))
   const fixed = yield* fixedOf(input, owned)
   const request: Brief = {
@@ -289,10 +286,11 @@ const make = Effect.map(Effect.context<OutfitServices>(), (context) => ({
       yield* OutfitStore,
       { accountId, operationId, command: 'makeOutfit', input: asked },
       {
-        replay: (result) => Schema.decodeUnknownEffect(Answered)(result).pipe(Effect.mapError(unavailable)),
+        replay: (result) =>
+          Schema.decodeUnknownEffect(Answered)(result).pipe(Effect.mapError(() => Unavailable.make({}))),
         run: Effect.flatMap(batchFor(accountId, input), (batch) =>
           Effect.map(
-            Schema.encodeEffect(Answered)(batch).pipe(Effect.mapError(unavailable)),
+            Schema.encodeEffect(Answered)(batch).pipe(Effect.mapError(() => Unavailable.make({}))),
             (result) => [batch, result] as const,
           ),
         ),

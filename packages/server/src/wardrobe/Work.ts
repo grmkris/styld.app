@@ -1,10 +1,10 @@
 import { familyOf } from '@styld/protocol'
 import { DateTime, Duration, Effect, Option } from 'effect'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { deleteKeys, Media } from '../kernel/Media.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
-import { stored, typeOf, type WardrobeServices } from './Shared.ts'
+import { typeOf, type WardrobeServices } from './Shared.ts'
 import { GarmentCutout, type PieceDescription } from './Processing.ts'
 import { type PieceRow, WardrobeStore } from './Store.ts'
 

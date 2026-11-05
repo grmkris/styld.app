@@ -2,7 +2,7 @@ import { paidAttempts } from '@styld/db'
 import { type LimitReached, Unavailable } from '@styld/protocol'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { Context, Duration, Effect, Exit, Layer, Option, Predicate, Schema } from 'effect'
-import { Database, first, nowDate, query } from '../kernel/Db.ts'
+import { Database, first, nowDate, query, stored } from '../kernel/Db.ts'
 import { outcomeUnknown, type ProviderError } from '../providers/Errors.ts'
 import { type Ending, failedEnding, HoldId, Holds } from './Holds.ts'
 
@@ -37,8 +37,6 @@ export interface PerAttempt<A> {
   /** Whether a result is paid for: work that answered but made nothing is refunded. */
   readonly paidFor: (result: A) => boolean
 }
-
-const unavailable = () => Unavailable.make({})
 
 /** The attempts' statements over the application's database. */
 const attemptRows = (db: Database['Service']) => ({
@@ -99,8 +97,8 @@ const steps = (rows: ReturnType<typeof attemptRows>, holds: Holds['Service']) =>
   /** The work as another attempt left it: its stored result, a live claim to leave it to, or a claim whose
    * delivery died after the provider may have taken the work, never sent again and refunded. */
   const leftBy = Effect.fnUntraced(function* <A>(work: Work<A>, at: Date) {
-    const found = yield* rows.find(work.key).pipe(Effect.mapError(unavailable))
-    if (Option.isNone(found)) return yield* unavailable()
+    const found = yield* rows.find(work.key).pipe(stored)
+    if (Option.isNone(found)) return yield* Unavailable.make({})
     const { result, claimedAt, holdId } = found.value
     const hold = Option.map(Option.fromNullishOr(holdId), (id) => HoldId.make(id))
     if (result !== null) {
@@ -108,14 +106,14 @@ const steps = (rows: ReturnType<typeof attemptRows>, holds: Holds['Service']) =>
       return { _tag: 'Stored', result: decoded, hold } satisfies Begun<A>
     }
     // Released between the claim and this read: free again, so the caller tries again rather than leaving it.
-    if (claimedAt === null) return yield* unavailable()
+    if (claimedAt === null) return yield* Unavailable.make({})
     if (at.getTime() - claimedAt.getTime() < Duration.toMillis(lease)) return yield* AttemptElsewhere.make({})
     if (Option.isSome(hold)) yield* holds.settle(work.accountId, hold.value, 'unknown')
     return yield* outcomeUnknown(work.provider)
   })
   const begin = Effect.fnUntraced(function* <A>(work: Work<A>) {
     const at = yield* nowDate
-    const claimed = yield* rows.claim(work.key, work.accountId, at).pipe(Effect.mapError(unavailable))
+    const claimed = yield* rows.claim(work.key, work.accountId, at).pipe(stored)
     if (Option.isSome(claimed)) return { _tag: 'Claimed', attempt: claimed.value } satisfies Begun<A>
     return yield* leftBy(work, at)
   })
@@ -188,7 +186,7 @@ export class PaidAttempts extends Context.Service<
           }
           const hold = paid.hold(begun.attempt)
           yield* rows.paidBy(work.key, begun.attempt, hold).pipe(
-            Effect.mapError(unavailable),
+            stored,
             Effect.andThen(holds.reserve({ accountId, hold, credits: paid.credits })),
             Effect.tapError(() => release(work.key, begun.attempt)),
           )
@@ -202,11 +200,11 @@ export class PaidAttempts extends Context.Service<
           return yield* exit
         }),
         abandon: Effect.fn('Styld.PaidAttempts.abandon')(function* (key: string, accountId: string) {
-          const found = yield* rows.find(key).pipe(Effect.mapError(unavailable))
+          const found = yield* rows.find(key).pipe(stored)
           if (Option.isNone(found) || found.value.result !== null || found.value.holdId === null) return
           yield* holds.settle(accountId, HoldId.make(found.value.holdId), 'failed')
         }),
-        forget: (key) => rows.forget(key).pipe(Effect.asVoid, Effect.mapError(unavailable)),
+        forget: (key) => rows.forget(key).pipe(Effect.asVoid, stored),
       })
     }),
   )

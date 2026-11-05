@@ -1,7 +1,7 @@
 import { Effect, Option } from 'effect'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { enqueuePicture, storedAs } from './Shared.ts'
+import { enqueuePicture } from './Shared.ts'
 import { CaptureStore } from './Store.ts'
 import type { CaptureServices } from './Shared.ts'
 
@@ -15,15 +15,15 @@ import type { CaptureServices } from './Shared.ts'
  * as its photo (which never leaves Styld) gets none.
  * @internal Exported for its tests. */
 export const queueImportedPicture = Effect.fn('Styld.Picture.imported')(function* (pieceId: string) {
-  const piece = yield* storedAs((yield* WardrobeStore).findPieceForProcessing(pieceId))
+  const piece = yield* stored((yield* WardrobeStore).findPieceForProcessing(pieceId))
   if (Option.isNone(piece)) return
   const { accountId, status, imageKey, originalKey, source } = piece.value
   if (source !== 'import' || status !== 'ready' || imageKey === null || imageKey === originalKey) return
   // A house garment the seed generated already is a clean picture: it is never drawn again.
-  if ((yield* storedAs((yield* WardrobeStore).generatedAmong([pieceId]))).has(pieceId)) return
+  if ((yield* stored((yield* WardrobeStore).generatedAmong([pieceId]))).has(pieceId)) return
   const store = yield* CaptureStore
   const at = yield* nowDate
-  yield* storedAs(
+  yield* stored(
     store.addPicture({
       pieceId,
       accountId,
@@ -35,7 +35,7 @@ export const queueImportedPicture = Effect.fn('Styld.Picture.imported')(function
       updatedAt: at,
     }),
   )
-  if ((yield* storedAs(store.waitingPictures([pieceId]))).length > 0) yield* enqueuePicture(pieceId)
+  if ((yield* stored(store.waitingPictures([pieceId]))).length > 0) yield* enqueuePicture(pieceId)
 })
 
 /** Clean pictures for imported pieces, which the import queue asks for. */

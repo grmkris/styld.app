@@ -1,15 +1,14 @@
-import { prices } from '@styld/protocol'
+import { prices, Unavailable } from '@styld/protocol'
 import { Effect, Option, Predicate, Result } from 'effect'
 import { PictureWork, type Picture } from '../capture/Providers.ts'
 import { readObject, writeObject } from '../capture/Shared.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import { PhotoStore } from '../photos/Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import { jpegSize } from '../providers/CloudflareImages.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { stored, unavailable } from './Shared.ts'
 import { type TryOnRequest, TryOnPainter } from './TryOnPainter.ts'
 import { tryOnSize, tryOnWords } from './TryOnPrompt.ts'
 import {
@@ -51,7 +50,7 @@ export const admitTryOn = Effect.fn('Styld.TryOn.admission')(function* (row: Try
         if (operationId !== undefined) yield* stored(store.undoTryOn(row, operationId)).pipe(Effect.ignore)
       }),
     ),
-    Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : unavailable())),
+    Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : Unavailable.make({}))),
   )
 })
 
@@ -74,7 +73,9 @@ const piecesOf = (row: TryOnRow) =>
           const shown = shownImage(piece, Option.getOrUndefined(picture))
           const bytes = yield* readObject(shown.key)
           if (Option.isNone(bytes)) return Option.none()
-          const webp = yield* work.thumbnail(bytes.value, pieceSide, shown.rotation).pipe(Effect.mapError(unavailable))
+          const webp = yield* work
+            .thumbnail(bytes.value, pieceSide, shown.rotation)
+            .pipe(Effect.mapError(() => Unavailable.make({})))
           return Option.some({
             picture: { bytes: webp, contentType: 'image/webp' } satisfies Picture,
             words: tryOnWords(piece),
@@ -94,7 +95,7 @@ const requestOf = (row: TryOnRow) =>
     if (Option.isNone(original)) return Option.none<TryOnRequest>()
     // One JPEG at most 2048 px; Cloudflare Images re-encoded the photo when it was uploaded, so it carries no EXIF or
     // location. The canvas follows the JPEG's own proportions.
-    const jpeg = yield* (yield* PictureWork).jpeg(original.value).pipe(Effect.mapError(unavailable))
+    const jpeg = yield* (yield* PictureWork).jpeg(original.value).pipe(Effect.mapError(() => Unavailable.make({})))
     const pieces = yield* piecesOf(row)
     if (pieces.length === 0) return Option.none<TryOnRequest>()
     return Option.some<TryOnRequest>({

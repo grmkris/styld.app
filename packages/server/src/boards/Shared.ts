@@ -1,16 +1,7 @@
-import {
-  Board,
-  type BoardId,
-  type BoardItem,
-  BoardSummary,
-  CurrentAccount,
-  type Look,
-  NotFound,
-  Unavailable,
-} from '@styld/protocol'
+import { Board, type BoardId, type BoardItem, BoardSummary, CurrentAccount, type Look, NotFound } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import type { WardrobeStore } from '../wardrobe/Store.ts'
-import type { Database, StoreUnavailable } from '../kernel/Db.ts'
+import { type Database, stored } from '../kernel/Db.ts'
 import type { Media } from '../kernel/Media.ts'
 import { imageAddresses, type SignedMedia } from '../kernel/SignedMedia.ts'
 import { toPiece } from '../wardrobe/Shared.ts'
@@ -24,8 +15,6 @@ import { PublicPages } from '../social/Public.ts'
 // What the board operations share: the services they work through, how a board is shown, receipts, ownership and new
 // pins.
 
-export const unavailable = () => Unavailable.make({})
-export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 /** How many of its newest pins a board in a list shows. */
 const coverPins = 4
 

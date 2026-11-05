@@ -1,13 +1,14 @@
 import { deleting, once } from '../kernel/Receipts.ts'
 import { type CaptureId, CurrentAccount, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option, Predicate } from 'effect'
-import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, storedAs } from './Shared.ts'
+import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects } from './Shared.ts'
 import type { CaptureRow } from './Store.ts'
 import { type Ending } from '../usage/Holds.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import type { CaptureServices } from './Shared.ts'
+import { stored } from '../kernel/Db.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
 const staleMillis = 30 * 60 * 1000
@@ -52,13 +53,13 @@ const unretried = (accountId: string, capture: CaptureRow, claimed: Date, refuse
  * then the last attempt's hold is refunded (a stuck one's too), and the next one holds the credits again. */
 const retried = (accountId: string, captureId: CaptureId) =>
   Effect.gen(function* () {
-    const found = yield* storedAs((yield* CaptureStore).findCapture(accountId, captureId))
+    const found = yield* stored((yield* CaptureStore).findCapture(accountId, captureId))
     const now = yield* DateTime.now
     if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
     const capture = found.value
     const claimed = DateTime.toDateUtc(now)
     const next = { ...capture, attempt: capture.attempt + 1 }
-    const moved = yield* storedAs(
+    const moved = yield* stored(
       (yield* CaptureStore).retryCapture(accountId, capture.id, capture, {
         status: 'processing',
         attempt: next.attempt,
@@ -112,21 +113,21 @@ export const retrying = Effect.map(Effect.context<CaptureServices>(), (context) 
 /** Remove a capture that has not left the tray, and a back shot folded into it, then their objects. */
 const removed = (accountId: string, captureId: CaptureId) =>
   Effect.gen(function* () {
-    const found = yield* storedAs((yield* CaptureStore).findCapture(accountId, captureId))
+    const found = yield* stored((yield* CaptureStore).findCapture(accountId, captureId))
     const nowMillis = DateTime.toEpochMillis(yield* DateTime.now)
     if (Option.isNone(found)) return yield* NotFound.make({})
     const capture = found.value
     const removable = capture.status !== 'done' && (capture.status !== 'processing' || isStale(capture, nowMillis))
     // A capture whose pieces were kept stays: those pieces show its pictures.
-    if (!removable || (yield* storedAs((yield* CaptureStore).hasKept(capture.id)))) return yield* NotFound.make({})
+    if (!removable || (yield* stored((yield* CaptureStore).hasKept(capture.id)))) return yield* NotFound.make({})
     // Whatever did not reach the tray gets its credits back; the first settlement stands for one that did.
     yield* (yield* Holds).settle(accountId, captureHold(capture), ended(capture))
     // A back shot folded into this one goes first, with its photo: nothing else shows it.
-    for (const back of yield* storedAs((yield* CaptureStore).foldedBacks(accountId, capture.id))) {
-      yield* storedAs((yield* CaptureStore).deleteCapture(accountId, back.id))
+    for (const back of yield* stored((yield* CaptureStore).foldedBacks(accountId, capture.id))) {
+      yield* stored((yield* CaptureStore).deleteCapture(accountId, back.id))
       yield* forgetCaptureObjects(back, [])
     }
-    const frames = yield* storedAs((yield* CaptureStore).frames(capture.id))
-    yield* storedAs((yield* CaptureStore).deleteCapture(accountId, captureId))
+    const frames = yield* stored((yield* CaptureStore).frames(capture.id))
+    yield* stored((yield* CaptureStore).deleteCapture(accountId, captureId))
     yield* forgetCaptureObjects(capture, frames)
   })

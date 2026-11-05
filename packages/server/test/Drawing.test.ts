@@ -5,7 +5,8 @@ import { Effect, Layer, Option, Schema } from 'effect'
 import { drawingOf } from '../src/capture/Drawing.ts'
 import { type DrawRequest, GarmentVision, ImageGenerator } from '../src/capture/Providers.ts'
 import { refused } from '../src/providers/Errors.ts'
-import { pictureKey, storedAs } from '../src/capture/Shared.ts'
+import { pictureKey } from '../src/capture/Shared.ts'
+import { stored as answered } from '../src/kernel/Db.ts'
 import { CaptureStore, type PictureRow } from '../src/capture/Store.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
@@ -92,9 +93,9 @@ const frontWith = (photo: Option.Option<Rgba>) =>
   drawingOf({
     side: 'front',
     kind: () => 'first',
-    find: (pieceId) => Effect.flatMap(CaptureStore, (store) => storedAs(store.findPicture(pieceId))),
+    find: (pieceId) => Effect.flatMap(CaptureStore, (store) => answered(store.findPicture(pieceId))),
     write: (pieceId, from, changes) =>
-      Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
+      Effect.flatMap(CaptureStore, (store) => answered(store.movePicture(pieceId, from, changes))),
     keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
     cutouts: () => Effect.succeed({ subject: Option.some(cutout), other: Option.none() }),
     drawnWith: (piece) => ({ drawnRotation: piece.rotation }),

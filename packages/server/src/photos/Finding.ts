@@ -1,8 +1,8 @@
 import { isBusy, outcomeUnknown } from '../providers/Errors.ts'
-import { GarmentMatch, PieceType } from '@styld/protocol'
+import { GarmentMatch, PieceType, Unavailable } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
-import { type CaptureServices, readObject, storedAs, unavailable, writeObject } from '../capture/Shared.ts'
+import { type CaptureServices, readObject, writeObject } from '../capture/Shared.ts'
 import { type Garment, judgedAt } from '../capture/Garments.ts'
 import { capturePolicy } from '../capture/Policy.ts'
 import { modelPicture } from '@styld/imaging'
@@ -14,7 +14,7 @@ import { accountPrefix } from '../wardrobe/Media.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import { mergedWith } from './Merge.ts'
 import { type GarmentRow, PhotoStore, type PhotoRow } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { CaptureStore } from '../capture/Store.ts'
 import { Garments } from '../capture/Garments.ts'
@@ -52,7 +52,7 @@ const garmentOf = (photo: PhotoRow, garment: Garment, position: number) =>
     const { matching } = capturePolicy
     const candidates = Option.isNone(types)
       ? []
-      : yield* storedAs(
+      : yield* stored(
           (yield* CaptureStore).wardrobeCandidates(
             photo.accountId,
             types.value,
@@ -118,14 +118,14 @@ const foundIn = Effect.fnUntraced(function* (photo: PhotoRow, photoId: string, o
 
 const settleFound = (photo: PhotoRow, photoId: string) =>
   Effect.gen(function* () {
-    const ended = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    const ended = yield* stored((yield* PhotoStore).photoForWork(photoId))
     if (Option.isSome(ended))
       yield* settlePhoto(photo.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
   })
 
 const failFound = (photo: PhotoRow, photoId: string) =>
   Effect.gen(function* () {
-    yield* storedAs((yield* PhotoStore).failFinding(photoId, yield* nowDate))
+    yield* stored((yield* PhotoStore).failFinding(photoId, yield* nowDate))
     yield* settleFound(photo, photoId)
   })
 
@@ -134,11 +134,11 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
   /** Find a photo's garments once (`PaidAttempts`: a redelivery writes what the first found, and leaves one being
    * found to its delivery); its credit is spent when they are stored. */
   findGarments: Effect.fn('Styld.Photos.find')(function* (photoId: string) {
-    const photo = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    const photo = yield* stored((yield* PhotoStore).photoForWork(photoId))
     if (Option.isNone(photo)) return
     if (photo.value.status === 'finding') {
       const original = yield* readObject(photo.value.originalKey)
-      if (Option.isNone(original)) return yield* unavailable()
+      if (Option.isNone(original)) return yield* Unavailable.make({})
       // Only a busy provider is tried again: one that may have taken the paid work (SAM bills each call) is never
       // sent it twice, and a refusal would repeat. Both end the photo as failed, its credit back.
       const garments = yield* foundIn(photo.value, photoId, original.value)
@@ -147,7 +147,7 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
         yield* failFound(photo.value, photoId)
         return
       }
-      yield* storedAs((yield* PhotoStore).finishFinding(photoId, garments.value, yield* nowDate))
+      yield* stored((yield* PhotoStore).finishFinding(photoId, garments.value, yield* nowDate))
     }
     // Settled after the status moved, and again by any later delivery: the first settlement stands.
     yield* settleFound(photo.value, photoId)
@@ -156,7 +156,7 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
    * credit is held. The round's attempt is its own (`PaidAttempts`), so a redelivery merges what the first found and
    * never asks SAM twice; the photo stays ready throughout and keeps what the person confirmed, offered or added. */
   refindGarments: Effect.fn('Styld.Photos.refind')(function* (photoId: string, round: string) {
-    const photo = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    const photo = yield* stored((yield* PhotoStore).photoForWork(photoId))
     if (Option.isNone(photo) || photo.value.status !== 'ready') return
     const original = yield* readObject(photo.value.originalKey)
     if (Option.isNone(original)) return
@@ -174,8 +174,8 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
     )
     if (Option.isNone(found)) return
     const store = yield* PhotoStore
-    const { added, replaced } = mergedWith(yield* storedAs(store.garmentsOf([photoId])), found.value)
-    yield* storedAs(store.replaceGuesses(photoId, added))
+    const { added, replaced } = mergedWith(yield* stored(store.garmentsOf([photoId])), found.value)
+    yield* stored(store.replaceGuesses(photoId, added))
     yield* deleteAfterRows(
       (yield* Media).bucket,
       replaced.flatMap(({ cutoutKey }) => (cutoutKey === null ? [] : [cutoutKey])),
@@ -188,10 +188,10 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
   }, Effect.provide(context)),
   /** The last attempt failed: the photo shows as failed, and its credit comes back once. */
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {
-    const photo = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    const photo = yield* stored((yield* PhotoStore).photoForWork(photoId))
     if (Option.isNone(photo)) return
-    yield* storedAs((yield* PhotoStore).failFinding(photoId, yield* nowDate))
-    const ended = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    yield* stored((yield* PhotoStore).failFinding(photoId, yield* nowDate))
+    const ended = yield* stored((yield* PhotoStore).photoForWork(photoId))
     if (Option.isSome(ended))
       yield* settlePhoto(photo.value.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
   }, Effect.provide(context)),

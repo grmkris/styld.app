@@ -1,7 +1,7 @@
 import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
-import { enqueueMatch, storedAs } from './Shared.ts'
+import { enqueueMatch } from './Shared.ts'
 import { comparablePictures } from './Comparable.ts'
 import { Media } from '../kernel/Media.ts'
 import { judgedAt } from './Garments.ts'
@@ -9,7 +9,7 @@ import { modelPicture, readPng } from '@styld/imaging'
 import { capturePolicy } from './Policy.ts'
 import { type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { GarmentVision } from './Providers.ts'
@@ -65,7 +65,7 @@ export const sameAs = <A>(
 const shownIn = (capture: CaptureRow, types: ReadonlyArray<PieceType>, limit: number) => {
   const photo = capture.kind === 'photo'
   if (photo && capture.importId === null) return Effect.succeed([])
-  return storedAs(
+  return stored(
     Effect.flatMap(CaptureStore, (store) =>
       store.shownSightings(scopeOf(capture), types, photo ? capture.id : undefined, limit),
     ),
@@ -95,7 +95,7 @@ const matchOne = (capture: CaptureRow, detection: DetectionRow) =>
       const replaces = (detection.whole ?? 0) > (head.whole ?? 0)
       return { joins: Option.some({ head: head.id, replaces }), duplicateOf: replaces ? head.duplicateOf : null }
     }
-    const candidates = yield* storedAs(
+    const candidates = yield* stored(
       (yield* CaptureStore).wardrobeCandidates(
         capture.accountId,
         types.value,
@@ -111,12 +111,12 @@ const matchOne = (capture: CaptureRow, detection: DetectionRow) =>
 const captureOf = (capture: CaptureRow, detection: DetectionRow) =>
   detection.captureId === capture.id
     ? Effect.succeed(Option.some(capture))
-    : storedAs(Effect.flatMap(CaptureStore, (store) => store.captureForProcessing(detection.captureId)))
+    : stored(Effect.flatMap(CaptureStore, (store) => store.captureForProcessing(detection.captureId)))
 
 /** Compare the import's next waiting sighting, if no other delivery has it; whether there may be another. */
 const matchNext = (capture: CaptureRow) =>
   Effect.gen(function* () {
-    const [next] = yield* storedAs((yield* CaptureStore).toMatch(scopeOf(capture)))
+    const [next] = yield* stored((yield* CaptureStore).toMatch(scopeOf(capture)))
     if (next === undefined) return false
     const at = yield* nowDate
     const claimedAt = next.matchClaimedAt?.getTime() ?? 0
@@ -125,14 +125,14 @@ const matchNext = (capture: CaptureRow) =>
       yield* enqueueMatch(capture.id, patienceSeconds)
       return false
     }
-    if (!(yield* storedAs((yield* CaptureStore).claimMatch(next, at)))) return true
+    if (!(yield* stored((yield* CaptureStore).claimMatch(next, at)))) return true
     const own = yield* captureOf(capture, next)
     const outcome = Option.isNone(own)
       ? { joins: Option.none(), duplicateOf: null }
       : yield* matchOne(own.value, next).pipe(
-          Effect.tapError(() => storedAs(Effect.flatMap(CaptureStore, (store) => store.releaseMatch(next.id, at)))),
+          Effect.tapError(() => stored(Effect.flatMap(CaptureStore, (store) => store.releaseMatch(next.id, at)))),
         )
-    yield* storedAs((yield* CaptureStore).finishMatch(next, at, outcome))
+    yield* stored((yield* CaptureStore).finishMatch(next, at, outcome))
     return true
   })
 
@@ -143,14 +143,14 @@ export const matching = Effect.map(Effect.context<CaptureServices>(), (context) 
    * next: one costs seconds of CPU, and a delivery that compared a whole photo import in one go ran past the Worker's
    * CPU limit, losing its work and retrying it (4 November). */
   processMatch: Effect.fn('Styld.Capture.match')(function* (captureId: string) {
-    const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
+    const found = yield* stored((yield* CaptureStore).captureForProcessing(captureId))
     if (Option.isNone(found)) return
-    if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(found.value.accountId)))) return
+    if (!(yield* stored((yield* WardrobeStore).accountEnabled(found.value.accountId)))) return
     if (yield* matchNext(found.value)) yield* enqueueMatch(captureId)
   }, Effect.provide(context)),
   /** The last attempt failed: the import's waiting sightings stay on their own cards. */
   failMatch: Effect.fn('Styld.Capture.failMatch')(function* (captureId: string) {
-    const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
-    if (Option.isSome(found)) yield* storedAs((yield* CaptureStore).abandonMatches(scopeOf(found.value)))
+    const found = yield* stored((yield* CaptureStore).captureForProcessing(captureId))
+    if (Option.isSome(found)) yield* stored((yield* CaptureStore).abandonMatches(scopeOf(found.value)))
   }, Effect.provide(context)),
 }))
