@@ -14,9 +14,9 @@ export const costs = {
   veoLitePerSecond: 30_000,
 } as const
 
-/** Who serves a text model: Styld's LiteLLM gateway, or Meta's own OpenAI-compatible API. It is the `provider` of
- * every call, error and Analytics Engine row of that model. */
-export type TextProvider = Extract<ProviderCall['provider'], 'litellm' | 'meta-spark'>
+/** Who serves a text model: Meta's own OpenAI-compatible API, for every text task since 5 November 2026 (owner). It is
+ * the `provider` of every call, error and Analytics Engine row of that model. */
+export type TextProvider = Extract<ProviderCall['provider'], 'meta-spark'>
 
 /** One text model: its id at its provider and its list price in micro-dollars a token (dollars a million tokens). */
 export interface TextModel {
@@ -27,11 +27,8 @@ export interface TextModel {
 }
 
 export const textModels = {
-  /** Alibaba Model Studio paid DeepSeek, through Styld's isolated LiteLLM alias. Singapore/global peak list prices,
-   * read 3 November 2026 (model-pricing); estimates deliberately exclude idle-hour and cache discounts. */
-  deepSeekFlash: { id: 'styld-deepseek-v4.1-flash', provider: 'litellm', input: 0.283, output: 1.131 },
-  /** Meta Muse Spark 1.3 Standard (Meta does not train on the prompts), called on Meta's API directly for Styld's
-   * chat (owner, 5 November 2026): $1.25 a million input tokens and $4.25 a million output tokens, no long-context
+  /** Meta Muse Spark 1.3 Standard (Meta does not train on the prompts), called on Meta's API directly for every text
+   * task: Styld's chat, the public-words check, mood-board plans and Thinking (owner, 5 November 2026): $1.25 a million input tokens and $4.25 a million output tokens, no long-context
    * premium; cache reads ($0.15) are not discounted here. Read 5 November 2026 from the published summaries of
    * Meta's Model API price card (TrueFoundry, aicoder.com, tokencost.app agree); Meta's own pricing page
    * (dev.meta.ai) was not reachable then, so check it against the first Meta invoice. */

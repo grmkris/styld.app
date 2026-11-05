@@ -33,8 +33,7 @@ checkout that deployed them); none is left.
 
 The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STYLD_AUTH_SECRET`,
 `STYLD_AUTH_SESSION_KEYS`, `STYLD_AUTH_PROOF_KEYS`, `STYLD_AUTH_REQUEST_BINDING_KEYS`, `META_MUSE_API_KEY`,
-`STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`), `STYLD_LITELLM_URL`, `STYLD_LITELLM_KEY` and
-`STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
+`STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`) and `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
 comma-separated: their assistants get the curation tools), `STYLD_HOUSE_EMAILS` (the house accounts' sign-in emails,
 comma-separated; only they can be seeded, and unset means none can), `STYLD_GOOGLE_CLIENT_ID`, `STYLD_GOOGLE_CLIENT_SECRET` and `STYLD_AUTH_OAUTH_KEYS` (Sign in with Google: the owner
 chose to reuse v1's OAuth client, the one exception to the rule below, and a dedicated keyring whose material is exactly

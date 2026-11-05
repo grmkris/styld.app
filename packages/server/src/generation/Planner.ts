@@ -7,7 +7,7 @@ import { deadlines } from '../providers/Call.ts'
 import { textModels } from '../providers/Costs.ts'
 
 // Make a mood board (owner, 2026-10-31): one sentence picks the person's own pieces that suit it, and up to three
-// moods. No picture is drawn: a mood board is made of real clothes. A LiteLLM chat model plans it as an object of
+// moods. No picture is drawn: a mood board is made of real clothes. Muse Spark plans it as an object of
 // `Answer`; the person's pieces go to it as short references, never their ids, photos or notes.
 
 /** One of the person's ready pieces, as the plan sees it. */
@@ -33,8 +33,15 @@ export interface PlanRequest {
 export const mostPicks = 12
 const fewestPicks = 2
 
-/** The planner's model, shared with Styld and Thinking. */
-const planner: TextTask = { model: textModels.deepSeekFlash, kind: 'plan', deadline: deadlines.chat, maxTokens: 1024 }
+/** The planner's model, shared with Styld and Thinking: Muse Spark (owner, 5 November 2026), thinking as little as Meta
+ * allows. */
+const planner: TextTask = {
+  model: textModels.museSpark,
+  kind: 'plan',
+  deadline: deadlines.chat,
+  maxTokens: 2048,
+  reasoningEffort: 'minimal',
+}
 
 /** What the model is asked to answer. */
 const Answer = Schema.Struct({
@@ -87,7 +94,7 @@ export class MoodPlanner extends Context.Service<
   MoodPlanner,
   { readonly plan: (request: PlanRequest) => Effect.Effect<Option.Option<Plan>, ProviderError> }
 >()('@styld/server/generation/MoodPlanner') {
-  /** The planner on its LiteLLM model. */
+  /** The planner on Muse Spark. */
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {

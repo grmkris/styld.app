@@ -76,7 +76,7 @@ const passing = (seen: Witness) =>
     }),
   )
 
-/** The real judge, with DeepSeek answering `answer` and Clef never asked. */
+/** The real judge, with Muse Spark answering `answer` and Clef never asked. */
 const guardAnswering = (answer: unknown) =>
   contentJudge(() => Promise.reject(new Error('no pictures in these checks'))).pipe(
     Layer.provide(
@@ -136,7 +136,7 @@ describe('the checks', () => {
     ['an empty answer', { response: '' }],
     ['no answer at all', {}],
   ] as const)
-    it.effect(`keep a published profile unsure when DeepSeek answers ${shape}`, () => {
+    it.effect(`keep a published profile unsure when Muse Spark answers ${shape}`, () => {
       const seen = witness()
       const database = seeded('ac_1/cutout.png')
       return Effect.gen(function* () {

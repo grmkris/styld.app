@@ -29,13 +29,10 @@ const deploymentConfig = Config.all({
   adminEmails: Config.String('STYLD_ADMIN_EMAILS').pipe(Config.withDefault('')),
   /** The house accounts the operator's seed may write boards into: their sign-in emails, comma-separated. */
   houseEmails: Config.String('STYLD_HOUSE_EMAILS').pipe(Config.withDefault('')),
-  /** Meta's key, for SAM and Muse Image. */
+  /** Meta's key, for SAM, Muse Image and Muse Spark (the public-words check, mood-board plans and Thinking). */
   metaApiKey: Config.Redacted('META_API_KEY'),
   /** The Vercel AI Gateway's key, for Veo. */
   videoGatewayKey: Config.Redacted('VIDEO_GATEWAY_API_KEY'),
-  /** Styld's own paid text route; the key is restricted to its model and budget in LiteLLM. */
-  textBase: Config.schema(Schema.NonEmptyString, 'STYLD_LITELLM_URL'),
-  textKey: Config.Redacted('STYLD_LITELLM_KEY'),
   /** Sign in with Google (v1's OAuth client) and the keys that seal each sign-in in progress; Google is offered only
    * when all three are set. */
   googleClientId: Config.String('GOOGLE_CLIENT_ID').pipe(Config.option),
@@ -99,12 +96,11 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
           }
         : {}),
     },
-    textBase: raw.textBase.replace(/\/$/u, ''),
     // Only the token's digest is kept; a token too short to be a random secret stops the Worker.
     operator: Option.isNone(raw.operatorToken)
       ? Option.none<Uint8Array>()
       : Option.some(yield* operatorDigestOf(Redacted.value(raw.operatorToken.value)).pipe(Effect.orDie)),
-    secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey, textKey: raw.textKey },
+    secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey },
     billing: yield* billingOf(raw),
   }
 })

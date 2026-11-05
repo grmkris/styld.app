@@ -25,8 +25,9 @@ export const deadlines = {
   /** Starting a Veo job, and asking where one stands. */
   turn: '60 seconds',
   status: '30 seconds',
-  /** One chat model call. On the preview (31 October) DeepSeek V4.1 Flash answered at a median of 3.1 s, the slowest
-   * in 30 s; one Workers AI call that never answered held its reply 235 s. */
+  /** One chat model call, or a plan's or Thinking's. Muse Spark at minimal thinking answered the probe of 5 November
+   * (`tools/text-live.ts`) in 2.5 s for a plan and 8.6 s for Thinking at the median, the slowest in 15 s; one
+   * Workers AI call that never answered once held a reply 235 s. */
   chat: '45 seconds',
 } satisfies Readonly<Record<string, Duration.Input>>
 

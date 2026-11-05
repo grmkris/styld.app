@@ -5,7 +5,7 @@ import { threadDeploymentOf } from '../Config.ts'
 import { analyticsEngine, type AnalyticsDataset, CaptureMetrics } from '../kernel/Metrics.ts'
 import type { Fetch } from './Http.ts'
 import { metaBase } from './Meta.ts'
-import { makeTextCompletions, TextCompletions } from './Text.ts'
+import { metaTextCompletions, TextCompletions } from './Text.ts'
 
 // The model Styld's chat answers with, streamed, from its Thread (`stylist/Thread.ts`): Meta Muse Spark on Meta's own
 // OpenAI-compatible API (owner, 5 November 2026), through the same text transport as every other text task
@@ -29,12 +29,7 @@ const stylistModelOver = (task: TextTask, http: { readonly fetch: Fetch; readonl
     Effect.gen(function* () {
       const env = yield* WorkerEnvironment
       const deployment = yield* threadDeploymentOf(env)
-      const completions = makeTextCompletions({
-        provider: task.model.provider,
-        base: `${http.base}/v1`,
-        key: deployment.metaApiKey,
-        fetch: http.fetch,
-      })
+      const completions = metaTextCompletions({ base: http.base, key: deployment.metaApiKey, fetch: http.fetch })
       return textModel(task).pipe(
         Layer.provide(TextCompletions.layer(completions)),
         Layer.provide(Layer.succeed(CaptureMetrics, analyticsEngine(env.AI_CALLS, deployment))),

@@ -65,7 +65,11 @@ This repository is Styld v2, written during the Meta Global AI Developer Hackath
 
 **Muse Spark 1.3** answers in the Styld chat ([`providers/StylistModel.ts`](packages/server/src/providers/StylistModel.ts),
 [`stylist/Policy.ts`](packages/server/src/stylist/Policy.ts)): the Standard model on Meta's own API, streamed, with minimal
-thinking, over the person's own pieces and looks.
+thinking, over the person's own pieces and looks. It is all of Styld's text: the same model and route also plan a mood
+board from a sentence ([`generation/Planner.ts`](packages/server/src/generation/Planner.ts)), propose Thinking's outfits
+([`outfits/Proposer.ts`](packages/server/src/outfits/Proposer.ts)) and check the words of anything made public
+([`safety/Judge.ts`](packages/server/src/safety/Judge.ts)), each as a JSON object Effect decodes
+([`ai/LanguageModel.ts`](packages/server/src/ai/LanguageModel.ts); probed with `tools/text-live.ts`).
 
 Choices worth knowing:
 
@@ -81,9 +85,7 @@ Choices worth knowing:
 - List prices Styld counts ([`providers/Costs.ts`](packages/server/src/providers/Costs.ts), read 29 to 31 October
   2026): Muse Image $0.01 a picture, SAM $0.0025 a photo and $0.0002 a video frame.
 
-Not everything is Meta. Three text tasks use DeepSeek V4.1 Flash through a LiteLLM route
-([`ai/LanguageModel.ts`](packages/server/src/ai/LanguageModel.ts)): planning a mood board from a sentence, Thinking's
-outfit proposals, and the safety check on the words of anything made public. Reading a garment's type, colours and sleeves, and
+Not everything is Meta. Reading a garment's type, colours and sleeves, and
 judging outfits, uses Cloudflare's Clef-flash on Workers AI ([`providers/Clef.ts`](packages/server/src/providers/Clef.ts)).
 The turn video uses Veo 3.1 Lite through the Vercel AI Gateway ([`providers/Veo.ts`](packages/server/src/providers/Veo.ts)).
 
@@ -144,7 +146,7 @@ bun run check                    # every gate CI runs
 bun run --cwd apps/web dev       # the Vite dev server for the web app
 ```
 
-Deploying needs a Cloudflare account and provider keys (Meta, the LiteLLM route, the Vercel AI Gateway, and
+Deploying needs a Cloudflare account and provider keys (Meta, the Vercel AI Gateway, and
 optionally Google and Dodo). [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) covers the stages, the deploy and the readback.
 
 ## Docs for engineers

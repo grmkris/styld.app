@@ -18,13 +18,13 @@ export interface Proposed {
   readonly costMicroUsd: number
 }
 
-/** Thinking's model: Styld's, which the owner's probe of 31 October found the best at Slovenian and at following
- * instructions. */
+/** Thinking's model: Styld's, Muse Spark (owner, 5 November 2026), thinking as little as Meta allows. */
 const thinking: TextTask = {
-  model: textModels.deepSeekFlash,
+  model: textModels.museSpark,
   kind: 'propose',
   deadline: deadlines.chat,
-  maxTokens: 2048,
+  maxTokens: 4096,
+  reasoningEffort: 'minimal',
 }
 
 /** The most pieces and shown combinations one request sends. */
@@ -165,7 +165,7 @@ export class Thinking extends Context.Service<
   Thinking,
   { readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderError> }
 >()('@styld/server/outfits/Thinking') {
-  /** Thinking on its LiteLLM model. */
+  /** Thinking on Muse Spark. */
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {

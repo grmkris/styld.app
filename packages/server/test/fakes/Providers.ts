@@ -24,7 +24,8 @@ export const nativeProviders: ProvidersFor = (bindings) => {
     { runClef: clefAt(`${fixtures}/test/pictures/clef`) },
     {
       fetch: async (input, init) => {
-        if (input === `${fixtures}/test/text/chat/completions`) {
+        // Meta's text route (Muse Spark), in the fixture Worker's Meta place, played by the chat fake.
+        if (input === `${fixtures}/test/pictures/meta/v1/chat/completions`) {
           try {
             return Response.json(await fakeChat(await new Response(init.body).json()))
           } catch {
@@ -35,7 +36,6 @@ export const nativeProviders: ProvidersFor = (bindings) => {
       },
       metaBase: `${fixtures}/test/pictures/meta`,
       gatewayBase: `${fixtures}/test/pictures/gateway`,
-      textBase: `${fixtures}/test/text`,
       pollSeconds: 1,
     },
   )

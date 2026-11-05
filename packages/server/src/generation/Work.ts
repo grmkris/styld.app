@@ -59,7 +59,7 @@ const plan = (job: JobRow) =>
         {
           key: paidKey,
           accountId: job.accountId,
-          provider: 'litellm',
+          provider: 'meta-spark',
           result: Schema.Option(Schema.Struct({ picks: Schema.Array(Schema.String), moods: Schema.Array(Mood) })),
         },
         Effect.gen(function* () {
