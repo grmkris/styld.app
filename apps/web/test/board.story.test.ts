@@ -3,21 +3,15 @@ import { Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { SaveItems, SaveLook, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
+import { SaveItems, SaveLook, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Editor/Commands.ts'
+import { UpdatePaper } from '../src/page/Board/PageCommands.ts'
+import * as EditorMessage from '../src/page/Board/Editor/Message.ts'
+import * as AddSheet from '../src/page/Board/AddSheet.ts'
+import * as Chrome from '../src/page/Board/Chrome.ts'
 import { Message } from '../src/page/Board/Message.ts'
-import {
-  fromBoard,
-  Gesture,
-  init,
-  LookSave,
-  type Model,
-  ownBoard,
-  Saving,
-  Ticks,
-  Toast,
-  Upload,
-} from '../src/page/Board/Model.ts'
-import { update } from '../src/page/Board/Update.ts'
+import { canChangePins, fromBoard, init, type Model, ownBoard } from '../src/page/Board/Model.ts'
+import { Gesture, LookSave, Saving, Ticks, Toast, Upload } from '../src/page/Board/Editor/Model.ts'
+import { edit, update, withEditor } from './BoardFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const itemId = (seed: string) => Schema.decodeUnknownSync(BoardItemId)(`bi_${seed.padEnd(22, 'x')}`)
@@ -56,61 +50,66 @@ const board = Schema.decodeUnknownSync(Board)({
 })
 
 /** A board open in the editor, its paper 500px wide: one page pixel is two table units. */
-const open: Model = modifyFields(fromBoard(init(board.id, true), board), {
-  pxPerUnit: () => 0.5,
-  ids: () => [itemId('fresh-1'), itemId('fresh-2'), itemId('fresh-3'), itemId('fresh-4'), itemId('fresh-5')],
-})
+const open: Model = withEditor(fromBoard(init(board.id), board), (editor) =>
+  modifyFields(editor, {
+    pxPerUnit: () => 0.5,
+    ids: () => [itemId('fresh-1'), itemId('fresh-2'), itemId('fresh-3'), itemId('fresh-4'), itemId('fresh-5')],
+  }),
+)
 
 const itemIn = (current: Model, id: string): BoardItem => {
-  const found = current.items.find((item) => item.id === id)
+  const found = current.editor.items.find((item) => item.id === id)
   if (found === undefined) throw new Error(`No item ${id}`)
   return found
 }
 const at = (pointerId: number, x: number, y: number) => ({ pointerId, x, y })
 /** A stale wait: the save it scheduled is no longer the newest, so nothing more is sent. */
-const passedWait = Message.ElapsedSaveWait({ generation: -1 })
+const passedWait = EditorMessage.Message.ElapsedSaveWait({ generation: -1 })
 
 describe('the board editor', () => {
   test('an item follows the pointer exactly, and the finished move is saved from the version the editor had', () => {
     story(
       update,
       given(open),
-      message(Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false })),
-      message(Message.MovedPointer({ pointer: at(1, 150, 120) })),
+      message(edit(EditorMessage.Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false }))),
+      message(edit(EditorMessage.Message.MovedPointer({ pointer: at(1, 150, 120) }))),
       model((current) => {
         expect(itemIn(current, knit.id).x).toBe(knit.x + 100)
         expect(itemIn(current, knit.id).y).toBe(knit.y + 40)
         expect(itemIn(current, knit.id).z).toBe(1)
       }),
-      message(Message.ReleasedPointer({ pointerId: 1 })),
+      message(edit(EditorMessage.Message.ReleasedPointer({ pointerId: 1 }))),
       Command.expectExact(WaitToSave),
-      Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: 1 })),
+      Command.resolve(WaitToSave, EditorMessage.Message.ElapsedSaveWait({ generation: 1 })),
       Command.expectExact(SaveItems),
-      Command.resolve(SaveItems, Message.SucceededSaveItems({ board: { ...board, version: 4 } })),
+      Command.resolve(SaveItems, EditorMessage.Message.SucceededSaveItems({ board: { ...board, version: 4 } })),
       model((current) => {
-        expect(current.version).toBe(4)
-        expect(Saving.guards.Saved(current.saving)).toBe(true)
-        expect(current.past).toHaveLength(1)
+        expect(current.editor.version).toBe(4)
+        expect(Saving.guards.Saved(current.editor.saving)).toBe(true)
+        expect(current.editor.past).toHaveLength(1)
       }),
     )
   })
 
   test('a chosen layer survives a press, move and save, and undo restores the previous order', () => {
-    const front = update(open, Message.ClickedLayer({ id: knit.id })).model
+    const front = update(open, edit(EditorMessage.Message.ClickedLayer({ id: knit.id }))).model
     expect(itemIn(front, knit.id).z).toBe(2)
-    const back = update(front, Message.ClickedLayer({ id: knit.id })).model
+    const back = update(front, edit(EditorMessage.Message.ClickedLayer({ id: knit.id }))).model
     expect(itemIn(back, knit.id).z).toBe(1)
-    const held = update(back, Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false })).model
+    const held = update(
+      back,
+      edit(EditorMessage.Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false })),
+    ).model
     expect(itemIn(held, knit.id).z).toBe(1)
-    const moved = update(held, Message.MovedPointer({ pointer: at(1, 150, 120) })).model
-    const released = update(moved, Message.ReleasedPointer({ pointerId: 1 })).model
+    const moved = update(held, edit(EditorMessage.Message.MovedPointer({ pointer: at(1, 150, 120) }))).model
+    const released = update(moved, edit(EditorMessage.Message.ReleasedPointer({ pointerId: 1 }))).model
     const saved = update(
       released,
-      Message.SucceededSaveItems({ board: { ...board, version: 4, items: released.items } }),
+      edit(EditorMessage.Message.SucceededSaveItems({ board: { ...board, version: 4, items: released.editor.items } })),
     ).model
     expect(itemIn(saved, knit.id)).toMatchObject({ z: 1, x: 400, y: 360 })
-    const undoMove = update(saved, Message.ClickedUndo()).model
-    const undoLayer = update(undoMove, Message.ClickedUndo()).model
+    const undoMove = update(saved, edit(EditorMessage.Message.ClickedUndo())).model
+    const undoLayer = update(undoMove, edit(EditorMessage.Message.ClickedUndo())).model
     expect(itemIn(undoLayer, knit.id).z).toBe(2)
   })
 
@@ -118,16 +117,16 @@ describe('the board editor', () => {
     story(
       update,
       given(open),
-      message(Message.PressedItem({ id: shorts.id, pointer: at(1, 100, 100), isTouch: true })),
-      message(Message.PressedPaper({ pointer: at(2, 140, 100) })),
-      model((current) => expect(Gesture.guards.Pinching(current.gesture)).toBe(true)),
-      message(Message.MovedPointer({ pointer: at(2, 180, 100) })),
+      message(edit(EditorMessage.Message.PressedItem({ id: shorts.id, pointer: at(1, 100, 100), isTouch: true }))),
+      message(edit(EditorMessage.Message.PressedPaper({ pointer: at(2, 140, 100) }))),
+      model((current) => expect(Gesture.guards.Pinching(current.editor.gesture)).toBe(true)),
+      message(edit(EditorMessage.Message.MovedPointer({ pointer: at(2, 180, 100) }))),
       model((current) => expect(itemIn(current, shorts.id).size).toBeCloseTo(shorts.size * 2)),
-      message(Message.ReleasedPointer({ pointerId: 2 })),
-      model((current) => expect(Gesture.guards.Dragging(current.gesture)).toBe(true)),
-      message(Message.ReleasedPointer({ pointerId: 1 })),
+      message(edit(EditorMessage.Message.ReleasedPointer({ pointerId: 2 }))),
+      model((current) => expect(Gesture.guards.Dragging(current.editor.gesture)).toBe(true)),
+      message(edit(EditorMessage.Message.ReleasedPointer({ pointerId: 1 }))),
       Command.resolve(WaitToSave, passedWait),
-      model((current) => expect(Gesture.guards.Idle(current.gesture)).toBe(true)),
+      model((current) => expect(Gesture.guards.Idle(current.editor.gesture)).toBe(true)),
     )
   })
 
@@ -135,13 +134,13 @@ describe('the board editor', () => {
     story(
       update,
       given(open),
-      message(Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false })),
-      message(Message.MovedPointer({ pointer: at(1, 300, 300) })),
-      message(Message.PressedEscape()),
+      message(edit(EditorMessage.Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false }))),
+      message(edit(EditorMessage.Message.MovedPointer({ pointer: at(1, 300, 300) }))),
+      message(edit(EditorMessage.Message.PressedEscape())),
       Command.expectNone(),
       model((current) => {
-        expect(current.items).toEqual(open.items)
-        expect(Gesture.guards.Idle(current.gesture)).toBe(true)
+        expect(current.editor.items).toEqual(open.editor.items)
+        expect(Gesture.guards.Idle(current.editor.gesture)).toBe(true)
       }),
     )
   })
@@ -150,10 +149,10 @@ describe('the board editor', () => {
     story(
       update,
       given(open),
-      message(Message.PressedItemKey({ id: knit.id, step: 'right', isShifted: false })),
+      message(edit(EditorMessage.Message.PressedItemKey({ id: knit.id, step: 'right', isShifted: false }))),
       Command.resolve(WaitToSave, passedWait),
       model((current) => expect(itemIn(current, knit.id).x).toBe(knit.x + 10)),
-      message(Message.ClickedUndo()),
+      message(edit(EditorMessage.Message.ClickedUndo())),
       Command.resolve(WaitToSave, passedWait),
       model((current) => expect(itemIn(current, knit.id).x).toBe(knit.x)),
     )
@@ -163,45 +162,55 @@ describe('the board editor', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedRemove({ id: knit.id })),
+      message(edit(EditorMessage.Message.ClickedRemove({ id: knit.id }))),
       Command.expectExact(WaitToSave, WaitForExit, WaitForToast),
       model((current) => {
-        expect(current.items.map((item) => item.id)).toEqual([shorts.id])
-        expect(current.leaving.map((item) => item.id)).toEqual([knit.id])
-        expect(Toast.guards.Removed(current.toast)).toBe(true)
+        expect(current.editor.items.map((item) => item.id)).toEqual([shorts.id])
+        expect(current.editor.leaving.map((item) => item.id)).toEqual([knit.id])
+        expect(Toast.guards.Removed(current.editor.toast)).toBe(true)
       }),
-      Command.resolve(WaitForExit, Message.CompletedExit({ id: knit.id })),
+      Command.resolve(WaitForExit, EditorMessage.Message.CompletedExit({ id: knit.id })),
       Command.resolve(WaitToSave, passedWait),
       // An older toast's time running out leaves this one showing.
-      Command.resolve(WaitForToast, Message.ElapsedToast({ generation: 0 })),
-      model((current) => expect(Toast.guards.Removed(current.toast)).toBe(true)),
-      message(Message.ClickedUndoRemove()),
+      Command.resolve(WaitForToast, EditorMessage.Message.ElapsedToast({ generation: 0 })),
+      model((current) => expect(Toast.guards.Removed(current.editor.toast)).toBe(true)),
+      message(edit(EditorMessage.Message.ClickedUndoRemove())),
       Command.resolve(WaitToSave, passedWait),
       model((current) => {
-        expect(current.items.map((item) => item.id)).toEqual([knit.id, shorts.id])
-        expect(current.leaving).toEqual([])
-        expect(Toast.guards.Hidden(current.toast)).toBe(true)
+        expect(current.editor.items.map((item) => item.id)).toEqual([knit.id, shorts.id])
+        expect(current.editor.leaving).toEqual([])
+        expect(Toast.guards.Hidden(current.editor.toast)).toBe(true)
       }),
     )
   })
 
   test('a new wardrobe piece lands above the existing stack, and selecting it again does not remove it', () => {
     const fresh = pieceFixture('boots', { type: 'boots' })
-    const added = update(open, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model
-    expect(added.items).toHaveLength(3)
-    expect(added.items.at(-1)).toMatchObject({ pieceId: fresh.id, z: 3 })
-    expect(update(added, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model.items).toEqual(added.items)
+    const added = update(
+      open,
+      edit(EditorMessage.Message.GotAddSheetMessage({ message: AddSheet.Message.ClickedPiece({ pieceId: fresh.id }) })),
+    ).model
+    expect(added.editor.items).toHaveLength(3)
+    expect(added.editor.items.at(-1)).toMatchObject({ pieceId: fresh.id, z: 3 })
+    expect(
+      update(
+        added,
+        edit(
+          EditorMessage.Message.GotAddSheetMessage({ message: AddSheet.Message.ClickedPiece({ pieceId: fresh.id }) }),
+        ),
+      ).model.editor.items,
+    ).toEqual(added.editor.items)
   })
 
   test('a label added from the toolbar is selected, with a fresh id', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedAddText({ text: 'Weekend in Piran' })),
+      message(edit(EditorMessage.Message.ClickedAddText({ text: 'Weekend in Piran' }))),
       Command.resolve(WaitToSave, passedWait),
       model((current) => {
-        expect(current.items).toHaveLength(3)
-        expect(current.maybeSelectedId).toEqual(Option.some(itemId('fresh-1')))
+        expect(current.editor.items).toHaveLength(3)
+        expect(current.editor.maybeSelectedId).toEqual(Option.some(itemId('fresh-1')))
       }),
     )
   })
@@ -212,18 +221,40 @@ const imageId = Schema.decodeUnknownSync(BoardImageId)(`bm_${'sea'.padEnd(22, 'x
 
 describe('pictures sent to the board', () => {
   test('one that fails leaves the others counted on their way, and the board says so once all have settled', () => {
-    const sending = update(open, Message.DroppedFiles({ files: [picture('a.png'), picture('b.png')] })).model
-    expect(sending.upload).toEqual(Upload.Sending({ count: 2, problem: Option.none() }))
-    const oneFailed = update(sending, Message.FailedAddImage({ problem: 'refused' })).model
-    expect(oneFailed.upload).toEqual(Upload.Sending({ count: 1, problem: Option.some('refused') }))
-    const settled = update(oneFailed, Message.SucceededAddImage({ imageId })).model
-    expect(settled.upload).toEqual(Upload.Failed({ problem: 'refused' }))
-    expect(settled.items).toHaveLength(3)
+    const sending = update(
+      open,
+      edit(EditorMessage.Message.DroppedFiles({ files: [picture('a.png'), picture('b.png')] })),
+    ).model
+    expect(sending.editor.upload).toEqual(Upload.Sending({ count: 2, problem: Option.none() }))
+    const oneFailed = update(sending, edit(EditorMessage.Message.FailedAddImage({ problem: 'refused' }))).model
+    expect(oneFailed.editor.upload).toEqual(Upload.Sending({ count: 1, problem: Option.some('refused') }))
+    const settled = update(oneFailed, edit(EditorMessage.Message.SucceededAddImage({ imageId }))).model
+    expect(settled.editor.upload).toEqual(Upload.Failed({ problem: 'refused' }))
+    expect(settled.editor.items).toHaveLength(3)
   })
 
   test('all of them reaching the board leaves nothing to say', () => {
-    const sending = update(open, Message.DroppedFiles({ files: [picture('a.png')] })).model
-    expect(update(sending, Message.SucceededAddImage({ imageId })).model.upload).toEqual(Upload.Idle())
+    const sending = update(open, edit(EditorMessage.Message.DroppedFiles({ files: [picture('a.png')] }))).model
+    expect(update(sending, edit(EditorMessage.Message.SucceededAddImage({ imageId }))).model.editor.upload).toEqual(
+      Upload.Idle(),
+    )
+  })
+
+  test('paste reads the clipboard first: an empty one leaves what the board said, pictures on it go up', () => {
+    const failed = withEditor(open, (editor) =>
+      modifyFields(editor, { upload: () => Upload.Failed({ problem: 'failed' }) }),
+    )
+    const paste = Message.GotChromeMessage({ message: Chrome.Message.ClickedMoreAction({ action: 'paste' }) })
+    const pasting = update(failed, paste).model
+    expect(pasting.editor.upload).toEqual(Upload.Pasting({ problem: Option.some('failed') }))
+    expect(canChangePins(pasting)).toBe(false)
+    expect(
+      update(pasting, edit(EditorMessage.Message.CompletedReadClipboard({ files: [] }))).model.editor.upload,
+    ).toEqual(Upload.Failed({ problem: 'failed' }))
+    expect(
+      update(pasting, edit(EditorMessage.Message.CompletedReadClipboard({ files: [picture('a.png')] }))).model.editor
+        .upload,
+    ).toEqual(Upload.Sending({ count: 1, problem: Option.none() }))
   })
 })
 
@@ -234,7 +265,7 @@ describe('the board’s paper', () => {
     story(
       update,
       given(open),
-      message(Message.SelectedPaper({ paper: 'sand' })),
+      message(edit(EditorMessage.Message.SelectedPaper({ paper: 'sand' }))),
       model((current) => expect(withPaper(current)).toEqual(Option.some('sand'))),
       Command.expectExact(UpdatePaper({ boardId: board.id, paper: 'sand', previous: 'paper' })),
       Command.resolve(UpdatePaper, Message.FailedUpdatePaper({ attempted: 'sand', previous: 'paper' })),
@@ -243,8 +274,8 @@ describe('the board’s paper', () => {
   })
 
   test('an older paper’s failure or answer does not undo the one chosen since', () => {
-    const first = update(open, Message.SelectedPaper({ paper: 'sand' })).model
-    const second = update(first, Message.SelectedPaper({ paper: 'sage' })).model
+    const first = update(open, edit(EditorMessage.Message.SelectedPaper({ paper: 'sand' }))).model
+    const second = update(first, edit(EditorMessage.Message.SelectedPaper({ paper: 'sage' }))).model
     const failedFirst = update(second, Message.FailedUpdatePaper({ attempted: 'sand', previous: 'paper' })).model
     expect(withPaper(failedFirst)).toEqual(Option.some('sage'))
     const answeredFirst = update(
@@ -267,22 +298,25 @@ describe('saving a look from the board (T-16)', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSaveLook()),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
       Command.expectNone(),
-      model((current) => expect(current.ticks).toEqual(Ticks.On({ itemIds: [knit.id, shorts.id] }))),
-      message(Message.ToggledTick({ id: knit.id })),
-      model((current) => expect(current.ticks).toEqual(Ticks.On({ itemIds: [shorts.id] }))),
-      message(Message.ClickedSaveLook()),
+      model((current) => expect(current.editor.ticks).toEqual(Ticks.On({ itemIds: [knit.id, shorts.id] }))),
+      message(edit(EditorMessage.Message.ToggledTick({ id: knit.id }))),
+      model((current) => expect(current.editor.ticks).toEqual(Ticks.On({ itemIds: [shorts.id] }))),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
       Command.expectExact(SaveLook({ boardId: board.id, name: 'Weekend', pieceIds: [shorts.pieceId] })),
       model((current) => {
-        expect(Ticks.guards.Off(current.ticks)).toBe(true)
-        expect(LookSave.guards.Saving(current.look)).toBe(true)
+        expect(Ticks.guards.Off(current.editor.ticks)).toBe(true)
+        expect(LookSave.guards.Saving(current.editor.look)).toBe(true)
       }),
-      Command.resolve(SaveLook, Message.SucceededSaveLook({ lookId, board: { ...board, pins: [pinned] } })),
+      Command.resolve(
+        SaveLook,
+        EditorMessage.Message.SucceededSaveLook({ lookId, board: { ...board, pins: [pinned] } }),
+      ),
       model((current) => {
-        expect(current.look).toEqual(LookSave.Saved({ lookId }))
+        expect(current.editor.look).toEqual(LookSave.Saved({ lookId }))
         expect(current.pins).toEqual([pinned])
-        expect(current.items).toEqual(open.items)
+        expect(current.editor.items).toEqual(open.editor.items)
       }),
     )
   })
@@ -291,11 +325,11 @@ describe('saving a look from the board (T-16)', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSaveLook()),
-      message(Message.ClickedSaveLook()),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
       Command.expectExact(SaveLook({ boardId: board.id, name: 'Weekend', pieceIds: [shorts.pieceId, knit.pieceId] })),
-      Command.resolve(SaveLook, Message.FailedSaveLook()),
-      model((current) => expect(LookSave.guards.Failed(current.look)).toBe(true)),
+      Command.resolve(SaveLook, EditorMessage.Message.FailedSaveLook()),
+      model((current) => expect(LookSave.guards.Failed(current.editor.look)).toBe(true)),
     )
   })
 
@@ -303,17 +337,17 @@ describe('saving a look from the board (T-16)', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSaveLook()),
-      message(Message.ToggledTick({ id: knit.id })),
-      message(Message.ToggledTick({ id: shorts.id })),
-      message(Message.ClickedSaveLook()),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
+      message(edit(EditorMessage.Message.ToggledTick({ id: knit.id }))),
+      message(edit(EditorMessage.Message.ToggledTick({ id: shorts.id }))),
+      message(edit(EditorMessage.Message.ClickedSaveLook({ name: 'Weekend' }))),
       Command.expectNone(),
       model((current) => {
-        expect(LookSave.guards.NoPieces(current.look)).toBe(true)
-        expect(current.items).toEqual(open.items)
+        expect(LookSave.guards.NoPieces(current.editor.look)).toBe(true)
+        expect(current.editor.items).toEqual(open.editor.items)
       }),
-      message(Message.ClickedCancelSelecting()),
-      model((current) => expect(Ticks.guards.Off(current.ticks)).toBe(true)),
+      message(edit(EditorMessage.Message.ClickedCancelSelecting())),
+      model((current) => expect(Ticks.guards.Off(current.editor.ticks)).toBe(true)),
     )
   })
 })

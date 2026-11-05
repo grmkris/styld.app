@@ -354,7 +354,7 @@ const sentFromSheet = (
 
 const cutOutFailures = { noPerson: Work.NoPerson(), slowDown: Work.SlowDown(), failed: Work.Failed() } as const
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+const foldSaveToBoard = SaveToBoard.fold<Model, Message, OutMessage>(
   (message) => Message.GotSaveToBoardMessage({ message }),
   () => OutMessage.RequestedBoards(),
 )

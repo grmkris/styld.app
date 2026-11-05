@@ -51,6 +51,7 @@ import { choiceButtons, failure as showMeFailure } from './ShowMeView.ts'
 import { assistantsSection, personRouter, plansSection, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { loadingStatus } from '../Loading.ts'
 
 type Inputs = {
   readonly claims: AccountClaims
@@ -439,7 +440,7 @@ const checking = (locale: Locale, h: HtmlBuilder<AppMessage>): Html =>
     [],
     [
       pageHead(pageTitle(format(locale, 'account.title', {}), h), Option.none(), h),
-      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+      loadingStatus(format(locale, 'common.loading', {}), h),
       h.div(
         [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, identity())],
         [

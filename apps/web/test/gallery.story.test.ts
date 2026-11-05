@@ -61,7 +61,7 @@ const spun = (exhausted = false) =>
   modifyFields(withDay, {
     outfits: () =>
       Today.OutfitsData.Success({
-        data: { session, proposals: outfits, at: 0, missing: [], exhausted, refilling: false },
+        data: { session, proposals: outfits, at: 0, missing: [], supply: exhausted ? 'exhausted' : 'more' },
       }),
   })
 
@@ -279,7 +279,7 @@ describe("today's table", () => {
     const big = modifyFields(spun(), {
       outfits: () =>
         Today.OutfitsData.Success({
-          data: { session, proposals: [proposal(many)], at: 0, missing: [], exhausted: true, refilling: false },
+          data: { session, proposals: [proposal(many)], at: 0, missing: [], supply: 'exhausted' },
         }),
     })
     expect(Today.canSwap(big, many)).toBe(false)

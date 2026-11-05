@@ -21,7 +21,7 @@ import {
 
 // UPDATE
 
-type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder
+type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder | HeldCamera.LiveCameraService
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 /** Two files go up at once, at most one of them a video; the rest wait their turn. */

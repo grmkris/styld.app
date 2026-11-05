@@ -1,16 +1,16 @@
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { CameraLayout, Side } from '@styld/protocol'
-import { Duration, Effect, Option, Schema, Stream } from 'effect'
+import { Duration, Effect, Option, Predicate, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import { Command, File, Mount, type Update } from 'foldkit'
+import { Command, File, ManagedResource, Mount, Subscription, type Update } from 'foldkit'
 import { DEVTOOLS_HOST_ID } from 'foldkit/devtools-host'
 import * as Dom from 'foldkit/dom'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import type { CameraEvent } from '../capture/Camera.ts'
+import type { CameraHandle, WatchEvent } from '../capture/Camera.ts'
 
 // MODEL
 
@@ -96,6 +96,9 @@ export const Message = defineMessageUnion({
   ClickedDone: {},
   ClickedFlip: {},
   ClickedSkipBack: {},
+  ClickedShutter: {},
+  AcquiredCamera: {},
+  ReleasedCamera: {},
   StartedCamera: {},
   FailedCamera: { reason: Schema.Literals(['denied', 'unavailable']) },
   SettlingScene: { level: Schema.Number },
@@ -115,7 +118,8 @@ export const Message = defineMessageUnion({
   ElapsedCountdown: { token: Schema.Int, count: Schema.Int },
   ChangedScene: { blocked: Schema.Boolean },
   TookCountdownPhoto: { token: Schema.Int, check: File.File, still: File.File },
-  RequestedCountdownPhoto: {},
+  /** A photo asked for on the next frame did not come: the picture moved, or the camera went first. */
+  MissedPhoto: {},
   CompletedBuzz: {},
   HeldScreen: {},
   ShowedPhoto: {},
@@ -170,41 +174,59 @@ export const ShowPhoto = Mount.define('ShowPhoto', {
     ),
 })
 
-/** Run the camera in the element it is mounted on, loading the camera code only then. Code that fails
- * to load (offline, or a newer release) reports the camera as unavailable.
- */
-const cameraMessage = (event: CameraEvent) => {
-  if (event.kind === 'started') return Message.StartedCamera()
-  if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
+// MANAGED RESOURCE
+
+/** The live camera, held while the camera screen starts and watches; a new facing lets one go and opens another. Its
+ * code loads only then; code that fails to load (offline, or a newer release) reports the camera as unavailable. */
+export const LiveCamera = ManagedResource.tag<CameraHandle>()('LiveCamera')
+export type LiveCameraService = ManagedResource.ServiceOf<typeof LiveCamera>
+
+const reasonOf = (failure: unknown): 'denied' | 'unavailable' =>
+  Predicate.hasProperty(failure, 'reason') && failure.reason === 'denied' ? 'denied' : 'unavailable'
+
+export const managedResources = ManagedResource.make<Model, Message>()((entry) => ({
+  camera: entry(Schema.Option(Schema.Struct({ facing: Facing })), {
+    resource: LiveCamera,
+    modelToMaybeRequirements: (model) => (isLive(model) ? Option.some({ facing: model.facing }) : Option.none()),
+    acquire: ({ facing }) =>
+      Effect.tryPromise(() => import('../capture/Camera.ts')).pipe(
+        Effect.flatMap(({ openCamera }) => openCamera(facing)),
+      ),
+    // The camera's stream stops with the scope it was opened in.
+    release: () => Effect.void,
+    onAcquired: () => Message.AcquiredCamera(),
+    onReleased: () => Message.ReleasedCamera(),
+    onAcquireError: (failure) => Message.FailedCamera({ reason: reasonOf(failure) }),
+  }),
+}))
+
+// SUBSCRIPTION
+
+const watchMessage = (event: WatchEvent): Message => {
   if (event.kind === 'settling') return Message.SettlingScene({ level: event.level })
   if (event.kind === 'changed') return Message.ChangedScene({ blocked: event.blocked })
-  if (event.kind === 'counted')
-    return Message.TookCountdownPhoto({ token: event.token, check: event.check, still: event.still })
   const pictures = { check: event.check, still: event.still }
-  if (event.kind === 'settled') return Message.SettledScene(pictures)
-  return event.kind === 'again' ? Message.StayedStill(pictures) : Message.TappedPicture(pictures)
+  return event.kind === 'settled' ? Message.SettledScene(pictures) : Message.StayedStill(pictures)
 }
 
-export const WatchCamera = Mount.defineStream('WatchCamera', {
-  args: { facing: Facing },
-  messages: [
-    Message.StartedCamera,
-    Message.FailedCamera,
-    Message.SettlingScene,
-    Message.ChangedScene,
-    Message.TookCountdownPhoto,
-    Message.SettledScene,
-    Message.StayedStill,
-    Message.TappedPicture,
-  ],
-  execute: ({ element, facing }) =>
-    Stream.unwrap(
-      Effect.tryPromise(() => import('../capture/Camera.ts')).pipe(
-        Effect.map(({ watchCamera }) => watchCamera(element, facing).pipe(Stream.map(cameraMessage))),
-        Effect.orElseSucceed(() => Stream.make(Message.FailedCamera({ reason: 'unavailable' }))),
-      ),
-    ),
-})
+/** While the camera watches, the picture is read frame by frame: how close it is to settling, and when it settles. */
+export const subscriptions = Subscription.make<Model, Message, LiveCameraService>()((entry) => ({
+  watchedPicture: entry(
+    { facing: Schema.Option(Facing) },
+    {
+      modelToDependencies: (model) => ({
+        facing: Camera.guards.Watching(model.camera) ? Option.some(model.facing) : Option.none(),
+      }),
+      dependenciesToStream: ({ facing }) =>
+        Option.isNone(facing)
+          ? Stream.empty
+          : Stream.unwrap(Effect.map(LiveCamera.get, (camera) => camera.watch.pipe(Stream.map(watchMessage)))).pipe(
+              Stream.catchTag('ResourceNotAvailable', () => Stream.empty),
+              Stream.catch(() => Stream.make(Message.FailedCamera({ reason: 'unavailable' }))),
+            ),
+    },
+  ),
+}))
 
 // COMMAND
 
@@ -252,22 +274,55 @@ export const WaitForCountdown = Command.define('WaitForCountdown', {
     Effect.sleep(Duration.seconds(1)).pipe(Effect.as(Message.ElapsedCountdown({ token, count }))),
 })
 
-/** Ask the live camera for a fresh frame after the count; the model accepts only its current token. */
+/** The live camera plays in the camera screen's picture; the camera has started once it does. */
+export const ShowCamera = Command.define('ShowCamera', {
+  messages: [Message.StartedCamera, Message.FailedCamera],
+  execute: Effect.gen(function* () {
+    const camera = yield* LiveCamera.get
+    const video = document.querySelector(`#${screenId} video`)
+    if (!(video instanceof HTMLVideoElement)) return Message.FailedCamera({ reason: 'unavailable' })
+    yield* camera.show(video)
+    return Message.StartedCamera()
+  }).pipe(Effect.orElseSucceed(() => Message.FailedCamera({ reason: 'unavailable' }))),
+})
+
+/** The shutter, or a tap on the picture: a photo on the next frame. */
+export const TakeShutterPhoto = Command.define('TakeShutterPhoto', {
+  messages: [Message.TappedPicture, Message.MissedPhoto],
+  execute: LiveCamera.get.pipe(
+    Effect.flatMap((camera) => camera.tap),
+    Effect.map(
+      Option.match({ onNone: () => Message.MissedPhoto(), onSome: (pictures) => Message.TappedPicture(pictures) }),
+    ),
+    Effect.orElseSucceed(() => Message.MissedPhoto()),
+  ),
+})
+
+/** A fresh frame after the count, if the picture is still; the model accepts only its current token. */
 export const TakeCountdownPhoto = Command.define('TakeCountdownPhoto', {
   args: { token: Schema.Int },
-  messages: [Message.RequestedCountdownPhoto],
+  messages: [Message.TookCountdownPhoto, Message.MissedPhoto],
   execute: ({ token }) =>
-    Effect.sync(() => {
-      document
-        .querySelector(`#${screenId} video`)
-        ?.dispatchEvent(new CustomEvent('styld-countdown-photo', { detail: token, bubbles: true }))
-      return Message.RequestedCountdownPhoto()
-    }),
+    LiveCamera.get.pipe(
+      Effect.flatMap((camera) => camera.afterCountdown),
+      Effect.map(
+        Option.match({
+          onNone: () => Message.MissedPhoto(),
+          onSome: (pictures) => Message.TookCountdownPhoto({ token, ...pictures }),
+        }),
+      ),
+      Effect.orElseSucceed(() => Message.MissedPhoto()),
+    ),
 })
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
+type UpdateReturn = Update.ReturnWithOutMessage<
+  Model,
+  Message,
+  OutMessage,
+  StyldClient | SecureRandom.SecureRandom | LiveCameraService
+>
 
 const watching = (hint: Hint) => Camera.Watching({ hint })
 
@@ -397,6 +452,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         countdownToken: () => Option.none(),
       }),
     }),
+    ClickedShutter: () =>
+      Camera.guards.Watching(model.camera) ? { model, commands: [TakeShutterPhoto()] } : { model },
+    // The camera is open: it plays in the screen's picture, and has started once it does.
+    AcquiredCamera: () => (Camera.guards.Starting(model.camera) ? { model, commands: [ShowCamera()] } : { model }),
+    ReleasedCamera: () => ({ model }),
     StartedCamera: () =>
       Camera.guards.Starting(model.camera)
         ? { model: modifyFields(model, { camera: () => watching('holdOne') }) }
@@ -440,7 +500,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       Option.contains(model.countdown, 0)
         ? took(model, still, check, model.step)
         : { model },
-    RequestedCountdownPhoto: () => ({ model }),
+    MissedPhoto: () => ({ model }),
     CompletedBuzz: () => ({ model }),
     HeldScreen: () => ({ model }),
     ShowedPhoto: () => ({ model }),

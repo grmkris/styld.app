@@ -1,22 +1,30 @@
-import { piecesById } from '../../Cdn.ts'
+import { piecesById } from '../../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
-import { type Arrow, type BoardItem, layoutArrows, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
+import {
+  type Arrow,
+  type BoardItem,
+  layoutArrows,
+  type OutfitsAround,
+  type Paper,
+  type Piece,
+  type Pin,
+  PieceItem,
+  TextItem,
+} from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
-import { AsyncData } from 'foldkit'
+import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { actionButton } from '../../ActionButton.ts'
-import { addIcon } from '../../Icon.ts'
-import { lookRouter } from '../../route.ts'
-import { styled } from '../../Styled.ts'
-import type { PiecesData } from '../../ServerData.ts'
+import { actionButton } from '../../../ActionButton.ts'
+import { lookRouter } from '../../../route.ts'
+import { styled } from '../../../Styled.ts'
+import { type PiecesData, readPieces } from '../../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
-import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
+import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from '../Table.ts'
+import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload, uploadProblem } from './Model.ts'
 import { type KeyStep, Message } from './Message.ts'
-import { Gesture, LookSave, type Model, Saving, Ticks, Toast, Upload } from './Model.ts'
-import * as styles from './View.styles.ts'
-import { secondaryAction } from '../../Actions.styles.ts'
-import { addSheetView } from './AddSheetView.ts'
-import { pieceDescription } from '../WardrobeWords.ts'
+import * as styles from '../View.styles.ts'
+import * as AddSheetView from '../AddSheetView.ts'
+import { pieceDescription } from '../../WardrobeWords.ts'
 import { paperChoiceView, selectHintView, selectedView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
@@ -53,11 +61,9 @@ const pieceName = (pieces: ReadonlyArray<Piece>, pieceId: string, locale: Locale
     },
   )
 
-const piecesOf = (pieces: PiecesData): ReadonlyArray<Piece> => Option.getOrElse(AsyncData.getData(pieces), () => [])
-
 /** What an item is called for assistive technology. */
 const itemLabel = (pieces: PiecesData, item: BoardItem, locale: Locale) => {
-  if (Schema.is(PieceItem)(item)) return pieceName(piecesOf(pieces), item.pieceId, locale)
+  if (Schema.is(PieceItem)(item)) return pieceName(readPieces(pieces), item.pieceId, locale)
   if (Schema.is(TextItem)(item)) return format(locale, 'board.textItem', { text: item.text })
   return format(locale, 'board.picture', {})
 }
@@ -162,8 +168,8 @@ const arrowPath = ({ x1, y1, x2, y2 }: Arrow) => {
 
 /** The thin arrows a "One piece, many outfits" board draws from its piece to each outfit (the layout's decoration,
  * Eva's references): drawn from the table as it is, so an outfit moved out of its place loses its arrow. */
-const arrowsView = (model: Model, h: HtmlBuilder<Message>): Html =>
-  Option.match(model.outfits.maybeAround, {
+const arrowsView = (model: Model, around: Option.Option<OutfitsAround>, h: HtmlBuilder<Message>): Html =>
+  Option.match(around, {
     onNone: () => h.empty,
     onSome: ({ anchor, outfits, layout }) => {
       const arrows =
@@ -189,8 +195,9 @@ const arrowsView = (model: Model, h: HtmlBuilder<Message>): Html =>
     },
   })
 
-const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const source = fromStyld(piecesById(piecesOf(pieces)))
+const paperView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { pieces, paper, locale } = inputs
+  const source = fromStyld(piecesById(readPieces(pieces)))
   return h.section(
     [
       h.AriaLabel(format(locale, 'board.paper', {})),
@@ -203,7 +210,7 @@ const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Local
       ),
     ],
     [
-      arrowsView(model, h),
+      arrowsView(model, inputs.around, h),
       ...Array.map(model.items, (item) => itemView(model, pieces, source, item, locale, h)),
       ...Array.map(model.leaving, (item) => leavingView(item, source, h)),
       Array.isReadonlyArrayEmpty(model.items) && Array.isReadonlyArrayEmpty(model.leaving)
@@ -224,13 +231,13 @@ const savingStatus = (model: Model, locale: Locale) =>
   })
 
 const statusView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const upload = Upload.match(model.upload, {
-    Idle: () => Option.none<string>(),
-    Sending: ({ count }) => Option.some(format(locale, 'board.sending', { count })),
-    Failed: ({ problem }) =>
-      Option.some(format(locale, problem === 'refused' ? 'board.pictureRefused' : 'board.pictureFailed', {})),
-  })
-  const failed = Saving.guards.Failed(model.saving) || Upload.guards.Failed(model.upload)
+  const problem = uploadProblem(model.upload)
+  const upload = Upload.guards.Sending(model.upload)
+    ? Option.some(format(locale, 'board.sending', { count: model.upload.count }))
+    : Option.map(problem, (failed) =>
+        format(locale, failed === 'refused' ? 'board.pictureRefused' : 'board.pictureFailed', {}),
+      )
+  const failed = Saving.guards.Failed(model.saving) || Option.isSome(problem)
   return h.p(
     [h.Role('status'), ...(failed ? [h.DataAttribute('tone', 'error')] : []), ...styled(h, styles.status())],
     [Option.getOrElse(upload, () => savingStatus(model, locale))],
@@ -274,37 +281,47 @@ const lookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     NoPieces: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [format(locale, 'board.lookNoPieces', {})]),
   })
 
-/** The editable canvas, its controls and the piece sheet, shared by both board addresses. */
-export const editorView = (
-  model: Model,
-  pieces: PiecesData,
-  paper: Paper,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.div(styled(h, styles.stage()), [
+/** What the board tells its editor: the wardrobe, the board's paper and pins, and a "One piece, many outfits" board's
+ * outfits around its piece. */
+export type Inputs = {
+  readonly pieces: PiecesData
+  readonly paper: Paper
+  readonly pins: ReadonlyArray<Pin>
+  readonly around: Option.Option<OutfitsAround>
+  readonly locale: Locale
+}
+
+/** The editable canvas, its controls and the Add sheet, shared by both board addresses. */
+export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
+  const { pieces, paper, locale } = inputs
+  return h.div(styled(h, styles.stage()), [
     toolbarView(model, locale, h),
     statusView(model, locale, h),
     selectHintView(model, locale, h),
     lookView(model, locale, h),
-    paperView(model, pieces, paper, locale, h),
+    paperView(model, inputs, h),
     toastView(model, locale, h),
     h.div(
       [h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
       [
         selectedView(model, locale, h),
-        actionButton(
-          {
-            label: format(locale, 'board.add.button', {}),
-            leading: addIcon(h),
-            style: secondaryAction(),
-            onClick: Message.ClickedAdd(),
-          },
-          h,
-        ),
+        h.submodel({
+          slotId: 'board-add-button',
+          model: model.addSheet,
+          view: AddSheetView.buttonView,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+        }),
       ],
     ),
     paperChoiceView(model, paper, locale, h),
     h.p([h.Id('board-keys'), ...styled(h, styles.keys())], [format(locale, 'board.keys', {})]),
-    addSheetView(model, pieces, locale, h),
+    h.submodel({
+      slotId: 'board-add-sheet',
+      model: model.addSheet,
+      view: AddSheetView.sheetView,
+      viewInputs: { pieces, locale, items: model.items, pins: inputs.pins },
+      toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+    }),
   ])
+})

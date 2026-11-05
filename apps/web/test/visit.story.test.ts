@@ -1,7 +1,11 @@
 import { PublicProfile } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { cameFromOf, init, load, Message, ShownData, Target, update } from '../src/page/Visit.ts'
+import { cameFromOf, init, load, Message, ShownData, Target, update as visitUpdate } from '../src/page/Visit.ts'
+
+/** The page signed out, as these stories visit it. */
+const update = (model: Parameters<typeof visitUpdate>[0], message: Message) =>
+  visitUpdate(model, message, { signedIn: false })
 
 const profile = (yours: boolean) =>
   Schema.decodeUnknownSync(PublicProfile)({
@@ -18,9 +22,10 @@ const profile = (yours: boolean) =>
 /** The Commands the person page sends once the profile is in. */
 const loaded = (signedIn: boolean, yours: boolean) =>
   (
-    update(
-      init(Target.Person({ handle: 'nika.kovac' }), signedIn),
+    visitUpdate(
+      init(Target.Person({ handle: 'nika.kovac' })),
       Message.SucceededLoadPerson({ profile: profile(yours) }),
+      { signedIn },
     ).commands ?? []
   ).map((command) => command.name)
 
@@ -48,7 +53,7 @@ describe('a piece’s page', () => {
       `${origin}/wardrobe`,
     ])
       expect({ referrer, from: cameFromOf(referrer, origin) }).toEqual({ referrer, from: Option.none() })
-    const piece = init(Target.Piece({ pieceId: 'pc_knit' }), false)
+    const piece = init(Target.Piece({ pieceId: 'pc_knit' }))
     expect(load(piece).map(({ name }) => name)).toEqual(['LoadPublicPiece', 'ReadCameFrom'])
     expect(update(piece, Message.SucceededReadCameFrom({ path: Option.some(board) })).model.cameFrom).toEqual(
       Option.some(board),
@@ -67,14 +72,14 @@ describe('a profile', () => {
       generated: false,
     }
     const onlyLooks = Schema.decodeUnknownSync(PublicProfile)({ ...profile(false), looks: [look] })
-    const visiting = init(Target.Person({ handle: 'nika.kovac' }), false)
+    const visiting = init(Target.Person({ handle: 'nika.kovac' }))
     expect(update(visiting, Message.SucceededLoadPerson({ profile: onlyLooks })).model.tab).toBe('looks')
     expect(update(visiting, Message.SucceededLoadPerson({ profile: profile(false) })).model.tab).toBe('boards')
   })
 })
 
 describe('reading a public page', () => {
-  const person = init(Target.Person({ handle: 'nika.kovac' }), false)
+  const person = init(Target.Person({ handle: 'nika.kovac' }))
 
   test('a profile that is not there for others is missing; one that did not load offers Try again, which reads it', () => {
     expect(update(person, Message.FailedLoadPerson({ error: 'NotFound' })).model.shown).toEqual(

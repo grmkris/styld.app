@@ -6,15 +6,18 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
-import { fromBoard, init as boardInit, LooksData } from '../src/page/Board/Model.ts'
-import { FocusName, FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
+import { LooksData } from '../src/page/Board/AddSheet.ts'
+import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
+import { FocusName, FocusPin, Message as ChromeMessage } from '../src/page/Board/Chrome.ts'
+import { UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
-import { MeasurePaper } from '../src/page/Board/Commands.ts'
+import { MeasurePaper } from '../src/page/Board/Editor/Commands.ts'
 import { KeepOutfit, Message as OutfitsMessage, RelayOut } from '../src/page/Board/Outfits.ts'
 import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
+import { Message as EditorMessage } from '../src/page/Board/Editor/Message.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -32,15 +35,21 @@ const board = Schema.decodeUnknownSync(Board)({
   updatedAt: '2026-10-31T09:00:00.000Z',
 })
 const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-  fromBoard(boardInit(boardId, true), board),
+  fromBoard(boardInit(boardId), board),
 )
 
 /** The board's page with its Add sheet open over the person's pieces, in `locale`. */
 const picking = (locale: 'en' | 'sl') =>
   withPieces(
     withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
-      modifyFields(fromBoard(boardInit(boardId, true), board), {
-        piecePicker: (picker) => ({ ...picker, sheet: { ...picker.sheet, isOpen: true } }),
+      modifyFields(fromBoard(boardInit(boardId), board), {
+        editor: (editor) =>
+          modifyFields(editor, {
+            addSheet: (addSheet) => ({
+              ...addSheet,
+              picker: { ...addSheet.picker, sheet: { ...addSheet.picker.sheet, isOpen: true } },
+            }),
+          }),
       }),
     ),
     [
@@ -50,17 +59,17 @@ const picking = (locale: 'en' | 'sl') =>
     ],
   )
 
-const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+const measured = Mount.resolve(MeasurePaper, EditorMessage.MeasuredPaper({ width: 500 }))
 const withSettings = (state: typeof page) =>
   withPage(state, lenses.board, (currentBoard) =>
-    modifyFields(currentBoard, { more: (more) => ({ ...more, isOpen: true }) }),
+    modifyFields(currentBoard, { chrome: (chrome) => ({ ...chrome, more: { ...chrome.more, isOpen: true } }) }),
   )
 
 describe("a board's page", () => {
   test('keeps the way back and says what it is doing while the board loads', () => {
     scene(
       { update, view },
-      given(withPage(page, lenses.board, () => boardInit(boardId, true))),
+      given(withPage(page, lenses.board, () => boardInit(boardId))),
       expect(role('status')).toHaveText('Opening your board…'),
       expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('heading', { level: 1 })).not.toExist(),
@@ -69,7 +78,7 @@ describe("a board's page", () => {
 
   test('says when visitors see fewer pins than are pinned, as the board it read says', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public', publicPins: [] }),
+      fromBoard(boardInit(boardId), { ...board, visibility: 'public', publicPins: [] }),
     )
     scene(
       { update, view },
@@ -83,7 +92,7 @@ describe("a board's page", () => {
 
   test('marks no pin when visitors see every one of them', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), {
+      fromBoard(boardInit(boardId), {
         ...board,
         visibility: 'public',
         publicPins: board.pins.map(({ id }) => id),
@@ -101,7 +110,7 @@ describe("a board's page", () => {
 
   test('Share on a public board shares its link, and says so where it was copied (T-20)', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public' }),
+      fromBoard(boardInit(boardId), { ...board, visibility: 'public' }),
     )
     scene(
       { update, view },
@@ -134,7 +143,7 @@ describe("a board's page", () => {
       given(page),
       measured,
       click(role('button', { name: 'Weekend' })),
-      Command.resolve(FocusName, BoardMessage.CompletedFocusName()),
+      Command.resolve(FocusName, ChromeMessage.CompletedFocusName()),
       expect(role('textbox', { name: 'Board name' })).toHaveValue('Weekend'),
       click(role('button', { name: 'Cancel' })),
       expect(role('textbox', { name: 'Board name' })).toBeAbsent(),
@@ -162,15 +171,15 @@ describe("a board's page", () => {
       measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       click(role('button', { name: 'Take Cable knit off the board' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       expect(role('group', { name: 'Take Cable knit off the board' })).toHaveText(
         /Take it off the board\? It comes off the collage too\./,
       ),
       click(role('button', { name: 'Keep' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       expect(role('button', { name: 'Keep' })).not.toExist(),
       click(role('button', { name: 'Take Cable knit off the board' })),
-      Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
+      Command.resolve(FocusPin, ChromeMessage.CompletedFocusPin()),
       click(role('button', { name: 'Take off' })),
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, BoardMessage.SucceededPins({ board: { ...board, pins: [], version: 2 } })),
@@ -212,7 +221,12 @@ describe("a board's page", () => {
       })
     const looks = [look('monday', 'Monday', [knit]), look('dinner', 'Dinner', [tee])]
     const state = withPage(picking('en'), lenses.board, (current) =>
-      modifyFields(current, { addKind: () => 'looks', looks: () => LooksData.Success({ data: looks }) }),
+      modifyFields(current, {
+        editor: (editor) =>
+          modifyFields(editor, {
+            addSheet: (addSheet) => ({ ...addSheet, kind: 'looks', looks: LooksData.Success({ data: looks }) }),
+          }),
+      }),
     )
     scene(
       { update, view },
@@ -262,7 +276,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
   })
   const outfitBoard = (anchor: typeof jeans | null) =>
     withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      fromBoard(boardInit(boardId, true), {
+      fromBoard(boardInit(boardId), {
         ...board,
         name: 'Jeans: outfits',
         outfitsAround: Schema.decodeUnknownSync(Board.fields.outfitsAround)({
@@ -316,7 +330,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), flanking),
+          fromBoard(boardInit(boardId), flanking),
         ),
       ),
       measured,
@@ -328,7 +342,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), around),
+          fromBoard(boardInit(boardId), around),
         ),
       ),
       measured,
@@ -344,7 +358,7 @@ describe('a "One piece, many outfits" board (T-10)', () => {
       { update, view },
       given(
         withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-          fromBoard(boardInit(boardId, true), before),
+          fromBoard(boardInit(boardId), before),
         ),
       ),
       measured,

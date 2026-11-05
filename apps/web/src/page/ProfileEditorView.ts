@@ -17,6 +17,7 @@ import { cx } from 'zyzz'
 import { Message, type Model, Publishing, Saving } from './ProfileEditor.ts'
 import { retryView } from './Retry.ts'
 import * as styles from './ProfileEditorView.styles.ts'
+import { loadingStatus } from '../Loading.ts'
 
 const savingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Saving.match(model.saving, {
@@ -224,7 +225,7 @@ const skeletonFields = ['handle', 'name', 'city', 'bio'] as const
 /** The editor's shape while the profile loads: the avatar and title, then a label over a field for each of the four,
  * and what is loading for assistive technology. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  loadingStatus(format(locale, 'common.loading', {}), h),
   h.div(
     [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.who())],
     [h.span(styled(h, cx(block(), styles.avatarSkeleton()))), h.span(styled(h, cx(line(), styles.titleSkeleton())))],

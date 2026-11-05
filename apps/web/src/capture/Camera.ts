@@ -1,16 +1,36 @@
-import { Clock, Effect, Queue, Schedule, Stream } from 'effect'
+import { Clock, Deferred, Effect, Option, Queue, Schedule, type Scope, Stream } from 'effect'
 import { settlingOf, startWatch, watchFrame } from './Stillness.ts'
 
-/** What the camera reports: it started, it could not, how close the picture is to settling, or a photo
- * was taken (by holding still, by staying still a while longer, or by a tap on the shutter) with a small
- * copy for the garment check. */
-export type CameraEvent =
-  | { readonly kind: 'started' }
-  | { readonly kind: 'failed'; readonly reason: 'denied' | 'unavailable' }
+/** Why the camera could not start or keep going: the person refused it, or there is none to use. */
+export interface CameraFailure {
+  readonly kind: 'failed'
+  readonly reason: 'denied' | 'unavailable'
+}
+
+/** A photo, with a small copy for the garment check. */
+export interface Pictures {
+  readonly check: File
+  readonly still: File
+}
+
+/** What watching the picture reports: how close it is to settling, a change (and whether the lens is covered), and a
+ * photo each time it settles after moving or stays settled a while longer. */
+export type WatchEvent =
   | { readonly kind: 'settling'; readonly level: number }
   | { readonly kind: 'changed'; readonly blocked: boolean }
-  | { readonly kind: 'counted'; readonly token: number; readonly check: File; readonly still: File }
-  | { readonly kind: 'settled' | 'again' | 'tapped'; readonly check: File; readonly still: File }
+  | ({ readonly kind: 'settled' | 'again' } & Pictures)
+
+/** The live camera the page holds while its camera screen is up (HeldCamera's ManagedResource). */
+export interface CameraHandle {
+  /** Play the camera in the page's `<video>`; the picture is read from it from then on. */
+  readonly show: (video: HTMLVideoElement) => Effect.Effect<void, CameraFailure>
+  /** The picture, watched frame by frame once it shows. */
+  readonly watch: Stream.Stream<WatchEvent, CameraFailure>
+  /** A photo on the next frame, for the shutter; none if the camera goes first. */
+  readonly tap: Effect.Effect<Option.Option<Pictures>>
+  /** A photo on the next frame if the picture is still and the lens clear, after the countdown; none otherwise. */
+  readonly afterCountdown: Effect.Effect<Option.Option<Pictures>>
+}
 
 /** Grey frames for the stillness watch are this wide. */
 const watchWidth = 64
@@ -19,7 +39,7 @@ const checkEdge = 512
 /** A photo is at most this long on its long edge. */
 const stillEdge = 2048
 
-const failed = (reason: 'denied' | 'unavailable'): CameraEvent => ({ kind: 'failed', reason })
+const failed = (reason: 'denied' | 'unavailable'): CameraFailure => ({ kind: 'failed', reason })
 
 const grey = (video: HTMLVideoElement, canvas: OffscreenCanvas) => {
   const context = canvas.getContext('2d', { willReadFrequently: true })
@@ -45,15 +65,15 @@ const jpeg = (video: HTMLVideoElement, edge: number, name: string) =>
     catch: () => failed('unavailable'),
   })
 
-const shot = (video: HTMLVideoElement, kind: 'settled' | 'again' | 'tapped') =>
+const shot = (video: HTMLVideoElement) =>
   Effect.gen(function* () {
     const stamp = (yield* Clock.currentTimeMillis).toString(36)
     const check = yield* jpeg(video, checkEdge, `check-${stamp}.jpg`)
     const still = yield* jpeg(video, stillEdge, `camera-${stamp}.jpg`)
-    return { kind, check, still } satisfies CameraEvent
+    return { check, still } satisfies Pictures
   })
 
-const openCamera = (facing: 'user' | 'environment') =>
+const mediaStream = (facing: 'user' | 'environment') =>
   Effect.acquireRelease(
     Effect.tryPromise({
       try: () =>
@@ -67,15 +87,38 @@ const openCamera = (facing: 'user' | 'environment') =>
     (stream) => Effect.sync(() => stream.getTracks().forEach((track) => track.stop())),
   )
 
-interface CameraInput {
-  tapped: boolean
-  countdownToken: number | undefined
+/** The photos asked for, each answered on the watch's next tick, so every photo is taken inside the watch; and the
+ * page's `<video>` the camera plays in, let go with it. */
+interface Asked {
+  tapped: Deferred.Deferred<Option.Option<Pictures>> | undefined
+  counted: Deferred.Deferred<Option.Option<Pictures>> | undefined
+  video: HTMLVideoElement | undefined
 }
 
-const watchFrames = Effect.fnUntraced(function* (
+/** The photos asked for, answered on this frame: the one after the countdown only while the picture is `still` and the
+ * lens clear (a tap at the same moment gives way to it), else a tap's; the rest with none. Whether one was taken, and
+ * the watch starts over from this frame. */
+const answered = (video: HTMLVideoElement, asked: Asked, still: boolean) =>
+  Effect.gen(function* () {
+    const { tapped, counted } = asked
+    asked.tapped = undefined
+    asked.counted = undefined
+    const counts = counted !== undefined && still
+    const taking = counts ? counted : tapped
+    const missed = counts ? tapped : counted
+    if (missed !== undefined) yield* Deferred.succeed(missed, Option.none())
+    if (taking === undefined) return false
+    yield* Deferred.succeed(taking, Option.some(yield* shot(video)))
+    return true
+  })
+
+/** Each tick reads a grey frame: a change or a settling level is reported when it moves, a photo asked for is taken
+ * (one after the countdown only while the picture is still and the lens clear), and a settled picture is reported with
+ * its photo. */
+const watchLoop = Effect.fnUntraced(function* (
   video: HTMLVideoElement,
-  queue: Queue.Enqueue<CameraEvent>,
-  input: CameraInput,
+  queue: Queue.Enqueue<WatchEvent, CameraFailure>,
+  asked: Asked,
 ) {
   const canvas = new OffscreenCanvas(
     watchWidth,
@@ -94,54 +137,51 @@ const watchFrames = Effect.fnUntraced(function* (
     const settling = settlingOf(next.watch)
     if (settling !== level) Queue.offerUnsafe(queue, { kind: 'settling', level: settling })
     level = settling
-    const kind = input.tapped ? 'tapped' : next.settle
-    input.tapped = false
-    const token = input.countdownToken
-    input.countdownToken = undefined
-    if (token !== undefined && next.usable && !next.changed) {
-      const pictures = yield* shot(video, 'settled')
-      Queue.offerUnsafe(queue, { ...pictures, kind: 'counted', token })
-      watch = { ...startWatch, previous: frame }
-    } else if (kind !== undefined) {
-      Queue.offerUnsafe(queue, yield* shot(video, kind))
-      if (kind === 'tapped') watch = { ...startWatch, previous: frame }
-    }
+    if (yield* answered(video, asked, next.usable && !next.changed)) watch = { ...startWatch, previous: frame }
+    else if (next.settle !== undefined) Queue.offerUnsafe(queue, { kind: next.settle, ...(yield* shot(video)) })
   })
   return yield* tick.pipe(Effect.repeat(Schedule.spaced('200 millis')), Effect.andThen(Effect.never))
 })
 
-/** Run the camera inside `host` (which holds a `<video>`) until the page lets it go: report how close the
- * scene is to settling, each time it settles after moving or stays settled a while longer, and each tap
- * on an element marked `data-shutter` (the picture, and the shutter button, which a key presses too). */
-export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
-  Stream.callback<CameraEvent>((queue) =>
-    Effect.gen(function* () {
-      const video = host.querySelector('video')
-      if (video === null) return yield* Effect.fail(failed('unavailable'))
-      const stream = yield* openCamera(facing)
-      video.srcObject = stream
-      yield* Effect.tryPromise({ try: () => video.play(), catch: () => failed('unavailable') })
-      Queue.offerUnsafe(queue, { kind: 'started' })
-      // A tap is answered on the next tick, so every photo is taken inside this stream's scope.
-      const input: CameraInput = { tapped: false, countdownToken: undefined }
-      const tap = (event: Event) => {
-        if (event.target instanceof Element && event.target.closest('[data-shutter]') !== null) input.tapped = true
-      }
-      const countdown = (event: Event) => {
-        if (event instanceof CustomEvent && typeof event.detail === 'number') input.countdownToken = event.detail
-      }
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          host.addEventListener('click', tap)
-          host.addEventListener('styld-countdown-photo', countdown)
-        }),
-        () =>
-          Effect.sync(() => {
-            host.removeEventListener('click', tap)
-            host.removeEventListener('styld-countdown-photo', countdown)
-            video.srcObject = null
-          }),
-      )
-      return yield* watchFrames(video, queue, input)
-    }).pipe(Effect.catch((event: CameraEvent) => Effect.sync(() => Queue.offerUnsafe(queue, event)))),
+const watchFrames = (video: HTMLVideoElement, asked: Asked) =>
+  Stream.callback<WatchEvent, CameraFailure>((queue) =>
+    watchLoop(video, queue, asked).pipe(Effect.catch((failure: CameraFailure) => Queue.fail(queue, failure))),
   )
+
+/** Ask the watch for a photo on its next tick; a photo already asked for of the same kind gives way to this one. */
+const ask = (asked: Asked, kind: 'tapped' | 'counted') =>
+  Effect.gen(function* () {
+    const answer = yield* Deferred.make<Option.Option<Pictures>>()
+    const earlier = asked[kind]
+    if (earlier !== undefined) yield* Deferred.succeed(earlier, Option.none())
+    asked[kind] = answer
+    return yield* Deferred.await(answer)
+  })
+
+/** Open the camera facing `facing` for as long as the scope lasts; the page shows it in its `<video>`. */
+export const openCamera = (facing: 'user' | 'environment'): Effect.Effect<CameraHandle, CameraFailure, Scope.Scope> =>
+  Effect.gen(function* () {
+    const stream = yield* mediaStream(facing)
+    const shown = yield* Deferred.make<HTMLVideoElement>()
+    const asked: Asked = { tapped: undefined, counted: undefined, video: undefined }
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function* () {
+        // Photos still asked for when the camera goes are answered with none.
+        for (const answer of [asked.tapped, asked.counted])
+          if (answer !== undefined) yield* Deferred.succeed(answer, Option.none())
+        if (asked.video !== undefined) asked.video.srcObject = null
+      }),
+    )
+    return {
+      show: (video) =>
+        Effect.gen(function* () {
+          video.srcObject = stream
+          asked.video = video
+          yield* Effect.tryPromise({ try: () => video.play(), catch: () => failed('unavailable') })
+          yield* Deferred.succeed(shown, video)
+        }),
+      watch: Stream.unwrap(Effect.map(Deferred.await(shown), (video) => watchFrames(video, asked))),
+      tap: ask(asked, 'tapped'),
+      afterCountdown: ask(asked, 'counted'),
+    }
+  })

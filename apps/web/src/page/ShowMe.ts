@@ -5,6 +5,7 @@ import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { heldIn } from './Held.ts'
 import { drawOperationId } from '../OperationIds.ts'
 import { StyldClient } from '../StyldClient.ts'
 
@@ -126,11 +127,7 @@ const unavailable = Result.fail('Unavailable' as const)
 /** How Home and the Account page hold Show me: in their `showMe`, its Messages wrapped in theirs. */
 export const heldBy = <Parent extends { readonly showMe: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) => ({
-  read: (parent: Parent) => Option.some(parent.showMe),
-  write: (parent: Parent, showMe: Model): Parent => ({ ...parent, showMe }),
-  toParentMessage,
-})
+) => heldIn<Parent, 'showMe', Model, Message, ParentMessage>('showMe', toParentMessage)
 
 /** Opening Home or the Account page: the choice as saved, kept on screen while it is read again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>

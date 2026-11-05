@@ -161,21 +161,24 @@ export const OpenBoard = Command.define('OpenBoard', {
 })
 
 /** What the new-board sheet's request answers, as the tombola's own facts. */
-const fromMaking = (message: StartMessage): Message =>
+const fromMaking = (
+  message: Extract<StartMessage, { readonly _tag: 'SucceededCreateOutfitBoard' | 'FailedCreateOutfitBoard' }>,
+): Message =>
   Match.value(message).pipe(
-    Match.tag('SucceededCreateOutfitBoard', ({ board }) => Message.SucceededMakeOutfits({ boardId: board.id })),
-    Match.tag('FailedCreateOutfitBoard', ({ problem, missing, operationId }) =>
-      Message.FailedMakeOutfits({ problem, missing, operationId }),
-    ),
-    Match.orElse(() => Message.FailedMakeOutfits({ problem: 'failed', missing: [], operationId: Option.none() })),
+    Match.tagsExhaustive({
+      SucceededCreateOutfitBoard: ({ board }) => Message.SucceededMakeOutfits({ boardId: board.id }),
+      FailedCreateOutfitBoard: ({ problem, missing, operationId }) =>
+        Message.FailedMakeOutfits({ problem, missing, operationId }),
+    }),
   )
 
 /** What Save to board's request answers, as the tombola's own facts. */
-const fromSaving = (message: SaveMessage): Message =>
+const fromSaving = (message: Extract<SaveMessage, { readonly _tag: 'SucceededSave' | 'FailedSave' }>): Message =>
   Match.value(message).pipe(
-    Match.tag('SucceededSave', ({ boardId }) => Message.SucceededBuildOwn({ boardId })),
-    Match.tag('FailedSave', ({ resume }) => Message.FailedBuildOwn({ resume })),
-    Match.orElse(() => Message.CompletedOpenBoard()),
+    Match.tagsExhaustive({
+      SucceededSave: ({ boardId }) => Message.SucceededBuildOwn({ boardId }),
+      FailedSave: ({ resume }) => Message.FailedBuildOwn({ resume }),
+    }),
   )
 
 // MOUNT

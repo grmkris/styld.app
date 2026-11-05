@@ -31,8 +31,8 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({ pieces: AsyncData.Idle(), misses: 0, boards: AsyncData.Idle() })
 
 /** The pieces as last read, or none yet. */
-export const piecesOf = (model: Model): ReadonlyArray<Piece> =>
-  Option.getOrElse(AsyncData.getData(model.pieces), (): ReadonlyArray<Piece> => [])
+export const readPieces = (pieces: PiecesData): ReadonlyArray<Piece> =>
+  Option.getOrElse(AsyncData.getData(pieces), (): ReadonlyArray<Piece> => [])
 
 // MESSAGE
 
@@ -44,6 +44,10 @@ export const Message = defineMessageUnion({
   FailedListBoards: {},
 })
 export type Message = typeof Message.Type
+
+/** The pieces have been read: the app can now put the wardrobe back where it was and hand Ask the person's pieces. */
+export const OutMessage = defineMessageUnion({ ReadPieces: {} })
+export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
@@ -104,10 +108,14 @@ export const revisitBoards = Update.refresh<Model, Message, ReadonlyArray<BoardS
   load: ListBoards(),
 })
 
-export const update = (model: Model, message: Message): UpdateReturn =>
-  Message.match<UpdateReturn>(message, {
+export const update = (
+  model: Model,
+  message: Message,
+): Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient> =>
+  Message.match<Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>>(message, {
     SucceededListPieces: ({ pieces }) => ({
       model: modifyFields(model, { pieces: () => PiecesData.Success({ data: pieces }), misses: () => 0 }),
+      outMessage: OutMessage.ReadPieces(),
     }),
     // A failed read keeps the pieces already shown.
     FailedListPieces: () => ({
@@ -135,7 +143,7 @@ const isSettling = (piece: Piece) => piece.status === 'processing' || piece.pict
 export const subscriptions = Subscription.make<Model, Message>()(() => ({
   piecesWhileSettling: pollWhilePending<Model, Message>({
     pendingIds: (model) =>
-      piecesOf(model)
+      readPieces(model.pieces)
         .filter(isSettling)
         .map((piece) => piece.id),
     misses: (model) => model.misses,

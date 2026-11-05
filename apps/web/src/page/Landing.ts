@@ -42,6 +42,8 @@ export const Message = defineMessageUnion({
   CheckedMotion: { moving: Schema.Boolean },
   SawClip: {},
   LoadedRail: {},
+  /** A piece's sprite did not load: the rail stays in profile. */
+  FailedLoadRail: {},
   ShowedChat: { chat: Chat, shown: Schema.Boolean },
 })
 export type Message = typeof Message.Type
@@ -121,17 +123,20 @@ export const PlayWhileSeen = Mount.defineStream('PlayWhileSeen', {
  * says when its pieces are on the rail (`RailPlayer.ts`, loaded with the Mount). */
 export const PlayRail = Mount.defineStream('PlayRail', {
   args: { sprites: Schema.Array(Schema.String) },
-  messages: [Message.LoadedRail],
+  messages: [Message.LoadedRail, Message.FailedLoadRail],
   execute: ({ element, sprites }) =>
     element instanceof HTMLElement
-      ? Stream.callback<typeof Message.LoadedRail.Type>((queue) =>
+      ? Stream.callback<typeof Message.LoadedRail.Type | typeof Message.FailedLoadRail.Type>((queue) =>
           Effect.acquireRelease(
             // The player's code loads only now, as the rail comes into the page: it is not in the first bundle.
             Effect.promise(() => import('./RailPlayer.ts')).pipe(
               Effect.map(({ playRail }) =>
-                playRail(element, { sprites, frames: landingTurnFrames, frameWidth: 384, frameHeight: 448 }, () => {
-                  Queue.offerUnsafe(queue, Message.LoadedRail())
-                }),
+                playRail(
+                  element,
+                  { sprites, frames: landingTurnFrames, frameWidth: 384, frameHeight: 448 },
+                  () => Queue.offerUnsafe(queue, Message.LoadedRail()),
+                  () => Queue.offerUnsafe(queue, Message.FailedLoadRail()),
+                ),
               ),
             ),
             (stop) => Effect.sync(stop),
@@ -166,6 +171,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     SawClip: () => ({ model }),
     LoadedRail: () => ({ model }),
+    FailedLoadRail: () => ({ model }),
     ShowedChat: ({ chat, shown }) => ({
       model: modifyFields(model, {
         playing: () => modifyFields(model.playing, chat === 'ask' ? { ask: () => shown } : { assistants: () => shown }),

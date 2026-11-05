@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { style, vars } from '../zyzz.config.ts'
+import { cameraBottomVeil, cameraTopVeil, style, vars } from '../zyzz.config.ts'
 
 // Styles for the held-up camera in HeldCameraView.ts. Gallery has no camera screen; this one is the phone
 // camera's: the picture edge to edge, bars over it that fade from the veil, a round shutter, and the stack
@@ -113,12 +113,12 @@ export const top = style({
   insetBlockStart: '0',
   gridTemplateColumns: '1fr auto 1fr',
   paddingBlock: 'calc(12px + env(safe-area-inset-top)) 32px',
-  backgroundImage: 'linear-gradient(to bottom, oklch(0.2 0.02 50 / 0.6), transparent)',
+  backgroundImage: cameraTopVeil,
 })
 export const bottom = style({
   insetBlockEnd: '0',
   paddingBlock: '48px calc(20px + env(safe-area-inset-bottom))',
-  backgroundImage: 'linear-gradient(to top, oklch(0.2 0.02 50 / 0.7), transparent)',
+  backgroundImage: cameraBottomVeil,
 })
 /** Front and back, the current one filled. */
 export const steps = style({

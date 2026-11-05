@@ -1,32 +1,16 @@
-import { Dialog, FileDrop } from '@foldkit/ui'
-import {
-  Board,
-  BoardItem,
-  BoardItemId,
-  CheckStatus,
-  Look,
-  LookId,
-  Mood,
-  Paper,
-  Photo,
-  Pin,
-  PublicBoard,
-  TryOn,
-  Visibility,
-} from '@styld/protocol'
+import { Board, CheckStatus, Paper, Pin, PublicBoard, Visibility } from '@styld/protocol'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
-import { initPicker, PiecePicker } from '../PiecePicker.ts'
+import * as Editor from './Editor/Model.ts'
+import * as Chrome from './Chrome.ts'
 import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
-import { Deletion } from '../../Confirm.ts'
 import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../../ServerData.ts'
 import * as Make from './Make.ts'
 import * as Outfits from './Outfits.ts'
-import { Pointer } from './Geometry.ts'
 
 // MODEL
 
@@ -48,234 +32,55 @@ export const ownBoard = (board: BoardData): Option.Option<{ readonly name: strin
     BoardShown.guards.Own(shown) ? Option.some(shown) : Option.none(),
   )
 
-/** The board's name, whoever's it is; empty until it is read. */
-export const boardName = (board: BoardData): string =>
-  Option.match(AsyncData.getData(board), {
-    onNone: () => '',
-    onSome: BoardShown.match({ Own: ({ name }) => name, Visiting: ({ board: shown }) => shown.name }),
-  })
-
-/** The person's hands on the table: nothing, one pointer moving an item, two fingers pinching it, or the
- * corner handle resizing and turning it. Each gesture keeps the table as it was, for Escape and undo. */
-export const Gesture = defineTaggedUnion({
-  Idle: {},
-  Dragging: {
-    id: Schema.String,
-    isTouch: Schema.Boolean,
-    start: Pointer,
-    now: Pointer,
-    from: BoardItem,
-    before: Schema.Array(BoardItem),
-  },
-  Pinching: {
-    id: Schema.String,
-    startA: Pointer,
-    startB: Pointer,
-    a: Pointer,
-    b: Pointer,
-    from: BoardItem,
-    before: Schema.Array(BoardItem),
-  },
-  Turning: {
-    id: Schema.String,
-    reachX: Schema.Number,
-    reachY: Schema.Number,
-    start: Pointer,
-    from: BoardItem,
-    before: Schema.Array(BoardItem),
-  },
-})
-export type Gesture = typeof Gesture.Type
-
-/** Saving runs behind the editing: a change waits a moment for the next, then the whole table goes up. */
-export const Saving = defineTaggedUnion({
-  Saved: {},
-  /** A change is waiting; only the newest wait saves. */
-  Waiting: { generation: Schema.Int },
-  InFlight: { dirty: Schema.Boolean },
-  Failed: {},
-  /** Someone saved this board elsewhere; the editor shows the newer table. */
-  Replaced: {},
-})
-export type Saving = typeof Saving.Type
-
-/** Why a picture did not reach the board: the file was refused, or it did not get through. */
-export const UploadProblem = Schema.Literals(['refused', 'failed'])
-export type UploadProblem = typeof UploadProblem.Type
-
-/** Pictures on their way to the board, with the last that did not reach it; once none is on its way, a failure among
- * them is what the board says. */
-export const Upload = defineTaggedUnion({
-  Idle: {},
-  Sending: { count: Schema.Int, problem: Schema.Option(UploadProblem) },
-  Failed: { problem: UploadProblem },
-})
-export type Upload = typeof Upload.Type
-
-export const LookSave = defineTaggedUnion({
-  Idle: {},
-  Saving: {},
-  Saved: { lookId: LookId },
-  Failed: {},
-  NoPieces: {},
-})
-export type LookSave = typeof LookSave.Type
-
-/** Select mode (T-16): taps tick items for a look instead of moving them, and what is ticked, by item id. */
-export const Ticks = defineTaggedUnion({ Off: {}, On: { itemIds: Schema.Array(Schema.String) } })
-export type Ticks = typeof Ticks.Type
-
 /** Pinning from the picker, or taking a pin off the board. */
 export const PinWork = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type PinWork = typeof PinWork.Type
 
-/** Renaming the board in place, on its title: not asked, the name being typed, sent, or refused (the field stays). */
-export const Rename = defineTaggedUnion({ Idle: {}, Editing: {}, Saving: {}, Failed: {} })
-export type Rename = typeof Rename.Type
-
-/** Making the board public or private with the switch beside Share; a board goes public only from a published profile. */
-export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
-export type Publishing = typeof Publishing.Type
-
-/** Deleting the board: asked once more, then sent. */
-export const Removal = Deletion
-export type Removal = Deletion
-
-/** The person's looks, for the Add sheet. */
-export const LooksData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))
-export type LooksData = typeof LooksData.schema.Type
-
-/** What the Add sheet offers: the wardrobe's pieces, the person's looks, their Gallery's outfit photos or their
- * try-ons' pictures. */
-export const AddKind = Schema.Literals(['pieces', 'looks', 'gallery', 'tryOns'])
-export type AddKind = typeof AddKind.Type
-
-/** The person's Gallery photos, for the Add sheet. */
-export const PhotosData = AsyncData.Schema(Schema.Array(Photo), Schema.Literal('Unavailable'))
-export type PhotosData = typeof PhotosData.schema.Type
-
-/** The person's try-ons, for the Add sheet. */
-export const TryOnsData = AsyncData.Schema(Schema.Array(TryOn), Schema.Literal('Unavailable'))
-export type TryOnsData = typeof TryOnsData.schema.Type
-
-/** "Removed. Undo": the table as it was before the removal, offered back for a few seconds. */
-export const Toast = defineTaggedUnion({
-  Hidden: {},
-  Removed: { generation: Schema.Int, before: Schema.Array(BoardItem) },
-})
-export type Toast = typeof Toast.Type
-
 export const Model = Schema.Struct({
   boardId: Schema.String,
   board: BoardData.schema,
-  version: Schema.Int,
-  items: Schema.Array(BoardItem),
   /** What is pinned on the board, newest first. */
   pins: Schema.Array(Pin),
   pinWork: PinWork,
   /** The pins visitors see while the board is public, as the server says: a piece shows others only with a picture of
    * its own and once Styld's check lets it, so it can be fewer than are pinned. */
   publicPins: Schema.Array(Schema.String),
-  /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
-  unpinning: Schema.Option(Schema.String),
-  /** The board's ⋯ sheet: tidying, pasting, its moods, its pins and deleting it. */
-  more: Dialog.Model,
-  nameDraft: Schema.String,
-  rename: Rename,
-  removal: Removal,
   /** Who sees the board, and Styld's check of it once it has been public. */
   visibility: Visibility,
   check: Schema.Option(CheckStatus),
-  publishing: Publishing,
-  /** The board's moods for Explore, as last saved. */
-  moods: Schema.Array(Mood),
+  /** Its title, its public switch and its ⋯ sheet. */
+  chrome: Chrome.Model,
+  /** Its table, edited in place. */
+  editor: Editor.Model,
   /** Saving and reporting it, when it is someone else's. */
   people: People.Model,
   /** Trying it with the visitor's own wardrobe, when it shows generated pieces. */
   tryIt: TryIt.Model,
   /** Share on the owner's public board: the link shared or copied. */
   sharing: Share.Model,
-  /** The Add sheet: its search and the pieces' chips, and which kind of thing it offers. */
-  piecePicker: PiecePicker,
-  addKind: AddKind,
-  looks: LooksData.schema,
-  photos: PhotosData.schema,
-  tryOns: TryOnsData.schema,
-  /** Items on their way out, kept on the page until their exit animation ends. */
-  leaving: Schema.Array(BoardItem),
-  maybeSelectedId: Schema.Option(Schema.String),
-  ticks: Ticks,
-  gesture: Gesture,
-  /** How many page pixels one table unit is; the paper reports its width. */
-  pxPerUnit: Schema.Number,
-  past: Schema.Array(Schema.Array(BoardItem)),
-  future: Schema.Array(Schema.Array(BoardItem)),
-  saving: Saving,
-  generation: Schema.Int,
-  /** Fresh item ids, made by a Command ahead of time so adding an item is instant. */
-  ids: Schema.Array(BoardItemId),
-  upload: Upload,
-  look: LookSave,
-  toast: Toast,
-  isPasting: Schema.Boolean,
-  /** Files are being dragged over the page: the table shows it takes them. */
-  isDropping: Schema.Boolean,
-  drop: FileDrop.Model,
   /** Make with Styld: a mood board or one picture from the person's words, and how it is going. */
   make: Make.Model,
   /** A "One piece, many outfits" board's outfits as cards (T-10), none on a blank board. */
   outfits: Outfits.Model,
-  /** A session came with the page; signed out the board can only be someone's public one. */
-  signedIn: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
-export const init = (boardId: string, signedIn: boolean): Model => ({
+export const init = (boardId: string): Model => ({
   boardId,
-  signedIn,
   board: AsyncData.Loading(),
-  version: 0,
-  items: [],
   pins: [],
   pinWork: PinWork.Idle(),
-  unpinning: Option.none(),
   publicPins: [],
-  more: Dialog.init({ id: 'board-more', isAnimated: true }),
-  nameDraft: '',
-  rename: Rename.Idle(),
-  removal: Removal.Idle(),
   visibility: 'private',
   check: Option.none(),
-  publishing: Publishing.Idle(),
-  moods: [],
+  chrome: Chrome.init(boardId),
+  editor: Editor.init(boardId),
   people: People.init(People.Subject.Board({ boardId })),
   tryIt: TryIt.init(),
   sharing: Share.init,
-  piecePicker: initPicker('board-add'),
-  addKind: 'pieces',
-  looks: AsyncData.Idle(),
-  photos: AsyncData.Idle(),
-  tryOns: AsyncData.Idle(),
-  leaving: [],
-  maybeSelectedId: Option.none(),
-  ticks: Ticks.Off(),
-  gesture: Gesture.Idle(),
-  pxPerUnit: 0.36,
-  past: [],
-  future: [],
-  saving: Saving.Saved(),
-  generation: 0,
-  ids: [],
-  upload: Upload.Idle(),
-  look: LookSave.Idle(),
-  toast: Toast.Hidden(),
-  isPasting: false,
-  isDropping: false,
-  drop: FileDrop.init({ id: 'board-pictures' }),
   make: Make.init(boardId),
   outfits: Outfits.init(boardId),
 })
-
 /** Who sees the board and which of its pins, and Styld's check of it, as the server last confirmed them. */
 export const withChecked = (model: Model, board: Board): Model =>
   modifyFields(model, {
@@ -288,22 +93,17 @@ export const withChecked = (model: Model, board: Board): Model =>
 export const withSharing = (model: Model, board: Board): Model =>
   modifyFields(withChecked(model, board), {
     board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
-    moods: () => board.moods,
+    chrome: (chrome) => Chrome.withMoods(chrome, board.moods),
   })
 
 /** The board as the server last confirmed it. */
 export const fromBoard = (model: Model, board: Board): Model =>
   modifyFields(withSharing(model, board), {
-    version: () => board.version,
-    items: () => board.items,
+    editor: (editor) => Editor.withTable(editor, board),
     pins: () => board.pins,
     outfits: (outfits) => Outfits.withBoard(outfits, board),
   })
 
 /** Pin changes replace the saved table, so wait for every local edit and upload to settle first. */
 export const canChangePins = (model: Model): boolean =>
-  (Saving.guards.Saved(model.saving) || Saving.guards.Replaced(model.saving)) &&
-  Gesture.guards.Idle(model.gesture) &&
-  !PinWork.guards.Sending(model.pinWork) &&
-  !Upload.guards.Sending(model.upload) &&
-  !model.isPasting
+  Editor.isSettled(model.editor) && !PinWork.guards.Sending(model.pinWork)

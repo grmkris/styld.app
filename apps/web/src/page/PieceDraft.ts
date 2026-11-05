@@ -9,8 +9,9 @@ import { Details, detailsOf } from './PieceFields.ts'
 export const nextTurn = (rotation: PieceRotation): PieceRotation =>
   rotation === 0 ? 90 : rotation === 90 ? 180 : rotation === 180 ? 270 : 0
 
-/** The edit form being filled in, saved, or refused on its last save. */
-export const DraftSave = defineTaggedUnion({ Editing: {}, Saving: {}, Failed: {} })
+/** The edit form being filled in, saved, refused on its last save, or held back because its shop link is not an https
+ * address (nothing is sent until it is). */
+export const DraftSave = defineTaggedUnion({ Editing: {}, Saving: {}, Failed: {}, ShopUrlRefused: {} })
 export type DraftSave = typeof DraftSave.Type
 
 /** The edit form's values; nothing reaches the piece until it is saved. */
@@ -22,8 +23,6 @@ export const Draft = Schema.Struct({
   brand: Schema.String,
   shopUrl: Schema.String,
   save: DraftSave,
-  /** The shop link is not an https address: nothing is sent until it is. */
-  shopUrlInvalid: Schema.Boolean,
 })
 export type Draft = typeof Draft.Type
 
@@ -36,7 +35,6 @@ export const draftOf = (piece: Piece): Draft => ({
   brand: piece.brand ?? '',
   shopUrl: piece.shopUrl ?? '',
   save: DraftSave.Editing(),
-  shopUrlInvalid: false,
 })
 
 /** Words left empty, spaces aside, are no value. */
@@ -68,7 +66,12 @@ export const shopUrlSendable = (shopUrl: string) => shopUrl.trim() === '' || Sch
 export const DraftText = Schema.Literals(['name', 'notes', 'brand'])
 export type DraftText = typeof DraftText.Type
 
-/** The form with one of its words typed in. */
+/** The form with one of its words, or its shop link, typed in: a shop link held back is looked at again when the form
+ * is sent. */
 export const typedInto =
-  (field: DraftText, value: string) =>
-  (draft: Draft): Draft => ({ ...draft, [field]: value })
+  (field: DraftText | 'shopUrl', value: string) =>
+  (draft: Draft): Draft => ({
+    ...draft,
+    [field]: value,
+    save: field === 'shopUrl' && DraftSave.guards.ShopUrlRefused(draft.save) ? DraftSave.Editing() : draft.save,
+  })

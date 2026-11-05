@@ -1,12 +1,13 @@
+import type { BoardItemId } from '@styld/protocol'
 import { Match, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { committed, findItem, type UpdateReturn, withItem } from './Edits.ts'
-import { dragged, nudged, type Placement, type Pointer, pinched, turned } from './Geometry.ts'
-import type { KeyStep } from './Message.ts'
+import { dragged, nudged, type Placement, type Pointer, pinched, turned } from '../Geometry.ts'
 import { Gesture, type Model } from './Model.ts'
+import type { KeyStep } from './Message.ts'
 
 /** A press selects and moves an item without changing its layer. A second finger starts a pinch. */
-export const pressedItem = (model: Model, id: string, pointer: Pointer, isTouch: boolean): UpdateReturn =>
+export const pressedItem = (model: Model, id: BoardItemId, pointer: Pointer, isTouch: boolean): UpdateReturn =>
   Gesture.match(model.gesture, {
     Idle: () => {
       return Option.match(findItem(model.items, id), {
@@ -48,7 +49,7 @@ const pinchStarted = (model: Model, drag: typeof Gesture.Dragging.Type, pointer:
 /** The corner handle: the reach from the item's centre to the pointer sets its size and turn from here on. */
 export const pressedHandle = (
   model: Model,
-  id: string,
+  id: BoardItemId,
   pointer: Pointer,
   centerX: number,
   centerY: number,
@@ -177,7 +178,7 @@ const keyChange = (step: KeyStep, isShifted: boolean): Partial<Placement> => {
 }
 
 /** The keyboard moves, resizes and turns the focused item, each step its own undo step. */
-export const keyed = (model: Model, id: string, step: KeyStep, isShifted: boolean): UpdateReturn => {
+export const keyed = (model: Model, id: BoardItemId, step: KeyStep, isShifted: boolean): UpdateReturn => {
   if (!Gesture.guards.Idle(model.gesture)) return { model }
   return Option.match(findItem(model.items, id), {
     onNone: () => ({ model }),

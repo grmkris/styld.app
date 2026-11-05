@@ -7,10 +7,13 @@ import {
   CheckHeld,
   init,
   layOut,
+  managedResources,
   Message,
   type Model,
   open,
+  ShowCamera,
   TakeCountdownPhoto,
+  TakeShutterPhoto,
   update,
   WaitForCountdown,
 } from '../src/page/HeldCamera.ts'
@@ -26,8 +29,10 @@ const counted = (token: number) =>
     Command.resolve(WaitForCountdown({ token, count: 3 }), Message.ElapsedCountdown({ token, count: 3 })),
     Command.resolve(WaitForCountdown({ token, count: 2 }), Message.ElapsedCountdown({ token, count: 2 })),
     Command.resolve(WaitForCountdown({ token, count: 1 }), Message.ElapsedCountdown({ token, count: 1 })),
-    Command.resolve(TakeCountdownPhoto({ token }), Message.RequestedCountdownPhoto()),
-    message(Message.TookCountdownPhoto({ token, check: freshCheck, still: freshStill })),
+    Command.resolve(
+      TakeCountdownPhoto({ token }),
+      Message.TookCountdownPhoto({ token, check: freshCheck, still: freshStill }),
+    ),
   ] as const
 
 const watching = () => update(open(init()).model, Message.StartedCamera()).model
@@ -277,6 +282,32 @@ describe('the held-up camera', () => {
       message(Message.ClickedDone()),
       expectOutMessage({ _tag: 'ClosedCamera' }),
       model(({ camera }) => expect(Camera.guards.Closed(camera)).toBe(true)),
+    )
+  })
+
+  test('the live camera is held while the screen is up, shown in its picture once open, and the shutter asks it', () => {
+    const starting = open(init()).model
+    const camera = managedResources.camera
+    expect(camera.modelToMaybeRequirements(init())).toEqual(Option.none())
+    expect(camera.modelToMaybeRequirements(starting)).toEqual(Option.some({ facing: 'user' }))
+    story(
+      update,
+      given(starting),
+      // A tap before the camera watches takes nothing.
+      message(Message.ClickedShutter()),
+      Command.expectNone(),
+      message(Message.AcquiredCamera()),
+      Command.expectExact(ShowCamera),
+      Command.resolve(ShowCamera, Message.StartedCamera()),
+      model(({ camera: state }) => expect(state).toEqual(Camera.Watching({ hint: 'holdOne' }))),
+      message(Message.ClickedShutter()),
+      Command.expectExact(TakeShutterPhoto),
+      Command.resolve(TakeShutterPhoto, Message.TappedPicture({ check, still })),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+    )
+    expect(camera.modelToMaybeRequirements(update(starting, Message.ClickedFlip()).model)).toEqual(
+      Option.some({ facing: 'environment' }),
     )
   })
 })

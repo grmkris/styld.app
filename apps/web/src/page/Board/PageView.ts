@@ -1,145 +1,29 @@
-import { cdn } from '../../Cdn.ts'
-import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { Mood, type Paper, type Pin, type PublicBoard, textLength } from '@styld/protocol'
-import { Array, Match, Option } from 'effect'
+import { format, type Locale } from '@styld/i18n'
+import { type Paper, type PublicBoard } from '@styld/protocol'
+import { Array, Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { cx } from 'zyzz'
-import { actionButton } from '../../ActionButton.ts'
-import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
-import { backIcon, editIcon, loader, moreIcon, pasteIcon, tidyIcon } from '../../Icon.ts'
-import { boardRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
+import { backIcon } from '../../Icon.ts'
+import { boardRouter, boardsRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
-import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import * as PeopleView from '../PeopleView.ts'
 import * as Share from '../Share.ts'
-import { publicToggle } from '../PublicToggle.ts'
-import { bottomSheet, sheetShown } from '../Sheet.ts'
 import { checkNotice } from '../CheckNotice.ts'
+import type * as Chrome from './Chrome.ts'
+import * as ChromeView from './ChromeView.ts'
 import { Message } from './Message.ts'
-import { unpinButton } from './Unpin.ts'
 import { boardStateView } from './Unready.ts'
-import { lookMosaic } from './PickerView.ts'
-import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
 import * as TryItView from './TryItView.ts'
-import { type Model, canChangePins, PinWork, Publishing, Removal, Rename, Upload } from './Model.ts'
-import { nameFieldId } from './PageCommands.ts'
-import { round } from '../PageBar.styles.ts'
-import { chip, chosen } from '../../Controls.styles.ts'
+import { type Model, canChangePins, PinWork } from './Model.ts'
 import * as MakeView from './MakeView.ts'
 import * as OutfitsView from './OutfitsView.ts'
-import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
-import { boardImage } from './Table.ts'
-import { editorView } from './View.ts'
-import { saveLookView } from './ViewTools.ts'
+import type * as EditorMessage from './Editor/Message.ts'
+import * as EditorView from './Editor/View.ts'
+import { saveLookView } from './Editor/ViewTools.ts'
+import * as Editor from './Editor/Model.ts'
 import type { PiecesData } from '../../ServerData.ts'
-
-/** A pinned thing on the board; one the board shows others without (no picture of its own yet, or Styld's check held
- * it back) says so under it. */
-const pinView = (
-  pin: Pin,
-  asking: boolean,
-  heldBack: boolean,
-  disabled: boolean,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.keyed('li')(
-    pin.id,
-    [...styled(h, styles.pin())],
-    [
-      ...pinContent(pin, asking, disabled, locale, h),
-      heldBack ? h.p(styled(h, styles.heldBack()), [format(locale, heldBackReason(pin), {})]) : h.empty,
-    ],
-  )
-
-/** Why others do not see a pin: a piece needs its own picture and Styld's check; a look, to be shared; anything else
- * waits on the check. */
-const heldBackReason = (pin: Pin): MessageKey =>
-  Match.value(pin).pipe(
-    Match.tagsExhaustive({
-      PiecePin: () => 'board.heldBack' as const,
-      LookPin: ({ look }) => (look.shared ? ('board.heldBackCheck' as const) : ('board.heldBackLook' as const)),
-      PicturePin: () => 'board.heldBackCheck' as const,
-    }),
-  )
-
-const pinContent = (
-  pin: Pin,
-  asking: boolean,
-  disabled: boolean,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): ReadonlyArray<Html> =>
-  Match.value(pin).pipe(
-    Match.tagsExhaustive({
-      PiecePin: ({ id, piece }) => [
-        h.a(
-          [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pinLink())],
-          [
-            h.span(styled(h, styles.pinFrame()), [
-              h.img([
-                h.Src(cdn.piece(piece)),
-                h.Alt(pieceDescription(piece, locale)),
-                h.Loading('lazy'),
-                ...styled(h, styles.cutout()),
-              ]),
-            ]),
-          ],
-        ),
-        unpinButton(
-          {
-            pinId: id,
-            label: format(locale, 'board.unpin', { name: pieceDescription(piece, locale) }),
-            question: 'board.unpinAsk',
-          },
-          asking,
-          disabled,
-          locale,
-          h,
-        ),
-      ],
-      PicturePin: ({ id, image, generated }) => [
-        h.span(styled(h, styles.pinFrame()), [
-          h.img([
-            h.Src(boardImage({ image }, 'thumb')),
-            h.Alt(format(locale, 'board.picture', {})),
-            h.Loading('lazy'),
-            ...styled(h, styles.photo()),
-          ]),
-        ]),
-        generated ? generatedMark(locale, h) : h.empty,
-        unpinButton(
-          { pinId: id, label: format(locale, 'board.unpinPicture', {}), question: 'board.unpinPictureAsk' },
-          asking,
-          disabled,
-          locale,
-          h,
-        ),
-      ],
-      LookPin: ({ id, look }) => [
-        h.a(
-          [h.Href(lookRouter({ lookId: look.id })), ...styled(h, styles.pinLink())],
-          [
-            h.span(styled(h, styles.pinFrame()), [lookMosaic(look, h)]),
-            h.span(styled(h, styles.pinName()), [look.name]),
-          ],
-        ),
-        unpinButton(
-          { pinId: id, label: format(locale, 'board.unpin', { name: look.name }), question: 'board.unpinAsk' },
-          asking,
-          disabled,
-          locale,
-          h,
-        ),
-      ],
-    }),
-  )
-
-/** Public, and this pin is not among those others see. */
-const heldBack = (model: Model, pinId: string) => model.visibility === 'public' && !model.publicPins.includes(pinId)
 
 /** Its pins and who sees it; public, how many of them others see when that is fewer (a piece shows others only with a
  * picture of its own, once Styld's check lets it). */
@@ -150,95 +34,6 @@ const statusLine = (model: Model, locale: Locale) => {
     ? format(locale, 'studio.boardStatusPartly', { count, shown })
     : format(locale, 'studio.boardStatus', { count, visibility: model.visibility })
 }
-
-const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.section(
-    [h.AriaLabelledBy('board-pins'), ...styled(h, styles.head())],
-    [
-      h.div(styled(h, styles.pinsHead()), [
-        h.h2([h.Id('board-pins'), ...styled(h, styles.pinsTitle())], [format(locale, 'board.pinsTitle', {})]),
-      ]),
-      PinWork.guards.Failed(model.pinWork)
-        ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.removeFailed', {})])
-        : h.empty,
-      Array.match(model.pins, {
-        onEmpty: () =>
-          h.div(styled(h, styles.empty()), [
-            h.p(styled(h, styles.emptyTitle()), [format(locale, 'studio.emptyGridTitle', {})]),
-            h.p([], [format(locale, 'board.pinsEmptyHint', {})]),
-          ]),
-        onNonEmpty: (pins) =>
-          h.ul(
-            styled(h, styles.grid()),
-            Array.map(pins, (pin) =>
-              pinView(
-                pin,
-                Option.contains(model.unpinning, pin.id),
-                heldBack(model, pin.id),
-                !canChangePins(model),
-                locale,
-                h,
-              ),
-            ),
-          ),
-      }),
-    ],
-  )
-
-const removalView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    styled(h, styles.danger()),
-    Removal.match(model.removal, {
-      Idle: () => [
-        h.p([], [format(locale, 'studio.dangerZoneHint', {})]),
-        h.div(styled(h, styles.actions()), [
-          actionButton(
-            {
-              label: format(locale, 'studio.deleteBoard', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedDeleteBoard(),
-            },
-            h,
-          ),
-        ]),
-      ],
-      Confirming: () => [
-        h.p([h.Role('alert')], [format(locale, 'studio.deleteConfirm', {})]),
-        h.div(styled(h, styles.actions()), [
-          actionButton(
-            {
-              label: format(locale, 'studio.delete', {}),
-              style: primaryAction(),
-              onClick: Message.ClickedConfirmDelete(),
-            },
-            h,
-          ),
-          actionButton(
-            {
-              label: format(locale, 'studio.cancel', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedKeepBoard(),
-            },
-            h,
-          ),
-        ]),
-      ],
-      Deleting: () => [h.p([h.Role('status')], [loader(h)])],
-      Failed: () => [
-        h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.deleteFailed', {})]),
-        h.div(styled(h, styles.actions()), [
-          actionButton(
-            {
-              label: format(locale, 'studio.retry', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedConfirmDelete(),
-            },
-            h,
-          ),
-        ]),
-      ],
-    }),
-  )
 
 /** Share (Eva's review, T-20): a public board's link through the share sheet. A private board has nothing to show
  * anyone yet; the switch beside it makes it public. */
@@ -252,156 +47,6 @@ const shareAction = (model: Model, name: string, locale: Locale, h: HtmlBuilder<
         toParentMessage: (message) => Message.GotShareMessage({ message }),
       })
     : h.empty
-
-/** Who sees the board: private, or public on the published profile once Styld's check lets others. */
-const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  publicToggle(
-    {
-      id: 'board-public',
-      isPublic: model.visibility === 'public',
-      check: Option.getOrNull(model.check),
-      work: Publishing.match(model.publishing, {
-        Idle: () => 'idle' as const,
-        Sending: () => 'sending' as const,
-        Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
-      }),
-      // The title's status line says who sees it, and the check's word shows under it.
-      describe: false,
-      onToggle: (isPublic) => Message.ToggledPublic({ isPublic }),
-    },
-    locale,
-    h,
-  )
-
-/** The board's moods, which search finds it by: up to three of the six. */
-const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.sharing()), [
-    h.p(styled(h, styles.moodsLabel()), [format(locale, 'boards.moodsLabel', {})]),
-    h.div(
-      [h.Role('group'), h.AriaLabel(format(locale, 'boards.moodsLabel', {})), ...styled(h, styles.moods())],
-      Mood.literals.map((mood) =>
-        h.button(
-          [
-            h.Type('button'),
-            h.AriaPressed(String(model.moods.includes(mood))),
-            h.OnClick(Message.ToggledMood({ mood })),
-            ...styled(h, cx(chip(), chosen())),
-          ],
-          [format(locale, `boards.moods.${mood}`, {})],
-        ),
-      ),
-    ),
-  ])
-
-/** A row of the ⋯ sheet. */
-const moreRow = (label: string, icon: Html, message: Message, isDisabled: boolean, h: HtmlBuilder<Message>): Html =>
-  h.li(
-    [],
-    [
-      h.button(
-        [h.Type('button'), h.Disabled(isDisabled), h.OnClick(message), ...styled(h, styles.moreRow())],
-        [icon, label],
-      ),
-    ],
-  )
-
-/** The ⋯ sheet: what is done to the board rather than on its table, then its moods, its pins and deleting it. */
-const moreBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  h.ul(styled(h, styles.moreRows()), [
-    moreRow(
-      format(locale, 'board.more.rename', {}),
-      editIcon(h),
-      Message.ClickedMoreAction({ action: 'rename' }),
-      false,
-      h,
-    ),
-    moreRow(
-      format(locale, 'board.tidy', {}),
-      tidyIcon(h),
-      Message.ClickedMoreAction({ action: 'tidy' }),
-      Array.isReadonlyArrayEmpty(model.items),
-      h,
-    ),
-    moreRow(
-      format(locale, 'board.paste', {}),
-      pasteIcon(h),
-      Message.ClickedMoreAction({ action: 'paste' }),
-      model.isPasting || Upload.guards.Sending(model.upload),
-      h,
-    ),
-  ]),
-  moodsView(model, locale, h),
-  pinsView(model, locale, h),
-  removalView(model, locale, h),
-]
-
-/** The board's name, which a tap turns into a field to rename it; Escape or Cancel leaves it as it was. */
-const titleView = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (Rename.guards.Idle(model.rename))
-    return h.div(styled(h, styles.head()), [
-      h.h1(
-        [],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.AriaDescribedBy('board-rename-hint'),
-              h.OnClick(Message.ClickedRename()),
-              ...styled(h, styles.titleButton()),
-            ],
-            [h.span([], [name]), editIcon(h)],
-          ),
-        ],
-      ),
-      h.span(
-        [h.Id('board-rename-hint'), ...styled(h, visuallyHidden())],
-        [format(locale, 'board.more.renameHint', {})],
-      ),
-    ])
-  const saving = Rename.guards.Saving(model.rename)
-  return h.form(
-    [h.OnSubmit(Message.SubmittedRename()), h.Attribute('novalidate', ''), ...styled(h, styles.head())],
-    [
-      h.div(styled(h, styles.nameForm()), [
-        h.input([
-          h.Id(nameFieldId),
-          h.AriaLabel(format(locale, 'studio.boardName', {})),
-          h.Value(model.nameDraft),
-          h.Maxlength(textLength.boardName),
-          h.Readonly(saving),
-          h.Attribute('enterkeyhint', 'done'),
-          h.OnInput((value) => Message.UpdatedNameDraft({ value })),
-          h.OnKeyDownPreventDefault((key) =>
-            key === 'Escape' ? Option.some(Message.ClickedCancelRename()) : Option.none(),
-          ),
-          ...styled(h, styles.nameField()),
-        ]),
-        actionButton(
-          {
-            label: format(locale, saving ? 'saveToBoard.saving' : 'studio.save', {}),
-            style: cx(primaryAction(), smallAction()),
-            type: 'submit',
-            isDisabled: saving,
-            leading: saving ? loader(h) : h.empty,
-          },
-          h,
-        ),
-        actionButton(
-          {
-            label: format(locale, 'common.cancel', {}),
-            style: cx(secondaryAction(), smallAction()),
-            onClick: Message.ClickedCancelRename(),
-            isDisabled: saving,
-          },
-          h,
-        ),
-      ]),
-      Rename.guards.Failed(model.rename)
-        ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.renameFailed', {})])
-        : h.empty,
-    ],
-  )
-}
 
 /** One part of Make with Styld on the page: its button, its status or its sheet. */
 const makeSlot = (
@@ -429,6 +74,30 @@ const outfitsSlot = (model: Model, name: string, paper: Paper, locale: Locale, h
     toParentMessage: (message) => Message.GotOutfitsMessage({ message }),
   })
 
+const toChrome = (message: Chrome.Message) => Message.GotChromeMessage({ message })
+const toEditor = (message: EditorMessage.Message) => Message.GotEditorMessage({ message })
+
+/** The ⋯ sheet: what is done to the board rather than on its table, its moods, its pins and deleting it. */
+const moreSheetSlot = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'board-more-sheet',
+    model: model.chrome,
+    view: ChromeView.sheetView,
+    viewInputs: {
+      locale,
+      name,
+      visibility: model.visibility,
+      check: model.check,
+      pins: model.pins,
+      publicPins: model.publicPins,
+      pinsFailed: PinWork.guards.Failed(model.pinWork),
+      canChangePins: canChangePins(model),
+      canTidy: Array.isReadonlyArrayNonEmpty(model.editor.items),
+      canPaste: !Editor.isUploading(model.editor.upload),
+    },
+    toParentMessage: toChrome,
+  })
+
 const readyView = (
   model: Model,
   pieces: PiecesData,
@@ -444,22 +113,31 @@ const readyView = (
         [backIcon(h), format(locale, 'studio.backToBoards', {})],
       ),
       h.div(styled(h, styles.barActions()), [
-        sharingView(model, locale, h),
+        h.submodel({
+          slotId: 'board-public-switch',
+          model: model.chrome,
+          view: ChromeView.publicView,
+          viewInputs: { locale, visibility: model.visibility, check: model.check },
+          toParentMessage: toChrome,
+        }),
         shareAction(model, name, locale, h),
-        h.button(
-          [
-            h.Type('button'),
-            h.AriaHasPopup('dialog'),
-            h.AriaLabel(format(locale, 'board.more.title', {})),
-            h.OnClick(Message.ClickedMore()),
-            ...styled(h, round()),
-          ],
-          [moreIcon(h)],
-        ),
+        h.submodel({
+          slotId: 'board-more-button',
+          model: model.chrome,
+          view: ChromeView.moreButtonView,
+          viewInputs: { locale },
+          toParentMessage: toChrome,
+        }),
       ]),
     ]),
     h.div(styled(h, styles.head()), [
-      titleView(model, name, locale, h),
+      h.submodel({
+        slotId: 'board-title',
+        model: model.chrome,
+        view: ChromeView.titleView,
+        viewInputs: { locale, name },
+        toParentMessage: toChrome,
+      }),
       // Where it stands, in one quiet line (DESIGN › Your public things), then the check's word on it.
       h.p(styled(h, styles.meta()), [statusLine(model, locale)]),
       model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
@@ -467,23 +145,24 @@ const readyView = (
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
     h.div(styled(h, styles.barActions()), [
-      saveLookView(model, locale, h),
+      h.submodel({
+        slotId: 'board-save-look',
+        model: model.editor,
+        view: saveLookView,
+        viewInputs: { locale, name },
+        toParentMessage: toEditor,
+      }),
       makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
     ]),
-    editorView(model, pieces, paper, locale, h),
+    h.submodel({
+      slotId: 'board-editor',
+      model: model.editor,
+      view: EditorView.view,
+      viewInputs: { pieces, paper, pins: model.pins, around: model.outfits.maybeAround, locale },
+      toParentMessage: toEditor,
+    }),
     outfitsSlot(model, name, paper, locale, h),
-    sheetShown(model.more)
-      ? bottomSheet(
-          {
-            dialog: model.more,
-            title: format(locale, 'board.more.title', {}),
-            body: () => [h.div(styled(h, styles.sheetBody()), moreBody(model, locale, h))],
-            toParentMessage: (message) => Message.GotMoreMessage({ message }),
-            locale,
-          },
-          h,
-        )
-      : h.empty,
+    moreSheetSlot(model, name, locale, h),
     makeSlot('board-make-sheet', MakeView.sheetView, model, locale, h),
   ])
 

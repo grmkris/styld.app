@@ -4,6 +4,7 @@ import { BoardId, BoardName, LookId, OperationId, PhotoId, PieceId, TryOnId } fr
 import { Effect, Option, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, Update } from 'foldkit'
+import { heldIn } from './Held.ts'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -187,15 +188,18 @@ const sent = (model: Model, destination: Destination): UpdateReturn =>
 
 /** "Save to board" inside a page whose model keeps it as `saveToBoard`; its request for the boards goes on up as the
  * page's own OutMessage. */
-export const foldInto = <Parent extends { readonly saveToBoard: Model }, ParentMessage, ParentOutMessage>(
+export const heldBy = <Parent extends { readonly saveToBoard: Model }, ParentMessage>(
+  toParentMessage: (message: Message) => ParentMessage,
+) => heldIn<Parent, 'saveToBoard', Model, Message, ParentMessage>('saveToBoard', toParentMessage)
+
+/** Save to board folded into a page that holds it: its Messages, and its ask for the boards as the page's own. */
+export const fold = <Parent extends { readonly saveToBoard: Model }, ParentMessage, ParentOutMessage>(
   toParentMessage: (message: Message) => ParentMessage,
   requestedBoards: () => ParentOutMessage,
 ) =>
   Update.foldChild({
     update: (model: Model, message: Message) => update(model, message),
-    read: (parent: Parent) => Option.some(parent.saveToBoard),
-    write: (parent: Parent, saveToBoard: Model): Parent => ({ ...parent, saveToBoard }),
-    toParentMessage,
+    ...heldBy<Parent, ParentMessage>(toParentMessage),
     toParentOutMessage: OutMessage.match({ RequestedBoards: requestedBoards }),
   })
 

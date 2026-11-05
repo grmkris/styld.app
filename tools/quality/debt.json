@@ -16,7 +16,7 @@
   "sql.fragments": 42,
   "sql.textSubqueries": 0,
   "sql.wholeStatements": 0,
-  "web.colourLiterals": 21,
-  "web.messageVariantsMax": 101,
-  "web.stringIds": 122
+  "web.colourLiterals": 2,
+  "web.messageVariantsMax": 46,
+  "web.stringIds": 107
 }

@@ -6,13 +6,13 @@ import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
-import { MeasurePaper } from '../src/page/Board/Commands.ts'
-import { Message as BoardMessage } from '../src/page/Board/Message.ts'
+import { MeasurePaper } from '../src/page/Board/Editor/Commands.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 import { Dialog } from '@foldkit/ui'
 import { sceneSheetOpened } from './SheetFixtures.ts'
+import { Message as EditorMessage } from '../src/page/Board/Editor/Message.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = PieceItem.make({
@@ -41,11 +41,11 @@ const boardWith = (items: ReadonlyArray<PieceItem>) =>
   })
 const editing = (items: ReadonlyArray<PieceItem>, locale: 'en' | 'sl' = 'en') =>
   withPage(at(`/boards/${boardId}/collage`, { signedIn: true, locale }), lenses.board, () =>
-    fromBoard(boardInit(boardId, true), boardWith(items)),
+    fromBoard(boardInit(boardId), boardWith(items)),
   )
 
 /** The table reports its width once it is on the page. */
-const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+const measured = Mount.resolve(MeasurePaper, EditorMessage.MeasuredPaper({ width: 500 }))
 
 describe('the collage editor', () => {
   test('puts the selected piece’s actions in the tray, in view, and the paper under the table otherwise', () => {
@@ -60,7 +60,9 @@ describe('the collage editor', () => {
       { update, view },
       given(
         withPage(editing([knit]), lenses.board, (board) =>
-          modifyFields(board, { maybeSelectedId: () => Option.some(knit.id) }),
+          modifyFields(board, {
+            editor: (editor) => modifyFields(editor, { maybeSelectedId: () => Option.some(knit.id) }),
+          }),
         ),
       ),
       measured,

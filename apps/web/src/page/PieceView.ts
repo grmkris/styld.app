@@ -22,7 +22,6 @@ import { hasStopped } from '../Polling.ts'
 import { missingPiece, failedPiece } from './PieceStatusView.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import * as styles from './PieceView.styles.ts'
 import { picturePanel } from './PiecePictureView.ts'
@@ -33,6 +32,7 @@ import * as PieceLooksView from './PieceLooksView.ts'
 import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 import { spentWords } from './MoreCredits.ts'
+import { loadingStatus } from '../Loading.ts'
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -86,10 +86,12 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     h.Maxlength(textLength.url),
     h.Value(draft.shopUrl),
     h.OnInput((value) => Message.UpdatedShopUrl({ value })),
-    ...(draft.shopUrlInvalid ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')] : []),
+    ...(DraftSave.guards.ShopUrlRefused(draft.save)
+      ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')]
+      : []),
     ...styled(h, textField()),
   ]),
-  draft.shopUrlInvalid
+  DraftSave.guards.ShopUrlRefused(draft.save)
     ? h.p(
         [h.Id('piece-shop-problem'), h.Role('alert'), ...styled(h, formError())],
         [format(locale, 'wardrobe.shopUrlInvalid', {})],
@@ -247,7 +249,7 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
     [h.AriaHidden(true), ...styled(h, styles.details())],
     [h.span(styled(h, cx(line(), styles.nameSkeleton()))), h.span(styled(h, cx(line(), styles.metaSkeleton())))],
   ),
-  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  loadingStatus(format(locale, 'common.loading', {}), h),
 ]
 
 /** Where the piece's turn stands, and the way to ask for one when its clean picture shows. */

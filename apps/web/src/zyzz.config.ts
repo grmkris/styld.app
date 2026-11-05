@@ -201,6 +201,8 @@ export const { style, vars } = defineConfig({
       overPhoto: '0 1px 4px light-dark(oklch(0 0 0 / 0.12), oklch(0 0 0 / 0.4))',
       // A switch that is off: a 1.5px ink-3 ring, so its edge keeps 3:1 on the paper (WCAG 1.4.11).
       switchEdge: 'inset 0 0 0 1.5px light-dark(#6b635b, #9e9286)',
+      // The landing rail's brass rod resting on the wall: the same in either scheme, as the rod is part of the film.
+      rod: '0 3px 6px oklch(0.3 0.04 60 / 0.18)',
     },
   },
 })
@@ -219,3 +221,27 @@ export const pressThenHover = '140ms, 180ms !custom'
  * the tints' pairs repeat here; change them with `tintSand`, `tintSage`, `tintSlate` and `tintClay`. */
 export const wheelWedges =
   'repeating-conic-gradient(from -15deg, light-dark(#e0d3b8, #3d3426) 0 30deg, light-dark(#c3cbb7, #2e3529) 0 60deg, light-dark(#bec8d4, #2a313b) 0 90deg, light-dark(#dcc0ad, #3e2f26) 0 120deg)'
+
+// The landing's films and the camera's bars are pictures, the same in either scheme: their shades are a deep umber
+// over the frame, which keeps light words legible on any of it. Gradients and text shadows take no token, so their
+// values live here with the colours.
+
+/** The shade under a film's words: at the bottom on a phone held upright; on a wider screen, from the left where the
+ * words sit, with a little at the bottom. */
+export const filmShade =
+  'linear-gradient(to bottom, transparent 42%, oklch(0.18 0.01 50 / 0.38) 62%, oklch(0.18 0.01 50 / 0.74))'
+export const filmShadeWide =
+  'linear-gradient(to right, oklch(0.18 0.01 50 / 0.7), oklch(0.18 0.01 50 / 0.2) 48%, transparent 70%), linear-gradient(to bottom, transparent 55%, oklch(0.18 0.01 50 / 0.45))'
+/** The hero's shade, at the top under its statement; on a wider screen from the left. */
+export const heroShade =
+  'linear-gradient(to bottom, oklch(0.18 0.01 50 / 0.78), oklch(0.18 0.01 50 / 0.5) 34%, transparent 62%)'
+export const heroShadeWide =
+  'linear-gradient(to right, oklch(0.18 0.01 50 / 0.62), oklch(0.18 0.01 50 / 0.15) 45%, transparent 65%)'
+/** The soft dark edge of light words over a film: a title's, and a line's. */
+export const filmTitleEdge = '0 1px 1px oklch(0.18 0.01 50 / 0.5), 0 2px 18px oklch(0.18 0.01 50 / 0.45)'
+export const filmLineEdge = '0 1px 2px oklch(0.18 0.01 50 / 0.7), 0 0 14px oklch(0.18 0.01 50 / 0.5)'
+/** The landing rail's brass rod, lit from above. */
+export const brassRod = 'linear-gradient(to bottom, #d9b98a, #b48c58 55%, #8f6a3d)'
+/** The camera's top and bottom bars fade from the veil over the picture. */
+export const cameraTopVeil = 'linear-gradient(to bottom, oklch(0.2 0.02 50 / 0.6), transparent)'
+export const cameraBottomVeil = 'linear-gradient(to top, oklch(0.2 0.02 50 / 0.7), transparent)'

@@ -20,12 +20,13 @@ import { Message, update } from '../src/App.ts'
 import { AskToMake, Message as MakeMessage, ReadGeneration } from '../src/page/Board/Make.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
-import { MeasurePaper } from '../src/page/Board/Commands.ts'
+import { MeasurePaper } from '../src/page/Board/Editor/Commands.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage } from './AppFixtures.ts'
 import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
+import { Message as EditorMessage } from '../src/page/Board/Editor/Message.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const imageId = `bm_${'sea'.padEnd(22, 'x')}`
@@ -63,12 +64,12 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
   })
 
 const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-  fromBoard(boardInit(boardId, true), board),
+  fromBoard(boardInit(boardId), board),
 )
 
 const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())
 
-const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+const measured = Mount.resolve(MeasurePaper, EditorMessage.MeasuredPaper({ width: 500 }))
 
 const openSheet = [
   measured,

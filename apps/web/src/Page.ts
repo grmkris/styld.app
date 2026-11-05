@@ -325,15 +325,15 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
     ),
     Match.tag('Stylist', ({ q }) => opened(lenses.stylist, Stylist.init(q), Stylist.load())),
     Match.tag('Board', 'BoardCollage', ({ boardId }) => {
-      const board = BoardModel.init(boardId, signedIn)
-      return opened(lenses.board, board, Board.load(board))
+      const board = BoardModel.init(boardId)
+      return opened(lenses.board, board, Board.load(board, { signedIn }))
     }),
     Match.tag('Person', ({ handle }) => {
-      const visit = Visit.init(Visit.Target.Person({ handle }), signedIn, atFollow)
+      const visit = Visit.init(Visit.Target.Person({ handle }), atFollow)
       return opened(lenses.visit, visit, Visit.load(visit))
     }),
     Match.tag('PublicPiece', ({ pieceId }) => {
-      const visit = Visit.init(Visit.Target.Piece({ pieceId }), signedIn)
+      const visit = Visit.init(Visit.Target.Piece({ pieceId }))
       return opened(lenses.visit, visit, Visit.load(visit))
     }),
     Match.tag('Privacy', 'Terms', () => ({ model: Page.Legal() })),

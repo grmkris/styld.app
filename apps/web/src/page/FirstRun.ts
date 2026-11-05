@@ -1,10 +1,11 @@
 import { Audience, BoardId, FoundBoard, Occasion } from '@styld/protocol'
-import { Array, Effect, Option, Schema } from 'effect'
+import { Array, Effect, Schema } from 'effect'
 import { Command, Dom, Mount } from 'foldkit'
 import { DEVTOOLS_HOST_ID } from 'foldkit/devtools-host'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { heldIn } from './Held.ts'
 import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import type { Update } from 'foldkit'
 import { drawOperationId } from '../OperationIds.ts'
@@ -161,11 +162,7 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 /** How Home holds it: in its `firstRun`, its Messages wrapped in Home's. */
 export const heldBy = <Parent extends { readonly firstRun: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) => ({
-  read: (parent: Parent) => Option.some(parent.firstRun),
-  write: (parent: Parent, firstRun: Model): Parent => ({ ...parent, firstRun }),
-  toParentMessage,
-})
+) => heldIn<Parent, 'firstRun', Model, Message, ParentMessage>('firstRun', toParentMessage)
 
 /** Opening Home: whether the first run is behind the person. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>

@@ -29,11 +29,8 @@ const answer = Camera.Message.SucceededCheckHeld({
   holding: true,
 })
 
-/** Mounted resources are resolved here because a real camera screen owns a dialog and stream. */
-const mounts = Mount.resolveAll(
-  [Camera.HoldScreen, Camera.Message.HeldScreen()],
-  [Camera.WatchCamera, Camera.Message.StartedCamera()],
-)
+/** The screen's dialog is resolved here because a real camera screen holds the page as modal. */
+const mounts = Mount.resolveAll([Camera.HoldScreen, Camera.Message.HeldScreen()])
 
 describe('the visible camera countdown', () => {
   test('shows 3, 2, 1 after garment checking, then requests a live frame', () => {
@@ -50,7 +47,7 @@ describe('the visible camera countdown', () => {
       Command.resolve(Camera.WaitForCountdown, Camera.Message.ElapsedCountdown({ token: 0, count: 2 })),
       expect(text('1')).toExist(),
       Command.resolve(Camera.WaitForCountdown, Camera.Message.ElapsedCountdown({ token: 0, count: 1 })),
-      Command.resolve(Camera.TakeCountdownPhoto, Camera.Message.RequestedCountdownPhoto()),
+      Command.resolve(Camera.TakeCountdownPhoto, Camera.Message.MissedPhoto()),
       expect(text('1')).not.toExist(),
     )
   })

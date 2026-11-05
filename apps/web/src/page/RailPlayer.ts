@@ -11,6 +11,12 @@ import {
   type TurnTiming,
 } from './RailMotion.ts'
 
+// A deliberate escape hatch from Foldkit's Model and view: the rail is an imperative player, run by the `PlayRail`
+// Mount (Landing.ts) on the rack the view renders. It owns its pointer, momentum and animation-frame state and paints
+// sprite frames on canvases, which a Model updated sixty times a second would only copy; it reports to the page through
+// the Mount's Messages, that its pieces are on the rail or that they could not load. Its sizes are the rack's styles
+// (`--garment-width` and `--rail-layout` in LandingView.styles.ts), read back here, so the breakpoints live in one place.
+//
 // The landing rail's player (owner, 4 November 2026), adapted from interactive-garment-starter by Amir Mušić (MIT
 // License, Copyright (c) 2026 Amir Mušić), its `app.js`: pieces hang from the rod in profile; on a wide screen the one
 // under the pointer turns to its front while its neighbours slide aside, and on a phone the row swipes with momentum and
@@ -65,6 +71,9 @@ interface State {
   tour: ReturnType<typeof setTimeout> | undefined
   rest: number
   inView: boolean
+  /** The rack's layout, read from its styles at each layout. */
+  phone: boolean
+  width: number
 }
 
 const timing: TurnTiming = { turnMs: 900, returnMs: 500, endpointWindow: 0.3 }
@@ -73,9 +82,16 @@ const tourBeat = 2200
 /** A touch, a hover or a tap holds the tour for this many beats. */
 const restBeats = 2
 
-const phone = () => window.matchMedia('(max-width: 700px)').matches
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const displayWidth = () => (phone() ? 315 : window.innerWidth >= 1400 ? 400 : 370)
+
+/** The rack's layout as its styles set it for the screen: a phone's row that swipes, and each piece's width. */
+const measured = (rack: HTMLElement) => {
+  const styles = getComputedStyle(rack)
+  return {
+    phone: styles.getPropertyValue('--rail-layout').trim() === 'swipe',
+    width: Number.parseFloat(styles.getPropertyValue('--garment-width')),
+  }
+}
 
 const paint = (state: State, piece: Piece, frame: number) => {
   const { frameWidth, frameHeight } = state.sprites
@@ -87,8 +103,8 @@ const paint = (state: State, piece: Piece, frame: number) => {
 
 const targets = (state: State) => {
   const width = state.rack.clientWidth
-  const garmentWidth = displayWidth()
-  if (phone())
+  const garmentWidth = state.width
+  if (state.phone)
     return mobileRailPositions({
       width,
       halves: state.pieces.map((piece) => garmentWidth * (0.08 + 0.35 * piece.head.position)),
@@ -127,7 +143,7 @@ const tick = (state: State, time: number) => {
   const dt = state.lastTime > 0 ? Math.min(50, time - state.lastTime) : 0
   state.lastTime = time
   let moving = false
-  if (phone() && state.drag === undefined) {
+  if (state.phone && state.drag === undefined) {
     const next = slideStep(state.offset, state.offsetVelocity, 0, dt, 23)
     state.offset = next.position
     state.offsetVelocity = next.velocity
@@ -176,7 +192,7 @@ const browse = (state: State, index: number) => {
   if (!state.ready) return
   const next = Math.max(0, Math.min(state.pieces.length - 1, index))
   cancelIntent(state)
-  if (!phone()) return activate(state, next)
+  if (!state.phone) return activate(state, next)
   const positions = targets(state)
   state.offset = reduced() ? 0 : (positions[next] ?? 0) - state.rack.clientWidth / 2
   state.offsetVelocity = 0
@@ -218,8 +234,9 @@ const stopTour = (state: State) => {
 
 /** Lay the pieces out for the screen's width, at once. */
 const layout = (state: State) => {
-  const width = displayWidth()
-  for (const piece of state.pieces) piece.button.style.setProperty('--garment-width', `${String(width)}px`)
+  const { phone, width } = measured(state.rack)
+  state.phone = phone
+  state.width = width
   cancelIntent(state)
   state.drag = undefined
   state.offset = 0
@@ -230,7 +247,7 @@ const layout = (state: State) => {
     piece.velocity = 0
     piece.button.style.left = `${String(piece.position)}px`
   })
-  if (!state.touring) activate(state, phone() ? state.selected : -1)
+  if (!state.touring) activate(state, state.phone ? state.selected : -1)
   wake(state)
 }
 
@@ -239,7 +256,7 @@ const hitAt = (state: State, x: number) => {
   let best = Number.POSITIVE_INFINITY
   state.pieces.forEach((piece, index) => {
     const distance = Math.abs(x - piece.position)
-    const half = index === state.active ? displayWidth() * 0.43 : 30
+    const half = index === state.active ? state.width * 0.43 : 30
     if (distance <= half && distance < best) {
       nearest = index
       best = distance
@@ -291,14 +308,14 @@ const endDrag = (state: State, event: PointerEvent) => {
 const onPointerMove = (state: State, event: PointerEvent) => {
   if (!state.ready) return
   if (state.drag !== undefined && event.pointerId === state.drag.id) return dragMove(state, state.drag, event)
-  if (phone() || event.pointerType === 'touch') return
+  if (state.phone || event.pointerType === 'touch') return
   hold(state)
   intend(state, hitAt(state, event.clientX - state.rack.getBoundingClientRect().left))
 }
 
 const onPointerDown = (state: State, event: PointerEvent) => {
   hold(state)
-  if (!state.ready || !phone() || event.button !== 0) return
+  if (!state.ready || !state.phone || event.button !== 0) return
   state.drag = {
     id: event.pointerId,
     startX: event.clientX,
@@ -317,7 +334,7 @@ const onClick = (state: State, event: MouseEvent) => {
   const index = state.pieces.findIndex((piece) => piece.button === button)
   if (index < 0) return
   hold(state)
-  if (phone() && index !== state.selected) return browse(state, index)
+  if (state.phone && index !== state.selected) return browse(state, index)
   const piece = state.pieces[index]
   if (piece !== undefined) aim(piece.head, 0, timing, true)
   state.active = -1
@@ -347,7 +364,7 @@ const listen = (state: State, signal: AbortSignal) => {
   rack.addEventListener(
     'pointerleave',
     () => {
-      if (!phone() && state.drag === undefined && !state.touring) {
+      if (!state.phone && state.drag === undefined && !state.touring) {
         cancelIntent(state)
         activate(state, -1)
       }
@@ -365,8 +382,13 @@ const listen = (state: State, signal: AbortSignal) => {
 }
 
 /** Play the rail inside `rack` (its pieces are the `[data-rail-piece]` buttons, each with a canvas) until the returned
- * function stops it; `onLoaded` runs once every sprite is on its canvas. */
-export const playRail = (rack: HTMLElement, sprites: RailSprites, onLoaded: () => void): (() => void) => {
+ * function stops it; `onLoaded` runs once every sprite is on its canvas, `onFailed` if one of them cannot load. */
+export const playRail = (
+  rack: HTMLElement,
+  sprites: RailSprites,
+  onLoaded: () => void,
+  onFailed: () => void,
+): (() => void) => {
   const pieces = Array.from(rack.querySelectorAll<HTMLElement>('[data-rail-piece]'), (button) => ({
     button,
     context: button.querySelector('canvas')?.getContext('2d') ?? null,
@@ -394,6 +416,8 @@ export const playRail = (rack: HTMLElement, sprites: RailSprites, onLoaded: () =
     tour: undefined,
     rest: 0,
     inView: false,
+    phone: false,
+    width: 0,
   }
   const controller = new AbortController()
   listen(state, controller.signal)
@@ -403,7 +427,8 @@ export const playRail = (rack: HTMLElement, sprites: RailSprites, onLoaded: () =
     ([entry]) => {
       if (entry?.isIntersecting !== true || loading) return
       loading = true
-      loadSprites(state, onLoaded).catch(() => undefined)
+      // A sprite that does not load leaves the pieces in profile; the page hears of it, for telemetry.
+      loadSprites(state, onLoaded).catch(onFailed)
     },
     { rootMargin: '150% 0px' },
   )

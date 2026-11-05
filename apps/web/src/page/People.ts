@@ -4,6 +4,7 @@ import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, textLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { Command, Dom, Update } from 'foldkit'
+import { heldIn } from './Held.ts'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -388,12 +389,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   })
 
 /** Following, saving and reporting inside a page whose model keeps them as `people`. */
-export const foldInto = <Parent extends { readonly people: Model }, ParentMessage>(
+export const heldBy = <Parent extends { readonly people: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) =>
-  Update.foldChild({
-    update,
-    read: (parent: Parent) => Option.some(parent.people),
-    write: (parent: Parent, people: Model): Parent => ({ ...parent, people }),
-    toParentMessage,
-  })
+) => heldIn<Parent, 'people', Model, Message, ParentMessage>('people', toParentMessage)

@@ -1,6 +1,7 @@
 import { Look, PieceId } from '@styld/protocol'
-import { Effect, Option, Result, Schema } from 'effect'
-import { AsyncData, Command, Update, type Update as UpdateType } from 'foldkit'
+import { Effect, Result, Schema } from 'effect'
+import { AsyncData, Command, type Update as UpdateType } from 'foldkit'
+import { heldIn } from './Held.ts'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
@@ -58,12 +59,6 @@ export const update = (model: Model, message: Message) =>
   })
 
 /** Fold the child page into a parent that stores its model under `looks`. */
-export const foldInto = <Parent extends { readonly looks: Model }, ParentMessage>(
+export const heldBy = <Parent extends { readonly looks: Model }, ParentMessage>(
   toParentMessage: (message: Message) => ParentMessage,
-) =>
-  Update.foldChild({
-    update,
-    read: (parent: Parent) => Option.some(parent.looks),
-    write: (parent: Parent, looks: Model): Parent => ({ ...parent, looks }),
-    toParentMessage,
-  })
+) => heldIn<Parent, 'looks', Model, Message, ParentMessage>('looks', toParentMessage)

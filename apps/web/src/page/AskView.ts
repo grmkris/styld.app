@@ -14,7 +14,6 @@ import { block } from '../Skeleton.styles.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import { PublicSearch, searchWords } from './Search.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
 import { matching } from './AskSearch.ts'
 import * as styles from './AskView.styles.ts'
@@ -24,6 +23,7 @@ import type { PiecesData } from '../ServerData.ts'
 import { colourName, pieceLabel, typeName } from './WardrobeWords.ts'
 import { boardCard, byline, personTile } from './PublicTiles.ts'
 import * as publicStyles from './PublicTiles.styles.ts'
+import { loadingStatus } from '../Loading.ts'
 
 /** The languages the search reads a piece's words in: the page's first, and the other once it has loaded. */
 const searchLocales = (model: Model, locale: Locale): ReadonlyArray<Locale> =>
@@ -117,7 +117,7 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(
     [],
     [
-      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+      loadingStatus(format(locale, 'common.loading', {}), h),
       h.div(
         [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.chips())],
         skeletonChips.map((slot) => h.keyed('span')(slot, styled(h, cx(block(), styles.chipSkeleton())))),

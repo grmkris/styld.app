@@ -1,22 +1,79 @@
 import { drawOperationId } from '../../OperationIds.ts'
-import { BoardId, BoardName, LookId, Mood, PinId } from '@styld/protocol'
-import { Effect, Option, Schema } from 'effect'
-import { Command, Dom } from 'foldkit'
-import { load as loadPage } from 'foldkit/navigation'
-import { boardsRouter } from '../../route.ts'
+import { BoardId, LookId, Paper, PinId } from '@styld/protocol'
+import { Duration, Effect, Option, Predicate, Schema } from 'effect'
+import { Command } from 'foldkit'
 import { StyldClient } from '../../StyldClient.ts'
-import { patiently } from './Commands.ts'
 import { Message } from './Message.ts'
 
 // COMMAND
 
-// The board page's Commands: its name, visibility, moods and pins, and what the Add sheet reads. The table's own are in
-// Commands.ts.
-
-/** The id of the field the title turns into for a rename. */
-export const nameFieldId = 'board-name'
+// The board page's Commands around its table: reading the board, its paper and its pins. The table's own are in
+// Commands.ts, the chrome's in Chrome.ts and the Add sheet's in AddSheet.ts.
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
+
+/** How long one read of a board may take; it is tried once more, so the page offers Try again after about 20
+ * seconds rather than showing its shape for ever (a read that never answered, browser review, 2 November 2026). */
+export const boardReadPatience = Duration.seconds(10)
+
+/** A board read that gives up after its patience, tried twice. */
+export const patiently = <A, E, R>(read: Effect.Effect<A, E, R>) =>
+  read.pipe(
+    Effect.timeout(boardReadPatience),
+    Effect.retry({ times: 1, while: (error) => Predicate.isTagged(error, 'TimeoutError') }),
+  )
+
+/** A board as others see it, once it is public and Styld's check lets them. */
+const visitBoard = (boardId: string) =>
+  Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const board = yield* patiently(api.public.board({ params: { boardId: yield* boardIdOf(boardId) } }))
+    return Message.SucceededVisitBoard({ board })
+  }).pipe(
+    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
+    Effect.orElseSucceed(() => Message.FailedLoadBoard({ error: 'Unavailable' })),
+  )
+
+export const LoadBoard = Command.define('LoadBoard', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededLoadBoard, Message.FailedLoadBoard, Message.SucceededVisitBoard],
+  execute: ({ boardId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* patiently(api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } }))
+      return Message.SucceededLoadBoard({ board })
+    }).pipe(
+      Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
+      Effect.catchTag(['Unavailable', 'TimeoutError'], () =>
+        Effect.succeed(Message.FailedLoadBoard({ error: 'Unavailable' })),
+      ),
+      // Not this account's board, or nobody signed in: it may be public.
+      Effect.catch(() => visitBoard(boardId)),
+    ),
+})
+
+/** Signed out, a board can only be someone else's public one: read it as visitors do. */
+export const VisitBoard = Command.define('VisitBoard', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededVisitBoard, Message.FailedLoadBoard],
+  execute: ({ boardId }) => visitBoard(boardId),
+})
+
+/** Save the board's paper; `previous` is the one it replaced, which comes back if this fails. */
+export const UpdatePaper = Command.define('UpdatePaper', {
+  args: { boardId: Schema.String, paper: Paper, previous: Paper },
+  messages: [Message.SucceededUpdatePaper, Message.FailedUpdatePaper],
+  execute: ({ boardId, paper, previous }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.updateBoard({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: { operationId: yield* drawOperationId(), paper },
+      })
+      return Message.SucceededUpdatePaper({ board })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePaper({ attempted: paper, previous }))),
+})
+
 /** The board as it is now, read again when the page comes back into view; none when it could not be read, and the
  * page keeps what it shows. */
 export const ReloadBoard = Command.define('ReloadBoard', {
@@ -29,94 +86,6 @@ export const ReloadBoard = Command.define('ReloadBoard', {
       return Message.CompletedReloadBoard({ maybeBoard: Option.some(board) })
     }).pipe(Effect.orElseSucceed(() => Message.CompletedReloadBoard({ maybeBoard: Option.none() }))),
 })
-
-export const RenameBoard = Command.define('RenameBoard', {
-  args: { boardId: Schema.String, name: Schema.String },
-  messages: [Message.SucceededRename, Message.FailedRename],
-  execute: ({ boardId, name }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.updateBoard({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* drawOperationId(), name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
-      })
-      return Message.SucceededRename({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedRename())),
-})
-
-/** Make the board public on the person's profile, or private again. */
-export const SetBoardVisibility = Command.define('SetBoardVisibility', {
-  args: { boardId: Schema.String, isPublic: Schema.Boolean },
-  messages: [Message.SucceededSetVisibility, Message.FailedSetVisibility],
-  execute: ({ boardId, isPublic }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.setBoardVisibility({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* drawOperationId(), visibility: isPublic ? 'public' : 'private' },
-      })
-      return Message.SucceededSetVisibility({ board })
-    }).pipe(
-      Effect.catchTag('ProfileNotPublished', () => Effect.succeed(Message.FailedSetVisibility({ needsProfile: true }))),
-      Effect.orElseSucceed(() => Message.FailedSetVisibility({ needsProfile: false })),
-    ),
-})
-
-/** Save the board's moods for Explore; the previous ones come back if this fails. */
-export const SetBoardMoods = Command.define('SetBoardMoods', {
-  args: { boardId: Schema.String, moods: Schema.Array(Mood), previous: Schema.Array(Mood) },
-  messages: [Message.SucceededSetBoardMoods, Message.FailedSetBoardMoods],
-  execute: ({ boardId, moods, previous }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.updateBoard({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* drawOperationId(), moods },
-      })
-      return Message.SucceededSetBoardMoods({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedSetBoardMoods({ attempted: moods, previous }))),
-})
-
-/** Delete the board; one already gone counts as deleted. */
-export const DeleteBoard = Command.define('DeleteBoard', {
-  args: { boardId: Schema.String },
-  messages: [Message.SucceededDeleteBoard, Message.FailedDeleteBoard],
-  execute: ({ boardId }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      yield* api.board.deleteBoard({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* drawOperationId() },
-      })
-      return Message.SucceededDeleteBoard()
-    }).pipe(
-      Effect.catchTag('NotFound', () => Effect.succeed(Message.SucceededDeleteBoard())),
-      Effect.orElseSucceed(() => Message.FailedDeleteBoard()),
-    ),
-})
-
-/** Back to the boards, once this one is deleted. */
-export const LeaveBoard = Command.define('LeaveBoard', {
-  messages: [Message.CompletedLeaveBoard],
-  execute: loadPage(boardsRouter({})).pipe(Effect.as(Message.CompletedLeaveBoard())),
-})
-
-/** The unpin question's Keep takes focus as it opens, and the × takes it back when the pin stays. */
-export const FocusPin = Command.define('FocusPin', {
-  args: { selector: Schema.String },
-  messages: [Message.CompletedFocusPin],
-  execute: ({ selector }) => Dom.focus(selector).pipe(Effect.ignore, Effect.as(Message.CompletedFocusPin())),
-})
-
-/** The board's name field takes focus as the title turns into it. */
-export const FocusName = Command.define('FocusName', {
-  messages: [Message.CompletedFocusName],
-  execute: Dom.focus(`#${nameFieldId}`).pipe(Effect.ignore, Effect.as(Message.CompletedFocusName())),
-})
-
-/** The ids the pin's × and its Keep carry, so focus can move between them. */
-export const unpinId = (pinId: string) => `unpin-${pinId}`
-export const keepPinId = (pinId: string) => `keep-${pinId}`
 
 export const UnpinThings = Command.define('UnpinThings', {
   args: { boardId: Schema.String, pinIds: Schema.Array(Schema.String) },
@@ -152,34 +121,4 @@ export const PinLook = Command.define('PinLook', {
       })
       return Message.CompletedPinLook({ maybeBoard: Option.some(board) })
     }).pipe(Effect.orElseSucceed(() => Message.CompletedPinLook({ maybeBoard: Option.none() }))),
-})
-
-/** The person's Gallery photos, for the Add sheet. */
-export const LoadPhotos = Command.define('LoadPhotos', {
-  messages: [Message.SucceededLoadPhotos, Message.FailedLoadPhotos],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { photos } = yield* api.photo.listPhotos()
-    return Message.SucceededLoadPhotos({ photos })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadPhotos())),
-})
-
-/** The person's try-ons, for the Add sheet. */
-export const LoadTryOns = Command.define('LoadTryOns', {
-  messages: [Message.SucceededLoadTryOns, Message.FailedLoadTryOns],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { tryOns } = yield* api.tryOn.listTryOns()
-    return Message.SucceededLoadTryOns({ tryOns })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTryOns())),
-})
-
-/** The person's looks, for the Add sheet. */
-export const LoadLooks = Command.define('LoadLooks', {
-  messages: [Message.SucceededLoadLooks, Message.FailedLoadLooks],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { looks } = yield* api.look.listLooks()
-    return Message.SucceededLoadLooks({ looks })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadLooks())),
 })

@@ -1,22 +1,12 @@
-import { drawOperationId } from '../../OperationIds.ts'
-import {
-  BoardId,
-  BoardItem,
-  BoardItemId,
-  boardWidth,
-  Paper,
-  PhotoId,
-  PhotoPicture,
-  PieceId,
-  TryOnId,
-} from '@styld/protocol'
+import { drawOperationId } from '../../../OperationIds.ts'
+import { BoardId, BoardItem, BoardItemId, boardWidth, PhotoId, PhotoPicture, PieceId, TryOnId } from '@styld/protocol'
 import { Array, Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { Command, File, Mount } from 'foldkit'
-import { observed } from '../../Observe.ts'
-import { uploadPicture } from '../../Upload.ts'
-import { StyldClient } from '../../StyldClient.ts'
+import { observed } from '../../../Observe.ts'
+import { uploadPicture } from '../../../Upload.ts'
+import { StyldClient } from '../../../StyldClient.ts'
 import { Message } from './Message.ts'
 
 // COMMAND
@@ -29,53 +19,6 @@ const exitDuration = Duration.millis(240)
 const toastDuration = Duration.seconds(5)
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
-
-/** How long one read of a board may take; it is tried once more, so the page offers Try again after about 20
- * seconds rather than showing its shape for ever (a read that never answered, browser review, 2 November 2026). */
-export const boardReadPatience = Duration.seconds(10)
-
-/** A board read that gives up after its patience, tried twice. */
-export const patiently = <A, E, R>(read: Effect.Effect<A, E, R>) =>
-  read.pipe(
-    Effect.timeout(boardReadPatience),
-    Effect.retry({ times: 1, while: (error) => Predicate.isTagged(error, 'TimeoutError') }),
-  )
-
-/** A board as others see it, once it is public and Styld's check lets them. */
-const visitBoard = (boardId: string) =>
-  Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const board = yield* patiently(api.public.board({ params: { boardId: yield* boardIdOf(boardId) } }))
-    return Message.SucceededVisitBoard({ board })
-  }).pipe(
-    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
-    Effect.orElseSucceed(() => Message.FailedLoadBoard({ error: 'Unavailable' })),
-  )
-
-export const LoadBoard = Command.define('LoadBoard', {
-  args: { boardId: Schema.String },
-  messages: [Message.SucceededLoadBoard, Message.FailedLoadBoard, Message.SucceededVisitBoard],
-  execute: ({ boardId }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* patiently(api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } }))
-      return Message.SucceededLoadBoard({ board })
-    }).pipe(
-      Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
-      Effect.catchTag(['Unavailable', 'TimeoutError'], () =>
-        Effect.succeed(Message.FailedLoadBoard({ error: 'Unavailable' })),
-      ),
-      // Not this account's board, or nobody signed in: it may be public.
-      Effect.catch(() => visitBoard(boardId)),
-    ),
-})
-
-/** Signed out, a board can only be someone else's public one: read it as visitors do. */
-export const VisitBoard = Command.define('VisitBoard', {
-  args: { boardId: Schema.String },
-  messages: [Message.SucceededVisitBoard, Message.FailedLoadBoard],
-  execute: ({ boardId }) => visitBoard(boardId),
-})
 
 /** Fresh item ids: 16 random bytes each, like every Styld id. */
 export const MakeIds = Command.define('MakeIds', {
@@ -121,23 +64,8 @@ export const SaveItems = Command.define('SaveItems', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveItems())),
 })
 
-/** Save the board's paper; `previous` is the one it replaced, which comes back if this fails. */
-export const UpdatePaper = Command.define('UpdatePaper', {
-  args: { boardId: Schema.String, paper: Paper, previous: Paper },
-  messages: [Message.SucceededUpdatePaper, Message.FailedUpdatePaper],
-  execute: ({ boardId, paper, previous }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.updateBoard({
-        params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* drawOperationId(), paper },
-      })
-      return Message.SucceededUpdatePaper({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePaper({ attempted: paper, previous }))),
-})
-
 export const WaitForExit = Command.define('WaitForExit', {
-  args: { id: Schema.String },
+  args: { id: BoardItemId },
   messages: [Message.CompletedExit],
   execute: ({ id }) => Effect.sleep(exitDuration).pipe(Effect.as(Message.CompletedExit({ id }))),
 })

@@ -1,5 +1,5 @@
 import type { StyldApi } from '@styld/protocol'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Context, Effect, Exit, Layer, Schema, Stream } from 'effect'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
@@ -31,6 +31,8 @@ export class StyldClient extends Context.Service<
     readonly sendFile: (path: string, file: Blob) => Effect.Effect<void, FileNotSent>
     /** Read one of the account's stored files from its same-origin path, such as a turn's video. */
     readonly readFile: (path: string) => Effect.Effect<Uint8Array, FileNotRead>
+    /** Follow a same-origin path's body as it arrives, such as a chat's live words. */
+    readonly follow: (path: string) => Stream.Stream<Uint8Array, FileNotRead>
   }
 >()('@styld/web/StyldClient') {}
 
@@ -67,6 +69,13 @@ export const styldClientLayer = (origin: string) =>
             Effect.map((buffer) => new Uint8Array(buffer)),
             Effect.mapError(() => FileNotRead.make({})),
           ),
+        follow: (path) =>
+          Stream.unwrap(
+            client.get(new URL(path, origin).toString()).pipe(
+              Effect.map((response) => response.stream),
+              Effect.mapError(() => FileNotRead.make({})),
+            ),
+          ).pipe(Stream.mapError(() => FileNotRead.make({}))),
       }
     }),
   )

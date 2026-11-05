@@ -50,7 +50,7 @@ const summary = (id: string) =>
 
 /** The chat whose live words the page listens to, if any. */
 const pending = (current: Model) =>
-  Array.filter([subscriptions.liveReply.modelToDependencies(current).chatId], (id) => id !== '')
+  Option.toArray(Option.map(subscriptions.liveReply.modelToDependencies(current).maybeChat, ({ chatId: id }) => id))
 
 /** The page with a chat open whose reply Styld is writing. */
 const writingChat = (): Model =>

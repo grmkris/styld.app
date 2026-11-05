@@ -7,7 +7,6 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { hasStopped, Misses } from '../Polling.ts'
-import * as HttpClient from 'effect/http/HttpClient'
 import { StyldClient } from '../StyldClient.ts'
 import * as StylistTryOns from './StylistTryOns.ts'
 
@@ -429,32 +428,31 @@ export const update = (model: Model, message: Message): UpdateReturn =>
 
 // SUBSCRIPTION
 
-/** The reply being written: its chat, the Thread its live words name, and the losses so far (each loss listens
- * again, a moment later). Nothing while no reply is being written or after too many losses. */
-const Following = { chatId: Schema.String, thread: Schema.String, misses: Misses }
+/** The reply being written: its chat and the Thread its live words name, with the losses so far (each loss listens
+ * again, a moment later). No chat while no reply is being written or after too many losses. */
+const Following = {
+  maybeChat: Schema.Option(Schema.Struct({ chatId: Schema.String, thread: Schema.String })),
+  misses: Misses,
+}
 
 /** The chat's live words while its reply is written, decoded by a module loaded only then (`StylistLive.ts`). */
 const liveReply = ({
-  chatId,
-  thread,
+  maybeChat,
   misses,
 }: {
-  readonly chatId: string
-  readonly thread: string
+  readonly maybeChat: Option.Option<{ readonly chatId: string; readonly thread: string }>
   readonly misses: Misses
 }) =>
-  chatId === ''
-    ? Stream.empty
-    : Stream.unwrap(
+  Option.match(maybeChat, {
+    onNone: () => Stream.empty,
+    onSome: ({ chatId, thread }) =>
+      Stream.unwrap(
         Effect.gen(function* () {
           // A moment later after each loss.
           yield* Effect.sleep(Duration.seconds(misses))
-          const { followLive } = yield* Effect.tryPromise(() => import('./StylistLive.ts'))
-          const http = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
-          const response = yield* http.get(
-            new URL(`/api/stylist/chats/${chatId}/live`, window.location.origin).toString(),
-          )
-          return followLive(thread, response.stream).pipe(
+          const { followLive, livePath } = yield* Effect.tryPromise(() => import('./StylistLive.ts'))
+          const styld = yield* StyldClient
+          return followLive(thread, styld.follow(livePath(chatId))).pipe(
             Stream.map((draft) =>
               draft.ended
                 ? Message.EndedLiveReply({ chatId })
@@ -462,17 +460,21 @@ const liveReply = ({
             ),
           )
         }),
-      ).pipe(Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId }))))
+      ).pipe(Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId })))),
+  })
 
 /** The open chat's reply, followed live while it is written: no polling. */
-const replySubscriptions = Subscription.make<Model, Message, HttpClient.HttpClient>()((entry) => ({
+const replySubscriptions = Subscription.make<Model, Message, StyldClient>()((entry) => ({
   liveReply: entry(Following, {
     modelToDependencies: (model) =>
       Option.match(
         Option.filter(model.open, (chat) => chat.replying?.state === 'writing' && !hasStopped(model.misses)),
         {
-          onNone: () => ({ chatId: '', thread: '', misses: 0 }),
-          onSome: (chat) => ({ chatId: chat.id, thread: chat.thread, misses: model.misses }),
+          onNone: () => ({ maybeChat: Option.none(), misses: 0 }),
+          onSome: (chat) => ({
+            maybeChat: Option.some({ chatId: chat.id, thread: chat.thread }),
+            misses: model.misses,
+          }),
         },
       ),
     dependenciesToStream: liveReply,

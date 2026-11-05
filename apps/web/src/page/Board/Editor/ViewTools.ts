@@ -2,9 +2,10 @@ import { Button, FileDrop } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { type BoardItem, Paper, PieceItem, TextItem, TextStyle, textLength, topZ } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
+import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { actionButton } from '../../ActionButton.ts'
-import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
+import { actionButton } from '../../../ActionButton.ts'
+import { primaryAction, secondaryAction, smallAction } from '../../../Actions.styles.ts'
 import {
   addIcon,
   copyIcon,
@@ -16,15 +17,15 @@ import {
   redoIcon,
   textIcon,
   undoIcon,
-} from '../../Icon.ts'
-import { styled } from '../../Styled.ts'
-import { pictureAccept } from '../../Upload.ts'
-import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
+} from '../../../Icon.ts'
+import { styled } from '../../../Styled.ts'
+import { pictureAccept } from '../../../Upload.ts'
+import { visuallyHidden } from '../../../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import { findItem } from './Edits.ts'
-import { Message } from './Message.ts'
 import { LookSave, type Model, Ticks } from './Model.ts'
-import * as styles from './View.styles.ts'
+import { Message } from './Message.ts'
+import * as styles from '../View.styles.ts'
 
 /** An icon and its name; on a phone the name is read, not shown, so the tools keep to one row above the table. */
 const tool = (label: string, icon: Html, message: Message, isDisabled: boolean, h: HtmlBuilder<Message>): Html =>
@@ -103,39 +104,41 @@ const tickedPieces = (model: Model): Option.Option<number> =>
 /** Save as a look (T-16): the first tap ticks every piece on the table, a tap on a piece leaves it out or puts it back,
  * and Save keeps the ticked ones; Cancel leaves the table as it was. It waits for a piece, and says why to a screen
  * reader. */
-export const saveLookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const hasPieces = Array.some(model.items, Schema.is(PieceItem))
-  const ticked = tickedPieces(model)
-  const canSave = Option.match(ticked, { onNone: () => hasPieces, onSome: (count) => count > 0 })
-  const hint = Option.isSome(ticked) ? 'board.selectHint' : 'board.lookNoPieces'
-  return h.div(styled(h, styles.saveLook()), [
-    actionButton(
-      {
-        label: Option.match(ticked, {
-          onNone: () => format(locale, 'board.saveLook', {}),
-          onSome: (count) => format(locale, 'board.saveSelectedLook', { count }),
-        }),
-        leading: addIcon(h),
-        style: cx(primaryAction(), smallAction()),
-        onClick: Message.ClickedSaveLook(),
-        isDisabled: !canSave || LookSave.guards.Saving(model.look),
-        ...(canSave ? {} : { describedBy: 'board-look-hint' }),
-      },
-      h,
-    ),
-    Option.isSome(ticked)
-      ? actionButton(
-          {
-            label: format(locale, 'common.cancel', {}),
-            style: cx(secondaryAction(), smallAction()),
-            onClick: Message.ClickedCancelSelecting(),
-          },
-          h,
-        )
-      : h.empty,
-    canSave ? h.empty : h.span([h.Id('board-look-hint'), ...styled(h, visuallyHidden())], [format(locale, hint, {})]),
-  ])
-}
+export const saveLookView = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly name: string }>(
+  (model, { locale, name }, h) => {
+    const hasPieces = Array.some(model.items, Schema.is(PieceItem))
+    const ticked = tickedPieces(model)
+    const canSave = Option.match(ticked, { onNone: () => hasPieces, onSome: (count) => count > 0 })
+    const hint = Option.isSome(ticked) ? 'board.selectHint' : 'board.lookNoPieces'
+    return h.div(styled(h, styles.saveLook()), [
+      actionButton(
+        {
+          label: Option.match(ticked, {
+            onNone: () => format(locale, 'board.saveLook', {}),
+            onSome: (count) => format(locale, 'board.saveSelectedLook', { count }),
+          }),
+          leading: addIcon(h),
+          style: cx(primaryAction(), smallAction()),
+          onClick: Message.ClickedSaveLook({ name }),
+          isDisabled: !canSave || LookSave.guards.Saving(model.look),
+          ...(canSave ? {} : { describedBy: 'board-look-hint' }),
+        },
+        h,
+      ),
+      Option.isSome(ticked)
+        ? actionButton(
+            {
+              label: format(locale, 'common.cancel', {}),
+              style: cx(secondaryAction(), smallAction()),
+              onClick: Message.ClickedCancelSelecting(),
+            },
+            h,
+          )
+        : h.empty,
+      canSave ? h.empty : h.span([h.Id('board-look-hint'), ...styled(h, visuallyHidden())], [format(locale, hint, {})]),
+    ])
+  },
+)
 
 /** In select mode, what a tap does now. */
 export const selectHintView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
