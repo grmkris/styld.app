@@ -6,7 +6,7 @@ import { OperatorAuth } from './Operator.ts'
 
 // The "One piece, many outfits" boards laid out again with their outfits centred in their places (Eva's report of
 // 4 November 2026: holes in the table; owner: lay out the boards already made). The operator's script
-// (`tools/relayout-boards.ts`) asks for one account at a time, by the email it signs in with. Only the operator, by the
+// (`tools/once/relayout-boards.ts`) asks for one account at a time, by the email it signs in with. Only the operator, by the
 // stage's operator token (`Operator.ts`), may ask; to anyone else it is not there.
 
 /** Whose boards to lay out again: the account the email signs in to. Its operation id is not kept: each board's own

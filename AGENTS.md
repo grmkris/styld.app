@@ -24,6 +24,8 @@ migration and is checked against a private copy of the preview's real data (owne
 
 ```bash
 bun install --frozen-lockfile
+bunx lefthook install              # once per clone, from the main checkout: the pre-commit fence (lefthook.yml) for
+                                    # every worktree; staged files' format, graph, patterns, suppressions (~2 s)
 heavy --wait bun run check          # the full gate CI runs: format, agents (skills), vendor (hashes), icons, x18n,
                                     # i18n, graph, patterns, style tokens, suppressions, canaries, typecheck, lint,
                                     # Knip, jscpd, build, budgets, unit, native
@@ -38,6 +40,10 @@ bun run icons:generate              # after editing apps/web/src/icons.json (Pho
 bun run deps:outdated               # which pins are behind (npm by channel, and Bun); a report, not a gate
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
+
+The pre-commit hook is the fence every commit passes: never `--no-verify`, `-n`, `LEFTHOOK=0` or another `core.hooksPath` (`.claude/settings.json` denies them). If it fails on a file you did not touch, report it rather than bypass.
+
+The size budgets live in `tools/budgets.json`, one line each with only its current reason; `bundle:check` measures the browser build, the SSR Worker, and the API and edge Workers' startup code as Alchemy bundles them. A budget raise is its own commit whose message gives the measured cause (before, after, and what added the bytes), never part of a merge or a feature commit.
 
 `heavy` exit 75 means the box is busy; retry it, never treat it as a failure, and never pipe it. Deploying the isolated preview and reading it back follows `docs/DEPLOYMENT.md`.
 
@@ -57,11 +63,11 @@ Read installed library source before using unfamiliar APIs. Domain models follow
 - `packages/protocol`: the contract shared by the website, the API and MCP: `StyldApi` groups, errors with their assistant guides, ids and operation ids, text, limits, prices, garments.
 - `packages/server`: the public edge Worker and the API Worker: `kernel/` (database, ids, receipts, media, visibility, pacing, metrics), `Modules.ts` (the module list) and one folder per module (`wardrobe`, `capture`, `photos`, `looks`, `outfits`, `boards`, `generation`, `stylist`, `social`, `safety`, `links`, `worn`, `imports`, `mcp`), `usage/` (credit holds), `jobs/` (queues and sweeps), `providers/` and `ai/` (every provider call), `Config.ts` and `Resources.ts` (deployment facts and stages); native tests and fakes in `test/`.
 - `packages/imaging`: PNG and raster helpers shared by the browser and the Worker (model pictures, chroma, sheets, turns).
-- `packages/db`: Drizzle schema, one file per owning module, and the one baseline D1 migration.
+- `packages/db`: Drizzle schema, one file per owning module, and the D1 migrations Drizzle Kit generates in `migrations/` (the 2 November baseline and the migrations after it, applied in order at deploy; a table rebuild follows the Parallel work rule above).
 - `packages/domain`: the Alchemy Domain Wallet (the daily credit pool's holds), with story tests.
 - `packages/auth`: Yielded Auth contract, email-code sign-in, D1 persistence, browser client and password attempt limiter.
 - `packages/i18n`: en/sl ICU catalogs and the runtime formatter; `packages/observability`: the bounded telemetry seam.
-- `tools/`: the gates (`bun run check`), operator scripts listed in `knip.config.ts` (`import-v1/`, `provider-live.ts`, `preview-capture.ts`, `ai-usage-report.ts`) and the preview readback (`preview.native.test.ts`); `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: status, delivery map, architecture, roadmap, handoff, deployment, the testers' guide, `archive/` for history.
+- `tools/`: the gates (`bun run check`), operator scripts listed in `knip.config.ts` (`import-v1/`, `seed/`, `grant-membership.ts`, `provider-live.ts`, `preview-capture.ts`, `ai-usage-report.ts`), finished one-off backfills in `once/` (its README lists them), the size budgets (`budgets.json`) and the preview readback (`preview.native.test.ts`); `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: status, delivery map, architecture, roadmap, handoff, deployment, the testers' guide, `archive/` for history.
 
 ## Skills
 

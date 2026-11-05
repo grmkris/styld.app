@@ -5,7 +5,7 @@ import { OperationId } from './Ids.ts'
 import { OperatorAuth } from './Operator.ts'
 
 // A shop-style picture for every piece (owner, 4 November 2026): most of a tester's pieces were kept before clean
-// pictures were drawn, or came over from v1, and never had one. The operator's script (`tools/backfill-pictures.ts`)
+// pictures were drawn, or came over from v1, and never had one. The operator's script (`tools/once/backfill-pictures.ts`)
 // asks for them, one account at a time, by the email it signs in with; Styld pays, never the person's credits. Only
 // the operator, by the stage's operator token (`Operator.ts`), may ask; to anyone else it is not there.
 

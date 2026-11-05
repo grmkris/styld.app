@@ -17,7 +17,14 @@
       "Bash(git restore*)",
       "Bash(git clean*)",
       "Bash(git commit -a*)",
-      "Bash(git commit --all*)"
+      "Bash(git commit --all*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit -n*)",
+      "Bash(git commit * -n)",
+      "Bash(git commit * -n *)",
+      "Bash(git * --no-verify*)",
+      "Bash(*LEFTHOOK=0*)",
+      "Bash(*core.hooksPath*)"
     ],
     "ask": []
   }

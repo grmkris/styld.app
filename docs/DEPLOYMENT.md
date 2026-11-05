@@ -96,7 +96,7 @@ if needed.
 
 ## House inspiration boards (the seed)
 
-The house boards on `@styld.women` and `@styld.men` (`docs/PLAN-house-boards-2026-11-04.md`) come from
+The house boards on `@styld.women` and `@styld.men` (`docs/archive/PLAN-house-boards-2026-11-04.md`) come from
 `tools/seed/catalogue.yaml` and `tools/seed/manifest.yaml`, and are run by the operator with `tools/seed/Run.ts`. The
 garments are generated with Meta Muse Image and judged by Muse Spark. Meta answers this box over IPv6 only, which the
 tool's fetch uses. Every paid call is charged to `tools/seed/.out/ledger.json` before it is made, and a run stops

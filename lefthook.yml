@@ -1,0 +1,22 @@
+# The pre-commit fence: the cheap gates only, in a few seconds, never `heavy` or the typecheck (those run in
+# `bun run check`). Install once per clone with `bunx lefthook install`; the hook lives in the shared .git/hooks and
+# runs from whichever worktree commits, against that worktree's files and node_modules. Never bypass it with
+# `--no-verify`: fix what it reports. The repo-wide gates read the working tree, so a neighbour's unstaged edit can
+# fail them; that failure is not yours to fix, so say so rather than bypass (AGENTS.md › Ownership).
+no_auto_install: true
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: '*.{ts,tsx,js,mjs,cjs,json,jsonc,md,yml,yaml,css,html}'
+      run: bunx oxfmt -c oxfmt.config.ts --check --no-error-on-unmatched-pattern {staged_files}
+    graph:
+      run: bun run graph:check
+    patterns:
+      run: bun run patterns:check
+    suppressions:
+      run: bun run suppressions:check
+    debt:
+      # The debt ledger's gate, once tools/quality/census.ts adds `debt:check` to package.json.
+      run: if grep -q '"debt:check"' package.json; then bun run debt:check; fi

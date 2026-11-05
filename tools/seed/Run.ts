@@ -1,5 +1,5 @@
 /**
- * The house garments and boards (owner, 4 November 2026; docs/PLAN-house-boards-2026-11-04.md), run by the operator.
+ * The house garments and boards (owner, 4 November 2026; docs/archive/PLAN-house-boards-2026-11-04.md), run by the operator.
  *
  *   bun --env-file=.env.preview.local tools/seed/Run.ts --manifest tools/seed/manifest.yaml \
  *     [--catalogue tools/seed/catalogue.yaml] [--dry-run | --test-batch | --full | --prune <seed id,…>] \

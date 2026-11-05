@@ -2,7 +2,7 @@
  * Ask a deployed stage for a shop-style clean picture of every piece of one account that has none (owner, 4 November
  * 2026: most of a tester's pieces were kept before pictures were drawn, or came over from v1), run by hand:
  *
- *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/backfill-pictures.ts <email> \
+ *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/once/backfill-pictures.ts <email> \
  *     [--redraw | --ended | --backs] [--before <ISO moment>]
  *
  * The request goes to `POST /api/operator/pictures/backfill` as the operator, with the stage's `STYLD_OPERATOR_TOKEN`
@@ -27,7 +27,7 @@ import { parseArgs } from 'node:util'
 import { Schema } from 'effect'
 
 const usage =
-  'Usage: STYLD_URL=https://… bun --env-file=.env.preview.local tools/backfill-pictures.ts <email> ' +
+  'Usage: STYLD_URL=https://… bun --env-file=.env.preview.local tools/once/backfill-pictures.ts <email> ' +
   '[--redraw | --ended | --backs] [--before <ISO moment>]'
 /** The moment `--before` names, or now; it throws the usage line for one that is not a date. */
 const momentOf = (before: string | undefined) => {
