@@ -37,7 +37,7 @@ went in before the demo.
   - The bad cut-out and the T-shirt typed as a bodysuit; automatic rotation (#7).
   - The crash after a mass upload (#8).
 
-## The board page: one Add sheet, edited in place (5 November, on main, not deployed)
+## The board page: one Add sheet, edited in place (5 November, live on styld.app at `71148a36`)
 
 Kris, 5 November: a board offered only the wardrobe's pieces, and its settings sat behind Edit. Plan:
 `~/.claude/plans/okay-let-s-think-and-lively-engelbart.md`.
@@ -69,9 +69,11 @@ Kris, 5 November: a board offered only the wardrobe's pieces, and its settings s
     ⋯ closing before tidy), `board.story` and `collage.scene` (Save as a look), `PhotosAcceptance` (pin only, the
     same picture again, re-add after removal) and `TryOnAcceptance` (the same picture under another id).
   - The browser acceptance was updated to the new controls.
-  - Full gate with native: see Gates.
+  - Native suite 38/38 green in a clean worktree at `b52cac9c` (the release plus two test-only fixes).
+  - **Deployed:** the preview and styld.app run `71148a36` (production promoted by `styldappv2-0f`); the preview
+    readback `tools/preview.native.test.ts` passed 3/3.
 - **Open:**
-  - Deploy the preview and walk it on a phone and a desktop: each Add kind, rename, the switch, ⋯.
+  - Walk it on a phone and a desktop: each Add kind, rename, the switch, ⋯.
   - Kris's choice of the declutter (proposed, not confirmed): the merged Save as a look and the trimmed toolbar.
   - Placing a photo from its own page still uses a table key per picture: a retry with a fresh request id after a
     removal is covered, but that path is not walked in a browser.
