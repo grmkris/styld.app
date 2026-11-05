@@ -50,12 +50,18 @@ const previewOf = async (request: Request, env: EdgeEnvironment, path: string): 
   }
 }
 
-/** A public page goes out with its preview's title and tags in its head, or unchanged without one. */
+/** The site-wide link-preview tags the website renders into every page (`apps/web/src/entry.server.ts`). */
+const sharedTags = 'meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]'
+
+/** A profile, board, look or piece page has one source of link-preview tags, the edge: the website's site-wide ones
+ * are taken out, and a public page gets its own title and tags. A private or missing one keeps no preview at all. */
 const withPreview = (response: Response, meta: PageMeta | undefined, url: URL): Response => {
   const isPage = response.status === 200 && (response.headers.get('content-type') ?? '').startsWith('text/html')
-  if (meta === undefined || !isPage || typeof HTMLRewriter === 'undefined') return response
+  if (!isPage || typeof HTMLRewriter === 'undefined') return response
+  const rewriter = new HTMLRewriter().on(sharedTags, { element: (tag) => void tag.remove() })
+  if (meta === undefined) return rewriter.transform(response)
   const tags = headTags(meta, `${url.origin}${url.pathname}`)
-  return new HTMLRewriter()
+  return rewriter
     .on('title', { element: (title) => void title.setInnerContent(meta.title) })
     .on('head', { element: (head) => void head.append(tags, { html: true }) })
     .transform(response)
@@ -82,8 +88,9 @@ export default {
         ? previewOf(forwarded, env, url.pathname)
         : Promise.resolve(undefined)
     const response = signInPage(await (api ? env.API : env.WEBSITE).fetch(forwarded), url)
+    const page = !api && request.method === 'GET' && hasPreview(url.pathname)
     const secured = withSecurityHeaders(
-      withPreview(response, await preview, url),
+      page ? withPreview(response, await preview, url) : response,
       api ? apiPolicy : documentPolicy,
       api,
     )
