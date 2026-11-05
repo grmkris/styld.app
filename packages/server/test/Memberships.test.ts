@@ -8,6 +8,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { DateTime, Effect, Layer, Option, Redacted } from 'effect'
 import { makeAccountLifecycle } from '../src/AccountLifecycle.ts'
 import { makeBilling } from '../src/billing/Billing.ts'
+import { billingStore } from '../src/billing/Store.ts'
 import type { CheckoutRequest } from '../src/billing/Checkouts.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { holdId, Holds } from '../src/usage/Holds.ts'
@@ -373,5 +374,81 @@ describe('checkout, portal and the operator’s grant', () => {
       })
       expect(opened).toEqual([])
     }).pipe(Effect.provide(layer))
+  })
+})
+
+describe('the billing store’s statements', () => {
+  const at = new Date(Date.UTC(2026, 10, 5, 12))
+  const payment = {
+    paymentId: 'pay_1',
+    accountId: 'ac_ana',
+    plan: 'week' as const,
+    productId: products.week,
+    amount: 499,
+    currency: 'EUR',
+    customerId: null,
+  }
+
+  it.effect('a payment naming no customer keeps the one the membership has', () => {
+    const { database, membership } = over()
+    const store = billingStore(drizzle(database))
+    return Effect.gen(function* () {
+      database.sqlite.exec(
+        "INSERT INTO memberships (account_id, plan, until, status, customer_id, updated_at) VALUES ('ac_ana', 'week', 0, 'ended', 'cus_ana', 0)",
+      )
+      yield* store.credit(payment, at)
+      expect(membership()).toEqual({
+        plan: 'week',
+        until: at.getTime() + 7 * day,
+        status: 'active',
+        subscription_id: null,
+        customer_id: 'cus_ana',
+      })
+      yield* store.credit({ ...payment, paymentId: 'pay_2', plan: 'lifetime', customerId: 'cus_new' }, at)
+      expect(membership()).toMatchObject({ plan: 'lifetime', until: null, customer_id: 'cus_new' })
+    })
+  })
+
+  it.effect(
+    'a payment or a running subscription for an account gone meanwhile writes nothing and is unavailable',
+    () => {
+      const { database } = over()
+      const store = billingStore(drizzle(database))
+      return Effect.gen(function* () {
+        const credited = yield* Effect.flip(store.credit({ ...payment, accountId: 'ac_gone' }, at))
+        expect(credited).toMatchObject({ _tag: 'StoreUnavailable' })
+        const subscribed = yield* Effect.flip(
+          store.subscription(
+            {
+              accountId: 'ac_gone',
+              subscriptionId: 'sub_1',
+              customerId: null,
+              plan: 'monthly',
+              kind: 'active',
+              until: at,
+              at,
+            },
+            at,
+          ),
+        )
+        expect(subscribed).toMatchObject({ _tag: 'StoreUnavailable' })
+        expect(database.sqlite.prepare('SELECT count(*) AS n FROM memberships').get()).toEqual({ n: 0 })
+        expect(database.sqlite.prepare('SELECT count(*) AS n FROM purchases').get()).toEqual({ n: 0 })
+      })
+    },
+  )
+
+  it.effect('a payment Styld never counted is not taken back, and a counted one is taken back once', () => {
+    const { database, membership, purchases } = over()
+    const store = billingStore(drizzle(database))
+    return Effect.gen(function* () {
+      yield* store.takeBack('pay_unknown', 'refunded', at)
+      expect(purchases()).toEqual([])
+      yield* store.credit(payment, at)
+      yield* store.takeBack('pay_1', 'disputed', at)
+      yield* store.takeBack('pay_1', 'refunded', at)
+      expect(purchases()).toEqual([{ payment_id: 'pay_1', status: 'disputed' }])
+      expect(membership()).toMatchObject({ until: at.getTime(), status: 'active' })
+    })
   })
 })
