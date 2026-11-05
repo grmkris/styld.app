@@ -208,13 +208,15 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   up, Google is not offered and email sign-in is untouched.
 - **MCP** at `/mcp`: Styld is its own OAuth issuer (one scope, `styld`), bearer-only, CIMD first with compatible DCR,
   HTTPS or loopback redirects, consent re-read and immediate revoke. Tools are `noun_verb` projections of the same
-  operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. Admin
+  operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. The
+  tools, their views and the toolset live in `server/src/tools/`, which both surfaces serve: `mcp/` is only the
+  transport (route, SDK, OAuth policy) and `stylist/` lists the chat's from the same specs. Admin
   tools appear only in the admin list, chosen per request by the account's verified sign-in email
   (`STYLD_ADMIN_EMAILS`). Anything other people wrote is data for the assistant, never instructions.
 - **Pictures in assistants:** an assistant never gets a picture's address (`SignedMedia` answers none for `via:
   'assistant'`). Only the `*_show` tools send pictures, to the host's view and never to the model: Images-transformed
   thumbnails (WebP, 480 px, at most 200 KiB each, never an original file) of the account's own objects, collected by
-  `withViewThumbnails` (`mcp/Thumbnails.ts`). Owner, 4 November 2026: these may include the person's own My Gallery
+  `withViewThumbnails` (`tools/Thumbnails.ts`). Owner, 4 November 2026: these may include the person's own My Gallery
   photos, a try-on's before photo and its result. Other people's media never enter a view.
 
 ## Visibility, checks and social

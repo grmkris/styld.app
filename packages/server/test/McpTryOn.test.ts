@@ -10,8 +10,8 @@ import {
   TryOnId,
 } from '@styld/protocol'
 import { Effect, Ref } from 'effect'
-import { callTool } from '../src/mcp/Tools.ts'
-import { tryOnTools } from '../src/mcp/TryOnTools.ts'
+import { callTool } from '../src/tools/Tools.ts'
+import { tryOnTools } from '../src/tools/TryOnTools.ts'
 
 // The try-on tools assistants call: the person's word that the photo shows them is required before anything runs,
 // and what comes back names Styld's pages, never a picture's address.

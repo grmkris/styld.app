@@ -1,42 +1,20 @@
 import { Effect, Layer } from 'effect'
-import { account } from '../Account.ts'
 import { AccountLifecycle } from '../AccountLifecycle.ts'
-import { capture } from '../capture/Module.ts'
 import { Deployment } from '../Config.ts'
-import { generation } from '../generation/Module.ts'
 import { Database } from '../kernel/Db.ts'
 import { module } from '../kernel/Module.ts'
-import { links } from '../links/Module.ts'
 import { mcpOAuthRoutes, mcpOAuthServer } from '../OAuth.ts'
 import { forgetExpiredAssertions } from '../OAuthAssertions.ts'
-import { outfits } from '../outfits/Module.ts'
-import { photos } from '../photos/Module.ts'
 import { Curation } from '../social/Curation.ts'
-import { social } from '../social/Module.ts'
-import { wardrobe } from '../wardrobe/Module.ts'
 import { mcpRoutes } from './Route.ts'
-import { AssistantToolset } from './StyldTools.ts'
+import { AssistantToolset } from '../tools/StyldTools.ts'
+import { toolset } from '../tools/Toolset.ts'
 import { feedback } from '../feedback/Module.ts'
 import { Feedback } from '../feedback/Feedback.ts'
 import type { Sweep } from '../jobs/Sweeps.ts'
 
 /** Assertions go a larger batch at a time: deleting them is one statement. */
 const forgetBatch = 500
-
-/** The assistants' tools over the modules they project; Styld's chat answers with the same ones. */
-export const toolset = AssistantToolset.layer.pipe(
-  Layer.provide([
-    wardrobe.layer,
-    links.layer,
-    social.layer,
-    capture.layer,
-    generation.layer,
-    photos.layer,
-    outfits.layer,
-    account.layer,
-    feedback.layer,
-  ]),
-)
 
 /** Expired OAuth assertions go, a batch at a time. */
 const sweeps: ReadonlyArray<Sweep<Database>> = [

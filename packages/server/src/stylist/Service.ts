@@ -2,7 +2,7 @@ import { ChatId, CurrentAccount, Day, NotFound, type SendChatMessage, Unavailabl
 import { Context, DateTime, Effect, Layer, Option, type Stream } from 'effect'
 import { digestOf } from '../kernel/Ids.ts'
 import { nowDate } from '../kernel/Db.ts'
-import type { Tool as AssistantTool } from '../mcp/Tools.ts'
+import type { Tool as AssistantTool } from '../tools/Tools.ts'
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { Worn } from '../worn/Worn.ts'

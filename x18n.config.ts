@@ -62,6 +62,10 @@ export default defineConfig({
       // MCP and OAuth protocol text is written for assistants and OAuth clients, in English (MCP has no
       // locale negotiation); the people who connect see only the website's own copy.
       'packages/server/src/mcp/**/*.ts': ['/[\\s\\S]*/'],
+      // The assistants' tools (`tools/`), which MCP and Styld's chat both serve, speak the same English.
+      'packages/server/src/tools/**/*.ts': ['/[\\s\\S]*/'],
+      // Why a photo address could not be fetched, as its MCP `guide` reads to an assistant.
+      'packages/server/src/links/ImageImport.ts': ['/[\\s\\S]*/'],
       // The contract's errors declare how they read to an assistant (their MCP `guide`), in the same English; the
       // website never shows them and words its refusals from the catalogs.
       'packages/protocol/src/**/*.ts': ['/[\\s\\S]*/'],

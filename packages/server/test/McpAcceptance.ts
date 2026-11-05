@@ -7,7 +7,7 @@ import { toolNames } from './ToolNames.ts'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { csrf } from '@styld/auth/config'
 import { ViewImages } from '@styld/protocol'
-import { viewsUri } from '../src/mcp/Resources.ts'
+import { viewsUri } from '../src/tools/Resources.ts'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
