@@ -15,6 +15,7 @@ import { backfillRows } from './BackfillStore.ts'
 import { backPictureRows } from './BackPictureStore.ts'
 import { advanceCapture, type CaptureChanges, type CaptureState, intoTray, outOfTray } from './CaptureLifecycle.ts'
 import { matchRows } from './MatchStore.ts'
+import { advanceTurn, claimTurn, firstTurnState, type TurnChanges, type TurnState } from './TurnLifecycle.ts'
 import {
   advancePicture,
   claimPicture,
@@ -38,7 +39,6 @@ type ReceiptRow = typeof operationReceipts.$inferSelect
 export type PictureRow = typeof piecePictures.$inferSelect
 type NewPicture = typeof piecePictures.$inferInsert
 export type TurnRow = typeof pieceTurns.$inferSelect
-export type TurnState = TurnRow['state']
 
 type Database = Db['Service']
 
@@ -471,34 +471,19 @@ const pictureRows = (db: Database) => ({
 const turnRows = (db: Database) => ({
   findTurn: (pieceId: string) =>
     query(() => db.select().from(pieceTurns).where(eq(pieceTurns.pieceId, pieceId)).limit(1)).pipe(Effect.map(first)),
-  /** Move a turn on from one of `from`, with `changes`; whether it moved. */
-  moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
-    query(() =>
-      db
-        .update(pieceTurns)
-        .set(changes)
-        .where(and(eq(pieceTurns.pieceId, pieceId), inArray(pieceTurns.state, [...from])))
-        .returning({ pieceId: pieceTurns.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Claim a piece's next turn, or take back one claimed: move it only from the state and the attempt it was read in,
-   * so of two requests reading the same turn one owns the attempt and its hold; whether it moved. */
-  claimTurn: (pieceId: string, seen: Pick<TurnRow, 'state' | 'attempt'>, changes: Partial<TurnRow>) =>
-    query(() =>
-      db
-        .update(pieceTurns)
-        .set(changes)
-        .where(
-          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, seen.state), eq(pieceTurns.attempt, seen.attempt)),
-        )
-        .returning({ pieceId: pieceTurns.pieceId }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Move a turn from one of `from` to `to` (`TurnLifecycle.ts`), with `changes`; whether it moved. */
+  moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, to: TurnState, changes: TurnChanges) =>
+    advanceTurn(db, pieceId, from, to, changes),
+  /** Claim a piece's next turn, or take back one claimed (`TurnLifecycle.ts` › `claimTurn`). */
+  claimTurn: (pieceId: string, seen: Pick<TurnRow, 'state' | 'attempt'>, to: TurnState, changes: TurnChanges) =>
+    claimTurn(db, pieceId, seen, to, changes),
   /** Drop a first turn whose credits could not be held, while it still waits as added. */
   dropTurn: (pieceId: string, attempt: number) =>
     query(() =>
       db
         .delete(pieceTurns)
         .where(
-          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, 'requested'), eq(pieceTurns.attempt, attempt)),
+          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, firstTurnState), eq(pieceTurns.attempt, attempt)),
         ),
     ).pipe(Effect.asVoid),
   /** A turn the owner asked for, unless the piece already has one; whether it was added. */

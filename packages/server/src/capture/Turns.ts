@@ -30,7 +30,8 @@ import { hanger } from './Hanger.ts'
 import { enqueueTurn, readPixels, turnKey, writeObject } from './Shared.ts'
 import { capturePolicy } from './Policy.ts'
 import { type Picture, type TurnStatus } from './Providers.ts'
-import type { PictureRow, TurnRow, TurnState } from './Store.ts'
+import type { PictureRow, TurnRow } from './Store.ts'
+import { firstTurnState, turnEnded, type TurnChanges, type TurnState } from './TurnLifecycle.ts'
 import { holdId } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
@@ -58,23 +59,20 @@ const jpegOf = (picture: Rgba) =>
     return { bytes, contentType: 'image/jpeg' } satisfies Picture
   }).pipe(Effect.orElseSucceed(() => pngPicture(picture)))
 
-const ends = ['ready', 'rejected', 'failed'] as const
-const hasEnded = (state: TurnState): state is (typeof ends)[number] => ends.some((end) => end === state)
-
-/** Move a turn on from one of `from`; whether it moved. */
-const move = (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
+/** Move a turn from one of `from` to `to` (`TurnLifecycle.ts`); whether it moved. */
+const move = (pieceId: string, from: ReadonlyArray<TurnState>, to: TurnState, changes: TurnChanges = {}) =>
   Effect.gen(function* () {
     const moved = yield* stored(
-      (yield* CaptureStore).moveTurn(pieceId, from, { ...changes, updatedAt: yield* nowDate }),
+      (yield* CaptureStore).moveTurn(pieceId, from, to, { ...changes, updatedAt: yield* nowDate }),
     )
-    if (moved && changes.state !== undefined) yield* Effect.annotateCurrentSpan('styld.turn.state', changes.state)
+    if (moved) yield* Effect.annotateCurrentSpan('styld.turn.state', to)
     return moved
   })
 
 /** A turn that cannot finish: the piece keeps its still picture, and its credits come back (`settleTurn`). Why is on
  * the span, not in the row. */
 const end = (pieceId: string, from: TurnState, why: string) =>
-  Effect.andThen(Effect.annotateCurrentSpan('styld.turn.failed', why), move(pieceId, [from], { state: 'failed' }))
+  Effect.andThen(Effect.annotateCurrentSpan('styld.turn.failed', why), move(pieceId, [from], 'failed'))
 
 /** The hold paying for a piece's latest turn. */
 const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', turn.pieceId, turn.attempt)
@@ -84,7 +82,7 @@ const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', 
 const settleTurn = (pieceId: string) =>
   Effect.gen(function* () {
     const found = yield* stored((yield* CaptureStore).findTurn(pieceId))
-    if (Option.isNone(found) || !hasEnded(found.value.state)) return
+    if (Option.isNone(found) || !turnEnded(found.value.state)) return
     yield* (yield* Holds).settle(
       found.value.accountId,
       turnHold(found.value),
@@ -118,7 +116,7 @@ const sideView = (turn: TurnRow, front: Rgba, key: 'green' | 'magenta') =>
  * it (an answer lost after the provider took the work is never sent again). */
 const providerEnded = (pieceId: string) => (error: ProviderError) =>
   isBusy(error)
-    ? Effect.andThen(move(pieceId, ['anchoring'], { state: 'requested' }), Effect.fail(error))
+    ? Effect.andThen(move(pieceId, ['anchoring'], 'requested'), Effect.fail(error))
     : Effect.as(end(pieceId, 'anchoring', isOutcomeUnknown(error) ? 'unknown' : 'refused'), 'ended' as const)
 
 /** A requested turn: claim it, lay its two frames on the key, and start the video model on them. The frames are kept,
@@ -130,7 +128,7 @@ const start = (turn: TurnRow) =>
     if (Option.isNone(picture)) return yield* end(pieceId, 'requested', 'picture')
     const clean = yield* readPixels(picture.value.cleanKey)
     if (Option.isNone(clean)) return yield* end(pieceId, 'requested', 'picture')
-    if (!(yield* move(pieceId, ['requested'], { state: 'anchoring' }))) return false
+    if (!(yield* move(pieceId, ['requested'], 'anchoring'))) return false
     const key = picture.value.keyColour ?? keyColourFor(clean.value)
     const front = frontAnchor(clean.value, hanger())
     yield* writeObject(turnKey(accountId, pieceId, 'front.png'), encodePng(front), 'image/png')
@@ -147,13 +145,7 @@ const start = (turn: TurnRow) =>
     )
     if (Option.isNone(job)) return false
     const operation = { job: job.value, startedAt: (yield* nowDate).getTime() }
-    if (
-      !(yield* move(pieceId, ['anchoring'], {
-        state: 'generating',
-        operation,
-      }))
-    )
-      return false
+    if (!(yield* move(pieceId, ['anchoring'], 'generating', { operation }))) return false
     yield* enqueueTurn(pieceId, (yield* VideoGenerator).pollSeconds)
     return true
   })
@@ -181,7 +173,7 @@ const poll = (turn: TurnRow) =>
       Done: ({ video }) =>
         Effect.gen(function* () {
           yield* writeObject(turnKey(accountId, pieceId, 'turn.mp4'), video.bytes, video.contentType)
-          return yield* move(pieceId, ['generating'], { state: 'video-ready' })
+          return yield* move(pieceId, ['generating'], 'video-ready')
         }),
     })
   })
@@ -244,7 +236,7 @@ export const turning = Effect.map(Effect.context<CaptureServices>(), (context) =
     const found = yield* stored((yield* CaptureStore).findTurn(pieceId))
     if (Option.isNone(found)) return
     const { state } = found.value
-    if (!hasEnded(state)) yield* end(pieceId, state, 'gave-up')
+    if (!turnEnded(state)) yield* end(pieceId, state, 'gave-up')
     yield* settleTurn(pieceId)
   }, Effect.provide(context)),
 }))
@@ -276,7 +268,7 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
       'styld.turn.same': scores.same,
     })
     if (kept) yield* writeObject(turnKey(accountId, pieceId, 'sheet.png'), bytes, 'image/png')
-    yield* move(pieceId, ['video-ready'], { state: kept ? 'ready' : 'rejected', ...(kept ? { layout } : {}) })
+    yield* move(pieceId, ['video-ready'], kept ? 'ready' : 'rejected', kept ? { layout } : {})
     yield* settleTurn(pieceId)
     const settled = yield* stored((yield* CaptureStore).findTurn(pieceId))
     return yield* shownTurn(
@@ -309,7 +301,7 @@ const unclaimed = (ids: { readonly accountId: string; readonly pieceId: string }
     yield* Option.match(current, {
       onNone: () => store.dropTurn(pieceId, attempt),
       onSome: ({ state, operation, layout, updatedAt }) =>
-        store.claimTurn(pieceId, { state: 'requested', attempt }, { state, operation, layout, updatedAt }),
+        store.claimTurn(pieceId, { state: firstTurnState, attempt }, state, { operation, layout, updatedAt }),
     })
   }).pipe(Effect.ignore({ log: true, message: 'Styld.Turn.ask could not take back a claim' }))
 
@@ -325,7 +317,6 @@ const queueTurn = (
     const { accountId, pieceId } = ids
     const attempt = nextAttempt(current)
     const requested = {
-      state: 'requested' as const,
       attempt,
       operation: null,
       layout: null,
@@ -334,15 +325,15 @@ const queueTurn = (
     const store = yield* CaptureStore
     const claimed = yield* stored(
       Option.isSome(current)
-        ? store.claimTurn(pieceId, current.value, requested)
-        : store.addTurn({ ...requested, pieceId, accountId, createdAt: at }),
+        ? store.claimTurn(pieceId, current.value, firstTurnState, requested)
+        : store.addTurn({ ...requested, state: firstTurnState, pieceId, accountId, createdAt: at }),
     )
     if (!claimed) return yield* TurnRefused.make({ reason: 'busy' })
     yield* (yield* Holds)
       .reserve({ accountId, hold: turnHold({ pieceId, attempt }), credits: prices.turn })
       .pipe(Effect.tapError(() => unclaimed(ids, current)))
     yield* enqueueTurn(pieceId)
-    return { ...requested, pieceId, accountId, createdAt: at }
+    return { ...requested, state: firstTurnState, pieceId, accountId, createdAt: at }
   })
 
 /** The turn a repeated request asked for, as it stands now; one still requested goes to the queue again. */
@@ -382,7 +373,7 @@ export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (contex
       yield* turnablePiece(accountId, pieceId)
       yield* settleTurn(pieceId)
       const current = yield* stored((yield* CaptureStore).findTurn(pieceId))
-      if (Option.isSome(current) && !hasEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
+      if (Option.isSome(current) && !turnEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
       const at = yield* nowDate
       return [yield* shownTurn(yield* queueTurn({ accountId, pieceId }, current, at), at), pieceId] as const
     })

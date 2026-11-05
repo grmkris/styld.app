@@ -20,6 +20,7 @@ import {
   tryOnLifetimeMillis,
 } from './TryOnShared.ts'
 import { TryOnStore, type TryOnRow } from './TryOnStore.ts'
+import { runningTryOn, type TryOnState } from './TryOnLifecycle.ts'
 
 // Taking a try-on further, one delivery of the generation queue at a time: hold its credits, then draw it once. Every
 // step reads where the try-on stands, so a redelivery picks up where the last one stopped.
@@ -34,17 +35,15 @@ export const admitTryOn = Effect.fn('Styld.TryOn.admission')(function* (row: Try
   const store = yield* TryOnStore
   const at = yield* nowDate
   if (at.getTime() - row.createdAt.getTime() > tryOnLifetimeMillis) {
-    if (yield* stored(store.advance(row.id, ['admitting'], { status: 'failed', updatedAt: at })))
+    if (yield* stored(store.advance(row.id, ['admitting'], 'failed', { updatedAt: at })))
       yield* settleTryOn({ ...row, status: 'failed' })
     return
   }
   yield* (yield* Holds).reserve({ accountId: row.accountId, hold: tryOnHold(row.id), credits: prices.tryOn }).pipe(
-    Effect.andThen(stored(store.advance(row.id, ['admitting'], { status: 'drawing', updatedAt: at }))),
+    Effect.andThen(stored(store.advance(row.id, ['admitting'], 'drawing', { updatedAt: at }))),
     Effect.tapError(() =>
       Effect.gen(function* () {
-        const moved = yield* stored(
-          store.advance(row.id, ['admitting'], { status: 'failed', updatedAt: yield* nowDate }),
-        )
+        const moved = yield* stored(store.advance(row.id, ['admitting'], 'failed', { updatedAt: yield* nowDate }))
         if (!moved) return
         yield* settleTryOn({ ...row, status: 'failed' })
         if (operationId !== undefined) yield* stored(store.undoTryOn(row, operationId)).pipe(Effect.ignore)
@@ -106,9 +105,9 @@ const requestOf = (row: TryOnRow) =>
   })
 
 /** End a drawing try-on: refused or lost (its credits go back), or done with its stored result. */
-const finish = (row: TryOnRow, change: Pick<TryOnRow, 'status'> & Partial<Pick<TryOnRow, 'resultKey'>>) =>
+const finish = (row: TryOnRow, to: TryOnState, change: Partial<Pick<TryOnRow, 'resultKey'>> = {}) =>
   Effect.gen(function* () {
-    return yield* stored((yield* TryOnStore).advance(row.id, ['drawing'], { ...change, updatedAt: yield* nowDate }))
+    return yield* stored((yield* TryOnStore).advance(row.id, ['drawing'], to, { ...change, updatedAt: yield* nowDate }))
   })
 
 /** Draw the try-on once and store its result. A refusal and an answer lost on the way both end it with its credits
@@ -118,16 +117,13 @@ const drawOnce = (row: TryOnRow, request: TryOnRequest) =>
     const painted = yield* Effect.result((yield* TryOnPainter).tryOn(request))
     // Only a refusal Muse did not bill is 'refused'; a lost answer or a broken call is lost on the way.
     if (Result.isFailure(painted))
-      return yield* finish(row, {
-        status: Predicate.isTagged(painted.failure.reason, 'Refused') ? 'refused' : 'failed',
-      })
+      return yield* finish(row, Predicate.isTagged(painted.failure.reason, 'Refused') ? 'refused' : 'failed')
     const key = tryOnKey(row)
     // The drawn bytes live only in this delivery: a result that cannot be stored now is lost.
     const kept = yield* Effect.result(writeObject(key, painted.success.bytes, painted.success.contentType))
-    if (Result.isFailure(kept)) return yield* finish(row, { status: 'failed' })
+    if (Result.isFailure(kept)) return yield* finish(row, 'failed')
     // The person deleted the try-on while it was drawn, or it was given up: its result has no row to show it.
-    if (!(yield* finish(row, { status: 'done', resultKey: key })))
-      yield* deleteAfterRows((yield* Media).bucket, [key], 'tryOn')
+    if (!(yield* finish(row, 'done', { resultKey: key }))) yield* deleteAfterRows((yield* Media).bucket, [key], 'tryOn')
   })
 
 /** The drawing's turn: claimed and drawn when nobody has it, ended when the delivery that claimed it died, and left to
@@ -136,11 +132,11 @@ const drawStep = (row: TryOnRow) =>
   Effect.gen(function* () {
     const at = yield* nowDate
     if (row.startedAt !== null) {
-      if (at.getTime() - row.startedAt.getTime() > drawingPatienceMillis) yield* finish(row, { status: 'failed' })
+      if (at.getTime() - row.startedAt.getTime() > drawingPatienceMillis) yield* finish(row, 'failed')
       return
     }
     const request = yield* requestOf(row)
-    if (Option.isNone(request)) return yield* finish(row, { status: 'failed' })
+    if (Option.isNone(request)) return yield* finish(row, 'failed')
     if (yield* stored((yield* TryOnStore).claim(row.id, at))) yield* drawOnce(row, request.value)
   })
 
@@ -151,7 +147,7 @@ export const giveUpTryOn = Effect.fn('Styld.TryOn.giveUp')(function* (tryOnId: s
   if (Option.isNone(row)) return
   const at = yield* nowDate
   const claimed = row.value.startedAt !== null && at.getTime() - row.value.startedAt.getTime() <= drawingPatienceMillis
-  if (!claimed) yield* stored(store.advance(tryOnId, ['admitting', 'drawing'], { status: 'failed', updatedAt: at }))
+  if (!claimed) yield* stored(store.advance(tryOnId, [...runningTryOn], 'failed', { updatedAt: at }))
   const latest = yield* stored(store.tryOnForWork(tryOnId))
   if (Option.isSome(latest)) yield* settleTryOn(latest.value)
 })

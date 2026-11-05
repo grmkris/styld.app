@@ -29,9 +29,9 @@ export const captureLifecycle = lifecycle<CaptureState>('capture', {
 })
 
 /** The state a capture of the person's own upload is created in. */
-export const uploadedCaptureState = 'processing' satisfies CaptureState
+export const uploadedCaptureState = 'processing' as const satisfies CaptureState
 /** The state a garment offered from an outfit photo is created in: in the tray at once. */
-export const offeredCaptureState = 'review' satisfies CaptureState
+export const offeredCaptureState = 'review' as const satisfies CaptureState
 
 /** How a capture's status ended its hold, once it ended: in the tray or done it succeeded. A capture still
  * processing has not ended. */

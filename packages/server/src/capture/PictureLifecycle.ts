@@ -36,7 +36,7 @@ export const pictureLifecycle = lifecycle<PictureState>('piece picture', {
 })
 
 /** The state a picture is added in. */
-export const firstPictureState = 'queued' satisfies PictureState
+export const firstPictureState = 'queued' as const satisfies PictureState
 
 /** A piece's first picture, queued to be drawn free; `turn` is when it was last moved, `at` unless a run spreads its
  * pictures (`Backfill.ts`). */

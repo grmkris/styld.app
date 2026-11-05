@@ -49,10 +49,10 @@ describe('claiming a paid attempt', () => {
     Effect.gen(function* () {
       const store = yield* CaptureStore
       const seen = { state: 'ready' as const, attempt: 0 }
-      const requested = { state: 'requested' as const, attempt: 1, operation: null, layout: null, updatedAt: at }
+      const requested = { attempt: 1, operation: null, layout: null, updatedAt: at }
       const claims = yield* Effect.all([
-        store.claimTurn('pc_1', seen, requested),
-        store.claimTurn('pc_1', seen, requested),
+        store.claimTurn('pc_1', seen, 'requested', requested),
+        store.claimTurn('pc_1', seen, 'requested', requested),
       ])
       expect(claims).toEqual([true, false])
       yield* store.dropTurn('pc_1', 0)
