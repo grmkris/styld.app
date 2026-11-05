@@ -51,7 +51,9 @@ const drizzleModules = new Set([
 const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   accounts: ['AccountLifecycle.ts'],
   accountDeletions: ['AccountLifecycle.ts'],
-  oauthGrants: ['AccountLifecycle.ts'],
+  oauthGrants: ['AccountLifecycle.ts', 'OAuthStore.ts'],
+  oauthAssertions: ['OAuthStore.ts', 'OAuthAssertions.ts'],
+  oauthClients: ['OAuth.ts', 'OAuthStore.ts'],
   providerFiles: ['capture/'],
   pieces: ['wardrobe/'],
   pieceProvenance: ['wardrobe/'],

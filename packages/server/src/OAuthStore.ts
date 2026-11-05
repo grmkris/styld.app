@@ -3,7 +3,7 @@ import { OAuthServer } from '@yielded/auth'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { Effect, Schema } from 'effect'
 import type { ConsentPerson } from './ConsentPage.ts'
-import { type Database, query } from './kernel/Db.ts'
+import { type Database, logUnavailable, query } from './kernel/Db.ts'
 
 // The MCP OAuth server's rows in D1 (`OAuth.ts` serves them): its grants, the assertions it consumed, the clients that
 // registered, and the signed-in person its consent page names.
@@ -14,8 +14,9 @@ const unavailable = () => new OAuthServer.Unavailable()
 
 type Drizzle = Database['Service']
 
-/** A D1 call of the OAuth server: D1 not answering is the server being unavailable. */
-export const stored = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
+/** A D1 call of the OAuth server: D1 not answering is logged once and is the server being unavailable. */
+export const stored = <A>(run: () => Promise<A>) =>
+  query(run).pipe(Effect.tapError(logUnavailable), Effect.mapError(unavailable))
 
 const RecordJson = Schema.fromJsonString(OAuthServer.Record)
 
