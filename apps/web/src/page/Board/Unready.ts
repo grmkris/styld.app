@@ -7,12 +7,12 @@ import { backIcon } from '../../Icon.ts'
 import { boardsRouter } from '../../route.ts'
 import { block, line } from '../../Skeleton.styles.ts'
 import { styled } from '../../Styled.ts'
-import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import { Message } from './Message.ts'
 import { type BoardData, BoardShown } from './Model.ts'
 import { retryView } from '../Retry.ts'
 import * as styles from './View.styles.ts'
+import { loadingStatus } from '../../Loading.ts'
 
 const backToBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a([h.Href(boardsRouter({})), ...styled(h, styles.back())], [backIcon(h), format(locale, 'studio.backToBoards', {})])
@@ -33,7 +33,7 @@ const loading = (withBack: boolean, locale: Locale, h: HtmlBuilder<Message>): Ht
         ),
       ],
     ),
-    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'board.loading', {})]),
+    loadingStatus(format(locale, 'board.loading', {}), h),
   ])
 
 /** A board that is not there, or not the visitor's to edit: the way back and a line saying so. */

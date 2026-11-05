@@ -9,7 +9,6 @@ import { accountRouter, homeRouter, personRouter, pieceRouter, profileRouter, pu
 import { avatar } from '../Avatar.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import { generatedPiecesMark } from './Board/MakeView.ts'
 import { publicPieceImage } from './Board/Table.ts'
@@ -21,6 +20,7 @@ import { Message, type Model, type PersonTab, Target, VisitShown } from './Visit
 import * as Share from './Share.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
+import { loadingStatus } from '../Loading.ts'
 
 const tabLabel = (tab: PersonTab, locale: Locale) =>
   format(locale, tab === 'boards' ? 'profile.public.boards' : 'profile.public.looks', {})
@@ -223,7 +223,7 @@ const pieceView = (
  * technology. */
 const loadingView = (target: Target, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
-    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+    loadingStatus(format(locale, 'common.loading', {}), h),
     h.span([h.AriaHidden(true), ...styled(h, styles.barSkeleton())]),
     Target.guards.Piece(target)
       ? h.div(

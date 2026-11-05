@@ -11,12 +11,12 @@ import { loader } from '../Icon.ts'
 import { boardRouter, lookRouter, publicPieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { publicPicture, publicPieceImage } from './Board/Table.ts'
 import { generatedPiecesMark } from './Board/MakeView.ts'
 import { publicFace } from './PublicTiles.ts'
 import { itemKey, Message, type Model, More, stripLength, WatchListEnd } from './WhatsNew.ts'
 import * as styles from './WhatsNewView.styles.ts'
+import { loadingStatus, placeholderList } from '../Loading.ts'
 
 // What's new, drawn twice on Home: the newest along a strip near the top, and the rest at its foot. Every item is
 // the same card (its picture at 4:5, its name, whose it is), so the strip keeps its height from skeleton to content.
@@ -115,19 +115,22 @@ const skeletonCards = ['a', 'b', 'c'] as const
 /** The strip's shape while the newest come: three cards' outlines, as tall as the cards that replace them. */
 const stripSkeleton = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.stripBox()), [
-    h.ul(
-      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.strip())],
-      skeletonCards.map((id) =>
-        h.keyed('li')(id, styled(h, styles.slot()), [
+    placeholderList(
+      {
+        list: styles.strip(),
+        slots: skeletonCards,
+        item: styles.slot(),
+        content: [
           h.span(styled(h, styles.card()), [
             h.span(styled(h, cx(block(), styles.picture()))),
             h.span(styled(h, cx(line(), styles.name()))),
             h.span(styled(h, cx(line(), styles.by()))),
           ]),
-        ]),
-      ),
+        ],
+      },
+      h,
     ),
-    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+    loadingStatus(format(locale, 'common.loading', {}), h),
   ])
 
 /** The strip when there is nothing to show, or the newest did not load: one line in the strip's own height. */

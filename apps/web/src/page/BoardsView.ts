@@ -12,7 +12,6 @@ import { addIcon, loader } from '../Icon.ts'
 import { boardRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { boardImage, fromStyld, type ImageSource } from './Board/Table.ts'
 import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
@@ -22,6 +21,7 @@ import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
 import { labMain } from './SectionMain.ts'
 import type { BoardsData, PiecesData } from '../ServerData.ts'
+import { loadingStatus, placeholderList } from '../Loading.ts'
 
 /** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
 const coverSource = (pin: Pin): CoverPicture => ({
@@ -79,16 +79,19 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(
     [],
     [
-      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'boards.loading', {})]),
-      h.ul(
-        [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
-        skeletonTiles.map((slot) =>
-          h.keyed('li')(slot, styled(h, styles.tile()), [
+      loadingStatus(format(locale, 'boards.loading', {}), h),
+      placeholderList(
+        {
+          list: styles.grid(),
+          slots: skeletonTiles,
+          item: styles.tile(),
+          content: [
             h.span(styled(h, cx(block(), styles.paperSkeleton()))),
             h.span(styled(h, cx(line(), styles.nameSkeleton()))),
             h.span(styled(h, cx(line(), styles.metaSkeleton()))),
-          ]),
-        ),
+          ],
+        },
+        h,
       ),
     ],
   )

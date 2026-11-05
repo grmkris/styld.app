@@ -16,7 +16,6 @@ import { intlLocale } from '../Locale.ts'
 import { addPiecesRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { type PieceCategory, piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, otherTypeOf, Saving } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
@@ -26,6 +25,7 @@ import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './ReviewView.styles.ts'
+import { loadingStatus } from '../Loading.ts'
 
 /** A found piece's picture; the API Worker serves it to its owner only. */
 const picturePath = (detection: Detection, decision: Decision | undefined) =>
@@ -423,7 +423,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
           ...header(model, locale, h),
           ...AsyncData.matchData(model.tray, {
             onEmpty: () => [
-              h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+              loadingStatus(format(locale, 'common.loading', {}), h),
               h.ul(
                 [h.AriaHidden(true), ...styled(h, styles.grid())],
                 ['a', 'b', 'c', 'd'].map((slot) =>

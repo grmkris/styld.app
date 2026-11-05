@@ -20,12 +20,12 @@ import * as SaveToBoardView from './SaveToBoardView.ts'
 import type { BoardsData } from '../ServerData.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { collage } from './LooksView.ts'
 import { retryView } from './Retry.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { cx } from 'zyzz'
 import * as styles from './LooksView.styles.ts'
+import { loadingStatus } from '../Loading.ts'
 
 const backToLooks = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
@@ -141,7 +141,7 @@ const pieceRows = (look: LookContract, locale: Locale, h: HtmlBuilder<Message>):
 
 /** The look in shape while it loads: its name, its square of pieces and two rows, and what is loading. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  loadingStatus(format(locale, 'common.loading', {}), h),
   h.span([h.AriaHidden(true), ...styled(h, cx(line(), styles.titleSkeleton()))]),
   h.div(
     [h.AriaHidden(true), ...styled(h, styles.lookCollage())],

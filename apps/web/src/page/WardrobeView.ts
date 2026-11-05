@@ -14,7 +14,6 @@ import { addPiecesRouter, browseRouter, pieceRouter } from '../route.ts'
 import { type Browse, browseGroup, browseType } from '../WardrobeBrowse.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import type { PiecesData } from '../ServerData.ts'
 import { brandsOf, CategoryEdit, filterCount, Message, type Model, newestOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
@@ -27,6 +26,7 @@ import * as WardrobeSelectView from './WardrobeSelectView.ts'
 import { wardrobeMain } from './SectionMain.ts'
 import { chip } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
+import { loadingStatus, placeholderList } from '../Loading.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
 const thumbnailPath = (piece: Piece) => cdn.piece(piece, 'thumb')
@@ -472,10 +472,10 @@ const skeletonCards = ['a', 'b', 'c', 'd'] as const
 /** The shape of what is coming: the category cards, where the groups will be. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.wardrobePage()), [
-    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'wardrobe.shelves.loadingPieces', {})]),
-    h.ul(
-      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.categories())],
-      skeletonCards.map((slot) => h.keyed('li')(slot, styled(h, cx(block(), styles.categorySkeleton())))),
+    loadingStatus(format(locale, 'wardrobe.shelves.loadingPieces', {}), h),
+    placeholderList(
+      { list: styles.categories(), slots: skeletonCards, item: cx(block(), styles.categorySkeleton()), content: [] },
+      h,
     ),
   ])
 

@@ -9,12 +9,12 @@ import { secondaryAction } from '../Actions.styles.ts'
 import { boardsRouter, lookRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { retryView } from './Retry.ts'
 import { labMain } from './SectionMain.ts'
 import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
+import { loadingStatus, placeholderList } from '../Loading.ts'
 
 /** Up to four of a look's pieces, laid out together. */
 export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
@@ -54,16 +54,19 @@ const skeletonCards = ['a', 'b'] as const
 
 /** The shape of what is coming: two cards with a square for the pieces, a name and a line. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
-  h.ul(
-    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
-    skeletonCards.map((slot) =>
-      h.keyed('li')(slot, styled(h, styles.card()), [
+  loadingStatus(format(locale, 'common.loading', {}), h),
+  placeholderList(
+    {
+      list: styles.grid(),
+      slots: skeletonCards,
+      item: styles.card(),
+      content: [
         h.span(styled(h, cx(block(), styles.collageSkeleton()))),
         h.span(styled(h, cx(line(), styles.nameSkeleton()))),
         h.span(styled(h, cx(line(), styles.metaSkeleton()))),
-      ]),
-    ),
+      ],
+    },
+    h,
   ),
 ]
 
