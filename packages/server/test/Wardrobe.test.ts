@@ -233,16 +233,21 @@ const cutout = {
 } as const
 
 describe('the picture a piece shows', () => {
-  test('is its drawing, and the photo when chosen or when there is no drawing', () => {
+  test('is its cut-out until the drawing is chosen, and the drawing when it is', () => {
     expect(shownImage(cutout, pictureRow('ready'))).toEqual({
+      key: cutout.imageKey,
+      contentType: 'image/jpeg',
+      rotation: 0,
+    })
+    expect(shownImage(cutout, pictureRow('ready', { shown: 'clean' }))).toEqual({
       key: 'accounts/ac_1/pieces/pc_1/clean-2.png',
       contentType: 'image/png',
       rotation: 0,
     })
     expect(shownImage(cutout, pictureRow('ready', { shown: 'photo' })).key).toBe(cutout.imageKey)
-    // A drawing proposed before 4 November shows unless its owner chose the photo; a failed one has no drawing to show.
-    expect(shownImage(cutout, pictureRow('proposed')).contentType).toBe('image/png')
-    expect(shownImage(cutout, pictureRow('proposed', { shown: 'photo' })).key).toBe(cutout.imageKey)
+    // A drawing proposed before 4 November is ready like any other, and still not the main picture until chosen.
+    expect(shownImage(cutout, pictureRow('proposed')).key).toBe(cutout.imageKey)
+    expect(shownImage(cutout, pictureRow('proposed', { shown: 'clean' })).contentType).toBe('image/png')
     expect(shownImage(cutout, pictureRow('failed', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)
     expect(shownImage(cutout, undefined)).toEqual({ key: cutout.imageKey, contentType: 'image/jpeg', rotation: 0 })
     expect(shownImage({ ...cutout, imageKey: null }, undefined).key).toBe('photo.jpg')
@@ -250,9 +255,10 @@ describe('the picture a piece shows', () => {
 
   test('turns the owner’s own cut-out by their rotation, and the drawing by what it is past the one drawn at', () => {
     const turned = { ...cutout, rotation: 180 } as const
-    expect(shownImage(turned, pictureRow('ready', { drawnRotation: 180 })).rotation).toBe(0)
     expect(shownImage(turned, pictureRow('ready')).rotation).toBe(180)
-    expect(shownImage(turned, pictureRow('ready', { drawnRotation: 270 })).rotation).toBe(270)
+    expect(shownImage(turned, pictureRow('ready', { shown: 'clean', drawnRotation: 180 })).rotation).toBe(0)
+    expect(shownImage(turned, pictureRow('ready', { shown: 'clean' })).rotation).toBe(180)
+    expect(shownImage(turned, pictureRow('ready', { shown: 'clean', drawnRotation: 270 })).rotation).toBe(270)
     expect(shownImage(turned, pictureRow('ready', { shown: 'photo' })).rotation).toBe(180)
     expect(shownImage(turned, undefined).rotation).toBe(180)
     expect(pictureView(pictureRow('ready'), new Date(0), turned)).toMatchObject({ rotation: 180 })
@@ -261,8 +267,13 @@ describe('the picture a piece shows', () => {
 
   test('tells its owner where the drawing stands, and shows a claim no delivery finished as failed', () => {
     const at = new Date(10 * 60 * 1000)
-    expect(pictureView(pictureRow('ready'), at)).toEqual({ state: 'ready', shows: 'clean', version: 2 })
-    expect(pictureView(pictureRow('proposed'), at)).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+    expect(pictureView(pictureRow('ready'), at)).toEqual({ state: 'ready', shows: 'photo', version: 2 })
+    expect(pictureView(pictureRow('ready', { shown: 'clean' }), at)).toEqual({
+      state: 'ready',
+      shows: 'clean',
+      version: 2,
+    })
+    expect(pictureView(pictureRow('proposed'), at)).toEqual({ state: 'ready', shows: 'photo', version: 2 })
     expect(pictureView(pictureRow('generating', { claimedAt: new Date(at.getTime() - 60_000) }), at).state).toBe(
       'drawing',
     )
