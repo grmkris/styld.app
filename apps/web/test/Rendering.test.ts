@@ -244,6 +244,21 @@ test('tab pages carry no inline style, which the page’s CSP would refuse', asy
     })
 })
 
+test('a board, look, piece or profile page ships no site-wide preview, so a private one cannot claim it is public', async () => {
+  for (const path of ['/@nika.kovac', '/boards/bd_abc', '/looks/lk_abc', '/pieces/pc_abc']) {
+    const html = await renderPage(path)
+    expect({ path, og: html.includes('og:title'), card: html.includes('twitter:card') }).toEqual({
+      path,
+      og: false,
+      card: false,
+    })
+  }
+  const home = await renderPage('/')
+  expect(home).toContain('property="og:title"')
+  expect(home).toContain('name="twitter:card"')
+  expect(await renderPage('/boards')).toContain('property="og:title"')
+})
+
 const facePreloads = (html: string) =>
   [
     ...html.matchAll(/<link rel="preload" href="[^"]*\/([a-z-]+)[^"/]*" as="font" type="font\/woff2" crossorigin>/g),
