@@ -612,7 +612,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.betterLook': 'Needs a better look',
   'capture.betterLookHint': 'Only part of it shows. Hold it up or lay it out flat, and add it again.',
   'capture.foundTitle': '{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}',
-  'capture.reviewHint': "They're cut out and ready. Untick anything that isn't yours.",
+  'capture.reviewHint': "Add the pieces you want. Untick anything that isn't yours.",
   'capture.allowance':
     '{plan, select, free {{remaining, plural, one {# free credit left} other {# free credits left}}} other {{remaining} credits left today}}',
   'capture.finding': 'Finding pieces…',
@@ -681,6 +681,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.linkProblem.noPicture': 'No product picture on that page. Send a photo or a screenshot instead.',
   'capture.linkProblem.slowDown': 'Too many links at once. Try again in a minute.',
   'capture.linkPlaceholder': 'https://…',
+  'capture.showEverything': 'Show everything detected',
+  'capture.showSuggested': 'Show suggested pieces only',
   'looks.title': 'Looks',
   'looks.inYourLooks': 'In your looks',
   'looks.pieceCount': '{count, plural, one {# piece} other {# pieces}}',

@@ -262,4 +262,52 @@ describe('the review tray', () => {
       model((current) => expect(keptOf(current).map(({ id: kept }) => kept)).toEqual([detectionId, id('dt', 2)])),
     )
   })
+
+  test('asks again while a suggested piece’s shop photo is being drawn', () => {
+    const drawing = tray([
+      {
+        status: 'review',
+        detections: [{ ...detection(1, 'shortSleeveTops'), picture: { state: 'drawing' as const } }],
+      },
+    ])
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededLoadTray({ tray: drawing })),
+      model((current) => expect(pending(current)).toEqual([id('cp', 0)])),
+      message(Message.TickedTrayRefresh()),
+      Command.expectExact(LoadTray),
+      Command.resolve(
+        LoadTray,
+        Message.SucceededLoadTray({
+          tray: tray([
+            {
+              status: 'review',
+              detections: [
+                { ...detection(1, 'shortSleeveTops'), picture: { state: 'ready' as const, image: '/product.png' } },
+              ],
+            },
+          ]),
+        }),
+      ),
+      model((current) => expect(pending(current)).toEqual([])),
+    )
+  })
+
+  test('hides pieces the tray did not preselect until they are asked for', () => {
+    const mixed = tray([
+      { status: 'review', detections: [detection(1, 'shortSleeveTops'), detection(2, 'jeans', false)] },
+    ])
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededLoadTray({ tray: mixed })),
+      model((current) => {
+        expect(current.showingAll).toBe(false)
+        expect(keptOf(current).map(({ id: kept }) => kept)).toEqual([id('dt', 1)])
+      }),
+      message(Message.ToggledShowAll()),
+      model((current) => expect(current.showingAll).toBe(true)),
+    )
+  })
 })

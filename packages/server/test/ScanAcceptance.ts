@@ -10,6 +10,7 @@ const Card = Schema.Struct({
   sightings: Schema.Number,
   alreadyHave: Schema.optionalKey(Schema.String),
   partial: Schema.Boolean,
+  picture: Schema.optionalKey(Schema.Struct({ state: Schema.String, image: Schema.optionalKey(Schema.String) })),
 })
 const Tray = Schema.Struct({
   captures: Schema.Array(Schema.Struct({ id: Schema.String, detections: Schema.Array(Card) })),
@@ -49,6 +50,11 @@ export const verifyScan = async (origin: string, fixtures: string) => {
   expect(seen.captures).not.toContain(scanned.partThree)
   expect(seen.cards.get(scanned.greenAgain)).toMatchObject({ alreadyHave: scanned.greenPiece, preselected: false })
   expect(seen.cards.get(scanned.fragment)).toMatchObject({ partial: true, preselected: false })
+  expect(
+    seen.cards.get(scanned.redTwo)?.picture?.state === 'drawing' ||
+      seen.cards.get(scanned.redTwo)?.picture?.state === 'ready',
+  ).toBe(true)
+  expect(seen.cards.get(scanned.greenAgain)?.picture).toBeUndefined()
 
   // The second import's red tops were different pieces after all.
   const split = await owner(`/api/captures/detections/${scanned.redFour}/split`, { method: 'POST' })
@@ -61,7 +67,9 @@ export const verifyScan = async (origin: string, fixtures: string) => {
 
   // Keep the first import's red top and skip its green one: one new piece, and the red top's other sighting goes
   // with it, so the first part keeps only its fragment.
-  const before = (await decoded(Pieces, await owner('/api/pieces'))).pieces.length
+  const wardrobe = await decoded(Pieces, await owner('/api/pieces'))
+  expect(wardrobe.pieces.map(({ id }) => id)).toEqual([scanned.greenPiece])
+  const before = wardrobe.pieces.length
   const reviewed = await owner('/api/captures/review', {
     method: 'POST',
     body: JSON.stringify({

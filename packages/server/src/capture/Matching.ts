@@ -2,6 +2,7 @@ import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
 import { enqueueMatch } from './Shared.ts'
+import { syncPreviews } from './Preview.ts'
 import { comparablePictures } from './Comparable.ts'
 import { Media } from '../kernel/Media.ts'
 import { judgedAt } from './Garments.ts'
@@ -133,6 +134,11 @@ const matchNext = (capture: CaptureRow) =>
           Effect.tapError(() => stored(Effect.flatMap(CaptureStore, (store) => store.releaseMatch(next.id, at)))),
         )
     yield* stored((yield* CaptureStore).finishMatch(next, at, outcome))
+    const touched = [
+      next.id,
+      ...(Option.isSome(outcome.joins) && outcome.joins.value.replaces ? [outcome.joins.value.head] : []),
+    ]
+    yield* syncPreviews(capture.accountId, yield* stored((yield* CaptureStore).detections(capture.accountId, touched)))
     return true
   })
 
@@ -151,6 +157,19 @@ export const matching = Effect.map(Effect.context<CaptureServices>(), (context) 
   /** The last attempt failed: the import's waiting sightings stay on their own cards. */
   failMatch: Effect.fn('Styld.Capture.failMatch')(function* (captureId: string) {
     const found = yield* stored((yield* CaptureStore).captureForProcessing(captureId))
-    if (Option.isSome(found)) yield* stored((yield* CaptureStore).abandonMatches(scopeOf(found.value)))
+    if (Option.isSome(found)) {
+      const capture = found.value
+      yield* stored((yield* CaptureStore).abandonMatches(scopeOf(capture)))
+      const open = yield* stored((yield* CaptureStore).tray(capture.accountId))
+      const scoped = new Set(
+        open.captures
+          .filter((row) => row.id === capture.id || (capture.importId !== null && row.importId === capture.importId))
+          .map(({ id }) => id),
+      )
+      yield* syncPreviews(
+        capture.accountId,
+        open.detections.filter((row) => scoped.has(row.captureId)),
+      )
+    }
   }, Effect.provide(context)),
 }))

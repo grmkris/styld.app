@@ -18,10 +18,12 @@ import { usableUpload } from '../wardrobe/Shared.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
 import { captureHold, enqueueCapture } from './Shared.ts'
+import { syncPreviews } from './Preview.ts'
 import { uploadedCaptureState } from './CaptureLifecycle.ts'
 import type { CaptureRow, DetectionRow, FrameRow, UploadedCapture } from './Store.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
+import { isDrawn, pictureView } from '../wardrobe/Shown.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, madeBefore, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { CaptureStore } from './Store.ts'
@@ -236,24 +238,53 @@ export const suggestionOfRow = (row: DetectionRow) => ({
   pattern: row.suggestedPattern,
 })
 
-const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings: number) {
-  const signed = yield* SignedMedia
-  const images: Record<string, string> = {}
-  for (const [which, key] of Object.entries({
-    cutout: row.cutoutKey ?? row.sourceKey,
-    original: row.sourceKey,
-    back: row.backCutoutKey,
-  })) {
-    if (key === null) continue
-    const address = yield* signed.address({
-      entityId: row.id,
-      key,
-      contentType: 'image/png',
-      variant: which === 'cutout' ? 'thumb' : 'full',
-      version: key,
-    })
-    if (Option.isSome(address)) images[which] = address.value
-  }
+type DetectionPreview = {
+  readonly pieceId: string
+  readonly picture: import('./Store.ts').PictureRow | undefined
+}
+
+const signedOf = (entityId: string, key: string, variant: 'thumb' | 'full', version: string) =>
+  Effect.gen(function* () {
+    const signed = yield* SignedMedia
+    return yield* signed.address({ entityId, key, contentType: 'image/png', variant, version })
+  })
+
+const detectionImages = (row: DetectionRow) =>
+  Effect.gen(function* () {
+    const images: Record<string, string> = {}
+    for (const [which, key] of Object.entries({
+      cutout: row.cutoutKey ?? row.sourceKey,
+      original: row.sourceKey,
+      back: row.backCutoutKey,
+    })) {
+      if (key === null) continue
+      const address = yield* signedOf(row.id, key, which === 'cutout' ? 'thumb' : 'full', key)
+      if (Option.isSome(address)) images[which] = address.value
+    }
+    return images
+  })
+
+const previewPicture = (preview: DetectionPreview | undefined) =>
+  Effect.gen(function* () {
+    if (preview?.picture === undefined) return undefined
+    const shown = pictureView(preview.picture, yield* nowDate)
+    if (!isDrawn(preview.picture)) return { state: shown.state }
+    const address = yield* signedOf(
+      preview.pieceId,
+      preview.picture.cleanKey,
+      'thumb',
+      `clean${preview.picture.version}`,
+    )
+    return Option.isSome(address) ? { state: shown.state, image: address.value } : { state: shown.state }
+  })
+
+const detectionView = Effect.fnUntraced(function* (
+  row: DetectionRow,
+  sightings: number,
+  preview: DetectionPreview | undefined,
+) {
+  const images = yield* detectionImages(row)
+  const picture = yield* previewPicture(preview)
   return {
     id: row.id,
     // A garment the wardrobe already has is offered unticked: skipping it is the likelier choice.
@@ -266,6 +297,7 @@ const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings:
     partial: row.whole !== null && verdictOf(row.whole) !== 'preselect',
     suggestion: suggestionOfRow(row),
     ...(Object.keys(images).length === 0 ? {} : { images }),
+    ...(picture === undefined ? {} : { picture }),
   }
 })
 
@@ -302,7 +334,27 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
     const open = yield* stored((yield* CaptureStore).tray(accountId))
     const { remaining, daily } = yield* (yield* Holds).balance(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
-    const captures = yield* Effect.forEach(trayCards(open), ({ capture, detections }) =>
+    const cards = trayCards(open)
+    const previewPieces = yield* stored(
+      (yield* CaptureStore).piecesByDetections(
+        accountId,
+        cards.flatMap(({ detections }) => detections.map(({ row }) => row.id)),
+      ),
+    )
+    const previewPictures = new Map(
+      (yield* stored((yield* CaptureStore).picturesAmong(previewPieces.map(({ id }) => id)))).map((row) => [
+        row.pieceId,
+        row,
+      ]),
+    )
+    const previewByDetection = new Map(
+      previewPieces.flatMap((piece) =>
+        piece.detectionId === null
+          ? []
+          : [[piece.detectionId, { pieceId: piece.id, picture: previewPictures.get(piece.id) }] as const],
+      ),
+    )
+    const captures = yield* Effect.forEach(cards, ({ capture, detections }) =>
       Effect.gen(function* () {
         return {
           id: capture.id,
@@ -310,7 +362,9 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
           source: capture.source === 'photos' ? 'picker' : capture.source,
           status: capture.status,
           createdAt: capture.createdAt.toISOString(),
-          detections: yield* Effect.forEach(detections, ({ row, sightings }) => detectionView(row, sightings)),
+          detections: yield* Effect.forEach(detections, ({ row, sightings }) =>
+            detectionView(row, sightings, previewByDetection.get(row.id)),
+          ),
         }
       }),
     )
@@ -323,7 +377,9 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
   split: Effect.fn('Styld.Capture.split')(function* (detectionId: string, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
     const split = Effect.gen(function* () {
-      if (!(yield* stored((yield* CaptureStore).split(accountId, detectionId)))) return yield* NotFound.make({})
+      const ids = yield* stored((yield* CaptureStore).split(accountId, detectionId))
+      if (ids.length === 0) return yield* NotFound.make({})
+      yield* syncPreviews(accountId, yield* stored((yield* CaptureStore).detections(accountId, ids)))
     })
     yield* once(
       yield* WardrobeStore,

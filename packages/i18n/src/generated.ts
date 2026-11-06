@@ -348,6 +348,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.scan.title': Readonly<Record<string, never>>
   'capture.seeFound': { readonly count: number }
   'capture.sent': Readonly<Record<string, never>>
+  'capture.showEverything': Readonly<Record<string, never>>
+  'capture.showSuggested': Readonly<Record<string, never>>
   'capture.sightings': { readonly count: string | number }
   'capture.split': Readonly<Record<string, never>>
   'capture.stale': Readonly<Record<string, never>>
@@ -1185,4 +1187,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '74fb800477a6c0a04830f04d3cdbac43b05b905b2eacde5da0040f03fcbc8619'
+export const catalogVersion = 'd3800b4d93f70f4e60dd5209c2a58f04645a3e7e0937d0c156b639181f0158d4'
