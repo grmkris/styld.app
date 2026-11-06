@@ -129,13 +129,14 @@ export const queueName = style({
 export const queueState = style({
   display: 'inline-flex',
   alignItems: 'center',
+  flexWrap: 'wrap',
   gap: 'snug',
+  minInlineSize: '0',
   fontSize: 'small',
   color: 'signal',
-  whiteSpace: 'nowrap',
 })
 export const queueDone = style({ fontSize: 'small', color: 'ink3' })
-export const queueFailed = style({ fontSize: 'small', color: 'error', textAlign: 'end' })
+export const queueFailed = style({ fontSize: 'small', color: 'error', textAlign: 'end', whiteSpace: 'normal' })
 export const retry = style({
   display: 'inline-grid',
   placeItems: 'center',

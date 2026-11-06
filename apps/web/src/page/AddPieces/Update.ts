@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { type CaptureId, type CaptureSource, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
+import { type CaptureId, type CaptureSource, maximumImageBytes, prices, type Side, VideoType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import { File, Update } from 'foldkit'
@@ -38,6 +38,14 @@ export const classify = (file: File.File): { kind: 'photo' | 'video' } | { probl
   if (videoTypes.includes(type)) return { kind: 'video' }
   return { problem: 'notSupported' }
 }
+
+/** Credits this file spends if it starts now: a photo (a back is free), or a video's half-minute. */
+const costToStart = (item: Item) =>
+  item.kind === 'video' ? prices.videoHalfMinute : Option.contains(item.side, 'back') ? 0 : prices.photo
+
+/** Today's remaining credits are known and too few for this cost. Unknown leaves the server to refuse. */
+const lacksCredits = (model: Model, cost: number) =>
+  Option.exists(model.maybeAllowance, ({ remaining }) => remaining < cost)
 
 /** A video's next step: read it, send it whole, or send its next part. */
 const videoCommand = (item: Item, index: number, plan: Option.Option<VideoPlan>) => {
@@ -101,15 +109,21 @@ const startable = (model: Model) => {
   ).starting
 }
 
-/** Start the files that can go now. */
+/** Start the files that can go now. When today's credits are known and a file would spend more
+ * than remain, it fails as the day's limit without going up, and so do the others still waiting. */
 const pump = (model: Model) => {
   const starting = startable(model)
-  const items = model.items.map((item, index) =>
-    starting.some((start) => start.index === index) ? { ...item, sending: Sending.Sending() } : item,
-  )
+  const send = starting.filter(({ item }) => !lacksCredits(model, costToStart(item)))
+  const outOfCredits = send.length !== starting.length
+  const items = model.items.map((item, index) => {
+    if (send.some((start) => start.index === index)) return { ...item, sending: Sending.Sending() }
+    if (outOfCredits && Sending.guards.Waiting(item.sending))
+      return { ...item, sending: Sending.Failed({ problem: 'dailyLimit' }) }
+    return item
+  })
   return {
     model: modifyFields(model, { items: () => items }),
-    commands: starting.map(({ item, index }) => commandFor(model, item, index)),
+    commands: send.map(({ item, index }) => commandFor(model, item, index)),
   }
 }
 
@@ -133,21 +147,23 @@ const anyPending = (model: Model) =>
 const sendLink = (link: LinkItem, index: number) =>
   SendLink({ index, url: link.url, operationId: link.operationId, uploadId: link.uploadId })
 
-/** A product page joins the list and goes at once: it costs this device nothing to send. */
+/** A product page joins the list and goes at once: it costs this device nothing to send. When
+ * today's credits are known and none remain for a photo, it fails here without reading the page. */
 const addedLink = (model: Model): UpdateReturn => {
   const url = model.link.trim()
   if (url.length === 0) return { model }
+  const refused = lacksCredits(model, prices.photo)
   const link: LinkItem = {
     key: `link:${model.links.length}:${url}`,
     url,
     name: Option.none(),
     operationId: Option.none(),
     uploadId: Option.none(),
-    sending: LinkSending.Sending(),
+    sending: refused ? LinkSending.Failed({ problem: 'dailyLimit' }) : LinkSending.Sending(),
   }
   return {
     model: modifyFields(model, { link: () => '', links: (links) => [...links, link] }),
-    commands: [sendLink(link, model.links.length)],
+    commands: refused ? [] : [sendLink(link, model.links.length)],
   }
 }
 
@@ -163,6 +179,14 @@ const failedLink = (model: Model, { index, problem, operationId, uploadId }: Fai
 const retriedLink = (model: Model, index: number): UpdateReturn => {
   const link = model.links[index]
   if (link === undefined || !LinkSending.guards.Failed(link.sending)) return { model }
+  if (lacksCredits(model, prices.photo)) {
+    return {
+      model: withLink(model, index, (current) => ({
+        ...current,
+        sending: LinkSending.Failed({ problem: 'dailyLimit' }),
+      })),
+    }
+  }
   return {
     model: withLink(model, index, (current) => ({ ...current, sending: LinkSending.Sending() })),
     commands: [sendLink(link, index)],
