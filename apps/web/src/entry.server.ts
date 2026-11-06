@@ -21,6 +21,9 @@ provideAllCatalogs()
 
 export const application = { Flags, routing: {}, init, view }
 
+/** A rendered page plus whether the edge, not the site-wide tags, should own its link preview. */
+type DocumentPage = Server.RenderedApplication & { readonly awaitsEdgePreview?: boolean }
+
 const renderApplication = (
   request: Request,
   options: { readonly buildId?: string; readonly runtimeId?: string } = {},
@@ -34,6 +37,13 @@ const renderApplication = (
     const cookies = request.headers.get('cookie') ?? ''
     const hasSessionCookie = cookies.includes(`${SessionHttp.cookieName}=`)
     const route = routeFromPathname(url.pathname)
+    // The edge is the only source of a link preview on these pages (`EdgeMeta.ts` › hasPreview): a private or
+    // held-back one ships none, and a public one gets its own title and picture rather than the site-wide tags.
+    const awaitsEdgePreview =
+      AppRoute.guards.Board(route) ||
+      AppRoute.guards.Look(route) ||
+      AppRoute.guards.Person(route) ||
+      AppRoute.guards.PublicPiece(route)
     const flags: Flags = {
       locale: requestLocale(request),
       catalogVersion,
@@ -45,7 +55,11 @@ const renderApplication = (
       hasSessionCookie,
     }
     const rendered = yield* Server.renderToString(application, { ...options, url: request.url, flags })
-    return Server.Rendered(rendered, {
+    const page: DocumentPage = {
+      ...rendered,
+      awaitsEdgePreview,
+    }
+    return Server.Rendered(page, {
       status: AppRoute.guards.NotFound(route) ? 404 : 200,
       headers: {
         'cache-control': 'private, no-store',
@@ -92,7 +106,8 @@ const documentHead =
 
 /** Link previews in chats and on social sites (Open Graph, X): the page's own title, the landing's line as the
  * description, and one picture of the landing. Crawlers need the picture's address absolute, so every stage names
- * production's. */
+ * production's. A board, look, piece or published-profile page leaves these off: the edge writes them only when the
+ * page is public (`EdgeWorker.ts` › withPreview). */
 const shareImage = 'https://styld.app/og.jpg'
 
 const shareHead = (title: string, lang: string | undefined) => {
@@ -114,14 +129,16 @@ const shareHead = (title: string, lang: string | undefined) => {
   ].join('')
 }
 
-export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
-  Server.renderDocument(renderedApplication, assets, {
+export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) => {
+  const page: DocumentPage = renderedApplication
+  return Server.renderDocument(renderedApplication, assets, {
     head: [
       documentHead,
-      shareHead(renderedApplication.title, renderedApplication.lang),
+      page.awaitsEdgePreview === true ? '' : shareHead(renderedApplication.title, renderedApplication.lang),
       facePreloads(renderedApplication.lang),
     ].join(''),
   }).replace(
     'content="width=device-width, initial-scale=1.0"',
     'content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"',
   )
+}
