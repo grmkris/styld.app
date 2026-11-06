@@ -29,6 +29,7 @@ import { chunked, Database as Db, fenced, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
 import { GarmentRows } from '../photos/Rows.ts'
 import { PieceRows, UploadRows } from '../wardrobe/Store.ts'
+import { draftDeletes, previewRows } from './PreviewStore.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
 /** A capture made from the person's own upload: every source but a garment offered from an outfit photo. */
@@ -55,7 +56,7 @@ const readIn = <A>(ids: ReadonlyArray<string>, read: (chunk: Array<string>) => P
 
 const finishCapture = (
   db: Database,
-  capture: Pick<CaptureRow, 'id' | 'attempt'>,
+  capture: Pick<CaptureRow, 'id' | 'attempt' | 'accountId'>,
   found: ReadonlyArray<DetectionRow>,
   changes: CaptureChanges,
 ) => {
@@ -67,6 +68,7 @@ const finishCapture = (
   const owns = exists(db.select({ id: captures.id }).from(captures).where(current))
   return query(() =>
     db.batch([
+      PieceRows.removeWaitingOfCapture(db, capture.accountId, capture.id, owns),
       db.delete(detections).where(and(eq(detections.captureId, capture.id), eq(detections.status, 'review'), owns)),
       ...found.map((detection) => insertWhen(db, detections, detection, { table: captures, claim: current })),
       intoTray(db, capture, changes),
@@ -151,7 +153,7 @@ const captureRows = (db: Database) => ({
   /** Apply only the result of the current processing attempt. Every child write uses the same claim, which is
    * ended last in the atomic batch; a replay cannot replace detections the person already reviewed. */
   finishCapture: (
-    capture: Pick<CaptureRow, 'id' | 'attempt'>,
+    capture: Pick<CaptureRow, 'id' | 'attempt' | 'accountId'>,
     found: ReadonlyArray<DetectionRow>,
     changes: CaptureChanges,
   ) => finishCapture(db, capture, found, changes),
@@ -369,6 +371,10 @@ const reviewRows = (db: Database) => ({
   /** Kept pieces, decided detections, finished captures and the receipt, as one atomic batch. */
   review: (input: {
     readonly pieces: ReadonlyArray<PieceRow>
+    /** Pieces written earlier for a detection the person kept: updated with their choices rather than inserted again. */
+    readonly revised: ReadonlyArray<PieceRow>
+    /** Early pieces of discarded detections and of other sightings kept with a card, which must not stay in the wardrobe. */
+    readonly forgotten: ReadonlyArray<PieceRow>
     /** The detections kept, the pieces' own and their other sightings: a piece names its detection
      * (`pieces.detection_id`). */
     readonly kept: ReadonlyArray<string>
@@ -384,8 +390,10 @@ const reviewRows = (db: Database) => ({
     fenced(() =>
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
+        ...draftDeletes(db, input.receipt.accountId, input.forgotten, input.now),
+        ...input.revised.map((piece) => PieceRows.updateReviewed(db, piece)),
         ...input.pieces.map((piece) => PieceRows.insert(db, piece)),
-        ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
+        ...input.pictures.map((picture) => db.insert(piecePictures).values(picture).onConflictDoNothing()),
         ...chunked(input.kept).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'kept')),
         ...chunked(input.discarded).map((chunk) => decideDetections(db, inArray(detections.id, chunk), 'discarded')),
         ...input.linked.map(({ captureId, pieceId }) => GarmentRows.confirm(db, captureId, pieceId)),
@@ -492,6 +500,7 @@ export const makeCaptureStore = (db: Database) => ({
   ...backfillRows(db),
   ...turnRows(db),
   ...matchRows(db),
+  ...previewRows(db),
 })
 
 /** Captures' rows over the application's one database: captures, their detections and frames, pieces' clean pictures

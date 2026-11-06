@@ -9,7 +9,7 @@ import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import type { CaptureServices } from './Shared.ts'
-import { stored } from '../kernel/Db.ts'
+import { nowDate, stored } from '../kernel/Db.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
 const staleMillis = 30 * 60 * 1000
@@ -123,11 +123,14 @@ const removed = (accountId: string, captureId: CaptureId) =>
     // Whatever did not reach the tray gets its credits back; the first settlement stands for one that did.
     yield* (yield* Holds).settle(accountId, captureHold(capture), ended(capture))
     // A back shot folded into this one goes first, with its photo: nothing else shows it.
+    const at = yield* nowDate
     for (const back of yield* stored((yield* CaptureStore).foldedBacks(accountId, capture.id))) {
+      yield* stored((yield* CaptureStore).forgetDraftsOfCapture(accountId, back.id, at))
       yield* stored((yield* CaptureStore).deleteCapture(accountId, back.id))
       yield* forgetCaptureObjects(back, [])
     }
     const frames = yield* stored((yield* CaptureStore).frames(capture.id))
+    yield* stored((yield* CaptureStore).forgetDraftsOfCapture(accountId, captureId, at))
     yield* stored((yield* CaptureStore).deleteCapture(accountId, captureId))
     yield* forgetCaptureObjects(capture, frames)
   })

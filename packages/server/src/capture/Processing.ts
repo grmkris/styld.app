@@ -1,5 +1,6 @@
 import { Effect, Option } from 'effect'
 import { captureHold, enqueueBackPicture, enqueueMatch, forgetCaptureObjects } from './Shared.ts'
+import { syncPreviews } from './Preview.ts'
 import { endingOf } from './CaptureLifecycle.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { Found, type Found as Result, processPhoto } from './Detections.ts'
@@ -136,6 +137,12 @@ const record = (capture: CaptureRow, result: Result) =>
     // A back shot of the garment before it becomes that piece's back and stops waiting on its own.
     if (capture.side === 'back' && capture.pairsWith !== null) yield* pairBack(capture.accountId, capture.pairsWith)
     else if (capture.source === 'camera') yield* pairBack(capture.accountId, capture.id)
+    // Detections that will not be compared can start their shop-style picture now; the rest wait until matching
+    // settles so a grouped sighting or wardrobe match does not get a draft piece.
+    yield* syncPreviews(
+      capture.accountId,
+      result.found.filter((row) => row.matching === null),
+    )
   })
 
 /** The queue side of captures: process one, or give up on it after the last attempt. */

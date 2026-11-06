@@ -54,6 +54,8 @@ export const Model = Schema.Struct({
   acting: Schema.Array(Schema.String),
   actionFailed: Schema.Array(Schema.String),
   misses: Misses,
+  /** Whether detections the tray would not tick are listed; they stay hidden until asked for. */
+  showingAll: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
@@ -65,6 +67,7 @@ export const init = (): Model => ({
   acting: [],
   actionFailed: [],
   misses: 0,
+  showingAll: false,
 })
 
 // MESSAGE
@@ -93,6 +96,7 @@ export const Message = defineMessageUnion({
   ClickedRemoveCapture: { captureId: Schema.String },
   ClickedSplit: { detectionId: Schema.String },
   TickedTrayRefresh: {},
+  ToggledShowAll: {},
   SucceededCaptureAction: { captureId: Schema.String },
   FailedCaptureAction: { captureId: Schema.String },
 })
@@ -425,6 +429,9 @@ const trayHandlers = (model: Model) => ({
   }),
   ClickedRetryLoad: (): UpdateReturn => trayCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
   TickedTrayRefresh: (): UpdateReturn => trayCache(AsyncData.revalidate)(model),
+  ToggledShowAll: (): UpdateReturn => ({
+    model: modifyFields(model, { showingAll: (showingAll) => !showingAll }),
+  }),
   ClickedRetryCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
     act(model, captureId, RetryCapture({ captureId })),
   ClickedRemoveCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
@@ -455,7 +462,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
 const processingIds = (model: Model): ReadonlyArray<string> =>
   Option.match(AsyncData.getData(model.tray), {
     onNone: () => [],
-    onSome: (tray) => tray.captures.filter(({ status }) => status === 'processing').map(({ id }) => id),
+    onSome: (tray) =>
+      tray.captures
+        .filter(
+          (capture) =>
+            capture.status === 'processing' ||
+            capture.detections.some((detection) => detection.picture?.state === 'drawing'),
+        )
+        .map(({ id }) => id),
   })
 
 /** The tray is asked for again while a capture is still being cut out. */

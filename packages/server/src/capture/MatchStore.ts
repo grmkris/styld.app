@@ -4,6 +4,7 @@ import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } f
 import type { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { query } from '../kernel/Db.ts'
+import { visibleInWardrobe } from '../wardrobe/Store.ts'
 
 type Database = ReturnType<typeof drizzle>
 type DetectionRow = typeof detections.$inferSelect
@@ -65,7 +66,7 @@ const claimRows = (db: Database) => ({
           ),
         )
         .returning({ id: detections.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** Let a claimed detection be compared by the next delivery, after this one failed. */
   releaseMatch: (detectionId: string, claimedAt: Date) =>
     query(() =>
@@ -138,6 +139,7 @@ const candidateRows = (db: Database) => ({
           and(
             eq(pieces.accountId, accountId),
             eq(pieces.status, 'ready'),
+            visibleInWardrobe(db),
             inArray(pieces.type, [...types]),
             isNotNull(pieces.imageKey),
             ne(pieces.imageKey, pieces.originalKey),
@@ -229,7 +231,7 @@ const outcomeRows = (db: Database) => ({
         .set({ groupOf: null })
         .where(and(eq(detections.accountId, accountId), eq(detections.groupOf, head), eq(detections.status, 'review')))
         .returning({ id: detections.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
 })
 
 /** Comparing sightings with each other and with the wardrobe. Only the match job writes these columns, and only for

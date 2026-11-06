@@ -27,7 +27,19 @@ export const grid = style({
   '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', rowGap: 'grid', columnGap: 'wide' },
 })
-export const found = style({ position: 'relative', display: 'grid', gap: 'tight', margin: '0' })
+export const found = style({
+  position: 'relative',
+  display: 'grid',
+  gap: 'tight',
+  margin: '0',
+  '& [data-preview-status]': {
+    position: 'absolute',
+    inset: '0',
+    display: 'grid',
+    placeItems: 'center',
+    pointerEvents: 'none',
+  },
+})
 export const foundImage = style({
   display: 'block',
   inlineSize: '100%',
@@ -44,6 +56,7 @@ export const foundImage = style({
   transitionDuration: 'fade',
   // An unticked piece fades back, so what will be added stands out.
   '&[data-dropped]': { opacity: 0.45 },
+  '&[data-waiting]': { filter: 'blur(8px)' },
 })
 /** A found piece's tile while the tray is read. */
 export const foundSkeleton = style({
@@ -160,6 +173,7 @@ export const editorImage = style({
   objectFit: 'contain',
   borderRadius: 'panel',
   boxShadow: 'edge',
+  '&[data-waiting]': { filter: 'blur(8px)' },
 })
 export const original = style({
   display: 'flex',

@@ -2,7 +2,7 @@ import { CategoryName, Name } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { Occasions, Pattern, PieceType, Seasons } from './Garment.ts'
-import { Colours, PieceId, UploadId } from './Wardrobe.ts'
+import { Colours, PictureState, PieceId, UploadId } from './Wardrobe.ts'
 
 export const CaptureId = entityId('cp').pipe(Schema.brand('CaptureId'))
 export type CaptureId = typeof CaptureId.Type
@@ -100,6 +100,13 @@ export const Detection = Schema.Struct({
       cutout: Schema.optionalKey(Schema.String),
       original: Schema.optionalKey(Schema.String),
       back: Schema.optionalKey(Schema.String),
+    }),
+  ),
+  /** The shop-style picture started once the tray offered this piece ticked; absent if none was asked for. */
+  picture: Schema.optionalKey(
+    Schema.Struct({
+      state: PictureState,
+      image: Schema.optionalKey(Schema.String),
     }),
   ),
 })

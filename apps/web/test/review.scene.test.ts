@@ -38,11 +38,13 @@ const reviewPage = (
   captures: ReadonlyArray<TrayCapture>,
   editing = Option.none<string>(),
   context: Context = { locale: 'en', timeZone: 'UTC' },
+  showingAll = false,
 ) =>
   withPage(appModel(context), lenses.review, (review) =>
     modifyFields(review, {
       tray: () => TrayData.Success({ data: { captures, allowance: { remaining: 90, daily: 100 } } }),
       editing: () => editing,
+      showingAll: () => showingAll,
       decisions: () =>
         Object.fromEntries(
           captures.flatMap(({ detections }) =>
@@ -121,7 +123,7 @@ describe('the review tray', () => {
     const part = { ...emptyCapture(3, 'picker'), detections: [{ ...shirt, partial: true }] }
     scene(
       { update: (model) => ({ model }), view },
-      given(reviewPage([part], Option.none())),
+      given(reviewPage([part], Option.none(), { locale: 'en', timeZone: 'UTC' }, true)),
       expect(text('Needs a better look')).toExist(),
     )
     scene(
@@ -134,7 +136,7 @@ describe('the review tray', () => {
   test('a garment the wardrobe already has asks so, unticked, and opens beside the piece it was taken for', () => {
     scene(
       { update: (model) => ({ model }), view },
-      given(reviewPage([foundAgain])),
+      given(reviewPage([foundAgain], Option.none(), { locale: 'en', timeZone: 'UTC' }, true)),
       expect(text('Already in your wardrobe?')).toExist(),
       expect(role('button', { name: 'Keep Shirt' })).toHaveAttr('aria-pressed', 'false'),
     )
@@ -143,6 +145,59 @@ describe('the review tray', () => {
       given(reviewPage([foundAgain], Option.some(`dt_${'1'.padStart(22, '0')}`))),
       expect(text('It looks like this piece you have. Tick it to keep both.')).toExist(),
       expect(role('img', { name: 'The piece you have' })).toExist(),
+    )
+  })
+
+  test('hides pieces the tray did not preselect and shows them when asked', () => {
+    const extras = {
+      ...emptyCapture(4, 'picker'),
+      detections: [
+        { ...shirt, preselected: true },
+        {
+          ...shirt,
+          id: DetectionId.make(`dt_${'2'.padStart(22, '0')}`),
+          preselected: false,
+          suggestion: { ...shirt.suggestion, type: 'jeans' as const },
+        },
+      ],
+    }
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([extras])),
+      expect(text('Show everything detected')).toExist(),
+      expect(role('button', { name: 'Keep Shirt' })).toExist(),
+      expect(role('button', { name: 'Keep Jeans' })).not.toExist(),
+    )
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([extras], Option.none(), { locale: 'en', timeZone: 'UTC' }, true)),
+      expect(text('Show suggested pieces only')).toExist(),
+      expect(role('button', { name: 'Keep Jeans' })).toExist(),
+    )
+  })
+
+  test('shows the original photo blurred while the shop photo is drawn, then the shop photo', () => {
+    const drawingShirt = {
+      ...shirt,
+      preselected: true,
+      images: { cutout: '/cutout.png', original: '/original.png' },
+      picture: { state: 'drawing' as const },
+    }
+    const drawing = { ...emptyCapture(5, 'picker'), detections: [drawingShirt] }
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([drawing])),
+      expect(role('img', { name: 'Shirt' })).toHaveAttr('src', '/original.png'),
+      expect(role('img', { name: 'Shirt' })).toHaveAttr('data-waiting', ''),
+    )
+    const ready = {
+      ...emptyCapture(5, 'picker'),
+      detections: [{ ...drawingShirt, picture: { state: 'ready' as const, image: '/product.png' } }],
+    }
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([ready])),
+      expect(role('img', { name: 'Shirt' })).toHaveAttr('src', '/product.png'),
     )
   })
 })

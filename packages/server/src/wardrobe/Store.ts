@@ -9,7 +9,7 @@ import {
   pieces,
   uploads,
 } from '@styld/db'
-import { and, asc, desc, eq, exists, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, gt, inArray, isNull, lt, ne, notExists, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type { GeneratedGarment, Pattern, PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
@@ -80,8 +80,64 @@ export const spendUpload = (db: Database['Service'], uploadId: string) =>
 
 /** The wardrobe's statements for another module's batch: a piece it creates (a kept detection), and an upload given
  * back when the batch that spent it is undone. */
+/** Pieces whose detection is still waiting in the tray stay off wardrobe lists until the person keeps or discards them. */
+export const visibleInWardrobe = (db: Database['Service']) =>
+  notExists(
+    db
+      .select({ id: detections.id })
+      .from(detections)
+      .where(and(eq(detections.id, pieces.detectionId), eq(detections.status, 'review'))),
+  )
+
+const ofCapture = (db: Database['Service'], accountId: string, captureId: string, extra?: SQL) =>
+  and(
+    eq(pieces.accountId, accountId),
+    exists(
+      db
+        .select({ id: detections.id })
+        .from(detections)
+        .where(and(eq(detections.id, pieces.detectionId), eq(detections.captureId, captureId), extra)),
+    ),
+  )
+
 export const PieceRows = {
   insert: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row),
+  insertIfNew: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row).onConflictDoNothing(),
+  listedByDetections: (db: Database['Service'], accountId: string, detectionIds: ReadonlyArray<string>) =>
+    db
+      .select()
+      .from(pieces)
+      .where(and(eq(pieces.accountId, accountId), inArray(pieces.detectionId, [...detectionIds]))),
+  listedOfCapture: (db: Database['Service'], accountId: string, captureId: string) =>
+    db
+      .select()
+      .from(pieces)
+      .where(ofCapture(db, accountId, captureId)),
+  /** The person's choices on a detection that already became a piece while it waited in the tray. */
+  updateReviewed: (db: Database['Service'], row: PieceRow) =>
+    db
+      .update(pieces)
+      .set({
+        name: row.name,
+        type: row.type,
+        colours: row.colours,
+        seasons: row.seasons,
+        rainproof: row.rainproof,
+        category: row.category,
+        occasions: row.occasions,
+        pattern: row.pattern,
+        backImageKey: row.backImageKey,
+        originalKey: row.originalKey,
+        imageKey: row.imageKey,
+        contentType: row.contentType,
+        updatedAt: row.updatedAt,
+      })
+      .where(and(eq(pieces.id, row.id), eq(pieces.accountId, row.accountId))),
+  remove: (db: Database['Service'], accountId: string, ids: ReadonlyArray<string>) =>
+    db.delete(pieces).where(and(eq(pieces.accountId, accountId), inArray(pieces.id, [...ids]))),
+  /** Early pieces of a capture's tray cards, only while that capture is still the one being finished (`claim`). */
+  removeWaitingOfCapture: (db: Database['Service'], accountId: string, captureId: string, claim: SQL) =>
+    db.delete(pieces).where(and(ofCapture(db, accountId, captureId, eq(detections.status, 'review')), claim)),
   /** A house garment the seed generated, recorded with its piece (owner, 4 November 2026). */
   generated: (db: Database['Service'], piece: Pick<PieceRow, 'id' | 'accountId' | 'createdAt'>, of: GeneratedGarment) =>
     db.insert(pieceProvenance).values({
@@ -391,17 +447,15 @@ const deleteQueries = (db: Database['Service']) => ({
     ).pipe(Effect.asVoid),
 })
 
-/** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
- * one account can never reach another's pieces.
- * @internal Exported for its tests. */
-export const makeStore = (db: Database['Service']) => ({
-  ...uploadQueries(db),
-  ...pictureQueries(db),
-  ...queueQueries(db),
-  ...backQueries(db),
-  ...deleteQueries(db),
+const listingQueries = (db: Database['Service']) => ({
   listPieces: (accountId: string) =>
-    query(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
+    query(() =>
+      db
+        .select()
+        .from(pieces)
+        .where(and(eq(pieces.accountId, accountId), visibleInWardrobe(db)))
+        .orderBy(desc(pieces.createdAt)),
+    ),
   /** The account's ready pieces, newest first, of the type and pattern when the search names them (`Search.ts`). */
   readyPieces: (accountId: string, only: { readonly type?: PieceType; readonly pattern?: Pattern }) =>
     query(() =>
@@ -412,6 +466,7 @@ export const makeStore = (db: Database['Service']) => ({
           and(
             eq(pieces.accountId, accountId),
             eq(pieces.status, 'ready'),
+            visibleInWardrobe(db),
             only.type === undefined ? undefined : eq(pieces.type, only.type),
             only.pattern === undefined ? undefined : eq(pieces.pattern, only.pattern),
           ),
@@ -426,6 +481,18 @@ export const makeStore = (db: Database['Service']) => ({
         .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
+})
+
+/** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
+ * one account can never reach another's pieces.
+ * @internal Exported for its tests. */
+export const makeStore = (db: Database['Service']) => ({
+  ...uploadQueries(db),
+  ...pictureQueries(db),
+  ...queueQueries(db),
+  ...backQueries(db),
+  ...deleteQueries(db),
+  ...listingQueries(db),
   ...receiptRows(db),
   ...recordedWrites(db),
   /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique

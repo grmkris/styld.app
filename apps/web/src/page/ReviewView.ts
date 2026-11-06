@@ -27,9 +27,39 @@ import { message as messageSection, messageTitle } from './WardrobeView.styles.t
 import * as styles from './ReviewView.styles.ts'
 import { loadingStatus } from '../Loading.ts'
 
-/** A found piece's picture; the API Worker serves it to its owner only. */
-const picturePath = (detection: Detection, decision: Decision | undefined) =>
-  cdn.detection(detection, decision?.useOriginal !== true && detection.hasCutout)
+/** A found piece's picture: its shop-style photo when ready, else the original while that is drawn, else the cut-out. */
+const previewOf = (detection: Detection, decision: Decision | undefined) => {
+  const original = cdn.detection(detection, false)
+  if (decision?.useOriginal === true) return { src: original, waiting: false }
+  if (detection.picture?.state === 'ready' && detection.picture.image !== undefined)
+    return { src: detection.picture.image, waiting: false }
+  if (detection.picture?.state === 'drawing') return { src: original, waiting: true }
+  return { src: cdn.detection(detection, detection.hasCutout), waiting: false }
+}
+
+const previewImage = (
+  detection: Detection,
+  decision: Decision | undefined,
+  name: string,
+  surface: typeof styles.foundImage,
+  h: HtmlBuilder<Message>,
+  dropped = false,
+) => {
+  const preview = previewOf(detection, decision)
+  const image = h.img([
+    h.Src(preview.src),
+    h.Alt(name),
+    h.Loading('lazy'),
+    ...(preview.waiting ? [h.DataAttribute('waiting', '')] : []),
+    ...(dropped ? [h.DataAttribute('dropped', '')] : []),
+    ...styled(h, surface()),
+  ])
+  if (!preview.waiting) return image
+  return h.div(styled(h, styles.found()), [
+    image,
+    h.span([h.Role('status'), h.DataAttribute('preview-status', '')], [loader(h)]),
+  ])
+}
 
 /** What a found piece is called: the person's name for it, else what one of its kind is called ("Skirt"), else a
  * prompt to say. */
@@ -58,13 +88,7 @@ const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBu
     [],
     [
       h.figure(styled(h, styles.found()), [
-        h.img([
-          h.Src(picturePath(detection, decision)),
-          h.Alt(name),
-          h.Loading('lazy'),
-          ...(kept ? [] : [h.DataAttribute('dropped', '')]),
-          ...styled(h, styles.foundImage()),
-        ]),
+        previewImage(detection, decision, name, styles.foundImage, h, !kept),
         Button.view(
           {
             onClick: Message.ToggledKeep({ detectionId: detection.id }),
@@ -250,11 +274,7 @@ const editor = (
     [h.AriaLabel(label(decision, locale)), ...styled(h, styles.editor())],
     [
       h.h1([], [label(decision, locale)]),
-      h.img([
-        h.Src(picturePath(detection, decision)),
-        h.Alt(label(decision, locale)),
-        ...styled(h, styles.editorImage()),
-      ]),
+      previewImage(detection, decision, label(decision, locale), styles.editorImage, h),
       alreadyHave(detection, images, locale, h),
       detection.partial ? h.p(styled(h, styles.sightings()), [format(locale, 'capture.betterLookHint', {})]) : h.empty,
       sightings(detection, locale, h),
@@ -323,9 +343,13 @@ const footer = (model: Model, locale: Locale, h: HtmlBuilder<Message>, editing: 
   ])
 }
 
+const visibleOf = (found: ReadonlyArray<Detection>, model: Model) =>
+  found.filter((detection) => model.showingAll || detection.preselected || model.decisions[detection.id]?.keep === true)
+
 const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, inputs: Inputs, h: HtmlBuilder<Message>) => {
   const { locale } = inputs
   const found = captures.flatMap(({ detections }) => detections)
+  const listed = visibleOf(found, model)
   const waiting = captures.filter(({ status }) => status === 'processing')
   const needing = captures.filter(
     ({ status, detections }) =>
@@ -343,9 +367,19 @@ const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, inputs: In
     ...needing.map((capture) => notice(capture, model, inputs, h)),
     h.ul(styled(h, styles.grid()), [
       ...waiting.map((capture) => pendingTile(capture, locale, h)),
-      ...found.map((detection) => foundTile(detection, model, locale, h)),
+      ...listed.map((detection) => foundTile(detection, model, locale, h)),
     ]),
-    found.length > 0 ? footer(model, locale, h, false) : h.empty,
+    found.some((detection) => !detection.preselected)
+      ? actionButton(
+          {
+            label: format(locale, model.showingAll ? 'capture.showSuggested' : 'capture.showEverything', {}),
+            style: secondaryAction(),
+            onClick: Message.ToggledShowAll(),
+          },
+          h,
+        )
+      : h.empty,
+    listed.length > 0 ? footer(model, locale, h, false) : h.empty,
   ]
 }
 
@@ -367,7 +401,10 @@ const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonly
   Option.match(AsyncData.getData(model.tray), {
     onNone: () => [h.h1([], [format(locale, 'scan.toReview', {})])],
     onSome: ({ captures, allowance }) => {
-      const count = captures.reduce((sum, { detections }) => sum + detections.length, 0)
+      const count = visibleOf(
+        captures.flatMap(({ detections }) => detections),
+        model,
+      ).length
       return [
         h.h1([], [format(locale, 'capture.foundTitle', { count })]),
         count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,

@@ -1,13 +1,13 @@
-import { CurrentAccount, type Keep, NotFound, PieceId, type Review, Reviewed } from '@styld/protocol'
+import { CurrentAccount, NotFound, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { type ReviewDecision } from '../kernel/Metrics.ts'
-import { enqueueBackPicture, enqueuePicture, forgetCaptureObjects } from './Shared.ts'
+import { enqueueBackPicture, forgetCaptureObjects } from './Shared.ts'
+import { picturesFor, pieceOf, sendPictures, sourcesOf } from './Preview.ts'
 
 import type { DetectionRow } from './Store.ts'
 import { nowDate, stored } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
-import { firstPicture } from './PictureLifecycle.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -15,95 +15,6 @@ import { PieceChanged } from '../safety/PieceChanged.ts'
 import type { CaptureServices } from './Shared.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
-
-/** The piece a kept detection becomes: the cut-out unless the person chose the original photo. Its back is the
- * camera's back shot, or else the garment's sighting in another photo picked with it (the pieces laid out again,
- * turned over). */
-const pieceOf = (
-  accountId: string,
-  pieceId: string,
-  detection: DetectionRow,
-  source: { readonly type: string; readonly back: string | null },
-  keep: Keep,
-  at: Date,
-) => {
-  const original = keep.useOriginal === true || detection.cutoutKey === null
-  return {
-    id: pieceId,
-    accountId,
-    name: keep.name ?? null,
-    notes: null,
-    type: keep.type,
-    colours: keep.colours ?? [],
-    // The person confirmed what the decision model suggested, or changed it; an attribute they left out stays as
-    // suggested.
-    seasons: keep.seasons ?? detection.suggestedSeasons,
-    rainproof: keep.rainproof ?? detection.suggestedRainproof,
-    category: keep.category ?? detection.suggestedCategory,
-    occasions: keep.occasions ?? detection.suggestedOccasions,
-    pattern: keep.pattern ?? detection.suggestedPattern,
-    brand: null,
-    shopUrl: null,
-    status: 'ready' as const,
-    source: 'website' as const,
-    uploadId: null,
-    detectionId: detection.id,
-    backImageKey: original ? null : (detection.backCutoutKey ?? source.back),
-    rotation: 0 as const,
-    originalKey: detection.sourceKey,
-    imageKey: original ? detection.sourceKey : detection.cutoutKey,
-    contentType: source.type,
-    createdAt: at,
-    updatedAt: at,
-  }
-}
-
-/** A clean picture waiting to be drawn for each kept piece shown as its cut-out. A piece kept as its original photo
- * never leaves Styld. */
-const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date) =>
-  pieces
-    .filter(({ imageKey, originalKey }) => imageKey !== originalKey)
-    .map(({ id, accountId }) => firstPicture({ pieceId: id, accountId }, at))
-
-/** Hand pictures to the queue: after the batch that stored them, and again for those still waiting when the same
- * review is replayed, so a send lost between the two is made up. The job draws a picture once however often it is
- * sent. */
-const sendPictures = (pieceIds: ReadonlyArray<string>) =>
-  Effect.forEach(pieceIds, (pieceId) => enqueuePicture(pieceId), { discard: true })
-
-/** Hand each kept piece with a back to the back picture job (owner, 4 November): it draws the back, once. A replayed
- * review sends them all again; a piece without a back is left as it is. */
-const sendBacks = (accountId: string, pieceIds: ReadonlyArray<string>) =>
-  Effect.forEach(pieceIds, (pieceId) => enqueueBackPicture(accountId, pieceId), { discard: true })
-
-/** Where each detection came from: its source photo's content type (the upload of a photo capture or of a video's
- * still, as it was received; a garment offered from an outfit photo is its capture's own copy) and how its capture was
- * routed and cut, for keep rates. */
-const sourcesOf = (accountId: string, found: ReadonlyArray<DetectionRow>) =>
-  Effect.gen(function* () {
-    const rows = yield* stored(
-      (yield* CaptureStore).capturesOf(accountId, [...new Set(found.map(({ captureId }) => captureId))]),
-    )
-    const received = yield* stored(
-      (yield* CaptureStore).uploadTypes(accountId, [...new Set(found.map(({ sourceKey }) => sourceKey))]),
-    )
-    const types = new Map([
-      ...rows.map((row) => [row.originalKey, row.contentType] as const),
-      ...received.map((row) => [row.objectKey, row.contentType] as const),
-    ])
-    const byId = new Map(rows.map((row) => [row.id, row]))
-    return {
-      /** Every source is a stored upload or a capture's own copy: one that is neither is a bug. */
-      typeOf: (detection: DetectionRow) => Option.getOrThrow(Option.fromNullishOr(types.get(detection.sourceKey))),
-      isPhoto: (detection: DetectionRow) => byId.get(detection.captureId)?.kind === 'photo',
-      /** Whether the garment was offered from an outfit photo (My Gallery). */
-      fromPhotos: (detection: DetectionRow) => byId.get(detection.captureId)?.source === 'photos',
-      originOf: (detection: DetectionRow) => {
-        const capture = byId.get(detection.captureId)
-        return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
-      },
-    }
-  })
 
 /** The captures a review leaves with nothing waiting, which the tray stops showing. */
 const finishedCaptures = (found: ReadonlyArray<DetectionRow>, decided: ReadonlyArray<string>) =>
@@ -151,6 +62,97 @@ const forgetFinished = (accountId: string, finished: ReadonlyArray<string>) =>
     )
   })
 
+/** Hand each kept piece with a back to the back picture job (owner, 4 November): it draws the back, once. A replayed
+ * review sends them all again; a piece without a back is left as it is. */
+const sendBacks = (accountId: string, pieceIds: ReadonlyArray<string>) =>
+  Effect.forEach(pieceIds, (pieceId) => enqueueBackPicture(accountId, pieceId), { discard: true })
+
+const pairedBack = (
+  others: ReadonlyArray<DetectionRow>,
+  isPhoto: (detection: DetectionRow) => boolean,
+  detection: DetectionRow,
+) =>
+  others.find(
+    (other) =>
+      other.groupOf === detection.id && other.captureId !== detection.captureId && isPhoto(other) && isPhoto(detection),
+  )?.cutoutKey ?? null
+
+const plannedPieces = (
+  accountId: string,
+  input: Review,
+  open: ReadonlyMap<string, DetectionRow>,
+  others: ReadonlyArray<DetectionRow>,
+  source: {
+    readonly typeOf: (detection: DetectionRow) => string
+    readonly isPhoto: (detection: DetectionRow) => boolean
+    readonly fromPhotos: (detection: DetectionRow) => boolean
+  },
+  at: Date,
+) =>
+  Effect.gen(function* () {
+    const existing = yield* stored(
+      (yield* CaptureStore).piecesByDetections(accountId, [
+        ...input.keep.map(({ detectionId }) => detectionId),
+        ...input.discard,
+        ...others.map(({ id }) => id),
+      ]),
+    )
+    const existingByDetection = new Map(
+      existing.flatMap((row) => (row.detectionId === null ? [] : [[row.detectionId, row] as const])),
+    )
+    const kept = yield* Effect.forEach(input.keep, (keep) =>
+      Effect.gen(function* () {
+        const already = existingByDetection.get(keep.detectionId)
+        const pieceId = already?.id ?? (yield* newId('pc'))
+        return { keep, pieceId, detection: open.get(keep.detectionId) }
+      }),
+    )
+    const pieces = kept.flatMap(({ keep, pieceId, detection }) =>
+      detection === undefined
+        ? []
+        : [
+            pieceOf(
+              accountId,
+              pieceId,
+              detection,
+              { type: source.typeOf(detection), back: pairedBack(others, source.isPhoto, detection) },
+              keep,
+              at,
+            ),
+          ],
+    )
+    const keptSightings = kept.flatMap(({ keep }) =>
+      others.filter(({ groupOf }) => groupOf === keep.detectionId).map(({ id }) => id),
+    )
+    const discarding = new Set<string>(input.discard)
+    const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
+    const primary = new Set<string>(kept.map(({ keep }) => keep.detectionId))
+    const forgotten = [...input.discard, ...discardedSightings.map(({ id }) => id), ...keptSightings].flatMap((id) => {
+      const row = existingByDetection.get(id)
+      return row === undefined || primary.has(id) ? [] : [row]
+    })
+    const pieceIds = pieces.map(({ id }) => id)
+    const alreadyDrawn = new Set(
+      (yield* stored((yield* CaptureStore).picturesAmong(pieceIds))).map(({ pieceId }) => pieceId),
+    )
+    return {
+      pieces,
+      created: pieces.filter((piece) => piece.detectionId === null || !existingByDetection.has(piece.detectionId)),
+      revised: pieces.filter((piece) => piece.detectionId !== null && existingByDetection.has(piece.detectionId)),
+      forgotten,
+      keptIds: [...kept.map(({ keep }) => keep.detectionId), ...keptSightings],
+      discardedIds: [...input.discard, ...discardedSightings.map(({ id }) => id)],
+      linked: kept.flatMap(({ pieceId, detection }) =>
+        detection !== undefined && source.fromPhotos(detection) ? [{ captureId: detection.captureId, pieceId }] : [],
+      ),
+      pieceIds,
+      pictures: picturesFor(
+        pieces.filter(({ id, imageKey, originalKey }) => imageKey !== originalKey && !alreadyDrawn.has(id)),
+        at,
+      ),
+    }
+  })
+
 /** The person's decisions on waiting pieces: kept ones become pieces, the rest are dropped. Replaying an
  * operation id returns the same pieces; reusing it for other decisions is a conflict. */
 export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context) => ({
@@ -180,54 +182,32 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     const others = yield* stored((yield* CaptureStore).sightingsOf(accountId, ids))
     const at = yield* nowDate
     const { typeOf, isPhoto, originOf, fromPhotos } = yield* sourcesOf(accountId, [...found, ...others])
-    const backOf = (detection: DetectionRow) =>
-      others.find(
-        (other) =>
-          other.groupOf === detection.id &&
-          other.captureId !== detection.captureId &&
-          isPhoto(other) &&
-          isPhoto(detection),
-      )?.cutoutKey ?? null
-    const kept = yield* Effect.forEach(input.keep, (keep) =>
-      Effect.map(newId('pc'), (pieceId) => ({ keep, pieceId, detection: open.get(keep.detectionId) })),
-    )
-    const pieces = kept.flatMap(({ keep, pieceId, detection }) =>
-      detection === undefined
-        ? []
-        : [pieceOf(accountId, pieceId, detection, { type: typeOf(detection), back: backOf(detection) }, keep, at)],
-    )
-    const keptSightings = kept.flatMap(({ keep }) =>
-      others.filter(({ groupOf }) => groupOf === keep.detectionId).map(({ id }) => id),
-    )
-    const discarding = new Set<string>(input.discard)
-    const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
-    const pieceIds = pieces.map(({ id }) => id)
-    const pictures = picturesFor(pieces, at)
+    const planned = yield* plannedPieces(accountId, input, open, others, { typeOf, isPhoto, fromPhotos }, at)
     const finished = yield* finishedCaptures([...found, ...others], [...ids, ...others.map(({ id }) => id)])
     yield* stored(
       (yield* CaptureStore).review({
-        pieces,
-        kept: [...kept.map(({ keep }) => keep.detectionId), ...keptSightings],
-        discarded: [...input.discard, ...discardedSightings.map(({ id }) => id)],
+        pieces: planned.created,
+        revised: planned.revised,
+        forgotten: planned.forgotten,
+        kept: planned.keptIds,
+        discarded: planned.discardedIds,
         // A garment offered from an outfit photo is that photo's garment: the new piece is confirmed in it.
-        linked: kept.flatMap(({ pieceId, detection }) =>
-          detection !== undefined && fromPhotos(detection) ? [{ captureId: detection.captureId, pieceId }] : [],
-        ),
+        linked: planned.linked,
         finished,
-        pictures,
-        receipt: yield* receiptRow(operation, JSON.stringify({ pieceIds })),
+        pictures: planned.pictures,
+        receipt: yield* receiptRow(operation, JSON.stringify({ pieceIds: planned.pieceIds })),
         now: at,
       }),
     )
     yield* forgetFinished(accountId, finished)
     yield* countDecisions(input, open, originOf)
-    yield* sendPictures(pictures.map(({ pieceId }) => pieceId))
+    yield* sendPictures(yield* stored((yield* CaptureStore).waitingPictures(planned.pieceIds)))
     yield* sendBacks(
       accountId,
-      pieces.filter(({ backImageKey }) => backImageKey !== null).map(({ id }) => id),
+      planned.pieces.filter(({ backImageKey }) => backImageKey !== null).map(({ id }) => id),
     )
     const pieceChanged = yield* PieceChanged
-    yield* Effect.forEach(pieceIds, (pieceId) => pieceChanged.changed(pieceId), { discard: true })
-    return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }
+    yield* Effect.forEach(planned.pieceIds, (pieceId) => pieceChanged.changed(pieceId), { discard: true })
+    return { pieceIds: planned.pieceIds.map((id) => PieceId.make(id)) }
   }, Effect.provide(context)),
 }))

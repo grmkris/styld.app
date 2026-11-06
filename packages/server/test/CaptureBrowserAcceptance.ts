@@ -4,6 +4,7 @@ import { Schema } from 'effect'
 import type { Browser, Page } from 'playwright'
 import { readMoov, videoDurationMs, videoFrameCount } from '../src/capture/VideoContainer.ts'
 import { recordProblems } from './BrowserAcceptance.ts'
+import { revealFound } from './RevealFound.ts'
 import { leaveCredits, seedAccounts, signedInContext } from './Accounts.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/capture/${name}`, import.meta.url))
@@ -56,7 +57,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
       .locator('input[type="file"][multiple]')
       .setInputFiles([fixture('red-tee.png'), fixture('blue-dress.png'), fixture('green-shirt.png')])
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
-    await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
+    await revealFound(page, '3 pieces found')
     expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
     await page.getByText('4 credits left today').waitFor({ state: 'visible' })
 
@@ -131,7 +132,7 @@ export const verifyCameraJourney = async (browser: Browser, origin: string, fixt
     }
     expect(paired).toBe(true)
     await page.reload({ waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: '1 piece found' }).waitFor({ state: 'visible', timeout: 30000 })
+    await revealFound(page, '1 piece found')
     expect(problems).toEqual([])
   } finally {
     await context.close()

@@ -622,7 +622,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.betterLookHint': 'Viden je le del. Dvigni ga ali ga položi in ga dodaj znova.',
   'capture.foundTitle':
     '{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}',
-  'capture.reviewHint': 'Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.',
+  'capture.reviewHint': 'Dodaj kose, ki jih želiš. Odznači vse, kar ni tvoje.',
   'capture.allowance':
     '{plan, select, free {Še {remaining, plural, one {# brezplačni kredit} two {# brezplačna kredita} few {# brezplačni krediti} other {# brezplačnih kreditov}}} other {Danes še {remaining} kreditov}}',
   'capture.finding': 'Iščem kose …',
@@ -693,6 +693,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.linkProblem.noPicture': 'Na tej strani ni slike izdelka. Raje pošlji fotografijo ali posnetek zaslona.',
   'capture.linkProblem.slowDown': 'Preveč povezav naenkrat. Poskusi znova čez minuto.',
   'capture.linkPlaceholder': 'https://…',
+  'capture.showEverything': 'Pokaži vse zaznano',
+  'capture.showSuggested': 'Pokaži samo predlagane kose',
   'looks.title': 'Videzi',
   'looks.inYourLooks': 'V tvojih videzih',
   'looks.pieceCount': '{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}',
