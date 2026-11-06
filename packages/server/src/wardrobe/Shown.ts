@@ -17,9 +17,9 @@ export const isDrawn = <P extends Pick<PictureRow, 'state' | 'cleanKey'>>(
 ): picture is P & { readonly cleanKey: string } =>
   picture !== undefined && picture.cleanKey !== null && (picture.state === 'ready' || picture.state === 'proposed')
 
-/** Which picture a piece shows: its drawing unless its owner chose the photo, and the photo otherwise. */
+/** Which picture a piece shows: the photo (its cut-out) until its owner chooses the drawing, and the drawing when they did. */
 export const shows = (picture: PictureRow | undefined): PictureChoice =>
-  isDrawn(picture) ? (picture.shown ?? 'clean') : 'photo'
+  isDrawn(picture) ? (picture.shown ?? 'photo') : 'photo'
 
 /** The quarter turn a piece's drawing, and the turn made from it, are shown with: what the piece's rotation is past
  * the one it was drawn at. Muse draws from the cut-out turned by the piece's rotation (`capture/Drawing.ts` ›
@@ -33,9 +33,9 @@ export const drawingTurn = (
   return turn === 90 || turn === 180 || turn === 270 ? turn : 0
 }
 
-/** The stored image a piece shows, wherever a piece's picture appears: its clean drawing (`shows`), else its cut-out,
- * else the photo it came from; with the quarter turn it is delivered with. The owner's rotation turns their own photo
- * and cut-out, and the drawing by what it is past the rotation the drawing was drawn at (`drawingTurn`). */
+/** The stored image a piece shows, wherever a piece's picture appears: its clean drawing when that is what it shows,
+ * else its cut-out, else the photo it came from; with the quarter turn it is delivered with. The owner's rotation turns
+ * their own photo and cut-out, and the drawing by what it is past the rotation the drawing was drawn at (`drawingTurn`). */
 export const shownImage = (
   piece: Pick<PieceRow, 'imageKey' | 'originalKey' | 'contentType' | 'rotation'>,
   picture: PictureRow | undefined,

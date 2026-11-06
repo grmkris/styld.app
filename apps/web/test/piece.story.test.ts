@@ -292,6 +292,15 @@ describe('a piece you own', () => {
       picture: { state: 'ready', shows: 'clean', version: 1 },
     })
     expect(slidesOf(turned)).toEqual(['clean', 'backClean', 'photo', 'cutout', 'back'])
+    expect(currentSlide(turned, Option.none())).toBe('clean')
+    // A ready drawing that was not chosen leaves the cut-out first; the shop-style picture stays to swipe to.
+    const unchosen = pieceFixture('jeans', {
+      hasBack: true,
+      images: { thumb: 't', full: 'f', clean: 'c', backClean: 'bc', photo: 'p', cutout: 'o', back: 'b' },
+      picture: { state: 'ready', shows: 'photo', version: 1 },
+    })
+    expect(slidesOf(unchosen)).toEqual(['cutout', 'backClean', 'photo', 'clean', 'back'])
+    expect(currentSlide(unchosen, Option.none())).toBe('cutout')
     // Without a drawing of the front, the picture it shows comes first; the back still second.
     const undrawn = pieceFixture('jeans', { hasBack: true, images: { thumb: 't', full: 'f', cutout: 'o', back: 'b' } })
     expect(slidesOf(undrawn)).toEqual(['cutout', 'back', 'photo'])

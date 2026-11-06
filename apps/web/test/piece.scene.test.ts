@@ -198,7 +198,34 @@ describe('the piece page', () => {
     )
   })
 
-  test('shows the shop-style picture first, the photo, the cut-out and the back one swipe or dot away', () => {
+  test('opens on the cut-out when a drawing is ready and was not chosen as the main picture', () => {
+    const cutout = signedPicture(jeans.id, 'full', 'real-cutout')
+    const shop = signedPicture(jeans.id, 'full', 'shop-redraw')
+    const drawn = {
+      ...jeans,
+      images: {
+        thumb: signedPicture(jeans.id, 'thumb', 'real-cutout'),
+        full: cutout,
+        clean: shop,
+        photo: signedPicture(jeans.id, 'full', 'own-photo'),
+        cutout,
+      },
+      picture: { state: 'ready' as const, shows: 'photo' as const, version: 2 },
+    }
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: drawn }))),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', cutout),
+      expect(role('button', { name: 'Cut-out' })).toHaveAttr('aria-current', 'true'),
+      expect(text('Main picture')).toExist(),
+      expect(role('button', { name: 'Use as the main picture' })).not.toExist(),
+      click(role('button', { name: 'Shop-style picture' })),
+      expect(role('img', { name: 'Jeans, Shop-style picture' })).toHaveAttr('src', shop),
+      expect(role('button', { name: 'Use as the main picture' })).toExist(),
+    )
+  })
+
+  test('shows the shop-style picture first when it is the main picture, the photo, the cut-out and the back one swipe or dot away', () => {
     const images = {
       thumb: signedPicture(jeans.id, 'thumb', 'clean2'),
       full: signedPicture(jeans.id, 'full', 'clean2'),

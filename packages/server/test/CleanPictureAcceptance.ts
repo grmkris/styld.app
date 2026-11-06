@@ -137,11 +137,12 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   // Keeping the three cut-outs queues a clean picture for each; the piece kept as its photo has none.
   const kept = await keptPieces(origin, owner)
 
-  // The red tee is drawn and shows; the green shirt is drawn on magenta and shows too. Clef's stand-in sees a face in
-  // every cut-out and answers a drawing beside its cut-out unavailable: neither is asked any more (owner, 4
-  // November). The scrap asks for a retake and is never drawn; the photo has no picture.
-  expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
-  expect((await settled(owner, kept.green)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
+  // The red tee is drawn; the green shirt is drawn on magenta too. Each stays on its cut-out until the owner chooses
+  // the drawing. Clef's stand-in sees a face in every cut-out and answers a drawing beside its cut-out unavailable:
+  // neither is asked any more (owner, 4 November). The scrap asks for a retake and is never drawn; the photo has no
+  // picture.
+  expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'photo', version: 1 })
+  expect((await settled(owner, kept.green)).picture).toEqual({ state: 'ready', shows: 'photo', version: 1 })
   expect((await settled(owner, kept.blue)).picture).toEqual({ state: 'retake', shows: 'photo', version: 0 })
   expect((await settled(owner, kept.photo)).picture).toBeUndefined()
   const drawn = await prompts()
@@ -191,7 +192,7 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
     version: 1,
   })
   expect((await ask(first?.status === 200 ? 'native-redraw-0001' : 'native-redraw-0003')).status).toBe(200)
-  expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+  expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'photo', version: 2 })
   const sent = await prompts()
   expect(sent).toHaveLength(3)
   expect(sent.at(-1)).toContain(
@@ -220,8 +221,8 @@ const asOperator = (origin: string, token: string, body: object) =>
   })
 
 /** The operator's backfill (owner, 4 November): every ready cut-out of the account without a clean picture gets one
- * drawn on the queue, paid by Styld; a drawing proposed before then is shown; a photo and a piece still processing
- * are left; running it again queues nothing; to anyone without the operator's token it is not there. */
+ * drawn on the queue, paid by Styld; a drawing proposed before then is ready like any other; a photo and a piece still
+ * processing are left; running it again queues nothing; to anyone without the operator's token it is not there. */
 export const verifyBackfill = async (origin: string, fixtures: string) => {
   expect((await fetch(`${fixtures}/test/pictures/backfill/seed`, { method: 'POST' })).status).toBe(204)
   expect((await fetch(`${fixtures}/test/pictures/answer?key=green`, { method: 'PUT', body: museTee() })).status).toBe(
@@ -255,13 +256,14 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
 
   const first = await decoded(PictureBackfilled, await asOperator(origin, nativeOperatorToken, email))
   expect(first).toEqual({ accountId: backfillAccount, queued: 1, shown: 1, remaining: 0 })
-  // The proposed drawing shows at once; the undrawn piece is drawn on the queue and shows too.
+  // The proposed drawing is ready at once; the undrawn piece is drawn on the queue. Both stay on the cut-out until
+  // chosen as the main picture.
   expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.proposed}`))).picture).toEqual({
     state: 'ready',
-    shows: 'clean',
+    shows: 'photo',
     version: 1,
   })
-  expect((await settled(owner, backfilled.undrawn)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
+  expect((await settled(owner, backfilled.undrawn)).picture).toEqual({ state: 'ready', shows: 'photo', version: 1 })
   expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.photo}`))).picture).toBeUndefined()
   expect((await decoded(Piece, await owner(`/api/pieces/${backfilled.processing}`))).picture).toBeUndefined()
 
@@ -281,7 +283,7 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
   )
   expect(again).toEqual({ accountId: backfillAccount, queued: 2, shown: 0, remaining: 0 })
   for (const pieceId of [backfilled.undrawn, backfilled.proposed])
-    expect((await settled(owner, pieceId)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+    expect((await settled(owner, pieceId)).picture).toEqual({ state: 'ready', shows: 'photo', version: 2 })
   const repeated = await decoded(
     PictureBackfilled,
     await asOperator(origin, nativeOperatorToken, { ...email, redrawBefore: moment }),
