@@ -33,6 +33,15 @@ const countedWakeLock = `
 
 /** Say what an unnamed found piece is: ticking it opens it, a garment type keeps it, Done closes it; it is then
  * called what one of its kind is ("T-shirt" for T-shirts & short-sleeve tops). */
+/** Native fixtures do not preselect, so the tray hides them until this control is used. */
+const revealFound = async (page: Page, heading: string) => {
+  const reveal = page.getByRole('button', { name: 'Show everything detected' })
+  const title = page.getByRole('heading', { name: heading })
+  await reveal.or(title).waitFor({ state: 'visible', timeout: 30000 })
+  if (await reveal.isVisible()) await reveal.click()
+  await title.waitFor({ state: 'visible', timeout: 30000 })
+}
+
 const keepAs = async (page: Page, type: string, kind: string) => {
   await page.getByRole('button', { name: 'Keep Choose what it is' }).first().click()
   await page.getByRole('button', { name: type, exact: true }).click()
@@ -56,7 +65,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
       .locator('input[type="file"][multiple]')
       .setInputFiles([fixture('red-tee.png'), fixture('blue-dress.png'), fixture('green-shirt.png')])
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
-    await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
+    await revealFound(page, '3 pieces found')
     expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
     await page.getByText('4 credits left today').waitFor({ state: 'visible' })
 
@@ -131,7 +140,7 @@ export const verifyCameraJourney = async (browser: Browser, origin: string, fixt
     }
     expect(paired).toBe(true)
     await page.reload({ waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: '1 piece found' }).waitFor({ state: 'visible', timeout: 30000 })
+    await revealFound(page, '1 piece found')
     expect(problems).toEqual([])
   } finally {
     await context.close()
