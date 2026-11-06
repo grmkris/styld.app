@@ -1,11 +1,11 @@
 {
   "browserInitialGzip": {
-    "bytes": 428300,
-    "why": "the board as Submodels (Add sheet, chrome, editor) and the camera as a ManagedResource; 428,014"
+    "bytes": 428700,
+    "why": "review tray starts the shop-style picture for suggested pieces and hides the rest; 428,503"
   },
   "browserAllGzip": {
-    "bytes": 724700,
-    "why": "the board's Submodels and the one piece search with its type words; 724,388"
+    "bytes": 725200,
+    "why": "review tray starts the shop-style picture for suggested pieces and hides the rest; 724,897"
   },
   "ssrSource": {
     "bytes": 2460000,
