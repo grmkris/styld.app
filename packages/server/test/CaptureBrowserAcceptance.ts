@@ -4,6 +4,7 @@ import { Schema } from 'effect'
 import type { Browser, Page } from 'playwright'
 import { readMoov, videoDurationMs, videoFrameCount } from '../src/capture/VideoContainer.ts'
 import { recordProblems } from './BrowserAcceptance.ts'
+import { revealFound } from './RevealFound.ts'
 import { leaveCredits, seedAccounts, signedInContext } from './Accounts.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/capture/${name}`, import.meta.url))
@@ -33,15 +34,6 @@ const countedWakeLock = `
 
 /** Say what an unnamed found piece is: ticking it opens it, a garment type keeps it, Done closes it; it is then
  * called what one of its kind is ("T-shirt" for T-shirts & short-sleeve tops). */
-/** Native fixtures do not preselect, so the tray hides them until this control is used. */
-const revealFound = async (page: Page, heading: string) => {
-  const reveal = page.getByRole('button', { name: 'Show everything detected' })
-  const title = page.getByRole('heading', { name: heading })
-  await reveal.or(title).waitFor({ state: 'visible', timeout: 30000 })
-  if (await reveal.isVisible()) await reveal.click()
-  await title.waitFor({ state: 'visible', timeout: 30000 })
-}
-
 const keepAs = async (page: Page, type: string, kind: string) => {
   await page.getByRole('button', { name: 'Keep Choose what it is' }).first().click()
   await page.getByRole('button', { name: type, exact: true }).click()

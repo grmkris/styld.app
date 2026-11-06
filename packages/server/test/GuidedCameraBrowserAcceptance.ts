@@ -3,6 +3,7 @@ import { Schema } from 'effect'
 import type { Browser, Page } from 'playwright'
 import { seedAccounts, signedInContext } from './Accounts.ts'
 import { recordProblems } from './BrowserAcceptance.ts'
+import { revealFound } from './RevealFound.ts'
 import { guidedCameraFixture } from './GuidedCameraFixture.ts'
 
 const show = (page: Page, scene: 'black' | 'front' | 'back') =>
@@ -63,7 +64,7 @@ export const verifyGuidedCameraJourney = async (browser: Browser, origin: string
     expect(await camera.locator('[aria-current="step"]').textContent()).toBe('Front')
     await camera.getByRole('button', { name: 'Finish and review 1 piece' }).click()
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
-    await page.getByRole('heading', { name: '1 piece found' }).waitFor({ timeout: 30000 })
+    await revealFound(page, '1 piece found')
     await page.getByRole('button', { name: 'Keep Choose what it is' }).click()
     await page.getByRole('button', { name: 'T-shirts & short-sleeve tops', exact: true }).click()
     await page.getByRole('button', { name: 'Done', exact: true }).click()
