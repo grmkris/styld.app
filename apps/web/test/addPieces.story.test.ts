@@ -2,10 +2,11 @@ import { FileDrop } from '@foldkit/ui'
 import { CaptureId, type CaptureSource, CreateVideoCapture, OperationId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
+import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { InspectVideo, SendLink, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
-import { init, type Model, Sending } from '../src/page/AddPieces/Model.ts'
+import { init, LinkSending, type Model, Sending } from '../src/page/AddPieces/Model.ts'
 import { subscriptions } from '../src/page/AddPieces/Subscription.ts'
 import { classify, update } from '../src/page/AddPieces/Update.ts'
 import { Buzz, Message as CameraMessage, type Message as HeldCameraMessage } from '../src/page/HeldCamera.ts'
@@ -90,6 +91,51 @@ const captureOf = (index: number) => CaptureId.make(`cp_${String(index).padStart
 const succeeded = (index: number) => Message.SucceededSend({ index, captureId: captureOf(index) })
 
 describe('choosing files to add', () => {
+  test("when no credits remain, a photo fails as the day's limit without going up", () => {
+    const spent = modifyFields(init(), { maybeAllowance: () => Option.some({ remaining: 0, daily: 0 }) })
+    story(
+      update,
+      given(spent),
+      message(chosen(tee, jeans)),
+      Command.expectNone(),
+      model(({ items }) =>
+        expect(items.map(({ sending }) => sending)).toEqual([
+          Sending.Failed({ problem: 'dailyLimit' }),
+          Sending.Failed({ problem: 'dailyLimit' }),
+        ]),
+      ),
+    )
+  })
+
+  test('when a credit remains, a photo still goes up', () => {
+    story(
+      update,
+      given(modifyFields(init(), { maybeAllowance: () => Option.some({ remaining: 1, daily: 0 }) })),
+      message(chosen(tee)),
+      Command.expectExact(SendPhoto(photoArgs(0, tee))),
+      Command.resolve(SendPhoto(photoArgs(0, tee)), succeeded(0)),
+      model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Sent())),
+    )
+  })
+
+  test('when no credits remain, a video is not read and a shop page is not fetched', () => {
+    const spent = modifyFields(init(), { maybeAllowance: () => Option.some({ remaining: 0, daily: 0 }) })
+    story(
+      update,
+      given(spent),
+      message(chosen(rail)),
+      Command.expectNone(),
+      model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'dailyLimit' }))),
+    )
+    story(
+      update,
+      given(modifyFields(spent, { link: () => 'https://shop.test/p/knit' })),
+      message(Message.SubmittedLink()),
+      Command.expectNone(),
+      model(({ links }) => expect(links[0]?.sending).toEqual(LinkSending.Failed({ problem: 'dailyLimit' }))),
+    )
+  })
+
   test('photos and videos are taken by type and size; anything else is named and left out', () => {
     expect(classify(tee)).toEqual({ kind: 'photo' })
     expect(classify(rail)).toEqual({ kind: 'video' })

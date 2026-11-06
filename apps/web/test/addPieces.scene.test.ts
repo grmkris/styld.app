@@ -44,6 +44,24 @@ describe('what adding costs', () => {
   })
 })
 
+describe("today's credits before a photo goes up", () => {
+  test('with none left, picking a photo shows the plan link and never starts an upload', () => {
+    const tee = new globalThis.File([new Uint8Array(8)], 'tee.jpg', { type: 'image/jpeg' })
+    scene(
+      { update, view },
+      given(
+        withPage(addPage, lenses.addPieces, (page) =>
+          modifyFields(page, { maybeAllowance: () => Option.some({ remaining: 0, daily: 0 }) }),
+        ),
+      ),
+      changeFiles(selector('input[type="file"]'), [tee]),
+      expect(text('Uploading…')).not.toExist(),
+      expect(text('Your 3 free cut-outs are used.')).toExist(),
+      expect(role('link', { name: 'Choose a plan to keep going.' })).toHaveAttr('href', '/account#plans'),
+    )
+  })
+})
+
 describe('reading a video on the add page', () => {
   test("says which part is on its way, and how many went once the day's allowance stops it", () => {
     scene(
